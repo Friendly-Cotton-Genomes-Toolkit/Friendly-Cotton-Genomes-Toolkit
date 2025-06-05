@@ -1,0 +1,2 @@
+downloader:
+  genome_sources_file: dummy_genome_sources.yml

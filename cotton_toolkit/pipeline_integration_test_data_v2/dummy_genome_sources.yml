@@ -1,0 +1,8 @@
+
+genome_sources:
+  CottonA_Test_v2:
+    species_name: "Cotton A Test v2"
+    homology_id_slicer: "_" 
+  CottonB_Test_v2:
+    species_name: "Cotton B Test v2"
+    homology_id_slicer: "_"

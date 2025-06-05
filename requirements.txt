@@ -1,0 +1,15 @@
+﻿setuptools~=78.1.1
+requests~=2.32.3
+tqdm~=4.67.1
+gffutils~=0.13
+pandas~=2.2.3
+yaml~=0.2.5
+pyyaml~=6.0.2
+numpy~=2.0.1
+pyqt6~=6.9.0
+pyqt6-sip~=13.9.1
+# PyDracula is a theme/style library, typically used by applying its QSS.
+# Ensure PyDracula's QSS file (e.g., style.qss) is available in cotton_toolkit/ui/resources/
+# No direct PyPI package dependency for PyDracula itself usually, but it relies on PyQt6.
+customtkinter~=5.2.2
+pip~=25.1

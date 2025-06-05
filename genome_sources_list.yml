@@ -1,0 +1,21 @@
+genome_sources:
+  BGI_v1:
+    gff3_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CGP-BGI_G.hirsutum_AD1genome/genes/BGI_Gossypium_hirsutum_v1.0.cds.gff.gz
+    homology_ath_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CGP-BGI_G.hirsutum_AD1genome/protein_homology_2019/blastp_G.hirsutum_CGP-BGI_v1.0_vs_arabidopsis.xlsx.gz
+    species_name: Gossypium hirsutum (AD1) 'TM-1' genome CGP-BGI_v1
+  NBI_v1.1:
+    gff3_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/genes/NBI_Gossypium_hirsutum_v1.1.gene.gff3.gz
+    homology_ath_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/protein_homology_2019/blastx_G.hirsutum_NAU-NBI_v1.1_vs_arabidopsis.xlsx.gz
+    species_name: Gossypium hirsutum (AD1) 'TM-1' genome NAU-NBI_v1.1
+  UTX_v2.1:
+    gff3_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/genes/Ghirsutum_527_v2.1.gene_exons.gff3.gz
+    homology_ath_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/homology/blastp_G.hirsutum_UTX_v2.1_vs_arabidopsis.xlsx.gz
+    species_name: Gossypium hirsutum (AD1) 'TM-1' genome UTX_v2.1
+  WHU_v1:
+    gff3_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/genes/Ghirsutum_TM-1_WHU_standard.gene.gff3.gz
+    homology_ath_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/homology/blastp_G.hirsutum_WHU_v1_vs_arabidopsis.xlsx.gz
+    species_name: Gossypium hirsutum (AD1) 'TM-1' genome WHU_v1
+  HAU_v2.0:
+    gff3_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/genes/TM-1_HAU_v2_gene.gff3.gz
+    homology_ath_url: https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz
+    species_name: Gossypium hirsutum (AD1) 'TM-1' genome HAU_v2.0
