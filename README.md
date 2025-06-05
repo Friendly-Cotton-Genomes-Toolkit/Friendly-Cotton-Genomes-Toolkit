@@ -17,6 +17,13 @@
 
 <hr style="border: 1px solid #eaeaea; margin: 1.5em 0;" />
 
+<div align="center">
+[中文（简体）](../README.md) | 
+[English](docs/README_en.md) | 
+[日本語](docs/README_ja.md) | 
+[繁體中文](docs/README_zh-hant.md)
+</div>
+
 ## 项目简介
 
 **FCGT**（Friendly Cotton Genomes Toolkit）为棉花基因组数据分析提供专业、易用的工具支持，涵盖图形界面（GUI）与命令行（CLI）模式，注重降低生物信息学门槛，助力科研与育种实践。  
