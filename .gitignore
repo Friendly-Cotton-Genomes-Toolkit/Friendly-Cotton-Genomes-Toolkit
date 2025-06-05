@@ -75,5 +75,4 @@ Thumbs.db
 
 # 其他临时文件和目录
 tests
-config.yml
-genome_sources_list.yml
+cotton_toolkit.egg-info
