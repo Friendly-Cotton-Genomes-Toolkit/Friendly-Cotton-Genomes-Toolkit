@@ -76,3 +76,4 @@ Thumbs.db
 # 其他临时文件和目录
 tests
 cotton_toolkit.egg-info
+friendly_cotton_toolkit.egg-info
