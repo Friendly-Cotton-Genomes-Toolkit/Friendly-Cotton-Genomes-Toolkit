@@ -1,0 +1,79 @@
+# 字节码和编译产物 (Byte-code or compiled files)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# C 扩展 (C extensions)
+*.so
+
+# Setuptools 和构建相关的目录 (Distribution / packaging)
+.eggs/
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+lib/
+lib64/
+include/
+share/
+wheels/
+*.manifest
+*.spec
+
+# cx_Freeze 构建产物
+# 通常 'build/' 目录已经包含了这些
+*.exe
+*.dll
+*.cat
+*.pyd
+
+# Python 虚拟环境 (Virtual Environments)
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 日志、数据库和备份文件 (Logs, databases, and backups)
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+
+# IDE 和编辑器配置文件 (IDE / Editor folders)
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# 操作系统生成的文件 (OS-generated files)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- 项目特定的忽略规则 ---
+
+# 应用程序生成的默认数据和缓存目录
+# 这些目录由程序在运行时创建，不应纳入版本控制
+/downloaded_cotton_data/
+/gff_databases_cache/
+
+# 脚本中的测试输出目录
+/test_downloader_output/
+/pipeline_integration_test_data_v2/
+/temp_config_test_dir/
+
+# 其他临时文件和目录
+tests
+config.yml
+genome_sources_list.yml
