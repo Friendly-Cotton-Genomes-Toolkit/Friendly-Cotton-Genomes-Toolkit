@@ -42,19 +42,19 @@ gui_target = Executable(
     script="main.py",
     base=gui_base,
     icon="icon.ico",
-    target_name="CottonToolkit-GUI.exe"
+    target_name="FCGT-GUI.exe"
 )
 
 # --- 定义 CLI 版本 ---
 cli_target = Executable(
     script="cli_runner.py",
     base=None,
-    target_name="cotton-toolkit.exe"
+    target_name="FCGT.exe"
 )
 
 # --- 执行打包 ---
 setup(
-    name="CottonToolkit",
+    name="Friendly Cotton Genomes Toolkit",
     version="0.0.1", # 增加一个小版本号
     description="一个用于棉花基因组分析的工具包",
     author="<您的名字>",
