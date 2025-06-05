@@ -1,7 +1,7 @@
 <table>
   <tr>
     <td width="120" align="center" valign="middle">
-      <img src="docs/ico.png" alt="FCGT Logo" width="110" height="110"/>
+      <img src="docs/ico.png" alt="logo" width="128" height="128" style="object-fit:cover;" />
     </td>
     <td valign="middle">
       <h1 style="font-weight:700; letter-spacing:2px; margin-bottom:0;">
@@ -15,14 +15,11 @@
   </tr>
 </table>
 
-<hr style="border: 1px solid #eaeaea; margin: 1.5em 0;" />
+## 选择你的语言 | Select your language | 言語を選択 | 選擇語言
 
-<div align="center">
-[中文（简体）](../README.md) | 
-[English](docs/README_en.md) | 
-[日本語](docs/README_ja.md) | 
-[繁體中文](docs/README_zh-hant.md)
-</div>
+[中文（简体）](../README.md)	[English](docs/README_en.md)	[日本語](docs/README_ja.md)	 [繁體中文](docs/README_zh-hant.md)
+
+---
 
 ## 项目简介
 
