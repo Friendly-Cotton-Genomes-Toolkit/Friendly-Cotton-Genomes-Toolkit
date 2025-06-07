@@ -11,6 +11,8 @@ import webbrowser
 import yaml
 from pip._internal.utils.logging import setup_logging
 from cotton_toolkit import HELP_URL,VERSION as APP_VERSION
+from cotton_toolkit.tools_pipeline import run_ai_task, run_functional_annotation
+from cotton_toolkit.core.convertXlsx2csv import convert_xlsx_to_single_csv
 
 # --- 1. 定义应用名称 (用于i18n和logging) ---
 APP_NAME_FOR_I18N = "cotton_toolkit"
@@ -257,6 +259,32 @@ def handle_gff_query_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
         progress_callback=lambda p, msg: logger_cmd.info(f"GFF Query Progress [{p}%]: {msg}")
     )
 
+
+def handle_convert_cmd(args, config_main):
+    logger_cmd = logging.getLogger(f"cotton_toolkit.cli.convert")
+    logger_cmd.info(_("执行 XLSX 到 CSV 的转换..."))
+
+    input_path = args.input
+    output_path = args.output
+
+    if not os.path.exists(input_path):
+        logger_cmd.error(_("错误: 输入文件 '{}' 不存在。").format(input_path))
+        return
+
+    if not output_path:
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        output_path = os.path.join(os.path.dirname(input_path), f"{base_name}_merged.csv")
+        logger_cmd.info(_("未指定输出路径，将自动保存到: {}").format(output_path))
+
+    logger_cmd.info(_("此工具会将所有工作表合并到一个CSV文件中。"))
+
+    success = convert_xlsx_to_single_csv(input_path, output_path)
+
+    if success:
+        logger_cmd.info(_("转换成功！"))
+    else:
+        logger_cmd.error(_("转换失败，请检查文件格式或错误日志。"))
+
 # --- 6. 定义 handle_download_cmd 和 handle_integrate_cmd 函数 ---
 def handle_download_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
     logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.download")  # 子logger
@@ -342,6 +370,35 @@ def handle_help_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
         logger_cmd.error(_("无法自动打开帮助链接。请手动复制此链接到浏览器: {} \n错误: {}").format(HELP_URL, e))
 
 
+
+# 处理 annotate 命令的函数
+def handle_annotate_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    logger_cmd = logging.getLogger(f"cotton_toolkit.cli.annotate")
+    logger_cmd.info(_("执行功能注释命令..."))
+    output_dir = args.output_dir or os.path.join(os.path.dirname(args.input), "annotation_results")
+    run_functional_annotation(
+        config=config_main, input_file=args.input, output_dir=output_dir,
+        annotation_types=args.types, gene_column_name=args.gene_column,
+        status_callback=logger_cmd.info
+    )
+
+
+# 处理 ai 命令的函数
+def handle_ai_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    logger_cmd = logging.getLogger(f"cotton_toolkit.cli.ai")
+    logger_cmd.info(_("执行 AI 助手命令..."))
+    if args.task_type == 'analyze' and not args.prompt:
+        logger_cmd.error(_("错误: 'analyze' 任务需要使用 --prompt 参数提供一个提示模板。")); return
+    output_dir = args.output_dir or os.path.join(os.path.dirname(args.input), "ai_results")
+    run_ai_task(
+        config=config_main, input_file=args.input, output_dir=output_dir,
+        source_column=args.source_column, new_column=args.new_column,
+        task_type=args.task_type, custom_prompt_template=args.prompt,
+        status_callback=logger_cmd.info
+    )
+
+
+
 # --- 7. 定义 cli_main_entry 函数 ---
 def cli_main_entry():
     """CLI主入口函数"""
@@ -379,6 +436,35 @@ def cli_main_entry():
 
     subparsers = parser.add_subparsers(dest="command", title=_("可用命令"), help=_("选择子命令执行"))
     subparsers.required = True
+
+    # --- 【新增】XLSX转CSV子命令 ---
+    parser_convert = subparsers.add_parser("convert", help=_("将一个XLSX文件的所有工作表合并成一个CSV文件。"))
+    parser_convert.add_argument("-i", "--input", required=True, help=_("要转换的源 .xlsx 文件路径。"))
+    parser_convert.add_argument("-o", "--output", help=_("输出 .csv 文件的路径 (可选)。"))
+    parser_convert.set_defaults(func=handle_convert_cmd)
+
+    # --- AI 助手子命令 ---
+    parser_ai = subparsers.add_parser("ai", help=_("使用AI批量处理表格数据。"))
+    parser_ai.add_argument("-i", "--input", required=True, help=_("要处理的输入CSV文件。"))
+    parser_ai.add_argument("-o", "--output-dir",
+                           help=_("存放结果的输出目录 (默认为输入文件同级目录下的 'ai_results')。"))
+    parser_ai.add_argument("--source-column", required=True, help=_("要处理的源列名。"))
+    parser_ai.add_argument("--new-column", required=True, help=_("存放结果的新列名。"))
+    parser_ai.add_argument("--task-type", required=True, choices=['translate', 'analyze'], help=_("要执行的任务类型。"))
+    parser_ai.add_argument("--prompt", help=_("执行'analyze'任务时使用的自定义提示模板 (必须包含'{text}')。"))
+    parser_ai.set_defaults(func=handle_ai_cmd)
+
+    # --- 功能注释子命令 ---
+    parser_annotate = subparsers.add_parser("annotate", help=_("使用本地数据库为基因列表添加功能注释。"))
+    parser_annotate.add_argument("-i", "--input", required=True, help=_("包含基因列表的输入文件 (Excel/CSV)。"))
+    parser_annotate.add_argument("-o", "--output-dir",
+                                 help=_("存放注释结果的输出目录 (默认为输入文件同级目录下的 'annotation_results')。"))
+    parser_annotate.add_argument("-t", "--types", nargs='+', required=True,
+                                 choices=['go', 'ipr', 'kegg_orthologs', 'kegg_pathways'],
+                                 help=_("要执行的注释类型 (可多选)。"))
+    parser_annotate.add_argument("-g", "--gene-column", default="gene",
+                                 help=_("输入文件中基因ID所在列的名称 (默认: 'gene')。"))
+    parser_annotate.set_defaults(func=handle_annotate_cmd)
 
     # 下载器子命令
     parser_download = subparsers.add_parser("download", help=_("下载基因组数据 (GFF3, 同源文件)。"))

@@ -13,3 +13,4 @@ pyqt6-sip~=13.9.1
 # No direct PyPI package dependency for PyDracula itself usually, but it relies on PyQt6.
 customtkinter~=5.2.2
 pip~=25.1
+pillow~=11.1.0

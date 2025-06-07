@@ -16,7 +16,9 @@ build_exe_options = {
         "os", "sys", "yaml", "customtkinter", "tkinter", # 明确加入 tkinter
         "pandas", "requests", "gffutils", "numpy",
         "threading", "queue", "shutil", "gettext",
-        "pkg_resources", "importlib_metadata" # 有时解决动态导入问题
+        "pkg_resources", "importlib_metadata" 
+        "pillow",
+        "win32gui", "win32con"
     ],
     "includes": [
         "cotton_toolkit", # 包含您的主包
