@@ -38,10 +38,9 @@ if __package__ is None or __package__ == '':  # 如果是作为顶层脚本运�
 try:
     from cotton_toolkit.config.loader import load_config, get_genome_data_sources
     from cotton_toolkit.core.downloader import download_genome_data, decompress_gz_to_temp_file
-    from cotton_toolkit.pipelines import integrate_bsa_with_hvg, REASONING_COL_NAME
-    from cotton_toolkit.core.gff_parser import DB_SUFFIX  # pipelines.py 的MOCK可能需要
+    from cotton_toolkit.pipelines import integrate_bsa_with_hvg, run_homology_mapping_standalone, run_gff_gene_lookup_standalone, REASONING_COL_NAME # 新增导入
+    from cotton_toolkit.core.gff_parser import DB_SUFFIX
 
-    # 假设 pipelines.py 内部会导入它需要的 gff_parser 和 homology_mapper 函数
     print(f"INFO (cli.py): Successfully imported real package modules.")
     REAL_MODULES_LOADED = True
 except ImportError as e:
@@ -49,6 +48,28 @@ except ImportError as e:
     print("             Using MOCK functions for CLI operation. Ensure package is installed or PYTHONPATH is set.")
     REAL_MODULES_LOADED = False
 
+    # ... (原有MOCK函数定义保持不变，需要为新的 standalone 函数添加MOCK) ...
+    # MOCK for run_homology_mapping_standalone
+    def run_homology_mapping_standalone(config, source_gene_ids_override=None, source_assembly_id_override=None,
+                                      target_assembly_id_override=None, s_to_b_homology_file_override=None,
+                                      b_to_t_homology_file_override=None, output_csv_path=None,
+                                      status_callback=None, progress_callback=None, task_done_callback=None):
+        print(f"MOCK (CLI): run_homology_mapping_standalone called. Source: {source_gene_ids_override}")
+        if status_callback: status_callback("Mock homology mapping started.")
+        if progress_callback: progress_callback(100, "Mock homology mapping 100%")
+        if status_callback: status_callback("Mock homology mapping finished.")
+        if task_done_callback: task_done_callback(True)
+        return True
+
+    # MOCK for run_gff_gene_lookup_standalone
+    def run_gff_gene_lookup_standalone(config, assembly_id_override=None, gene_ids_override=None, region_override=None,
+                                     output_csv_path=None, status_callback=None, progress_callback=None, task_done_callback=None):
+        print(f"MOCK (CLI): run_gff_gene_lookup_standalone called. Assembly: {assembly_id_override}, Genes: {gene_ids_override}, Region: {region_override}")
+        if status_callback: status_callback("Mock GFF gene lookup started.")
+        if progress_callback: progress_callback(100, "Mock GFF gene lookup 100%")
+        if status_callback: status_callback("Mock GFF gene lookup finished.")
+        if task_done_callback: task_done_callback(True)
+        return True
 
     # --- 定义MOCK函数和变量以便脚本能作为示例独立运行 ---
     def load_config(path: str) -> Optional[Dict[str, Any]]:
@@ -90,6 +111,8 @@ except ImportError as e:
                 "gff_db_storage_dir": "mock_gff_dbs"
             }
         }
+
+
 
 
     def get_genome_data_sources(cfg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -175,6 +198,64 @@ def setup_cli_i18n(language_code: str = 'zh-hans', app_name: str = APP_NAME_FOR_
         translator_func = lang_translation.gettext
 
     return translator_func
+
+
+# 新增：处理 homology_map 命令的函数
+def handle_homology_map_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.homology_map")
+    logger_cmd.info(_("执行同源映射命令..."))
+
+    gene_ids_list = args.genes.split(',') if args.genes else None
+    if gene_ids_list:
+        gene_ids_list = [gid.strip() for gid in gene_ids_list if gid.strip()]
+
+    run_homology_mapping_standalone(
+        config=config_main,
+        source_gene_ids_override=gene_ids_list,
+        source_assembly_id_override=args.source_assembly,
+        target_assembly_id_override=args.target_assembly,
+        s_to_b_homology_file_override=args.homology_sb_file,
+        b_to_t_homology_file_override=args.homology_bt_file,
+        output_csv_path=args.output_csv,
+        status_callback=lambda msg: logger_cmd.info(f"Mapping Status: {msg}"),
+        progress_callback=lambda p, msg: logger_cmd.info(f"Mapping Progress [{p}%]: {msg}")
+    )
+
+# 新增：处理 gff_query 命令的函数
+def handle_gff_query_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.gff_query")
+    logger_cmd.info(_("执行GFF基因查询命令..."))
+
+    gene_ids_list = args.genes.split(',') if args.genes else None
+    if gene_ids_list:
+        gene_ids_list = [gid.strip() for gid in gene_ids_list if gid.strip()]
+
+    region_tuple = None
+    if args.region:
+        try:
+            parts = args.region.split(':')
+            chrom = parts[0]
+            start_end = parts[1].split('-')
+            start = int(start_end[0])
+            end = int(start_end[1])
+            region_tuple = (chrom, start, end)
+        except Exception:
+            logger_cmd.error(_("区域格式不正确。请使用 'chr:start-end' 格式。"))
+            return
+
+    if not gene_ids_list and not region_tuple:
+        logger_cmd.error(_("必须提供基因ID列表 (--genes) 或染色体区域 (--region)。"))
+        return
+
+    run_gff_gene_lookup_standalone(
+        config=config_main,
+        assembly_id_override=args.assembly,
+        gene_ids_override=gene_ids_list,
+        region_override=region_tuple,
+        output_csv_path=args.output_csv,
+        status_callback=lambda msg: logger_cmd.info(f"GFF Query Status: {msg}"),
+        progress_callback=lambda p, msg: logger_cmd.info(f"GFF Query Progress [{p}%]: {msg}")
+    )
 
 # --- 6. 定义 handle_download_cmd 和 handle_integrate_cmd 函数 ---
 def handle_download_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
@@ -313,6 +394,27 @@ def cli_main_entry():
     parser_integrate.add_argument("--input_excel", type=str, help=_("覆盖输入Excel文件路径。"))
     parser_integrate.add_argument("--output_sheet", type=str, help=_("覆盖输出工作表名称。"))
     parser_integrate.set_defaults(func=handle_integrate_cmd)
+
+    # 新增：同源映射子命令
+    parser_homology_map = subparsers.add_parser("homology_map", help=_("独立执行基因组同源映射。"))
+    parser_homology_map.add_argument("--genes", type=str, required=True,
+                                     help=_("要映射的源基因ID，多个用逗号分隔 (例如: GeneA1,GeneA2)。"))
+    parser_homology_map.add_argument("--source_assembly", type=str, help=_("源基因组版本ID (覆盖配置文件)。"))
+    parser_homology_map.add_argument("--target_assembly", type=str, help=_("目标基因组版本ID (覆盖配置文件)。"))
+    parser_homology_map.add_argument("--homology_sb_file", type=str,
+                                     help=_("源到桥梁的同源CSV文件路径 (覆盖配置文件)。"))
+    parser_homology_map.add_argument("--homology_bt_file", type=str,
+                                     help=_("桥梁到目标的同源CSV文件路径 (覆盖配置文件)。"))
+    parser_homology_map.add_argument("--output_csv", type=str, help=_("结果输出CSV文件路径。"))
+    parser_homology_map.set_defaults(func=handle_homology_map_cmd)
+
+    # 新增：GFF基因查询子命令
+    parser_gff_query = subparsers.add_parser("gff_query", help=_("独立查询GFF文件中的基因信息。"))
+    parser_gff_query.add_argument("--assembly", type=str, help=_("要查询的基因组版本ID (覆盖配置文件)。"))
+    parser_gff_query.add_argument("--genes", type=str, help=_("要查询的基因ID，多个用逗号分隔 (例如: GeneB1,GeneB2)。"))
+    parser_gff_query.add_argument("--region", type=str, help=_("要查询的染色体区域 (例如: chr1:1000-5000)。"))
+    parser_gff_query.add_argument("--output_csv", type=str, help=_("结果输出CSV文件路径。"))
+    parser_gff_query.set_defaults(func=handle_gff_query_cmd)
 
     # 新增：帮助子命令
     parser_help = subparsers.add_parser("web_help", help=_("在浏览器中打开在线帮助文档。"))

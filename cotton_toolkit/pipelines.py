@@ -2,7 +2,8 @@
 import gettext  #
 import gzip  #
 import os  #
-from typing import List, Dict, Any, Optional, Union, Callable  # Callable for callbacks #
+from typing import List, Dict, Any, Optional, Union, Callable, Tuple  # Callable for callbacks #
+from urllib.parse import urlparse
 
 import numpy as np  #
 import pandas as pd  #
@@ -21,7 +22,8 @@ except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins�
 
 # --- 从实际的包核心模块导入功能 ---
 try:
-    from .core.gff_parser import create_or_load_gff_db, get_features_in_region, DB_SUFFIX  # extract_gene_details 如果需要 #
+    from .core.gff_parser import create_or_load_gff_db, get_features_in_region, DB_SUFFIX, \
+    extract_gene_details  # extract_gene_details 如果需要 #
     from .core.homology_mapper import map_genes_via_bridge  #
 
     CORE_MODULES_IMPORTED = True  #
@@ -92,7 +94,341 @@ REASONING_COL_NAME = 'Ms1_LoF_Support_Reasoning'  #
 MATCH_NOTE_COL_NAME = 'Match_Note'
 
 
-# (DB_SUFFIX 现在从 gff_parser 导入或在此处定义（如果导入失败）)
+# 新增：独立同源映射功能
+def run_homology_mapping_standalone(
+    config: Dict[str, Any],
+    source_gene_ids_override: Optional[List[str]] = None,
+    source_assembly_id_override: Optional[str] = None,
+    target_assembly_id_override: Optional[str] = None,
+    s_to_b_homology_file_override: Optional[str] = None,
+    b_to_t_homology_file_override: Optional[str] = None,
+    output_csv_path: Optional[str] = None, # 新增输出路径参数
+    status_callback: Optional[Callable[[str], None]] = None,
+    progress_callback: Optional[Callable[[int, str], None]] = None,
+    task_done_callback: Optional[Callable[[bool], None]] = None
+) -> bool:
+    """
+    独立运行基因组同源映射流程。
+    """
+    def _log_status(msg: str, level: str = "INFO"):
+        if status_callback: status_callback(f"[{level}] {msg}")
+        elif level == "ERROR": print(f"ERROR: {msg}")
+        elif level == "WARNING": print(f"WARNING: {msg}")
+        else: print(f"INFO: {msg}")
+
+    def _log_progress(percent: int, msg: str):
+        if progress_callback: progress_callback(percent, msg)
+        else: print(f"PROGRESS [{percent}%]: {msg}")
+
+    overall_success = False
+    _log_status(_("开始独立同源映射流程..."))
+    _log_progress(0, _("初始化配置..."))
+
+    if not CORE_MODULES_IMPORTED:
+        _log_status(_("错误: 核心模块未加载，无法执行同源映射。"), "ERROR");
+        return False
+
+    pipeline_cfg = config.get('integration_pipeline', {})
+    downloader_cfg = config.get('downloader', {})
+
+    # 获取基因组源信息，用于 slicer
+    genome_sources = {}
+    if 'genome_sources_file' in downloader_cfg:
+        from .config.loader import get_genome_data_sources as get_gs_func # 动态导入，避免循环依赖
+        genome_sources = get_gs_func(config) or {}
+
+    source_assembly_id = source_assembly_id_override if source_assembly_id_override else pipeline_cfg.get('bsa_assembly_id')
+    target_assembly_id = target_assembly_id_override if target_assembly_id_override else pipeline_cfg.get('hvg_assembly_id')
+
+    if not all([source_assembly_id, target_assembly_id]):
+        _log_status(_("错误: 必须指定源基因组ID和目标基因组ID。"), "ERROR");
+        return False
+    if source_assembly_id == target_assembly_id:
+        _log_status(_("源基因组和目标基因组相同，无需执行同源映射。"), "INFO")
+        return True # 认为成功
+
+    s_to_b_homology_file = s_to_b_homology_file_override
+    b_to_t_homology_file = b_to_t_homology_file_override
+
+    # 尝试从配置中获取同源文件路径
+    homology_files_cfg = pipeline_cfg.get('homology_files', {})
+    if not s_to_b_homology_file:
+        s_to_b_homology_file = homology_files_cfg.get('bsa_to_bridge_csv')
+    if not b_to_t_homology_file:
+        b_to_t_homology_file = homology_files_cfg.get('bridge_to_hvg_csv')
+
+    if not all([s_to_b_homology_file, b_to_t_homology_file]):
+        _log_status(_("错误: 必须提供源到桥梁和桥梁到目标的同源文件路径。"), "ERROR");
+        return False
+    if not os.path.exists(s_to_b_homology_file):
+        _log_status(_("错误: 源到桥梁同源文件 '{}' 未找到。").format(s_to_b_homology_file), "ERROR");
+        return False
+    if not os.path.exists(b_to_t_homology_file):
+        _log_status(_("错误: 桥梁到目标同源文件 '{}' 未找到。").format(b_to_t_homology_file), "ERROR");
+        return False
+
+    try:
+        s_to_b_homology_df = pd.read_csv(s_to_b_homology_file)
+        b_to_t_homology_df = pd.read_csv(b_to_t_homology_file)
+    except Exception as e:
+        _log_status(_("加载同源文件时出错: {}").format(e), "ERROR");
+        return False
+    _log_progress(20, _("同源文件加载完毕。"))
+
+    source_gene_ids = source_gene_ids_override
+    if not source_gene_ids:
+        _log_status(_("错误: 必须提供需要映射的源基因ID列表。"), "ERROR");
+        return False
+
+    homology_cols = pipeline_cfg.get('homology_columns', {})
+    sel_criteria_s_to_b = pipeline_cfg.get('selection_criteria_source_to_bridge', {})
+    sel_criteria_b_to_t = pipeline_cfg.get('selection_criteria_bridge_to_target', {})
+    bridge_species_name = pipeline_cfg.get('bridge_species_name', "Arabidopsis_thaliana")
+
+    source_id_slicer = genome_sources.get(source_assembly_id, {}).get('homology_id_slicer')
+    bridge_id_slicer = genome_sources.get(target_assembly_id, {}).get('homology_id_slicer') # Assuming target assembly's slicer for bridge to target
+
+    _log_status(_("开始执行同源映射算法..."))
+    _log_progress(40, _("执行映射..."))
+    try:
+        mapped_df, fuzzy_count = map_genes_via_bridge(
+            source_gene_ids=source_gene_ids,
+            source_assembly_name=source_assembly_id,
+            target_assembly_name=target_assembly_id,
+            bridge_species_name=bridge_species_name,
+            source_to_bridge_homology_df=s_to_b_homology_df,
+            bridge_to_target_homology_df=b_to_t_homology_df,
+            s_to_b_query_col=homology_cols.get('query', "Query"),
+            s_to_b_match_col=homology_cols.get('match', "Match"),
+            b_to_t_query_col=homology_cols.get('query', "Query"),
+            b_to_t_match_col=homology_cols.get('match', "Match"),
+            evalue_col=homology_cols.get('evalue', "Exp"),
+            score_col=homology_cols.get('score', "Score"),
+            pid_col=homology_cols.get('pid', "PID"),
+            selection_criteria_s_to_b=sel_criteria_s_to_b,
+            selection_criteria_b_to_t=sel_criteria_b_to_t,
+            source_id_slicer=source_id_slicer,
+            bridge_id_slicer=bridge_id_slicer
+        )
+        if fuzzy_count > 0:
+            _log_status(_("注意: 在同源映射中执行了 {} 次模糊匹配。").format(fuzzy_count), "WARNING")
+
+        if mapped_df.empty:
+            _log_status(_("未找到任何有效同源映射结果。"), "WARNING")
+            overall_success = True # 流程本身没出错，只是没找到结果
+        else:
+            _log_status(_("同源映射完成，找到 {} 条映射结果。").format(len(mapped_df)))
+            _log_progress(80, _("映射完成，正在写入结果。"))
+
+            final_output_path = output_csv_path
+            if not final_output_path:
+                # 默认输出到下载目录或临时目录
+                final_output_dir = os.path.join(downloader_cfg.get('download_output_base_dir', "downloaded_cotton_data"), "homology_map_results")
+                os.makedirs(final_output_dir, exist_ok=True)
+                final_output_path = os.path.join(final_output_dir, f"homology_map_{source_assembly_id}_to_{target_assembly_id}.csv")
+
+            mapped_df.to_csv(final_output_path, index=False)
+            _log_status(_("同源映射结果已保存到: {}").format(final_output_path))
+            overall_success = True
+
+    except Exception as e:
+        _log_status(_("执行同源映射时发生错误: {}").format(e), "ERROR")
+        overall_success = False
+    finally:
+        if task_done_callback: task_done_callback(overall_success)
+    return overall_success
+
+# 新增：独立GFF基因查询功能
+def run_gff_gene_lookup_standalone(
+        config: Dict[str, Any],
+        assembly_id_override: Optional[str] = None,
+        gene_ids_override: Optional[List[str]] = None,
+        region_override: Optional[Tuple[str, int, int]] = None,  # (chrom, start, end)
+        output_csv_path: Optional[str] = None,
+        status_callback: Optional[Callable[[str], None]] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        task_done_callback: Optional[Callable[[bool], None]] = None
+) -> bool:
+    """
+    独立运行GFF基因位点查询流程。
+    可以根据基因ID列表或染色体区域进行查询。
+    """
+
+    def _log_status(msg: str, level: str = "INFO"):
+        if status_callback:
+            status_callback(f"[{level}] {msg}")
+        elif level == "ERROR":
+            print(f"ERROR: {msg}")
+        elif level == "WARNING":
+            print(f"WARNING: {msg}")
+        else:
+            print(f"INFO: {msg}")
+
+    def _log_progress(percent: int, msg: str):
+        if progress_callback:
+            progress_callback(percent, msg)
+        else:
+            print(f"PROGRESS [{percent}%]: {msg}")
+
+    overall_success = False  # This will now be set at the end of successful operations
+    _log_status(_("开始独立GFF基因查询流程..."))
+    _log_progress(0, _("初始化配置..."))
+
+    if not CORE_MODULES_IMPORTED:
+        _log_status(_("错误: 核心模块未加载，无法执行GFF查询。"), "ERROR");
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    pipeline_cfg = config.get('integration_pipeline', {})
+    downloader_cfg = config.get('downloader', {})
+
+    assembly_id = assembly_id_override
+    if not assembly_id:
+        assembly_id = pipeline_cfg.get('bsa_assembly_id')
+        if not assembly_id: assembly_id = pipeline_cfg.get('hvg_assembly_id')
+
+    if not assembly_id:
+        _log_status(_("错误: 必须指定基因组版本ID用于GFF查询。"), "ERROR");
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    gff_files_cfg = pipeline_cfg.get('gff_files', {})
+    gff_file_path = gff_files_cfg.get(assembly_id)
+
+    if not gff_file_path:
+        genome_sources = {}
+        if 'genome_sources_file' in downloader_cfg:
+            from .config.loader import get_genome_data_sources as get_gs_func
+            genome_sources = get_gs_func(config) or {}
+
+        genome_info = genome_sources.get(assembly_id)
+        if genome_info and genome_info.get("gff3_url"):
+            safe_dir_name = genome_info.get("species_name", assembly_id).replace(" ", "_").replace(".", "_").replace(
+                "(", "").replace(")", "").replace("'", "")
+            version_output_dir = os.path.join(downloader_cfg.get('download_output_base_dir', "downloaded_cotton_data"),
+                                              safe_dir_name)
+            # Correctly parse URL for filename, even if it's a local path in mock
+            try:
+                parsed_url = urlparse(genome_info["gff3_url"])
+                filename = os.path.basename(
+                    parsed_url.path) if parsed_url.path else f"{assembly_id}_annotations.gff3.gz"
+            except:  # Fallback for non-URL like paths in mock or error cases
+                filename = f"{assembly_id}_annotations.gff3.gz"
+            gff_file_path = os.path.join(version_output_dir, filename)
+
+    if not gff_file_path or not os.path.exists(gff_file_path):
+        _log_status(
+            _("错误: 未找到基因组 '{}' 的GFF文件 '{}'。请检查配置文件或下载。").format(assembly_id, gff_file_path),
+            "ERROR");
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    gff_db_dir = pipeline_cfg.get('gff_db_storage_dir', "gff_databases_cache")
+    force_gff_db_creation = pipeline_cfg.get('force_gff_db_creation', False)
+
+    _log_progress(20, _("加载GFF数据库..."))
+    db_path_to_create = os.path.join(gff_db_dir, os.path.basename(gff_file_path) + DB_SUFFIX) if gff_db_dir else None
+    gff_db = create_or_load_gff_db(gff_file_path, db_path=db_path_to_create, force_create=force_gff_db_creation,
+                                   verbose=False)
+    if not gff_db:
+        _log_status(_("错误: 无法加载或创建GFF数据库。"), "ERROR");
+        if task_done_callback: task_done_callback(False)
+        return False
+    _log_progress(40, _("GFF数据库加载完毕。"))
+
+    results_data = []
+    if gene_ids_override:
+        _log_status(_("按基因ID查询 {} 个基因...").format(len(gene_ids_override)))
+        for i, gene_id in enumerate(gene_ids_override):
+            gene_details = extract_gene_details(gff_db, gene_id)
+            if gene_details:
+                results_data.append(gene_details)
+            else:
+                _log_status(_("警告: 未找到基因ID '{}' 的详细信息。").format(gene_id), "WARNING")
+            _log_progress(40 + int((i + 1) / len(gene_ids_override) * 40), _("查询基因ID..."))
+    elif region_override:
+        chrom, start, end = region_override
+        _log_status(_("按区域 {}:{}-{} 查询基因...").format(chrom, start, end))
+        # Convert to list to get a count for progress, or iterate directly if memory is a concern
+        genes_in_region_list = list(get_features_in_region(gff_db, chrom, start, end, feature_type='gene'))
+        total_genes_in_region = len(genes_in_region_list)
+        for i, gene_feature in enumerate(genes_in_region_list):
+            gene_details = extract_gene_details(gff_db, gene_feature.id)
+            if gene_details:
+                results_data.append(gene_details)
+            if total_genes_in_region > 0:
+                _log_progress(40 + int((i + 1) / total_genes_in_region * 40), _("查询区域基因..."))
+            else:
+                _log_progress(80, _("查询区域基因..."))  # If no genes, jump to 80% for this step
+    else:
+        _log_status(_("错误: 必须提供基因ID列表或染色体区域进行查询。"), "ERROR");
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    if not results_data:
+        _log_status(_("未找到任何符合条件的基因。"), "INFO")
+        overall_success = True
+    else:
+        _log_status(_("查询完成，找到 {} 个基因。").format(len(results_data)))
+        _log_progress(90, _("查询完成，正在写入结果。"))
+
+        flat_results = []
+        for gene_info in results_data:
+            gene_id_val = gene_info.get('gene_id')  # Renamed to avoid conflict
+            base_info = {k: v for k, v in gene_info.items() if k != 'transcripts' and k != 'attributes'}
+            if 'attributes' in gene_info and isinstance(gene_info['attributes'], dict):
+                for attr_k, attr_v in gene_info['attributes'].items():
+                    base_info[f"attr_{attr_k}"] = attr_v
+
+            if gene_info.get('transcripts'):
+                for transcript in gene_info['transcripts']:
+                    trans_info = {f"transcript_{k}": v for k, v in transcript.items() if
+                                  k not in ['exons', 'cds', 'attributes']}
+                    if 'attributes' in transcript and isinstance(transcript['attributes'], dict):
+                        for attr_k, attr_v in transcript['attributes'].items():
+                            trans_info[f"transcript_attr_{attr_k}"] = attr_v
+
+                    if transcript.get('exons'):
+                        trans_info['exons_coords'] = "; ".join(
+                            [f"({e['start']}-{e['end']})" for e in transcript['exons']])
+                    if transcript.get('cds'):
+                        trans_info['cds_coords'] = "; ".join([f"({c['start']}-{c['end']})" for c in transcript['cds']])
+                    flat_results.append({**base_info, **trans_info})
+            else:
+                flat_results.append(base_info)
+
+        output_df = pd.DataFrame(flat_results)
+        cols_order = ['gene_id', 'chr', 'start', 'end', 'strand', 'transcript_id', 'transcript_type', 'exons_coords',
+                      'cds_coords']
+        existing_cols_order = [col for col in cols_order if col in output_df.columns]
+        other_cols = [col for col in output_df.columns if col not in existing_cols_order]
+        # Ensure gene_id column from base_info is used if transcript_id is not present (for genes without transcripts in GFF)
+        if 'gene_id' not in existing_cols_order and 'gene_id' in output_df.columns:
+            existing_cols_order.insert(0, 'gene_id')
+
+        output_df = output_df[existing_cols_order + sorted(other_cols)]
+
+        final_output_path = output_csv_path
+        if not final_output_path:
+            final_output_dir = os.path.join(downloader_cfg.get('download_output_base_dir', "downloaded_cotton_data"),
+                                            "gff_query_results")
+            os.makedirs(final_output_dir, exist_ok=True)
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            if gene_ids_override:
+                final_output_path = os.path.join(final_output_dir, f"gff_query_genes_{assembly_id}_{timestamp}.csv")
+            elif region_override:
+                final_output_path = os.path.join(final_output_dir,
+                                                 f"gff_query_region_{assembly_id}_{chrom}_{start}_{end}_{timestamp}.csv")
+            else:
+                final_output_path = os.path.join(final_output_dir, f"gff_query_results_{assembly_id}_{timestamp}.csv")
+
+        output_df.to_csv(final_output_path, index=False)
+        _log_status(_("GFF基因查询结果已保存到: {}").format(final_output_path))
+        overall_success = True
+
+    _log_progress(100, _("GFF查询流程结束。"))
+    if task_done_callback: task_done_callback(overall_success)
+    return overall_success
 
 # --- 主整合函数 ---
 def integrate_bsa_with_hvg(
@@ -141,7 +477,8 @@ def integrate_bsa_with_hvg(
 
     overall_success = False
 
-    _log_status(_("开始BSA与HVG整合分析流程..."))
+    _log_status(_("开始整合分析流程..."))
+
     _log_progress(0, _("初始化配置..."))
 
     pipeline_cfg = config.get('integration_pipeline')
