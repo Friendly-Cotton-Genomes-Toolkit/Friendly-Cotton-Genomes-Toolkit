@@ -72,6 +72,7 @@ Thumbs.db
 /test_downloader_output/
 /pipeline_integration_test_data_v2/
 /temp_config_test_dir/
+cotton_toolkit\pipeline_integration_test_data_v2
 
 # 其他临时文件和目录
 tests
