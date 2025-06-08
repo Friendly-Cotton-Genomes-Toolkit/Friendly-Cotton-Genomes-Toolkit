@@ -142,8 +142,7 @@ def download_genome_data(
         output_base_dir_override: Optional[str] = None,
         status_callback: Optional[Callable[[str], None]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
-        task_done_callback: Optional[Callable[[bool], None]] = None
-) -> None:
+) -> bool:
     """
     为指定的棉花基因组版本多线程下载GFF3注释和与拟南芥的同源基因数据。
     参数主要从配置字典中获取，并允许部分被命令行参数覆盖。
@@ -180,8 +179,8 @@ def download_genome_data(
 
     downloader_cfg = config.get('downloader')
     if not downloader_cfg:
-        _log_status(_("错误: 配置中未找到 'downloader' 部分。"), "ERROR");
-        return
+        _log_status(_("错误: 配置中未找到 'downloader' 部分。"), "ERROR")
+        return False
 
     # from ..config.loader import get_genome_data_sources # 实际应从这里导入
     # 为了本模块的独立性（如果config loader未完全集成），暂时假设data_sources由config直接提供
@@ -192,8 +191,8 @@ def download_genome_data(
         # from ..config.loader import get_genome_data_sources as get_gs_func # 避免命名冲突
         # data_sources = get_gs_func(config)
         # if not data_sources:
-        _log_status(_("错误: 下载器配置中缺少 'genome_sources' 数据。"), "ERROR");
-        return
+        _log_status(_("错误: 下载器配置中缺少 'genome_sources' 数据。"), "ERROR")
+        return False
 
     output_base_dir = output_base_dir_override if output_base_dir_override else \
         downloader_cfg.get('download_output_base_dir', "cotton_genome_data")
@@ -206,7 +205,8 @@ def download_genome_data(
         try:
             os.makedirs(output_base_dir); _log_status(_("已创建基础输出目录: {}").format(output_base_dir))
         except OSError as e:
-            _log_status(_("创建基础输出目录 {} 失败: {}").format(output_base_dir, e), "ERROR"); return
+            _log_status(_("创建基础输出目录 {} 失败: {}").format(output_base_dir, e), "ERROR")
+            return False
 
     versions_to_process = []
     if genome_versions_to_download_override:
@@ -216,7 +216,7 @@ def download_genome_data(
     else:
         versions_to_process = list(data_sources.keys())
 
-    if not versions_to_process: _log_status(_("没有有效的基因组版本被指定下载。")); return
+    if not versions_to_process: _log_status(_("没有有效的基因组版本被指定下载。")); return False
     _log_status(_("将尝试下载的基因组版本: {}").format(", ".join(versions_to_process)))
     _log_progress(5, _("版本列表确定。"))
 
@@ -250,9 +250,9 @@ def download_genome_data(
             else:
                 _log_status(_("信息: 版本 {} 未提供 {} 下载链接。").format(version_name, file_type_desc), "INFO")
 
-    overall_success = True  # 根据实际下载结果设置
+    overall_success = True
 
-    if not download_specs: _log_status(_("没有文件需要下载。")); return
+    if not download_specs: _log_status(_("没有文件需要下载。")); return True
     _log_status(_("准备下载 {} 个文件，使用最多 {} 个并发线程... (代理: {})").format(
         len(download_specs), max_workers, proxies if proxies else _("系统默认/无")))
     _log_progress(10, _("下载任务列表已创建。"))
@@ -325,6 +325,7 @@ def download_genome_data(
                                             "WARNING")
                 else:  # download_successful is False
                     failed_downloads += 1
+                    overall_success = False # 任何一个下载失败都标记
             except Exception as exc:
                 failed_downloads += 1
                 _log_status(
@@ -339,8 +340,8 @@ def download_genome_data(
     _log_status(summary_msg)
     _log_status(final_msg)
     _log_progress(100, _("下载流程结束。"))
-    task_done_callback(overall_success)  # 在任务结束时调用
 
+    return overall_success
 
 # --- 用于独立测试 downloader.py 的示例代码 ---
 if __name__ == '__main__':

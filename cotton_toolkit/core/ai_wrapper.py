@@ -1,88 +1,138 @@
 # cotton_toolkit/core/ai_wrapper.py
 
-from typing import Optional, List, Dict, Any
-import httpx
-import logging
+import os
+import json
+import requests
+from typing import Dict, Any, Optional, Callable
+import threading # 新增导入
 
-# 确保您已安装 openai 库: pip install openai
+# 全局翻译函数占位符
 try:
-    from openai import OpenAI
+    from builtins import _
 except ImportError:
-    # 如果在没有安装openai库的环境中，这个错误将在第一次尝试使用时被捕获
-    OpenAI = None
-
-logger = logging.getLogger("cotton_toolkit.ai_wrapper")
+    def _(s):
+        return s
 
 
 class AIWrapper:
-    """
-    一个通用的AI模型API客户端封装。
-    支持任何兼容OpenAI API格式的服务 (包括Google AI Studio, Groq等)。
-    """
+    def __init__(self, provider: str, api_key: str, model: str, base_url: Optional[str] = None):
+        if not provider or not api_key or not model:
+            raise ValueError(_("AI服务商、API Key和模型名称不能为空。"))
 
-    def __init__(self, api_key: str, model: str, base_url: str, proxy_url: Optional[str] = None):
-        """
-        初始化AI客户端。
-
-        Args:
-            api_key (str): 您的API密钥。
-            model (str): 您要使用的模型名称。
-            base_url (str): API的端点地址。
-            proxy_url (Optional[str]): (可选) HTTP/HTTPS 代理地址。
-        """
-        if OpenAI is None:
-            raise ImportError("AI Wrapper需要 'openai' 库。请运行: pip install openai")
-
+        self.provider = provider
         self.api_key = api_key
         self.model = model
-        self.base_url = base_url
-        self.proxy_url = proxy_url
 
-        http_client = None
-        if self.proxy_url:
-            try:
-                transport = httpx.HTTPTransport(proxy=self.proxy_url)
-                http_client = httpx.Client(transport=transport)
-                logger.info(f"AI Wrapper: 已配置代理 {self.proxy_url}")
-            except Exception as e:
-                logger.warning(f"AI Wrapper 警告: 配置代理失败 - {e}")
+        # --- 【核心修改】处理不同的API Base URL ---
+        if base_url:
+            self.api_base = base_url.rstrip('/')
+        else:
+            provider_map = {
+                "google": "https://generativelanguage.googleapis.com/v1beta",
+                "openai": "https://api.openai.com/v1",
+                "deepseek": "https://api.deepseek.com/v1",
+                "qwen": "https://dashscope.aliyuncs.com/api/v1",
+                "siliconflow": "https://api.siliconflow.cn/v1",
+            }
+            self.api_base = provider_map.get(provider.lower())
+
+        if not self.api_base:
+            raise ValueError(f"{_('不支持的服务商或缺少Base URL:')} {provider}")
+
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        })
+
+    def _prepare_payload(self, prompt: str) -> Dict[str, Any]:
+        """根据不同的服务商准备请求体。"""
+        if self.provider == "google":
+            return {"contents": [{"parts": [{"text": prompt}]}]}
+        else:  # OpenAI-compatible
+            return {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+            }
+
+    def _get_request_url(self) -> str:
+        """根据不同的服务商获取请求URL。"""
+        if self.provider == "google":
+            return f"{self.api_base}/models/{self.model}:generateContent"
+        else:  # OpenAI-compatible
+            return f"{self.api_base}/chat/completions"
+
+    def _extract_response(self, response: requests.Response) -> str:
+        """根据不同的服务商从响应中提取文本内容。"""
+        response.raise_for_status()
+        data = response.json()
+
+        if self.provider == "google":
+            return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+        else:  # OpenAI-compatible
+            return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+    def process(self, text: str, custom_prompt_template: str = "{text}") -> str:
+        """处理单个文本，支持自定义提示词模板。"""
+        prompt = custom_prompt_template.format(text=text)
+        url = self._get_request_url()
+        payload = self._prepare_payload(prompt)
 
         try:
-            self.client = OpenAI(
-                base_url=self.base_url,
-                api_key=self.api_key,
-                http_client=http_client,
-            )
-            logger.info(f"AI Wrapper: 客户端初始化成功。端点: {self.base_url}, 模型: {self.model}")
-        except Exception as e:
-            raise ConnectionError(f"AI Wrapper: 初始化客户端失败: {e}")
+            response = self.session.post(url, json=payload, timeout=90)
+            return self._extract_response(response)
+        except requests.exceptions.RequestException as e:
+            error_message = f"{_('AI API请求失败:')} {e}"
+            # 尝试从响应体中获取更详细的错误信息
+            if e.response is not None:
+                try:
+                    error_details = e.response.json()
+                    error_message += f"\n{_('服务商响应:')} {error_details.get('error', {}).get('message', e.response.text)}"
+                except json.JSONDecodeError:
+                    error_message += f"\n{_('服务商响应 (非JSON):')} {e.response.text}"
+            raise RuntimeError(error_message) from e
 
-    def get_completion(self, system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:
-        """
-        获取AI模型的文本补全。
+    @staticmethod
+    def get_models(provider: str, api_key: str, base_url: Optional[str] = None,
+                   cancel_event: Optional[threading.Event] = None, timeout: Optional[int] = None) -> list[str]:
+        """【新增】静态方法，用于获取指定服务商的模型列表。"""
+        if not api_key:
+            raise ValueError(_("API Key不能为空。"))
 
-        Args:
-            system_prompt (str): 系统提示词，定义AI的角色。
-            user_prompt (str): 用户的具体问题或指令。
-            temperature (float): 控制生成文本的随机性。
+        if base_url:
+            api_base = base_url.rstrip('/')
+        else:
+            provider_map = {
+                "google": "https://generativelanguage.googleapis.com/v1beta",
+                "openai": "https://api.openai.com/v1",
+                "deepseek": "https://api.deepseek.com/v1",
+                "qwen": "https://dashscope.aliyuncs.com/api/v1",
+                "siliconflow": "https://api.siliconflow.cn/v1",
+            }
+            api_base = provider_map.get(provider.lower())
 
-        Returns:
-            str: AI模型的回复文本。
-        """
-        try:
-            chat_completion = self.client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                model=self.model,
-                temperature=temperature,
-            )
-            # 确保返回的是字符串
-            response_content = chat_completion.choices[0].message.content
-            return response_content if response_content is not None else ""
-        except Exception as e:
-            error_message = f"AI API调用失败: {e}"
-            logger.error(error_message)
-            # 返回错误信息，而不是让程序崩溃
-            return error_message
+        if not api_base:
+            raise ValueError(f"{_('不支持的服务商或缺少Base URL:')} {provider}")
+
+        headers = {"Authorization": f"Bearer {api_key}"}
+
+        # Google的API比较特殊
+        if provider == 'google':
+            url = f"{api_base}/models"
+            # 传递 timeout 参数给 requests.get
+            response = requests.get(url, headers=headers, params={"pageSize": 1000}, timeout=timeout)
+            response.raise_for_status()
+            models = response.json().get("models", [])
+            # 过滤出支持generateContent的模型
+            return sorted([
+                m["name"] for m in models
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ])
+        else:  # OpenAI-compatible
+            url = f"{api_base}/models"
+            # 传递 timeout 参数给 requests.get
+            response = requests.get(url, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            models = response.json().get("data", [])
+            return sorted([m["id"] for m in models])
