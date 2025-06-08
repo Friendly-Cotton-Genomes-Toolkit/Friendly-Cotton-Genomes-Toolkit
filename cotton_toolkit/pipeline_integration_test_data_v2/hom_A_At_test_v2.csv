@@ -1,5 +1,0 @@
-Query,Match,Exp,Score,PID
-CottonA_G1,At_bridge1,1e-50,500,80
-CottonA_G1,At_H2_no_B_match,1e-20,200,60
-CottonA_G2,At_bridge1,1e-60,600,85
-CottonA_G3_NoAtMatch,At_H_dummy,0.01,50,40

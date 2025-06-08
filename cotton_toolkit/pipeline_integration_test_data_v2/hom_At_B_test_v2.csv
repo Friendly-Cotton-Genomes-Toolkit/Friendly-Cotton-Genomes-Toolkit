@@ -1,4 +1,0 @@
-Query,Match,Exp,Score,PID
-At_bridge1,GeneB_mapped1,1e-70,700,90
-At_bridge1,CottonB_Gene00X_NotHVG,1e-30,300,70
-At_H2_no_B_match,GeneB_mapped2,1e-55,550,85

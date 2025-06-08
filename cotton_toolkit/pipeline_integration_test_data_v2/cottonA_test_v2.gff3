@@ -1,3 +1,0 @@
-##gff-version 3
-Scaffold_A1	.	gene	1000	2000	.	+	.	ID=CottonA_G1;Name=GeneA1_Name
-Scaffold_A1	.	gene	7000	8000	.	-	.	ID=CottonA_G3_NoAtMatch
