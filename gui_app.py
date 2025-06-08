@@ -3,6 +3,7 @@ import copy
 import json
 import logging
 import os
+import queue
 import sys
 import threading
 import time
@@ -40,37 +41,44 @@ except ImportError as e:
 
 
     def load_config(config_path: str) -> Optional[Dict[str, Any]]:
-        """
-        加载并返回YAML配置文件内容。
-        检查 config_version 是否为兼容版本。
-        """
         if not os.path.exists(config_path):
-            # 沿用旧的打印方式，因为CLI也可能调用此函数
-            print(_("错误: 配置文件 '{}' 未找到。").format(config_path))
+            print(f"ERROR: 配置文件 '{config_path}' 未找到。")  # Changed to f-string for clarity
             return None
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
+                data = yaml.safe_load(f)
 
-            if not isinstance(config, dict):
-                print(_("错误: 配置文件 '{}' 的顶层结构必须是一个字典。").format(config_path))
+            if not isinstance(data, dict):
+                print(f"ERROR: 配置文件 '{config_path}' 的顶层结构必须是一个字典。")
                 return None
 
-            # --- 版本校验逻辑 ---
-            # 目前只支持版本1
-            if config.get('config_version') != 1:
-                raise ValueError(_("配置文件 '{}' 的版本不兼容。当前程序仅支持版本 1。").format(config_path))
+            if data.get('config_version') != 1:
+                # 使用 print 明确指出版本不兼容问题
+                print(f"ERROR: 配置文件 '{config_path}' 的版本不兼容。当前程序仅支持版本 1。")
+                raise ValueError(f"配置文件 '{config_path}' 的版本不兼容。当前程序仅支持版本 1。")
 
-            config['_config_file_abs_path_'] = os.path.abspath(config_path)
-            print(_("配置文件 '{}' 加载成功。").format(config_path))
-            return config
+            # 将字典转换为 MainConfig 对象 (如果 COTTON_TOOLKIT_LOADED 为 True)
+            if COTTON_TOOLKIT_LOADED:  # Ensure this check exists if it's a mock
+                config_obj = MainConfig.from_dict(data)  #
+            else:
+                config_obj = data  # For mock, just return the dict
+
+            # 确保 _config_file_abs_path_ 字段在返回前设置
+            if isinstance(config_obj, MainConfig):
+                config_obj._config_file_abs_path_ = os.path.abspath(config_path)
+            elif isinstance(config_obj, dict):  # For mock scenario
+                config_obj['_config_file_abs_path_'] = os.path.abspath(config_path)
+
+            print(f"INFO: 配置文件 '{config_path}' 加载成功。")
+            return config_obj
         except yaml.YAMLError as e:
-            print(_("错误: 解析配置文件 '{}' 失败: {}").format(config_path, e))
+            print(f"ERROR: 解析配置文件 '{config_path}' 失败: {e}")
             return None
-        except ValueError as e:  # 捕获我们自己抛出的版本错误
-            raise e  # 重新抛出，让调用者(GUI)可以捕获并显示
+        except ValueError as e:
+            # 重新抛出版本错误，让调用者可以捕获
+            raise e
         except Exception as e:
-            print(_("加载配置文件 '{}' 时发生未知错误: {}").format(config_path, e))
+            print(f"ERROR: 加载配置文件 '{config_path}' 时发生未知错误: {e}")
             return None
 
 
@@ -224,7 +232,9 @@ class CottonToolkitApp(ctk.CTk):
         self.geometry("1000x700")
         self.minsize(1000, 700)
 
+
         # --- 【第1步】初始化所有变量，为后续方法做准备 ---
+        self.log_queue = queue.Queue()
         self.current_config: Optional[MainConfig] = None
         self.config_path: Optional[str] = None
         self.ui_settings: Dict[str, Any] = {}
@@ -235,18 +245,38 @@ class CottonToolkitApp(ctk.CTk):
         self.log_viewer_visible: bool = False
         self.error_dialog_lock: threading.Lock = threading.Lock()
         self.tool_tab_frames: Dict[str, ctk.CTkFrame] = {}
+
+        # 记录每个工具选项卡是否已加载其UI
+        self.tool_tab_ui_loaded: Dict[str, bool] = {}  #
         self.editor_widgets: Dict[str, Any] = {}
         self.tab_keys: Dict[str, str] = {
             "download": _("数据下载"), "homology": _("基因组转换"), "gff_query": _("基因位点查询"),
             "annotation": _("功能注释"), "ai_assistant": _("AI 助手"), "xlsx_to_csv": _("XLSX转CSV")
         }
 
-        # 新增：用于取消模型获取的事件和进度弹窗
+        # 用于管理异步启动加载状态的变量和队列
+        self.initial_config_loaded = threading.Event() # 用于标记初始配置是否加载完成
+        self.initial_ui_setup_done = threading.Event() # 用于标记初始UI设置是否完成
+        self.startup_progress_queue = Queue() # 用于启动时的进度和状态更新
+
+        # 新增：启动阶段UI更新任务的完成标志
+        self.startup_ui_tasks_completed = {
+            "config_applied": False,  # _apply_config_to_ui_async 完成
+            "editor_populated": False,  # _populate_editor_ui 完成
+            "genome_dropdowns_updated": False  # _update_assembly_id_dropdowns 收到异步消息并更新
+        }
+
+        # 标记配置编辑器UI是否已加载
+        self.editor_ui_loaded: bool = False  #
+
+        # 用于取消模型获取的事件和进度弹窗
         self.cancel_model_fetch_event: threading.Event = threading.Event()
         self.progress_dialog: Optional[ctk.CTkToplevel] = None
         self.progress_dialog_text_var: Optional[tk.StringVar] = None
         self.progress_dialog_bar: Optional[ctk.CTkProgressBar] = None
 
+
+        self.excel_sheet_cache = {}  # 新增：用于缓存Excel文件的工作表名称，避免重复读取
 
         # 定义配置编辑器的结构
         # 键是配置文件中的路径 (点分隔)，值是 (显示名称, 提示文本, UI类型, 默认值/选项列表)
@@ -551,6 +581,8 @@ class CottonToolkitApp(ctk.CTk):
         # --- 【第6步】最后，创建并填充所有主页面，并完成最终设置 ---
         self._init_pages_and_final_setup()
 
+        self._start_app_async_startup()
+
     def toggle_log_viewer(self):
         """切换日志文本框的可见性。"""
         if self.log_viewer_visible:
@@ -759,24 +791,102 @@ class CottonToolkitApp(ctk.CTk):
         # gui_app.py
 
     def _init_pages_and_final_setup(self):
+        # 1. 创建所有主内容区域的 Frame 并赋值给 self 属性
         self.home_frame = self._create_home_frame(self.main_content_frame)
-        self.editor_frame = self._create_editor_frame(
-            self.main_content_frame)  # This is the main frame for the editor tab
+        self.editor_frame = self._create_editor_frame(self.main_content_frame)
         self.integrate_frame = self._create_integrate_frame(self.main_content_frame)
         self.tools_frame = self._create_tools_frame(self.main_content_frame)
 
+        # 2. 同步填充所有工具选项卡的内容 (不再懒加载)
+        # 这将创建所有工具页面的UI元素
         self._populate_tools_notebook()
+
+        # 3. 同步构建配置编辑器 UI
+        # _populate_editor_ui 内部会检查 self.editor_widgets 是否为空，然后进行一次构建。
+        # 此时 self.editor_widgets 肯定是空的，所以它会进行完整构建。
+        self._populate_editor_ui()
+
+        # 4. 设置初始显示的页面 (例如 "home")
         self.select_frame_by_name("home")
-        self._load_initial_config()
+
+        # 5. 更新UI语言和按钮状态 (这些方法现在可以安全地调用，因为所有基础UI元素都已创建)
         self.update_language_ui()
         self._update_button_states()
+
+        # 6. 启动消息队列的周期性检查 (确保主线程能够处理来自后台的消息)
         self.check_queue_periodic()
+
+        # 7. 设置窗口关闭协议和应用程序图标
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.set_app_icon()
-        # 确保在启动时构建一次编辑器UI，如果 _load_initial_config 没有触发它的话
-        # 如果 _load_initial_config 内部的 _apply_config_to_ui 会调用 _populate_editor_ui，那么这里可以省略
-        # 但为了健壮性，可以留在这里，它会根据 self.editor_widgets 是否为空来判断是否真的重建
-        self._populate_editor_ui()
+
+    def _start_app_async_startup(self):
+        """
+        Orchestrates the asynchronous startup process for the entire application.
+        This is called once at the end of __init__ to kick off loading and UI creation.
+        """
+        # 立即显示启动进度对话框
+        self._show_progress_dialog(
+            title=_("图形界面启动中..."),  # <-- 确认这里的文本
+            message=_("正在初始化应用程序和加载配置，请稍候..."),
+            on_cancel=None  # 启动阶段不允许取消
+        )
+
+        def startup_task_thread():
+            try:
+                # 1. 加载 config.yml
+                self.startup_progress_queue.put((10, _("加载配置文件...")))
+                default_config_path = "config.yml"
+                loaded_config_data = None
+                config_file_path = None
+
+                print(f"DEBUG_LOAD: 尝试从路径 '{os.path.abspath(default_config_path)}' 加载配置文件。")
+
+
+                if os.path.exists(default_config_path):
+                    try:
+                        loaded_config_data = load_config(os.path.abspath(default_config_path))
+                        config_file_path = os.path.abspath(default_config_path)
+                    except ValueError as e:
+                        self.startup_progress_queue.put((100, f"[ERROR] {_('配置文件版本不兼容:')} {e}"))
+                        return  # Exit thread on error
+                    except Exception as e:
+                        self.startup_progress_queue.put((100, f"[ERROR] {_('加载配置文件失败:')} {e}"))
+                        return  # Exit thread on error
+                else:
+                    self.startup_progress_queue.put((100, _("未找到默认 config.yml，请手动加载或生成。")))
+                    loaded_config_data = None
+                    config_file_path = None
+
+                # 2. 加载基因组源数据 (依赖 loaded_config_data 获取路径)
+                self.startup_progress_queue.put((30, _("加载基因组数据源...")))
+                genome_sources_data = get_genome_data_sources(loaded_config_data)
+
+                # --- 发送数据到主线程并触发UI更新 ---
+                # These messages will be processed by check_queue_periodic on the main thread.
+
+                # 首先，在主线程中设置 self.current_config 和 self.config_path
+                self.message_queue.put(("set_initial_config_and_path", (loaded_config_data, config_file_path)))
+
+                # 然后，应用加载的配置值到UI（包括编辑器UI，它此时已创建）
+                self.startup_progress_queue.put((70, _("应用配置到UI...")))
+                self.message_queue.put(("trigger_apply_config_to_ui_values", None))
+
+                # 最后，更新基因组下拉菜单（它会从 self.current_config 读取数据）
+                self.startup_progress_queue.put((80, _("更新基因组下拉菜单...")))
+                self.message_queue.put(("trigger_update_assembly_dropdowns", None))
+
+                # --- 最终化和完成消息 ---
+                self.startup_progress_queue.put((90, _("完成基本初始化...")))
+                self.initial_config_loaded.set()  # 标记异步配置加载完成
+
+            except Exception as e:
+                self.startup_progress_queue.put((100, f"[ERROR] {_('启动过程中发生未知错误:')} {e}"))
+                self.initial_config_loaded.set()
+            finally:
+                self.startup_progress_queue.put((100, _("启动完成！")))  # Final progress message
+
+        threading.Thread(target=startup_task_thread, daemon=True).start()
 
 
     def _create_editor_frame(self, parent):
@@ -809,7 +919,7 @@ class CottonToolkitApp(ctk.CTk):
         # Add a placeholder label for when no config is loaded
         self.editor_no_config_label = ctk.CTkLabel(self.editor_scroll_frame, text=_("请先从“主页”加载或生成一个配置文件。"),
                                                    font=self.app_subtitle_font, text_color=self.secondary_text_color)
-        self.editor_no_config_label.grid(row=0, column=0, pady=50, sticky="nsew") # Default visibility
+        self.editor_no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
         self.editor_scroll_frame.grid_rowconfigure(0, weight=1) # Center the message if it's the only thing
 
 
@@ -1011,11 +1121,12 @@ class CottonToolkitApp(ctk.CTk):
         self.main_content_frame.grid_rowconfigure(0, weight=1)
         self.main_content_frame.grid_columnconfigure(0, weight=1)
 
-
     def select_frame_by_name(self, name):
-        # 设置按钮高亮
-        self.home_button.configure(
-            fg_color=self.home_button.cget("hover_color") if name == "home" else "transparent")
+        # 设置按钮高亮 (假设按钮已经创建，通常在 _create_navigation_frame 中)
+        # 如果这些按钮在 _create_navigation_frame 中没有被创建，可能会继续报错
+        # 最佳实践是，这些导航按钮也应该在 __init__ 或 _create_layout 中直接创建
+        # (根据您提供的代码，它们已经在 _create_navigation_frame 中创建)
+        self.home_button.configure(fg_color=self.home_button.cget("hover_color") if name == "home" else "transparent")
         self.editor_button.configure(
             fg_color=self.editor_button.cget("hover_color") if name == "editor" else "transparent")
         self.integrate_button.configure(
@@ -1023,81 +1134,90 @@ class CottonToolkitApp(ctk.CTk):
         self.tools_button.configure(
             fg_color=self.tools_button.cget("hover_color") if name == "tools" else "transparent")
 
-        # 隐藏所有页面
+        # 隐藏所有页面：现在保证这些框架都已存在且非 None
         self.home_frame.grid_forget()
         self.editor_frame.grid_forget()
         self.integrate_frame.grid_forget()
         self.tools_frame.grid_forget()
 
-        # 根据名称显示对应的页面
+        # 根据名称显示对应的页面：现在保证这些框架都已存在且非 None
         if name == "home":
             self.home_frame.grid(row=0, column=0, sticky="nsew")
         elif name == "editor":
-            self.editor_frame.grid(row=0, column=0, sticky="nsew")
-            # --- 切换到编辑器时，调用新的填充函数 ---
+            self.editor_frame.grid(row=0, column=0, sticky="nsew")  # 显示编辑器框架
+            # 再次调用 _populate_editor_ui
+            # 此时，如果UI已构建（self.editor_widgets不为空），它只会更新值；
+            # 如果由于某种原因（比如强制清空）UI被销毁了，它会重建。
             self._populate_editor_ui()
+
         elif name == "integrate":
             self.integrate_frame.grid(row=0, column=0, sticky="nsew")
         elif name == "tools":
             self.tools_frame.grid(row=0, column=0, sticky="nsew")
 
+    def _populate_editor_ui(self):
+        """
+        根据当前的配置对象，动态生成或更新整个编辑器UI。
+        此函数旨在实现“一次构建，多次更新”的策略。
+        """
+        self._log_to_viewer(
+            f"DEBUG: _populate_editor_ui called. self.editor_widgets empty: {not self.editor_widgets}, self.current_config is: {type(self.current_config)}",
+            "DEBUG")
 
-
-    def _populate_structured_editor(self):
-        """【全新版本】根据 self.current_config 对象，填充结构化编辑器中的所有控件。"""
-        if not self.current_config:
-            if hasattr(self, 'editor_no_config_label'): self.editor_no_config_label.grid()
-            if hasattr(self, 'editor_main_content_frame'): self.editor_main_content_frame.grid_remove()
+        # 检查主滚动框架是否存在且就绪 (这个检查是防御性的，确保容器可用)
+        if not hasattr(self, 'editor_scroll_frame') or not self.editor_scroll_frame.winfo_exists():
+            self._log_to_viewer(
+                "DEBUG: editor_scroll_frame not yet created or mapped, skipping _populate_editor_ui content creation.",
+                "DEBUG")
             return
 
-        if hasattr(self, 'editor_no_config_label'): self.editor_no_config_label.grid_remove()
-        if hasattr(self, 'editor_main_content_frame'): self.editor_main_content_frame.grid()
+        # 核心逻辑：只有当 self.editor_widgets 为空时才执行UI构建
+        if not self.editor_widgets:  # 界面尚未构建（这是首次运行，或者之前被清空过）
+            self._log_to_viewer("DEBUG: self.editor_widgets is EMPTY. Performing FIRST-TIME UI BUILD.", "DEBUG")
 
-        self._log_to_viewer(_("正在将当前配置填充到编辑器..."))
+            # 首次构建时，确保清空旧的Tkinter子控件，防止视觉残留
+            for widget in self.editor_scroll_frame.winfo_children():
+                widget.destroy()
+            # 此时 self.editor_widgets 肯定是空的，不需要再 clear()，_build_editor_content 会填充它。
 
-        def recursive_populate(source_obj, key_path):
-            if not is_dataclass(source_obj): return
+            # 如果没有加载配置文件，或者current_config为None，_build_editor_content会使用默认值来绘制UI
+            self._log_to_viewer(_("正在根据配置动态生成编辑器界面 (首次构建)..."), "INFO")
+            # 调用 _build_editor_content 来创建所有 UI 控件，并填充 self.editor_widgets
+            self._build_editor_content(self.editor_scroll_frame, self.current_config, [])
+            self._log_to_viewer("DEBUG: First-time UI build COMPLETED. self.editor_widgets now contains: " + str(
+                len(self.editor_widgets)) + " widgets.", "DEBUG")
 
-            for f in fields(source_obj):
-                if f.name.startswith('_'): continue
+            # 标记编辑器UI已加载，确保只构建一次
+            self.editor_ui_loaded = True  #
+            # 移除这里的 self.message_queue.put(("editor_ui_populated_done", None)) 调用，
+            # 因为这个消息主要用于异步启动流程，现在编辑器是同步创建的。
+            # 如果后面需要通知启动完成，由 _start_app_async_startup 统一管理。
 
-                current_path = key_path + [f.name]
-                full_path_str = ".".join(current_path)
-                value = getattr(source_obj, f.name)
+        # 无论是否首次构建，如果 self.current_config 存在，就更新UI值
+        if self.current_config:
+            self._log_to_viewer(_("编辑器界面已存在，正在更新配置值..."), "INFO")
+            self._update_editor_ui_values()
+            self._log_to_viewer("DEBUG: Existing UI values UPDATED.", "DEBUG")
+            # 确保保存按钮在有配置时是启用的
+            if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                self.save_editor_button.configure(state="normal")
+        else:
+            # 如果 current_config 为 None (例如，程序刚启动，或者用户手动清空了配置)
+            # 此时编辑器UI已经构建了，但应该显示默认或空状态
+            if self.editor_widgets:  # 只有当UI已经构建过时才尝试清空值
+                self._log_to_viewer(
+                    "DEBUG: current_config is EMPTY, but editor_widgets is NOT. Clearing existing UI values.", "DEBUG")
+                # 触发一次空配置的更新，让所有控件显示默认/空值
+                self._update_editor_ui_values_from_none_config()  #
 
-                # 更新简单类型的字段
-                if full_path_str in self.editor_widgets:
-                    widget = self.editor_widgets[full_path_str]
-                    if isinstance(widget, ctk.CTkEntry):
-                        widget.delete(0, tk.END)
-                        widget.insert(0, str(value) if value is not None else "")
-                    elif isinstance(widget, ctk.CTkSwitch):
-                        var = self.editor_widgets.get(full_path_str + "_var")
-                        if var: var.set(bool(value))
-                    elif isinstance(widget, ctk.CTkOptionMenu):
-                        var = self.editor_widgets.get(full_path_str + "_var")
-                        if var: var.set(str(value))
-                    elif isinstance(widget, ctk.CTkTextbox):
-                        widget.delete("1.0", tk.END)
-                        widget.insert("1.0", str(value) if value is not None else "")
+            # 显示“未加载配置”的提示 (这个标签在 _create_editor_frame 中创建)
+            if hasattr(self, 'editor_no_config_label') and self.editor_no_config_label.winfo_exists():
+                self.editor_no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
+                self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
+            # 禁用保存按钮
+            if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                self.save_editor_button.configure(state="disabled")
 
-                elif full_path_str + "_selector" in self.editor_widgets:
-                    dropdown, entry, _ = self.editor_widgets[full_path_str + "_selector"]
-                    entry.delete(0, tk.END)
-                    entry.insert(0, str(value) if value is not None else "")
-                    entry.grid()
-                    dropdown.grid_remove()
-
-                elif is_dataclass(value):
-                    recursive_populate(value, current_path)
-
-                elif isinstance(value, dict) and all(is_dataclass(v) for v in value.values()):
-                    for sub_key, sub_obj in value.items():
-                        recursive_populate(sub_obj, current_path + [sub_key])
-
-        recursive_populate(self.current_config, [])
-
-        # gui_app.py
 
     def _save_config_from_editor(self):
         """
@@ -1442,18 +1562,11 @@ class CottonToolkitApp(ctk.CTk):
 
         def _on_tab_change():
             """当工具区的选项卡发生切换时被调用。"""
-            try:
-                # 获取当前选中的选项卡的显示名称
-                selected_tab_name = self.tools_notebook.get()
-
-                # 检查这个名称是否是“配置编辑器”的当前翻译
-                # 如果是，则调用加载函数，刷新编辑器中的内容
-                if selected_tab_name == _("配置编辑器"):
-                    self._load_configs_to_editor()
-            except Exception as e:
-                # 如果在获取标签时发生错误（例如，在UI重建期间），则安全地忽略
-                # logging.debug(f"Tab change event failed, likely during UI rebuild: {e}")
-                pass
+            # 不再有懒加载逻辑，所有tabs都在启动时创建
+            selected_tab_name = self.tools_notebook.get()
+            # 如果需要，可以在这里为特定的tab添加切换逻辑 (例如刷新数据)
+            # 例如：if selected_tab_name == _("AI 助手"): self._update_ai_assistant_tab_info()
+            # 但请注意，_update_ai_assistant_tab_info 已经在 _apply_config_to_ui_async 中调用过。
 
         frame = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         frame.grid_columnconfigure(0, weight=1)
@@ -1470,16 +1583,47 @@ class CottonToolkitApp(ctk.CTk):
         return frame
 
     def _populate_tools_notebook(self):
-        for internal_key in self.tab_keys.values():
-            tab_frame = self.tools_notebook.add(internal_key)
-            self.tool_tab_frames[internal_key] = tab_frame
+        tool_tab_definitions = {
+            "download": _("数据下载"), "homology": _("基因组转换"), "gff_query": _("基因位点查询"),
+            "annotation": _("功能注释"), "ai_assistant": _("AI 助手"), "xlsx_to_csv": _("XLSX转CSV")
+        }
 
-        self._populate_download_tab_structure(self.tool_tab_frames[self.tab_keys["download"]])
-        self._populate_homology_map_tab_structure(self.tool_tab_frames[self.tab_keys["homology"]])
-        self._populate_gff_query_tab_structure(self.tool_tab_frames[self.tab_keys["gff_query"]])
-        self._populate_annotation_tab(self.tool_tab_frames[self.tab_keys["annotation"]])
-        self._populate_ai_assistant_tab(self.tool_tab_frames[self.tab_keys["ai_assistant"]])
-        self._populate_xlsx_to_csv_tab(self.tool_tab_frames[self.tab_keys["xlsx_to_csv"]])
+        # 清理旧的tab和frame，确保每次都是干净的构建
+        for tab_frame_key in list(self.tool_tab_frames.keys()):
+            tab_frame = self.tool_tab_frames.pop(tab_frame_key, None)
+            if tab_frame and tab_frame.winfo_exists():
+                tab_frame.destroy()
+
+        for tab_name in list(self.tools_notebook._tab_dict.keys()):
+            self.tools_notebook.delete(tab_name)
+
+        self.tool_tab_ui_loaded.clear()  # 重置加载状态
+
+        # 现在，创建 ALL tabs and populate their content synchronously at startup
+        for simple_key, display_name in tool_tab_definitions.items():
+            tab_frame = self.tools_notebook.add(display_name)
+            self.tool_tab_frames[display_name] = tab_frame
+
+            # 不再懒加载：直接填充内容
+            if simple_key == "download":
+                self._populate_download_tab_structure(tab_frame)
+            elif simple_key == "homology":
+                self._populate_homology_map_tab_structure(tab_frame)
+            elif simple_key == "gff_query":
+                self._populate_gff_query_tab_structure(tab_frame)
+            elif simple_key == "annotation":
+                self._populate_annotation_tab(tab_frame)
+            elif simple_key == "ai_assistant":
+                self._populate_ai_assistant_tab(tab_frame)
+            elif simple_key == "xlsx_to_csv":
+                self._populate_xlsx_to_csv_tab(tab_frame)
+
+            # 标记为已加载，因为内容已经创建
+            self.tool_tab_ui_loaded[display_name] = True
+
+        # 默认选中第一个工具tab
+        if tool_tab_definitions:
+            self.tools_notebook.set(list(tool_tab_definitions.values())[0])
 
     def _populate_xlsx_to_csv_tab(self, page):
         """创建“XLSX转CSV”页面的UI"""
@@ -1818,7 +1962,15 @@ class CottonToolkitApp(ctk.CTk):
         threading.Thread(target=task_wrapper, daemon=True).start()
 
     def _update_ai_assistant_tab_info(self):
-        """更新AI助手页面的配置信息显示"""
+        """
+        更新AI助手页面的配置信息显示。
+        在尝试操作控件前先检查它们是否存在，以兼容懒加载。
+        """
+        # 检查关键控件是否存在，如果不存在则跳过更新
+        if not hasattr(self, 'ai_info_provider_label') or not self.ai_info_provider_label.winfo_exists():
+            self._log_to_viewer("DEBUG: AI assistant info labels not yet created, skipping update.", "DEBUG")
+            return # 控件还未创建，跳过此次更新
+
         if not self.current_config:
             provider, model, key_status = "-", "-", _("未加载配置")
             key_color = self.secondary_text_color
@@ -1844,7 +1996,6 @@ class CottonToolkitApp(ctk.CTk):
         self.ai_info_provider_label.configure(text=f"{_('服务商')}: {provider}")
         self.ai_info_model_label.configure(text=f"{_('模型')}: {model}")
         self.ai_info_key_label.configure(text=f"{_('API Key')}: {key_status}", text_color=key_color)
-
 
     def _handle_textbox_focus_out(self, event, textbox_widget, placeholder_text_key):
         """当Textbox失去焦点时的处理函数"""
@@ -2121,15 +2272,6 @@ class CottonToolkitApp(ctk.CTk):
         self._populate_gff_query_tab_structure()
         self._populate_editor_tab_structure()
 
-    def browse_download_output_dir(self):
-        """
-        打开文件夹选择对话框，让用户选择下载文件的输出目录。
-        """
-        directory = filedialog.askdirectory(title=_("选择下载输出目录"))
-        if directory and self.download_output_dir_entry:
-            self.download_output_dir_entry.delete(0, tk.END)
-            self.download_output_dir_entry.insert(0, directory)
-
     def _populate_download_tab_structure(self, page):
         page.grid_columnconfigure(0, weight=1)
         page.grid_rowconfigure(0, weight=1)
@@ -2167,7 +2309,6 @@ class CottonToolkitApp(ctk.CTk):
 
         self.download_genomes_checkbox_frame = ctk.CTkScrollableFrame(target_card, label_text="")
         self.download_genomes_checkbox_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        self.download_genomes_checkbox_frame.grid_columnconfigure(0, weight=1)
 
         options_frame = ctk.CTkFrame(page)
         options_frame.pack(fill="x", expand=False, pady=10, padx=15)
@@ -2194,8 +2335,98 @@ class CottonToolkitApp(ctk.CTk):
                                                    command=self.start_download_task, font=self.app_font_bold)
         self.download_start_button.pack(fill="x", padx=15, pady=(10, 15), side="bottom")
 
+
+
+
+
+    def browse_download_output_dir(self):
+        """
+        打开文件夹选择对话框，让用户选择下载文件的输出目录。
+        """
+        directory = filedialog.askdirectory(title=_("选择下载输出目录"))
+        if directory and self.download_output_dir_entry:
+            self.download_output_dir_entry.delete(0, tk.END)
+            self.download_output_dir_entry.insert(0, directory)
+
+    def _populate_editor_ui(self):
+        """
+        根据当前的配置对象，动态生成或更新整个编辑器UI。
+        此函数旨在实现“一次构建，多次更新”的策略。
+        """
+        self._log_to_viewer(
+            f"DEBUG: _populate_editor_ui called. self.editor_widgets empty: {not self.editor_widgets}, self.current_config is: {type(self.current_config)}",
+            "DEBUG")
+
+        # 核心逻辑：只有当 self.editor_widgets 为空时才执行UI构建
+        if not self.editor_widgets:  # 界面尚未构建（首次运行）
+            self._log_to_viewer("DEBUG: self.editor_widgets is EMPTY. Performing FIRST-TIME UI BUILD.", "DEBUG")
+
+            # 清除旧的 Tkinter 控件（防止意外残留）。
+            for widget in self.editor_scroll_frame.winfo_children():
+                widget.destroy()
+            # 此时 self.editor_widgets 是空的，不需要 clear()，因为它会被 _build_editor_content 填充。
+
+            # 如果没有加载配置，显示提示信息并返回
+            if not self.current_config:
+                self._log_to_viewer("DEBUG: No config loaded for editor, displaying placeholder.", "DEBUG")
+                no_config_label = ctk.CTkLabel(self.editor_scroll_frame,
+                                               text=_("请先从“主页”加载或生成一个配置文件。"),
+                                               font=self.app_subtitle_font, text_color=self.secondary_text_color)
+                no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
+                self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
+                if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                    self.save_editor_button.configure(state="disabled")
+                return
+
+            self._log_to_viewer(_("正在根据配置动态生成编辑器界面 (首次构建)..."), "INFO")
+            # 调用 _build_editor_content 来创建所有 UI 控件，并填充 self.editor_widgets
+            self._build_editor_content(self.editor_scroll_frame, self.current_config, [])
+            self._log_to_viewer("DEBUG: First-time UI build COMPLETED. self.editor_widgets now contains: " + str(
+                len(self.editor_widgets)) + " widgets.", "DEBUG")
+
+            # 确保只有在UI构建完成后才设置标志和发送消息
+            # 此时， যেহেতু _populate_editor_ui 是在 _init_pages_and_final_setup 中同步调用的，
+            # 并且它只构建一次，所以 editor_ui_loaded 标志是用于异步启动流程的。
+            if not self.editor_ui_loaded:  # 确保只发送一次
+                self.editor_ui_loaded = True
+                self.message_queue.put(("editor_ui_populated_done", None))  # 通知主线程编辑器UI已就绪
+                self._log_to_viewer("DEBUG: Editor UI loaded and notified for startup.", "DEBUG")
+
+        # 无论是否首次构建，只要有 current_config，就更新UI值
+        if self.current_config:
+            self._log_to_viewer(_("编辑器界面已存在，正在更新配置值..."), "INFO")
+            self._update_editor_ui_values()
+            self._log_to_viewer("DEBUG: Existing UI values UPDATED.", "DEBUG")
+            if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                self.save_editor_button.configure(state="normal")
+        else:
+            # self.editor_widgets 不为空，但 current_config 为空 (例如，用户手动清空了配置)
+            if self.editor_widgets:  # 如果之前有构建过UI
+                self._log_to_viewer("DEBUG: current_config is EMPTY, but editor_widgets is NOT. Clearing existing UI.",
+                                    "DEBUG")
+                for widget in self.editor_scroll_frame.winfo_children():
+                    widget.destroy()
+                self.editor_widgets.clear()  # 清空控件引用
+                self._log_to_viewer("DEBUG: Editor UI cleared.", "DEBUG")
+
+            # 显示“未加载配置”的提示
+            no_config_label = ctk.CTkLabel(self.editor_scroll_frame, text=_("请先从“主页”加载或生成一个配置文件。"),
+                                           font=self.app_subtitle_font, text_color=self.secondary_text_color)
+            no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
+            self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
+            if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                self.save_editor_button.configure(state="disabled")
+
     def _update_download_genomes_list(self):
-        """根据当前配置，动态更新下载页面的基因组版本复选框列表，并高亮显示已存在的项。"""
+        """
+        根据当前配置，动态更新下载页面的基因组版本复选框列表，并高亮显示已存在的项。
+        在尝试操作 download_genomes_checkbox_frame 之前，检查其是否存在。
+        """
+        # 优化：在操作控件前先检查其是否存在
+        if not hasattr(self, 'download_genomes_checkbox_frame') or not self.download_genomes_checkbox_frame.winfo_exists():
+            self._log_to_viewer("DEBUG: download_genomes_checkbox_frame does not exist yet, skipping update.", "DEBUG")
+            return # 如果控件还未创建，则跳过此次更新
+
         # 清理旧的复选框和变量
         for widget in self.download_genomes_checkbox_frame.winfo_children():
             widget.destroy()
@@ -2225,7 +2456,7 @@ class CottonToolkitApp(ctk.CTk):
             species_name = details.get('species_name', _('未知物种'))
             display_text = f"{genome_id} ({species_name})"
 
-            # --- 】检查目录是否存在 ---
+            # --- 检查目录是否存在 ---
             safe_dir_name = species_name.replace(" ", "_").replace(".", "_").replace("(", "").replace(")", "").replace(
                 "'", "")
             version_output_dir = os.path.join(base_download_dir, safe_dir_name)
@@ -2236,7 +2467,7 @@ class CottonToolkitApp(ctk.CTk):
                 text=display_text,
                 variable=var,
                 font=self.app_font,
-                text_color=text_color_to_use  # 应用计算出的颜色
+                text_color=text_color_to_use
             )
             cb.pack(anchor="w", padx=10, pady=5)
             self.download_genome_vars[genome_id] = var
@@ -2443,333 +2674,351 @@ class CottonToolkitApp(ctk.CTk):
         self.gff_query_start_button.pack(fill="x", padx=15, pady=15)
 
     def _load_initial_config(self):
-        # 尝试在程序启动时自动加载位于同目录的 config.yml
-        default_config_path = "config.yml"
-        if os.path.exists(default_config_path):
-            self.load_config_file(filepath=os.path.abspath(default_config_path), is_initial_load=True)
-        else:
-            self.show_info_message(_("欢迎"), _("未找到默认 config.yml。请点击“生成默认配置”或“加载配置文件”开始。"))
+        """
+        在后台线程中异步加载配置文件，并更新UI。
+        显示一个启动进度对话框。
+        """
+        # 立即显示启动进度对话框
+        self._show_progress_dialog(
+            title=_("图形界面启动中..."), # <-- 修改这里
+            message=_("正在初始化应用程序和加载配置，请稍候..."),
+            on_cancel=None # 启动阶段不允许取消
+        )
 
-        # gui_app.py
 
-        # gui_app.py
+        def startup_task_thread():
+            try:
+                self.startup_progress_queue.put((10, _("加载配置文件...")))
+                # ... (加载配置文件的逻辑) ...
+
+                self.startup_progress_queue.put((30, _("应用配置到UI...")))
+                # **重要：先发送更新配置的数据到主线程**
+                self.message_queue.put(("set_initial_config", (loaded_config_data, config_file_path)))
+                # 在这里等待主线程处理完 `set_initial_config` 并完成大部分UI属性设置，
+                # 但不阻塞当前后台线程太久，仅提供一个建议的等待点。
+                # 实际Tkinter的UI更新是异步的，无法直接在这里完全同步。
+
+                self.startup_progress_queue.put((50, _("更新基因组信息...")))
+                # ... (get_genome_data_sources 逻辑) ...
+                self.message_queue.put(("update_genome_dropdowns_async", genome_sources_data)) #
+
+                self.startup_progress_queue.put((70, _("构建编辑器及工具UI...")))
+                # **重要：在这里发送消息触发编辑器UI的构建和填充**
+                self.message_queue.put(("populate_editor_ui_async", None))
+                # 如果有其他懒加载的UI需要在启动时强制创建，也在这里发送消息
+
+                self.startup_progress_queue.put((90, _("完成基本初始化...")))
+
+            except Exception as e:
+                self.startup_progress_queue.put((100, f"[ERROR] {_('启动过程中发生未知错误:')} {e}"))
+                self.initial_config_loaded.set()
+                return
+            finally:
+                # 无论成功失败，都标记初始配置加载完成
+                self.initial_config_loaded.set()
+                # 确保所有UI更新消息都已发送到队列，然后发送最终完成消息
+                self.startup_progress_queue.put((100, _("启动完成！")))
+
+        threading.Thread(target=startup_task_thread, daemon=True).start()
+
+    def _apply_config_to_ui_async(self):  # 不再接收参数
+        """
+        在主线程中执行的UI更新部分，由消息队列触发。
+        它从 self.current_config 中获取配置数据并应用到已创建的UI元素。
+        """
+        self._log_to_viewer(f"DEBUG: _apply_config_to_ui_async called.", "DEBUG")
+
+        if not self.current_config:  # 如果没有加载配置
+            self._log_to_viewer(_("没有加载配置，无法应用到UI (async)。"), level="WARNING")
+            # 确保UI元素重置为默认或空值
+            if hasattr(self, 'download_force_checkbox_var'): self.download_force_checkbox_var.set(False)
+            if hasattr(self, 'download_proxy_var'): self.download_proxy_var.set(False)
+            if hasattr(self, 'ai_proxy_var'): self.ai_proxy_var.set(False)
+            if hasattr(self, 'integrate_excel_entry') and self.integrate_excel_entry.winfo_exists():
+                self.integrate_excel_entry.delete(0, tk.END)
+                self.integrate_excel_entry.insert(0, "")
+            if hasattr(self, 'selected_bsa_assembly'): self.selected_bsa_assembly.set(_("无可用版本"))
+            if hasattr(self, 'selected_hvg_assembly'): self.selected_hvg_assembly.set(_("无可用版本"))
+            if hasattr(self, 'selected_homology_source_assembly'): self.selected_homology_source_assembly.set(
+                _("无可用版本"))
+            if hasattr(self, 'selected_homology_target_assembly'): self.selected_homology_target_assembly.set(
+                _("无可用版本"))
+            if hasattr(self, 'selected_gff_query_assembly'): self.selected_gff_query_assembly.set(_("无可用版本"))
+            if hasattr(self, 'selected_bsa_sheet'): self.selected_bsa_sheet.set(_("请先指定Excel文件"))
+            if hasattr(self, 'selected_hvg_sheet'): self.selected_hvg_sheet.set(_("请先指定Excel文件"))
+            return
+
+        # 从 self.current_config 中获取数据并更新 UI 元素
+        self._update_download_genomes_list()  # 这个方法内部有检查
+        self._update_ai_assistant_tab_info()  # 这个方法内部有检查
+        self._load_prompts_to_ai_tab()  # 这个方法内部有检查
+
+        downloader_cfg = self.current_config.downloader
+        if hasattr(self, 'download_force_checkbox_var'):
+            self.download_force_checkbox_var.set(downloader_cfg.force_download)
+        proxies = downloader_cfg.proxies
+        proxy_is_configured = bool(proxies and (proxies.http or proxies.https))
+        if hasattr(self, 'download_proxy_var'):
+            self.download_proxy_var.set(proxy_is_configured)
+        if hasattr(self, 'ai_proxy_var'):
+            self.ai_proxy_var.set(proxy_is_configured)
+
+        integration_cfg = self.current_config.integration_pipeline
+        if hasattr(self, 'selected_bsa_assembly'):
+            self.selected_bsa_assembly.set(integration_cfg.bsa_assembly_id)
+        if hasattr(self, 'selected_hvg_assembly'):
+            self.selected_hvg_assembly.set(integration_cfg.hvg_assembly_id)
+
+        if hasattr(self, 'integrate_excel_entry') and self.integrate_excel_entry.winfo_exists():
+            self.integrate_excel_entry.delete(0, tk.END)
+            self.integrate_excel_entry.insert(0, integration_cfg.input_excel_path)
+        self._update_excel_sheet_dropdowns()  # 这个方法内部有检查
+
+        if hasattr(self, 'selected_homology_source_assembly'):
+            self.selected_homology_source_assembly.set(integration_cfg.bsa_assembly_id)
+        if hasattr(self, 'selected_homology_target_assembly'):
+            self.selected_homology_target_assembly.set(integration_cfg.hvg_assembly_id)
+        default_gff_assembly = integration_cfg.bsa_assembly_id or integration_cfg.hvg_assembly_id
+        if default_gff_assembly and hasattr(self, 'selected_gff_query_assembly'):
+            self.selected_gff_query_assembly.set(default_gff_assembly)
+
+        self._log_to_viewer(_("配置已成功应用到UI字段（异步）。"))
+
+        # 核心：确保在配置加载后，编辑器UI的值被更新
+        # _populate_editor_ui 内部会处理是首次构建还是更新值
+        self._populate_editor_ui()
+
+
+        self.initial_ui_setup_done.set()  # 标记初始UI设置完成
 
     def _populate_editor_ui(self):
         """
         根据当前的配置对象，动态生成或更新整个编辑器UI。
-        此函数现在会检查是否已构建界面，如果已构建则只更新值，否则进行首次构建。
+        此函数旨在实现“一次构建，多次更新”的策略。
         """
-        # 检查是否已构建界面。我们通过检查 editor_widgets 是否为空来判断。
-        # editor_widgets 只有在第一次 _build_editor_content 被调用后才会被填充。
-
         self._log_to_viewer(
             f"DEBUG: _populate_editor_ui called. self.editor_widgets empty: {not self.editor_widgets}, self.current_config is: {type(self.current_config)}",
             "DEBUG")
 
-        if not self.editor_widgets:  # 界面尚未构建，进行首次构建
-            # 清空旧的UI和控件记录 (虽然是首次构建，但安全起见，防止意外)
+        # 核心逻辑：只有当 self.editor_widgets 为空时才执行UI构建
+        if not self.editor_widgets:  # 界面尚未构建（首次运行）
+            self._log_to_viewer("DEBUG: self.editor_widgets is EMPTY. Performing FIRST-TIME UI BUILD.", "DEBUG")
+
+            # 清除旧的 Tkinter 控件（防止意外残留）。
             for widget in self.editor_scroll_frame.winfo_children():
                 widget.destroy()
-            self.editor_widgets.clear()
+            # 此时 self.editor_widgets 是空的，不需要 clear()，因为它会被 _build_editor_content 填充。
 
-            # 如果没有加载配置，则显示提示信息并返回
-            if not self.current_config:
-                no_config_label = ctk.CTkLabel(self.editor_scroll_frame,
-                                               text=_("请先从“主页”加载或生成一个配置文件。"),
-                                               font=self.app_subtitle_font, text_color=self.secondary_text_color)
-                no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
-                self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
-                return
+            # 如果没有加载配置，显示提示信息
+            # 这部分逻辑已移动到 _build_editor_content 内部，由它来决定如何显示默认值或占位符
+            # 在这里，我们只需确保 config_obj_data 传入 _build_editor_content
+            # 如果 self.current_config 是 None，_build_editor_content 会从 config_structure 的默认值绘制
 
-            self._log_to_viewer(_("正在根据配置动态生成编辑器界面 (首次构建)..."))
-            # 开始递归生成UI
-            # 传入当前配置对象本身，而不是 config_structure 的 'items'
+            self._log_to_viewer(_("正在根据配置动态生成编辑器界面 (首次构建)..."), "INFO")
+            # 调用 _build_editor_content 来创建所有 UI 控件，并填充 self.editor_widgets
+            # 传入 self.current_config，如果为 None，_build_editor_content 会使用默认值
             self._build_editor_content(self.editor_scroll_frame, self.current_config, [])
-            # 首次构建后，应用当前配置的值
-            # self._update_editor_ui_values() # 这一行在_build_editor_content之后已经由外层_apply_config_to_ui调用，此处移除避免重复
+            self._log_to_viewer("DEBUG: First-time UI build COMPLETED. self.editor_widgets now contains: " + str(
+                len(self.editor_widgets)) + " widgets.", "DEBUG")
+
+            # 确保只有在UI构建完成后才设置标志 (editor_ui_loaded 是在 __init__ 中初始化的)
+            # 这里的通知仅在 _populate_editor_ui 被异步流程触发时才有意义
+            # 考虑到 _populate_editor_ui 现在在 _init_pages_and_final_setup 中同步调用
+            # 并且它只构建一次，所以这里不发送 "editor_ui_populated_done" 消息，
+            # 而是由 _init_pages_and_final_setup 确保其在启动时完成。
+            self.editor_ui_loaded = True  # 标记为已加载
 
         # 无论是否首次构建，只要有 current_config，就更新UI值
         if self.current_config:
-            self._log_to_viewer(_("编辑器界面已存在，正在更新配置值..."))
+            self._log_to_viewer(_("编辑器界面已存在，正在更新配置值..."), "INFO")
             self._update_editor_ui_values()
+            self._log_to_viewer("DEBUG: Existing UI values UPDATED.", "DEBUG")
+            if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                self.save_editor_button.configure(state="normal")
         else:
-            # 如果没有 current_config 且不是首次构建，清除所有 UI 元素
-            for widget in self.editor_scroll_frame.winfo_children():
-                widget.destroy()
-            self.editor_widgets.clear()
-            no_config_label = ctk.CTkLabel(self.editor_scroll_frame, text=_("请先从“主页”加载或生成一个配置文件。"),
-                                           font=self.app_subtitle_font, text_color=self.secondary_text_color)
-            no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
-            self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
+            # self.editor_widgets 不为空，但 current_config 为空 (例如，用户手动清空了配置)
+            # 此时需要清除现有值，并显示“未加载配置”提示。
+            # _populate_editor_ui 已经被修改为根据 current_config 的存在来决定显示内容
+            # 所以这里只需确保将所有值设为空，_update_editor_ui_values 内部会处理
+            if self.editor_widgets:  # 如果之前有构建过UI
+                self._log_to_viewer(
+                    "DEBUG: current_config is EMPTY, but editor_widgets is NOT. Clearing existing UI values.", "DEBUG")
+                # 触发一次空配置的更新，让所有控件显示默认/空值
+                self._update_editor_ui_values_from_none_config()  # 新增辅助方法
 
-    def _update_editor_ui_values(self):
-        """
-        从 self.current_config 对象读取值，并更新已存在于 self.editor_widgets 中的 UI 控件。
-        此函数将精确根据 config_structure 定义更新 UI。
-        """
-        if not self.current_config or not self.editor_widgets:
-            return
+            # 显示“未加载配置”的提示 (这个标签在 _create_editor_frame 中创建)
+            if hasattr(self, 'editor_no_config_label') and self.editor_no_config_label.winfo_exists():
+                self.editor_no_config_label.grid(row=0, column=0, pady=50, sticky="nsew")
+                self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
+            if hasattr(self, 'save_editor_button') and self.save_editor_button.winfo_exists():
+                self.save_editor_button.configure(state="disabled")
 
-        def recursive_update_ui(config_obj_part, path_parts):
-            # 获取当前对象的实际配置定义（来自 self.config_structure）
-            current_struct_def = self._get_structure_for_path(self.config_structure, path_parts)
 
-            # 针对顶级调用，如果 path_parts 为空，current_struct_def 就是 self.config_structure 本身
-            # 此时它没有 'items' 键，需要特殊处理，直接从 config_structure 遍历顶级 sections
-            if not path_parts:  # This is the very first call (root)
-                items_definition_for_current_obj_iter = self.config_structure.items()
-                is_root_call = True
-            elif not current_struct_def or "items" not in current_struct_def:
-                return  # If definition is missing or malformed, stop recursion for this branch
-            else:
-                items_definition_for_current_obj_iter = current_struct_def["items"].items()
-                is_root_call = False
-
-            for field_name_in_struct, field_def_value_from_struct in items_definition_for_current_obj_iter:
-                # 获取当前字段在 config_structure 中的定义
-                if is_root_call:
-                    # field_def_value_from_struct is already the section dict (e.g. 'downloader' dict)
-                    current_field_definition = field_def_value_from_struct
-                else:
-                    # field_def_value_from_struct is the tuple/dict definition from 'items'
-                    current_field_definition = field_def_value_from_struct
-
-                # 跳过 config_version 和内部隐藏属性
-                if field_name_in_struct == "config_version" or field_name_in_struct.startswith('_'):
-                    continue
-
-                field_full_path_parts = path_parts + [field_name_in_struct]
-                field_full_path_str = ".".join(field_full_path_parts)
-
-                # 尝试从实际的 config_obj_part 获取值
-                field_value = None
-                if config_obj_part:
-                    if isinstance(config_obj_part, dict):  # 如果是字典
-                        field_value = config_obj_part.get(field_name_in_struct)
-                    elif is_dataclass(config_obj_part):  # 如果是 dataclass 实例
-                        field_value = getattr(config_obj_part, field_name_in_struct, None)
-
-                # 1. 如果有直接对应的 UI 控件
-                if field_full_path_str in self.editor_widgets:
-                    widget_info = self.editor_widgets[field_full_path_str]
-
-                    # 处理开关
-                    if isinstance(widget_info, tuple) and isinstance(widget_info[0], ctk.CTkSwitch):
-                        _widget, var = widget_info
-                        var.set(bool(field_value))
-                    # 处理文本框
-                    elif isinstance(widget_info, ctk.CTkTextbox):
-                        widget_info.delete("1.0", tk.END)
-                        # 如果是字典类型，转换为 YAML 字符串显示
-                        if isinstance(field_value, dict):
-                            try:
-                                yaml_str = yaml.dump(field_value, indent=2, default_flow_style=False,
-                                                     allow_unicode=True, sort_keys=False)
-                                widget_info.insert("1.0", yaml_str)
-                            except Exception:
-                                widget_info.insert("1.0", str(field_value))
-                        else:
-                            widget_info.insert("1.0", str(field_value) if field_value is not None else "")
-                    # 处理下拉菜单
-                    elif isinstance(widget_info, ctk.CTkOptionMenu):
-                        widget_info.set(str(field_value) if field_value is not None else "")
-                    # 处理模型选择器 (frame, entry, dropdown, dropdown_var, button)
-                    elif isinstance(widget_info, tuple) and len(widget_info) == 5:
-                        _frame, entry_widget, dropdown_widget, dropdown_var, _button = widget_info
-                        entry_widget.delete(0, tk.END)
-                        entry_widget.insert(0, str(field_value) if field_value is not None else "")
-                        dropdown_var.set(str(field_value) if field_value is not None else "")
-                        # 默认显示 entry，隐藏 dropdown，除非用户点击刷新并成功获取模型
-                        entry_widget.grid()
-                        dropdown_widget.grid_remove()
-                    # 处理普通输入框
-                    elif isinstance(widget_info, ctk.CTkEntry):
-                        widget_info.delete(0, tk.END)
-                        # 如果是列表类型，转换为逗号分隔字符串显示
-                        if isinstance(field_value, list):
-                            widget_info.insert(0, ",".join(map(str, field_value)))
-                        else:
-                            widget_info.insert(0, str(field_value) if field_value is not None else "")
-
-                # 2. 递归处理嵌套的 dataclass 或字典结构
-                # 递归条件：当前字段定义本身是字典且有 'items' 键 (表示一个 section)
-                if isinstance(current_field_definition, dict) and "items" in current_field_definition:
-                    recursive_update_ui(field_value, field_full_path_parts)
-                # 这种情况下，field_value 本身是一个字典，且已经在上方作为 textbox 处理了。
-                # 其内部没有更深的结构需要通过这里递归更新。
-                elif isinstance(field_value, dict):
-                    pass
-
-        # 从顶层配置对象开始递归更新，路径列表为空表示根
-        recursive_update_ui(self.current_config, [])        # gui_app.py
 
     def _build_editor_content(self, parent_widget, config_obj_data, key_path):
-        self._log_to_viewer(f"DEBUG: _build_editor_content called for path: {'.'.join(key_path)}", "DEBUG")  #
+        self._log_to_viewer(f"DEBUG: _build_editor_content called for path: {'.'.join(key_path)}", "DEBUG")
+
+        # 检查并隐藏 "未加载配置" 标签，因为现在正在构建内容
+        if hasattr(self, 'editor_no_config_label') and self.editor_no_config_label.winfo_exists():
+            self.editor_no_config_label.grid_remove()
 
         # 获取当前路径在 config_structure 中的定义
-        current_struct_def = self._get_structure_for_path(self.config_structure, key_path)  #
+        current_struct_def = self._get_structure_for_path(self.config_structure, key_path)
 
         # 针对顶级调用，如果 key_path 为空，current_struct_def 就是 self.config_structure 本身
         # 此时它没有 'items' 键，需要特殊处理，直接从 config_structure 遍历顶级 sections
-        if not key_path:  # This is the very first call
-            items_to_process = self.config_structure.items()  #
-            is_root_call = True  #
-        elif not current_struct_def or "items" not in current_struct_def:  #
+        if not key_path: # This is the very first call
+            items_to_process = self.config_structure.items()
+            is_root_call = True
+        elif not current_struct_def or "items" not in current_struct_def:
             self._log_to_viewer(
                 f"DEBUG: No 'items' definition found for path: {'.'.join(key_path)}. Skipping build for this branch (might be a leaf node or an invalid path in config_structure).",
-                "DEBUG")  #
+                "DEBUG")
             return
         else:
-            items_to_process = current_struct_def["items"].items()  #
-            is_root_call = False  #
+            items_to_process = current_struct_def["items"].items()
+            is_root_call = False
 
-        current_row_in_parent_frame = 0  #
+        current_row_in_parent_frame = 0
 
-        for field_name, field_def_value in items_to_process:  #
-            current_item_full_path = key_path + [field_name]  #
-            full_path_str = ".".join(current_item_full_path)  #
-            self._log_to_viewer(f"DEBUG: Processing field: {full_path_str}", "DEBUG")  #
+        for field_name, field_def_value in items_to_process:
+            current_item_full_path = key_path + [field_name]
+            full_path_str = ".".join(current_item_full_path)
+            self._log_to_viewer(f"DEBUG: Processing field: {full_path_str}", "DEBUG")
 
             # 在这里重新获取 item_definition，因为它可能是一个子项 (field_def_value)
             # 或者在 root_call 中，field_def_value 本身就是 section 定义
-            if is_root_call:  #
-                item_definition = field_def_value  # field_def_value is directly the section dict #
+            if is_root_call:
+                item_definition = field_def_value # field_def_value is directly the section dict
             else:
-                item_definition = self._get_structure_for_path(self.config_structure, current_item_full_path)  #
+                item_definition = self._get_structure_for_path(self.config_structure, current_item_full_path)
 
-            if item_definition is None:  #
-                self._log_to_viewer(f"DEBUG: No UI definition found for field: {full_path_str}. Skipping.", "DEBUG")  #
-                continue  # Skip this field if no definition is found #
+            if item_definition is None:
+                self._log_to_viewer(f"DEBUG: No UI definition found for field: {full_path_str}. Skipping.", "DEBUG")
+                continue # Skip this field if no definition is found
 
             # 获取当前字段在实际 config_obj_data 中的值
-            actual_field_value = None  #
-            if config_obj_data:  #
-                if isinstance(config_obj_data, dict):  #
-                    actual_field_value = config_obj_data.get(field_name)  #
-                elif is_dataclass(config_obj_data):  #
-                    actual_field_value = getattr(config_obj_data, field_name, None)  #
-            self._log_to_viewer(f"DEBUG:   Actual value for {full_path_str}: {actual_field_value}", "DEBUG")  #
+            actual_field_value = None
+            if config_obj_data: # Only try to get actual value if config_obj_data is not None
+                if isinstance(config_obj_data, dict):
+                    actual_field_value = config_obj_data.get(field_name)
+                elif is_dataclass(config_obj_data):
+                    actual_field_value = getattr(config_obj_data, field_name, None)
+            self._log_to_viewer(f"DEBUG:   Actual value for {full_path_str}: {actual_field_value}", "DEBUG")
+
 
             # --- Case 1: The field represents a nested section (dict in config_structure with 'title' and 'items') ---
-            if isinstance(item_definition, dict) and "items" in item_definition:  #
-                section_title = item_definition.get("title", field_name.replace("_", " ").title())  #
-                self._log_to_viewer(f"DEBUG:   Creating nested section: {section_title} at path: {full_path_str}",
-                                    "DEBUG")  #
+            if isinstance(item_definition, dict) and "items" in item_definition:
+                section_title = item_definition.get("title", field_name.replace("_", " ").title())
+                self._log_to_viewer(f"DEBUG:   Creating nested section: {section_title} at path: {full_path_str}", "DEBUG")
 
-                if current_row_in_parent_frame > 0:  #
+                if current_row_in_parent_frame > 0: # Add a separator if it's not the very first item
                     ctk.CTkFrame(parent_widget, height=2, fg_color=("gray70", "gray40")).grid(
-                        row=current_row_in_parent_frame, column=0, sticky="ew", padx=0, pady=(20, 10))  #
-                    current_row_in_parent_frame += 1  #
+                        row=current_row_in_parent_frame, column=0, sticky="ew", padx=0, pady=(20, 10))
+                    current_row_in_parent_frame += 1
 
                 ctk.CTkLabel(parent_widget, text=f"◇ {section_title} ◇", font=self.app_subtitle_font,
                              text_color=ctk.ThemeManager.theme["CTkButton"]["text_color"]).grid(
-                    row=current_row_in_parent_frame, column=0, sticky="ew", padx=10, pady=(10, 15))  #
-                current_row_in_parent_frame += 1  #
+                    row=current_row_in_parent_frame, column=0, sticky="ew", padx=10, pady=(10, 15))
+                current_row_in_parent_frame += 1
 
                 section_outer_frame = ctk.CTkFrame(parent_widget, corner_radius=8, fg_color="transparent",
-                                                   border_width=1, border_color=("gray70", "gray40"))  #
-                section_outer_frame.grid(row=current_row_in_parent_frame, column=0, sticky="ew", padx=5, pady=5)  #
-                section_outer_frame.grid_columnconfigure(0, weight=1)  #
+                                                   border_width=1, border_color=("gray70", "gray40"))
+                section_outer_frame.grid(row=current_row_in_parent_frame, column=0, sticky="ew", padx=5, pady=5)
+                section_outer_frame.grid_columnconfigure(0, weight=1)
 
                 # 递归调用，传入对应的实际配置数据子对象
-                self._build_editor_content(section_outer_frame, actual_field_value, current_item_full_path)  #
-                current_row_in_parent_frame += 1  #
+                # 如果 actual_field_value 是 None (例如，config_obj_data 是 None 或字段不存在)，
+                # 递归调用时会使用该 None，_build_editor_content 会根据 config_structure 的默认值来绘制。
+                self._build_editor_content(section_outer_frame, actual_field_value, current_item_full_path)
+                current_row_in_parent_frame += 1
                 continue
 
             # --- Case 2: The field is a leaf node (tuple in config_structure) ---
-            elif isinstance(item_definition, tuple) and len(item_definition) >= 3:  #
-                label_text = item_definition[0]  #
-                tooltip_text = item_definition[1]  #
-                widget_type = item_definition[2]  #
-                default_val_from_structure = item_definition[3] if len(item_definition) > 3 else None  #
+            elif isinstance(item_definition, tuple) and len(item_definition) >= 3:
+                label_text = item_definition[0]
+                tooltip_text = item_definition[1]
+                widget_type = item_definition[2]
+                default_val_from_structure = item_definition[3] if len(item_definition) > 3 else None
 
-                self._log_to_viewer(f"DEBUG:   Creating widget type {widget_type} for field: {full_path_str}",
-                                    "DEBUG")  #
+                self._log_to_viewer(f"DEBUG:   Creating widget type {widget_type} for field: {full_path_str}", "DEBUG")
 
-                item_container_frame = ctk.CTkFrame(parent_widget, fg_color="transparent")  #
-                item_container_frame.grid(row=current_row_in_parent_frame, column=0, sticky="ew", pady=5, padx=5)  #
-                item_container_frame.grid_columnconfigure(1, weight=1)  #
+
+                item_container_frame = ctk.CTkFrame(parent_widget, fg_color="transparent")
+                item_container_frame.grid(row=current_row_in_parent_frame, column=0, sticky="ew", pady=5, padx=5)
+                item_container_frame.grid_columnconfigure(1, weight=1)
 
                 ctk.CTkLabel(item_container_frame, text=label_text, font=self.app_font).grid(row=0, column=0,
                                                                                              sticky="w", padx=10,
-                                                                                             pady=5)  #
-                if tooltip_text:  #
+                                                                                             pady=5)
+                if tooltip_text:
                     ctk.CTkLabel(item_container_frame, text=tooltip_text, font=self.app_comment_font,
                                  text_color=self.secondary_text_color, wraplength=400, justify="left").grid(row=1,
                                                                                                             column=0,
                                                                                                             columnspan=2,
                                                                                                             sticky="w",
                                                                                                             padx=10,
-                                                                                                            pady=(0,
-                                                                                                                  5))  #
-                widget = None  #
-                if widget_type == "switch":  #
-                    var = tk.BooleanVar()  # 值将在 _update_editor_ui_values 中设置 #
-                    widget = ctk.CTkSwitch(item_container_frame, text="", variable=var)  #
-                    widget.grid(row=0, column=1, sticky="w", padx=10, pady=5)  #
-                    self.editor_widgets[full_path_str] = (widget, var)  #
-                elif widget_type == "textbox":  #
-                    widget = ctk.CTkTextbox(item_container_frame, height=120, font=self.app_font, wrap="word")  #
-                    widget.grid(row=0, column=1, sticky="ew", padx=10, pady=5, rowspan=2)  #
-                    self.editor_widgets[full_path_str] = widget  #
-                    self._bind_mouse_wheel_to_scrollable(widget)  #
-                elif widget_type == "optionmenu":  #
-                    options = [str(v) for v in default_val_from_structure] if isinstance(default_val_from_structure,
-                                                                                         list) else []  #
-                    var = tk.StringVar(value=options[0] if options else "")  #
-                    widget = ctk.CTkOptionMenu(item_container_frame, variable=var, values=options,
-                                               font=self.app_font, dropdown_font=self.app_font)  #
-                    widget.grid(row=0, column=1, sticky="ew", padx=10, pady=5)  #
-                    self.editor_widgets[full_path_str] = widget  #
-                elif widget_type == "model_selector":  #
-                    model_selector_frame = ctk.CTkFrame(item_container_frame, fg_color="transparent")  #
-                    model_selector_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=5)  #
-                    model_selector_frame.grid_columnconfigure(0, weight=1)  #
+                                                                                                            pady=(0, 5))
+                widget = None
+                if widget_type == "switch":
+                    var = tk.BooleanVar() # Value will be set in _update_editor_ui_values
+                    widget = ctk.CTkSwitch(item_container_frame, text="", variable=var)
+                    widget.grid(row=0, column=1, sticky="w", padx=10, pady=5)
+                    self.editor_widgets[full_path_str] = (widget, var)
+                elif widget_type == "textbox":
+                    widget = ctk.CTkTextbox(item_container_frame, height=120, font=self.app_font, wrap="word")
+                    widget.grid(row=0, column=1, sticky="ew", padx=10, pady=5, rowspan=2)
+                    self.editor_widgets[full_path_str] = widget
+                    self._bind_mouse_wheel_to_scrollable(widget)
+                elif widget_type == "optionmenu":
+                    # For optionmenu, ensure values are derived from default_val_from_structure
+                    options_list = [str(v) for v in default_val_from_structure] if isinstance(default_val_from_structure, list) else []
+                    var = tk.StringVar(value=options_list[0] if options_list else "") # Default value
+                    widget = ctk.CTkOptionMenu(item_container_frame, variable=var, values=options_list,
+                                               font=self.app_font, dropdown_font=self.app_font)
+                    widget.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
+                    self.editor_widgets[full_path_str] = widget
+                elif widget_type == "model_selector":
+                    model_selector_frame = ctk.CTkFrame(item_container_frame, fg_color="transparent")
+                    model_selector_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
+                    model_selector_frame.grid_columnconfigure(0, weight=1)
 
-                    entry = ctk.CTkEntry(model_selector_frame, font=self.app_font)  #
-                    entry.grid(row=0, column=0, sticky="ew")  #
+                    entry = ctk.CTkEntry(model_selector_frame, font=self.app_font)
+                    entry.grid(row=0, column=0, sticky="ew")
 
-                    dropdown_var = tk.StringVar(value="")  #
+                    dropdown_var = tk.StringVar(value="") # Initial empty value
                     dropdown = ctk.CTkOptionMenu(model_selector_frame, variable=dropdown_var, values=[_("点击刷新")],
-                                                 font=self.app_font, dropdown_font=self.app_font)  #
-                    dropdown.grid(row=0, column=0, sticky="ew")  #
-                    dropdown.grid_remove()  #
+                                                 font=self.app_font, dropdown_font=self.app_font)
+                    dropdown.grid(row=0, column=0, sticky="ew")
+                    dropdown.grid_remove() # Initially hide dropdown, show entry
 
-                    provider_key_for_button = ""  #
-                    try:  # Safely get provider key #
-                        providers_index = key_path.index("providers")  #
-                        if len(key_path) > providers_index + 1:  #
-                            provider_key_for_button = key_path[providers_index + 1]  #
-                    except ValueError:  #
-                        pass  # 'providers' not in path_parts #
+                    provider_key_for_button = ""
+                    try: # Safely get provider key from path
+                        providers_index = current_item_full_path.index("providers")
+                        if len(current_item_full_path) > providers_index + 1:
+                            provider_key_for_button = current_item_full_path[providers_index + 1]
+                    except ValueError:
+                        pass # 'providers' not in path
 
                     refresh_button = ctk.CTkButton(model_selector_frame, text=_("刷新"), width=60, font=self.app_font,
-                                                   command=lambda p=provider_key_for_button: self._fetch_ai_models(
-                                                       p))  #
-                    refresh_button.grid(row=0, column=1, padx=(10, 0))  #
+                                                   command=lambda p=provider_key_for_button: self._fetch_ai_models(p))
+                    refresh_button.grid(row=0, column=1, padx=(10, 0))
 
-                    self.editor_widgets[full_path_str] = (model_selector_frame, entry, dropdown, dropdown_var,
-                                                          refresh_button)  #
+                    self.editor_widgets[full_path_str] = (model_selector_frame, entry, dropdown, dropdown_var, refresh_button)
 
-                else:  # Default to entry for other types
-                    widget = ctk.CTkEntry(item_container_frame, font=self.app_font)  #
-                    widget.grid(row=0, column=1, sticky="ew", padx=10, pady=5)  #
-                    self.editor_widgets[full_path_str] = widget  #
+                else: # Default to entry for other types
+                    widget = ctk.CTkEntry(item_container_frame, font=self.app_font)
+                    widget.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
+                    self.editor_widgets[full_path_str] = widget
 
-                current_row_in_parent_frame += 1  #
-                if tooltip_text and widget_type != "textbox":  #
-                    current_row_in_parent_frame += 1  #
-            else:  # This else block handles field_def_value not being a dict with "items" and not a tuple
-                # This means it's a field_def_value that is neither a nested section nor a leaf node as expected.
-                # It might be a direct dictionary for raw YAML, which _build_editor_content doesn't explicitly create now.
-                # Or it's a structure that isn't properly defined in config_structure.
-                self._log_to_viewer(
-                    f"DEBUG: Field {full_path_str} has an unexpected definition type in config_structure ({type(item_definition)}). Skipping UI creation.",
-                    "DEBUG")  #
+                current_row_in_parent_frame += 1
+                if tooltip_text and widget_type != "textbox": # Tooltip takes up extra row if not a textbox
+                    current_row_in_parent_frame += 1
+            else: # This means item_definition is not a dict with "items" and not a tuple
+                self._log_to_viewer(f"DEBUG: Field {full_path_str} has an unexpected definition type in config_structure ({type(item_definition)}). Skipping UI creation.", "DEBUG")
                 pass
 
-        parent_widget.grid_rowconfigure(current_row_in_parent_frame, weight=1)  #
-
+        parent_widget.grid_rowconfigure(current_row_in_parent_frame, weight=1)
 
     def _build_editor_content(self, parent_widget, config_obj_data, key_path):
         self._log_to_viewer(f"DEBUG: _build_editor_content called for path: {'.'.join(key_path)}", "DEBUG")
@@ -3081,58 +3330,179 @@ class CottonToolkitApp(ctk.CTk):
 
         if genome_sources and isinstance(genome_sources, dict):
             assembly_ids = list(genome_sources.keys())
-            if not assembly_ids: assembly_ids = [_("无可用版本")]
+            if not assembly_ids:
+                assembly_ids = [_("无可用版本")]
         else:
             assembly_ids = [_("无法加载基因组源")]
             self._log_to_viewer(_("警告: 未能从配置文件或源文件中加载基因组列表。"), level="WARNING")
 
         dropdowns = [
-            self.integrate_bsa_assembly_dropdown, self.integrate_hvg_assembly_dropdown,
-            self.homology_map_source_assembly_dropdown, self.homology_map_target_assembly_dropdown,
-            self.gff_query_assembly_dropdown
+            # 整合分析选项卡中的下拉菜单
+            self.integrate_bsa_assembly_dropdown,
+            self.integrate_hvg_assembly_dropdown,
+            # 同源映射选项卡中的下拉菜单
+            # 增加检查，确保这些控件已经被创建
+            # self.homology_map_source_assembly_dropdown, # <-- 移除直接引用
+            # self.homology_map_target_assembly_dropdown, # <-- 移除直接引用
+            # GFF 查询选项卡中的下拉菜单
+            # self.gff_query_assembly_dropdown # <-- 移除直接引用
         ]
-        for dropdown in dropdowns:
-            if dropdown and dropdown.winfo_exists():
-                dropdown.configure(values=assembly_ids)
 
-    def _update_excel_sheet_dropdowns(self):  #
-        excel_path = self.integrate_excel_entry.get()  #
-        sheet_names_to_set = [_("请先指定有效的Excel文件")]  #
-        valid_sheets_found = False  #
-        if excel_path and os.path.exists(excel_path):  #
+        # 遍历所有可能的下拉菜单，如果它们已经存在，就更新它们
+        if hasattr(self, 'integrate_bsa_assembly_dropdown') and self.integrate_bsa_assembly_dropdown.winfo_exists():
+            self.integrate_bsa_assembly_dropdown.configure(values=assembly_ids)
+            # 尝试设置默认值
+            if self.current_config.integration_pipeline.bsa_assembly_id in assembly_ids:
+                self.selected_bsa_assembly.set(self.current_config.integration_pipeline.bsa_assembly_id)
+            elif assembly_ids and assembly_ids[0] != _("无可用版本") and assembly_ids[0] != _("无法加载基因组源"):
+                self.selected_bsa_assembly.set(assembly_ids[0])
+
+        if hasattr(self, 'integrate_hvg_assembly_dropdown') and self.integrate_hvg_assembly_dropdown.winfo_exists():
+            self.integrate_hvg_assembly_dropdown.configure(values=assembly_ids)
+            if self.current_config.integration_pipeline.hvg_assembly_id in assembly_ids:
+                self.selected_hvg_assembly.set(self.current_config.integration_pipeline.hvg_assembly_id)
+            elif assembly_ids and assembly_ids[0] != _("无可用版本") and assembly_ids[0] != _("无法加载基因组源"):
+                self.selected_hvg_assembly.set(assembly_ids[0])
+
+        # 对于懒加载的选项卡中的下拉菜单，当它们被创建时，它们会从 _apply_config_to_ui 再次触发更新，
+        # 此时 self.selected_homology_source_assembly 等变量会被正确设置。
+        # 这里我们只检查并更新那些可能在启动时就已经存在的（比如“整合分析”页面）。
+
+        # 由于同源映射和GFF查询的下拉菜单是懒加载的，在它们被创建时，
+        # 它们会尝试根据 self.selected_homology_source_assembly / self.selected_gff_query_assembly 的值来设置。
+        # 所以，我们只需要确保在 `_apply_config_to_ui` 阶段，这些 StringVar 的值被正确设定即可，
+        # 不需要在这里提前配置这些下拉菜单的 `values`。
+        # 实际的 `configure(values=...)` 和 `set(default_value)` 会在它们各自的 `_populate_xxx_tab_structure` 方法
+        # 被调用时，通过 `_update_assembly_id_dropdowns` 再次触发（或者直接在 `_populate_xxx_tab_structure` 内部完成）。
+        #
+        # 因此，在 `_apply_config_to_ui` 的末尾，更新这些 StringVar 的值：
+        # self.selected_homology_source_assembly.set(integration_cfg.bsa_assembly_id)
+        # self.selected_homology_target_assembly.set(integration_cfg.hvg_assembly_id)
+        # self.selected_gff_query_assembly.set(default_gff_assembly)
+        # 这样，当对应的 Tab 被懒加载时，下拉菜单会使用这些已经设置好的值。
+
+    #用于在没有加载配置文件时清空编辑器UI的值
+    def _update_editor_ui_values_from_none_config(self):
+        """
+        当 current_config 为 None 时，将编辑器UI中的所有值重置为默认/空状态。
+        """
+
+        # 递归遍历 config_structure，清空所有控件的值
+        def recursive_reset_ui(config_struct_part_items, path_parts):
+            for field_name_in_struct, field_def_value_from_struct in config_struct_part_items:
+                field_full_path_str = ".".join(path_parts + [field_name_in_struct])
+                if field_full_path_str in self.editor_widgets:
+                    widget_info = self.editor_widgets[field_full_path_str]
+                    if isinstance(widget_info, tuple) and isinstance(widget_info[0], ctk.CTkSwitch):
+                        _widget, var = widget_info
+                        var.set(False)  # Default for switch
+                    elif isinstance(widget_info, ctk.CTkTextbox):
+                        widget_info.delete("1.0", tk.END)
+                        widget_info.insert("1.0", "")  # Empty for textbox
+                    elif isinstance(widget_info, ctk.CTkOptionMenu):
+                        options = widget_info.cget("values")
+                        if options:
+                            widget_info.set(options[0])  # Set to first option
+                        else:
+                            widget_info.set("")
+                    elif isinstance(widget_info, tuple) and len(widget_info) == 5:  # Model selector
+                        _frame, entry_widget, dropdown_widget, dropdown_var, _button = widget_info
+                        entry_widget.delete(0, tk.END)
+                        entry_widget.insert(0, "")  # Empty for entry
+                        dropdown_var.set("")  # Empty for dropdown
+                        entry_widget.grid()  # Show entry, hide dropdown
+                        dropdown_widget.grid_remove()
+                    elif isinstance(widget_info, ctk.CTkEntry):
+                        widget_info.delete(0, tk.END)
+                        widget_info.insert(0, "")  # Empty for entry
+
+                # Recursively reset nested sections
+                if isinstance(field_def_value_from_struct, dict) and "items" in field_def_value_from_struct:
+                    recursive_reset_ui(field_def_value_from_struct["items"].items(),
+                                       path_parts + [field_name_in_struct])
+
+        # Start recursion from the top-level config_structure
+        recursive_reset_ui(self.config_structure.items(), [])
+
+
+    def _update_excel_sheet_dropdowns(self):
+        excel_path = self.integrate_excel_entry.get().strip()
+
+        # 如果路径为空或文件不存在，重置下拉菜单并返回
+        if not excel_path or not os.path.exists(excel_path):
+            self.integrate_bsa_sheet_dropdown.configure(values=[_("请先指定有效的Excel文件")])
+            self.integrate_hvg_sheet_dropdown.configure(values=[_("请先指定有效的Excel文件")])
+            self.excel_sheet_cache.pop(excel_path, None)  # 从缓存中移除无效路径
+            return
+
+        # 如果文件已在缓存中，直接使用缓存数据更新 UI
+        if excel_path in self.excel_sheet_cache:
+            sheet_names_to_set = self.excel_sheet_cache[excel_path]
+            self._update_sheet_dropdowns_ui(sheet_names_to_set)  # 调用新的 UI 更新方法
+            return
+
+        # 文件不在缓存中，异步读取
+        self._log_to_viewer(_("正在异步读取Excel工作表，请稍候..."))
+        # 立即更新 UI，显示加载状态
+        self.integrate_bsa_sheet_dropdown.configure(values=[_("读取中...")])
+        self.integrate_hvg_sheet_dropdown.configure(values=[_("读取中...")])
+
+        # 启动一个新线程来读取Excel文件
+        def load_sheets_thread():
             try:
                 xls = pd.ExcelFile(excel_path)  #
                 sheet_names_from_file = xls.sheet_names  #
-                if sheet_names_from_file:  #
-                    sheet_names_to_set = sheet_names_from_file  #
-                    valid_sheets_found = True  #
-                    self._log_to_viewer(_("已成功读取Excel文件中的工作表列表。"))  #
-                else:
-                    sheet_names_to_set = [_("Excel文件中无工作表")]  #
-            except Exception as e:  #
-                sheet_names_to_set = [_("读取Excel失败")]  #
-                self._log_to_viewer(f"{_('错误: 无法读取Excel文件')} '{excel_path}': {e}", level="ERROR")  #
+                self.excel_sheet_cache[excel_path] = sheet_names_from_file  # 缓存结果
+                # 将结果和 Excel 路径放入主消息队列
+                self.message_queue.put(("update_sheets_dropdown", (sheet_names_from_file, excel_path, None)))
+            except Exception as e:
+                # 将错误信息放入主消息队列
+                self.message_queue.put(
+                    ("update_sheets_dropdown", ([], excel_path, f"{_('错误: 无法读取Excel文件')}: {e}")))
 
-        bsa_dropdown = self.integrate_bsa_sheet_dropdown  #
-        hvg_dropdown = self.integrate_hvg_sheet_dropdown  #
+        threading.Thread(target=load_sheets_thread, daemon=True).start()
 
-        if bsa_dropdown: bsa_dropdown.configure(values=sheet_names_to_set)  #
-        if hvg_dropdown: hvg_dropdown.configure(values=sheet_names_to_set)  #
+    def _update_sheet_dropdowns_ui(self, sheet_names_to_set, excel_path_for_error=None, error_msg=None):
+        """
+        实际更新Excel Sheet下拉菜单UI的方法。
+        这个方法应该只在主线程中通过消息队列调用。
+        """
+        bsa_dropdown = self.integrate_bsa_sheet_dropdown
+        hvg_dropdown = self.integrate_hvg_sheet_dropdown
 
-        if valid_sheets_found and self.current_config:  #
-            cfg_bsa_sheet = self.current_config.get("integration_pipeline", {}).get("bsa_sheet_name")  #
-            cfg_hvg_sheet = self.current_config.get("integration_pipeline", {}).get("hvg_sheet_name")  #
+        if error_msg:
+            self._log_to_viewer(f"{error_msg}", level="ERROR")
+            sheet_names_to_set = [_("读取Excel失败")]
+            # 如果是错误，并且缓存中存在，为了避免下次还报错，可以考虑清除缓存
+            if excel_path_for_error and excel_path_for_error in self.excel_sheet_cache:
+                self.excel_sheet_cache.pop(excel_path_for_error, None)
+
+        if not sheet_names_to_set:  # 处理空列表或错误情况
+            sheet_names_to_set = [_("Excel文件中无工作表")]
+
+        # 更新下拉菜单的值
+        if bsa_dropdown and bsa_dropdown.winfo_exists():
+            bsa_dropdown.configure(values=sheet_names_to_set)
+        if hvg_dropdown and hvg_dropdown.winfo_exists():
+            hvg_dropdown.configure(values=sheet_names_to_set)
+
+        # 尝试设置默认选中值
+        if self.current_config:
+            # 访问 MainConfig 实例的属性，而不是字典的 get 方法
+            cfg_bsa_sheet = self.current_config.integration_pipeline.bsa_sheet_name
+            cfg_hvg_sheet = self.current_config.integration_pipeline.hvg_sheet_name
+
             if cfg_bsa_sheet in sheet_names_to_set:
-                self.selected_bsa_sheet.set(cfg_bsa_sheet)  #
-            elif sheet_names_to_set:
-                self.selected_bsa_sheet.set(sheet_names_to_set[0])  #
+                self.selected_bsa_sheet.set(cfg_bsa_sheet)
+            elif sheet_names_to_set and sheet_names_to_set[0] != _("读取Excel失败") and sheet_names_to_set[0] != _(
+                    "Excel文件中无工作表"):
+                self.selected_bsa_sheet.set(sheet_names_to_set[0])
+
             if cfg_hvg_sheet in sheet_names_to_set:
-                self.selected_hvg_sheet.set(cfg_hvg_sheet)  #
-            elif sheet_names_to_set:
-                self.selected_hvg_sheet.set(sheet_names_to_set[0])  #
-        elif sheet_names_to_set:  #
-            self.selected_bsa_sheet.set(sheet_names_to_set[0])  #
-            self.selected_hvg_sheet.set(sheet_names_to_set[0])  #
+                self.selected_hvg_sheet.set(cfg_hvg_sheet)
+            elif sheet_names_to_set and sheet_names_to_set[0] != _("读取Excel失败") and sheet_names_to_set[0] != _(
+                    "Excel文件中无工作表"):
+                self.selected_hvg_sheet.set(sheet_names_to_set[0])
 
     def browse_integrate_excel(self):  #
         filepath = filedialog.askopenfilename(title=_("选择输入Excel文件"),
@@ -3141,68 +3511,6 @@ class CottonToolkitApp(ctk.CTk):
             self.integrate_excel_entry.delete(0, tk.END)  #
             self.integrate_excel_entry.insert(0, filepath)  #
             self._update_excel_sheet_dropdowns()  #
-
-
-    def _apply_config_to_ui(self):
-        """加载配置后，立即填充所有UI，包括配置编辑器。"""
-        self._log_to_viewer(f"DEBUG: _apply_config_to_ui called. self.current_config is: {type(self.current_config)}", "DEBUG")
-
-        if not self.current_config:
-            self._log_to_viewer(_("没有加载配置，无法应用到UI。"), level="WARNING")
-            return
-
-        # 确保 current_config 是 MainConfig 对象，而不是 dict
-        # 只有当 current_config 是字典时才尝试转换
-        if isinstance(self.current_config, dict):
-            try:
-                # 假设 load_config 已经返回 MainConfig 对象
-                # 如果这里是直接从字典设置的，你需要将它转换为 MainConfig 实例
-                self.current_config = MainConfig.from_dict(self.current_config)
-            except Exception as e:
-                self.show_error_message(_("配置解析错误"), f"{_('无法将字典转换为配置对象:')} {e}")
-                self.current_config = None  # 设置为 None 以表示配置无效
-                return
-
-        # 填充所有UI
-        # config_path_label 的更新
-        if self.config_path:
-            self.config_path_label.configure(text=_("当前配置: {}").format(os.path.basename(self.config_path)))
-        else:
-            self.config_path_label.configure(text=_("未加载配置"))
-
-        self._update_assembly_id_dropdowns()  # 更新基因组版本下拉菜单
-        self._update_download_genomes_list()  # 更新下载页面的基因组列表
-        self._update_ai_assistant_tab_info()  # 更新AI助手页面的配置信息
-        self._load_prompts_to_ai_tab()  # 将Prompt模板加载到AI助手页面的输入框中
-        self._populate_editor_ui()  # **核心改变：调用新的填充/更新函数**
-
-        # 从 MainConfig 对象获取值并设置UI
-        # 由于我们已经确保 self.current_config 是 MainConfig 实例，现在可以直接访问其属性
-        downloader_cfg = self.current_config.downloader
-        self.download_force_checkbox_var.set(downloader_cfg.force_download)
-        proxies = downloader_cfg.proxies
-        # 检查代理配置是否存在且至少有一个代理地址被设置
-        proxy_is_configured = bool(proxies and (proxies.http or proxies.https))
-        self.download_proxy_var.set(proxy_is_configured)
-        self.ai_proxy_var.set(proxy_is_configured)  # AI助手页面的代理开关同步
-
-        integration_cfg = self.current_config.integration_pipeline
-        self.selected_bsa_assembly.set(integration_cfg.bsa_assembly_id)
-        self.selected_hvg_assembly.set(integration_cfg.hvg_assembly_id)
-        self.integrate_excel_entry.delete(0, tk.END)
-        self.integrate_excel_entry.insert(0, integration_cfg.input_excel_path)
-        self._update_excel_sheet_dropdowns()  # 重新加载Excel文件的工作表
-
-        # 更新同源映射和GFF查询的默认选中项
-        self.selected_homology_source_assembly.set(integration_cfg.bsa_assembly_id)
-        self.selected_homology_target_assembly.set(integration_cfg.hvg_assembly_id)
-        # GFF查询的默认版本可以是BSA或HVG中的任何一个，只要有值
-        default_gff_assembly = integration_cfg.bsa_assembly_id or integration_cfg.hvg_assembly_id
-        if default_gff_assembly:
-            self.selected_gff_query_assembly.set(default_gff_assembly)
-
-        self._log_to_viewer(_("配置已成功应用到所有UI字段。"))
-
 
     def start_integrate_task(self):
         if not self.current_config: self.show_error_message(_("错误"), _("请先加载配置文件。")); return
@@ -3352,26 +3660,8 @@ class CottonToolkitApp(ctk.CTk):
         self._log_to_viewer(_("日志已清除。"))
 
     def _log_to_viewer(self, message, level="INFO"):
-        # *** 新增的逻辑：如果记录错误且日志被隐藏，则强制展开 ***
-        if level == "ERROR" and not self.log_viewer_visible:
-            self.toggle_log_viewer()
-
-        if self.log_textbox and self.log_textbox.winfo_exists():
-            self.log_textbox.configure(state="normal")
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            color_tag = "normal_log"
-            if level == "ERROR":
-                color_tag = "error_log"
-            elif level == "WARNING":
-                color_tag = "warning_log"
-            self.log_textbox.insert(tk.END, f"[{timestamp}] {message}\n", color_tag)
-            self.log_textbox.see(tk.END)
-            self.log_textbox.configure(state="disabled")
-            if not hasattr(self.log_textbox, '_tags_configured'):
-                self._update_log_tag_colors()  # 使用已有函数来设置颜色
-                self.log_textbox._tags_configured = True
-        else:
-            print(f"[{level}] {message}")
+        # 将日志消息放入队列，由主线程处理
+        self.log_queue.put((message, level))
 
     def show_info_message(self, title, message):
         self._log_to_viewer(f"{title}: {message}", level="INFO")
@@ -3416,17 +3706,68 @@ class CottonToolkitApp(ctk.CTk):
     def task_done_callback(self, success=True, task_display_name="任务"):
         self.message_queue.put(("task_done", (success, task_display_name)))
 
+    def _display_log_message_in_ui(self, message, level):
+        """
+        实际更新日志文本框的UI，只在主线程中调用。
+        并限制日志行数以提高性能。
+        """
+        if self.log_textbox and self.log_textbox.winfo_exists():
+            self.log_textbox.configure(state="normal")
+
+            # --- 优化：限制日志行数 ---
+            max_lines = 500  # 最大保留的日志行数
+            current_lines = int(self.log_textbox.index('end-1c linestart').split('.')[0])
+            if current_lines > max_lines:
+                # 删除旧的日志行
+                self.log_textbox.delete(f"1.0", f"{current_lines - max_lines + 1}.0")
+            # --- 优化结束 ---
+
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            color_tag = "normal_log"
+            if level == "ERROR":
+                color_tag = "error_log"
+            elif level == "WARNING":
+                color_tag = "warning_log"
+
+            self.log_textbox.insert(tk.END, f"[{timestamp}] {message}\n", color_tag)
+            self.log_textbox.see(tk.END)  # 保持滚动到底部
+            self.log_textbox.configure(state="disabled")
+
+            # 首次配置标签颜色只做一次，避免重复调用
+            if not hasattr(self.log_textbox, '_tags_configured'):
+                self._update_log_tag_colors()
+                self.log_textbox._tags_configured = True
+
     def check_queue_periodic(self):
         """定时检查消息队列，并更新UI。增加了错误处理逻辑。"""
         try:
+            # 处理主消息队列
             while not self.message_queue.empty():
                 message_type, data = self.message_queue.get_nowait()
+
                 if message_type == "status":
                     self.status_label.configure(text=str(data)[:150])
 
+
+                elif message_type == "initial_config_applied_to_ui_done":
+                    self.startup_ui_tasks_completed["config_applied"] = True
+                    self._check_and_hide_startup_dialog()
+
+                elif message_type == "editor_ui_populated_done":
+                    self.startup_ui_tasks_completed["editor_populated"] = True
+                    self._check_and_hide_startup_dialog()
+
+                elif message_type == "update_genome_dropdowns_async":  # This is the message from _load_initial_config -> update_genome_dropdowns_async
+                    genome_sources_data = data
+                    self.startup_ui_tasks_completed["genome_dropdowns_updated"] = True
+                    self._update_assembly_id_dropdowns()  # Still call it to ensure values are set
+                    self._check_and_hide_startup_dialog()
+
+
                 elif message_type == "progress":
                     percentage, text = data
-                    if not self.progress_bar.winfo_viewable(): self.progress_bar.grid()
+                    if not self.progress_bar.winfo_viewable():
+                        self.progress_bar.grid()
                     self.progress_bar.set(percentage / 100.0)
                     self.status_label.configure(text=f"{str(text)[:100]} ({percentage}%)")
 
@@ -3435,16 +3776,14 @@ class CottonToolkitApp(ctk.CTk):
                     provider_key, models = data
                     self._log_to_viewer(f"{provider_key} {_('模型列表获取成功。')} ")
                     model_selector_widgets = self.editor_widgets.get(
-                        f"ai_services.providers.{provider_key}.model")  # 注意这里使用 'model'
+                        f"ai_services.providers.{provider_key}.model")
                     if model_selector_widgets:
-                        # 从元组中解包正确的部件
-                        model_selector_frame, entry, dropdown, dropdown_var, refresh_button = model_selector_widgets
+                        _model_selector_frame, entry, dropdown, dropdown_var, _refresh_button = model_selector_widgets
                         dropdown.configure(values=models)
-                        # 如果获取到的模型列表不为空，则设置下拉菜单的默认值，否则保留当前值
                         if models:
-                            dropdown.set(models[0])  # 默认选择第一个模型
-                        dropdown.grid()  # 显示下拉框
-                        entry.grid_remove()  # 隐藏输入框
+                            dropdown.set(models[0])
+                        dropdown.grid()
+                        entry.grid_remove()
                         self.show_info_message(_("刷新成功"),
                                                f"{_('已成功获取并更新')} {provider_key} {_('的模型列表。')} ")
 
@@ -3453,38 +3792,59 @@ class CottonToolkitApp(ctk.CTk):
                     provider_key, error_msg = data
                     self._log_to_viewer(f"{provider_key} {_('模型列表获取失败:')} {error_msg}", "ERROR")
                     model_selector_widgets = self.editor_widgets.get(
-                        f"ai_services.providers.{provider_key}.model")  # 注意这里使用 'model'
+                        f"ai_services.providers.{provider_key}.model")
                     if model_selector_widgets:
-                        # 从元组中解包正确的部件
-                        model_selector_frame, entry, dropdown, dropdown_var, refresh_button = model_selector_widgets
-                        dropdown.grid_remove()  # 隐藏下拉框
-                        entry.grid()  # 显示输入框
+                        _model_selector_frame, entry, dropdown, _dropdown_var, _refresh_button = model_selector_widgets
+                        dropdown.grid_remove()
+                        entry.grid()
                         self.show_warning_message(_("刷新失败"),
-                                                      f"{_('获取模型列表失败，请检查API Key或网络连接，并手动输入模型名称。')}\n\n{_('错误详情:')} {error_msg}")
+                                                  f"{_('获取模型列表失败，请检查API Key或网络连接，并手动输入模型名称。')}\n\n{_('错误详情:')} {error_msg}")
 
                 # 处理隐藏进度弹窗的消息
                 elif message_type == "hide_progress_dialog":
                     self._hide_progress_dialog()
 
+                # 处理更新 Excel 工作表下拉菜单的消息
+                elif message_type == "update_sheets_dropdown":
+                    sheet_names, excel_path_for_error, error_msg = data
+                    self._update_sheet_dropdowns_ui(sheet_names, excel_path_for_error, error_msg)
+
+                # --- 新增的启动异步加载消息处理 ---
+                elif message_type == "set_initial_config":
+                    loaded_config_data, config_file_path = data
+                    self._apply_config_to_ui_async(loaded_config_data, config_file_path)
+
+                elif message_type == "update_genome_dropdowns_async":
+                    genome_sources_data = data
+                    # 这个函数在 _apply_config_to_ui_async 中调用，但这里也需要一个触发点，
+                    # 确保在异步加载完成后更新。
+                    # 确保 _update_assembly_id_dropdowns 内部能够处理 data (dict)
+                    # 我们可以通过直接设置 self.current_config.downloader.genome_sources 来模拟
+                    # 或者，更简单，直接将 data 传递给它，但 _update_assembly_id_dropdowns 当前是从 self.current_config 获取
+                    # 因此，最好的做法是，在 initial_config_loaded 之后，由 _apply_config_to_ui_async 统一处理。
+                    # 这里，我们只需要确保，当这些下拉菜单被懒加载时，它们会获取到正确的值。
+                    # 实际的配置数据已经通过 set_initial_config 更新到了 self.current_config。
+                    self._update_assembly_id_dropdowns()  # 再次触发更新，这次应该能找到控件了
+
+                elif message_type == "populate_editor_ui_async":
+                    # 异步触发配置编辑器的UI构建和更新
+                    # 此时，如果编辑器UI未构建，它会被构建；如果已构建，则更新其值。
+                    self._populate_editor_ui()
 
                 # --- 错误处理逻辑 ---
                 elif message_type == "error":
-                    # 显示错误对话框
                     self.show_error_message(_("任务执行出错"), data)
-                    # 立即终止任务的视觉表现
                     self.progress_bar.grid_remove()
                     self.status_label.configure(text=f"{_('任务终止于')}: {data[:100]}",
                                                 text_color=("#d9534f", "#e57373"))
                     self._update_button_states(is_task_running=False)
                     self.active_task_name = None
-                    # 释放锁，允许下一个错误（如果发生）被报告
                     if self.error_dialog_lock.locked():
                         self.error_dialog_lock.release()
 
                 elif message_type == "task_done":
                     success, task_display_name = data
                     self.progress_bar.grid_remove()
-                    # 只有在没有错误发生的情况下才更新为成功或失败
                     if not self.error_dialog_lock.locked():
                         final_message = _("{} 执行{}。").format(task_display_name, _("成功") if success else _("失败"))
                         self.status_label.configure(text=final_message,
@@ -3492,23 +3852,112 @@ class CottonToolkitApp(ctk.CTk):
 
                     self._update_button_states(is_task_running=False)
                     self.active_task_name = None
-                    # 如果任务完成时锁还被占用，则释放它
                     if self.error_dialog_lock.locked():
                         self.error_dialog_lock.release()
 
-        except Exception:
-            pass  # 忽略队列为空的异常
+                # 处理手动加载配置文件任务完成的消息
+                elif message_type == "config_load_task_done":
+                    success, message = data
+                    # success 和 message 包含加载结果，用于显示信息
+                    if success:
+                        self._hide_progress_dialog()  # 关闭对话框
+                        # self.show_info_message(_("加载成功"), _("配置文件已成功加载并应用到界面。")) # 不再弹窗，直接在状态栏显示
+                    else:
+                        self._hide_progress_dialog()  # 关闭对话框
+                        self.show_error_message(_("加载失败"), message)
+
+
+            # 处理启动进度队列 (用于更新启动对话框)
+            while not self.startup_progress_queue.empty():
+                progress_percent, message = self.startup_progress_queue.get_nowait()
+                if self.progress_dialog_text_var:
+                    self.progress_dialog_text_var.set(message)
+                if progress_percent == 100:
+                    # 启动任务完成，隐藏对话框
+                    self._hide_progress_dialog()
+
+                    # 确保主页的 config_path_label 最终被更新
+                    if self.initial_config_loaded.is_set():
+                        # 在UI完全设置好后，再刷新语言，确保所有字符串都正确翻译
+                        self.update_language_ui()
+                        self._update_button_states()  # 确保按钮状态正确
+                        self.status_label.configure(text=_(self.status_label_base_key),
+                                                    text_color=self.default_label_text_color)
+
+
+            # 处理日志队列
+            while not self.log_queue.empty():
+                message, level = self.log_queue.get_nowait()
+                self._display_log_message_in_ui(message, level)
+
+        except Exception as e:
+            print(f"CRITICAL ERROR in check_queue_periodic: {e}")
+            logging.critical(f"Unhandled exception in check_queue_periodic: {e}", exc_info=True)
+            pass
+
         self.after(100, self.check_queue_periodic)
 
+    def _check_and_hide_startup_dialog(self):
+        """
+        检查所有启动阶段的UI更新任务是否完成，如果完成则关闭启动对话框。
+        """
+        # 确保所有必需的UI任务都已完成
+        all_tasks_done = all(self.startup_ui_tasks_completed.values())
+
+        # 只有在后台异步加载已完成，并且所有UI更新任务都已完成时才关闭对话框
+        if self.initial_config_loaded.is_set() and all_tasks_done:
+            self._hide_progress_dialog()
+            # 可以选择在这里显示最终的启动成功/失败信息，不再使用弹窗
+            # self.show_info_message(_("启动成功"), _("应用程序已成功启动！"))
+            # 或者仅更新状态栏
+            self.status_label.configure(text=_(self.status_label_base_key), text_color=self.default_label_text_color)
+            self.update_language_ui()  # 最终刷新语言和按钮状态
+            self._update_button_states()
 
 
     def _bind_mouse_wheel_to_scrollable(self, widget):
         """
-        为可滚动的widget（如CTkScrollableFrame, CTkTextbox）绑定鼠标滚轮事件。
-        在Windows和Linux/macOS上，鼠标滚轮事件名称不同。
-        """
-        pass
+        为 CustomTkinter 的可滚动widget（如 CTkScrollableFrame, CTkTextbox）绑定鼠标滚轮事件。
+        直接绑定到 CustomTkinter 控件，因为它会处理底层的 Tkinter 组件。
+        注意：CustomTkinter 在内部已经为 CTkScrollableFrame 和 CTkTextbox 实现了基本的滚轮功能。
+        这个方法主要用于确保自定义的或额外的滚轮绑定能够正常工作，
+        或者在某些情况下增强默认行为（尽管通常不推荐修改CTk的内部实现）。
 
+        对于 CTkScrollableFrame，它内部有一个 canvas，事件需要绑定到 canvas 上。
+        对于 CTkTextbox，它有自己的内部 Text 控件，事件需要绑定到该 Text 控件上。
+        """
+        # 对于 CTkScrollableFrame
+        if hasattr(widget, "_canvas") and isinstance(widget._canvas, ctk.CTkCanvas):
+            canvas = widget._canvas
+            canvas.bind("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"),
+                        add="+")
+            canvas.bind("<Button-4>", lambda event: canvas.yview_scroll(-1, "units"), add="+")  # Linux scroll up
+            canvas.bind("<Button-5>", lambda event: canvas.yview_scroll(1, "units"), add="+")  # Linux scroll down
+            self._log_to_viewer(f"DEBUG: Bound mouse wheel to CTkScrollableFrame canvas: {widget}", "DEBUG")
+
+        # 对于 CTkTextbox
+        elif hasattr(widget, "_textbox") and isinstance(widget._textbox, tk.Text):
+            textbox = widget._textbox
+            textbox.bind("<MouseWheel>", lambda event: textbox.yview_scroll(int(-1 * (event.delta / 120)), "units"),
+                         add="+")
+            textbox.bind("<Button-4>", lambda event: textbox.yview_scroll(-1, "units"), add="+")  # Linux scroll up
+            textbox.bind("<Button-5>", lambda event: textbox.yview_scroll(1, "units"), add="+")  # Linux scroll down
+            self._log_to_viewer(f"DEBUG: Bound mouse wheel to CTkTextbox internal Text: {widget}", "DEBUG")
+
+        # 对于其他可能需要滚动的 CustomTkinter 控件（如 CTkFrame，如果里面放了其他可滚动内容）
+        # 可以尝试直接绑定到控件本身，但效果可能不如直接绑定到内部 canvas/text
+        else:
+            widget.bind("<MouseWheel>",
+                        lambda event: widget.yview_scroll(int(-1 * (event.delta / 120)), "units") if hasattr(widget,
+                                                                                                             'yview_scroll') else None,
+                        add="+")
+            widget.bind("<Button-4>",
+                        lambda event: widget.yview_scroll(-1, "units") if hasattr(widget, 'yview_scroll') else None,
+                        add="+")
+            widget.bind("<Button-5>",
+                        lambda event: widget.yview_scroll(1, "units") if hasattr(widget, 'yview_scroll') else None,
+                        add="+")
+            self._log_to_viewer(f"DEBUG: Attempted generic mouse wheel bind to: {widget}", "DEBUG")
 
 
     def on_closing(self):
@@ -3517,33 +3966,54 @@ class CottonToolkitApp(ctk.CTk):
             self.destroy()
 
     def load_config_file(self, filepath: Optional[str] = None, is_initial_load: bool = False):
-        """【更新】加载配置文件，并增加对版本不兼容错误的捕获和处理。"""
+        """
+        加载配置文件，并异步应用到UI。
+        """
         if not filepath:
             filepath = filedialog.askopenfilename(title=_("选择配置文件"),
                                                   filetypes=(("YAML files", "*.yml *.yaml"), ("All files", "*.*")))
 
         if filepath:
             self._log_to_viewer(f"{_('尝试加载配置文件:')} {filepath}")
-            try:
-                loaded_config = load_config(filepath)
-                if loaded_config:
-                    self.current_config = loaded_config
-                    self.config_path = filepath
-                    self._apply_config_to_ui()
-                    self._update_button_states()
-                    self._log_to_viewer(f"{_('配置文件加载成功:')} {filepath}")
-                    if not is_initial_load:
-                        self.show_info_message(_("加载成功"), _("配置文件已成功加载并应用到界面。"))
-                else:
-                    self.show_error_message(_("加载失败"), _("无法加载配置文件或文件内容为空。"))
+            if not is_initial_load:  # Show progress dialog only for manual load
+                self._show_progress_dialog(
+                    title=_("加载配置中..."),
+                    message=_("正在加载配置文件并应用到UI，请稍候..."),
+                    on_cancel=None
+                )
 
-            except ValueError as e:  # 专门捕获版本错误
-                self.show_error_message(_("加载失败：版本不兼容"), str(e))
-            except Exception as e:  # 捕获其他未知错误
-                self.show_error_message(_("加载错误"), f"{_('加载配置文件时发生错误:')} {e}")
+            def load_config_task_thread():
+                try:
+                    loaded_config_data = None
+                    config_file_path = None
+
+                    if os.path.exists(filepath):
+                        loaded_config_data = load_config(os.path.abspath(filepath))
+                        config_file_path = os.path.abspath(filepath)
+
+                    # Send config data and path to main thread
+                    self.message_queue.put(("set_initial_config_and_path", (loaded_config_data, config_file_path)))
+
+                    # Trigger UI updates after config is set in main thread
+                    self.message_queue.put(("trigger_populate_editor_ui", None))
+                    self.message_queue.put(("trigger_apply_config_to_ui_values", None))
+                    self.message_queue.put(("trigger_update_assembly_dropdowns", None))
+
+                    # Send task completion message
+                    self.message_queue.put(("config_load_task_done", (True, _("配置文件加载"))))
+                except ValueError as e:
+                    self.message_queue.put(("config_load_task_done", (False, f"{_('配置文件版本不兼容:')} {e}")))
+                except Exception as e:
+                    self.message_queue.put(("config_load_task_done", (False, f"{_('加载配置文件失败:')} {e}")))
+                finally:
+                    # 在任务完成时，主线程会处理 config_load_task_done 消息
+                    pass  # Ensure it doesn't try to hide here
+
+            threading.Thread(target=load_config_task_thread, daemon=True).start()
         else:
             if not is_initial_load:
-                self._log_to_viewer(_("取消加载配置文件。"))
+                self._log_to_viewer(_("用户取消加载配置文件。"))
+
 
     def save_config_file(self, config_data: Optional[Dict] = None, show_dialog: bool = False) -> bool:
         """保存当前配置, 可选择是否弹出另存为对话框"""
@@ -3671,16 +4141,30 @@ class CottonToolkitApp(ctk.CTk):
         task_button_state = "normal" if self.current_config and not is_task_running else "disabled"
 
         # 所有任务按钮
-        if hasattr(self, 'download_start_button'): self.download_start_button.configure(state=task_button_state)
-        if hasattr(self, 'integrate_start_button'): self.integrate_start_button.configure(state=task_button_state)
-        if hasattr(self, 'homology_map_start_button'): self.homology_map_start_button.configure(state=task_button_state)
-        if hasattr(self, 'gff_query_start_button'): self.gff_query_start_button.configure(state=task_button_state)
+        if hasattr(self, 'download_start_button') and self.download_start_button.winfo_exists():
+            self.download_start_button.configure(state=task_button_state)
+        if hasattr(self, 'integrate_start_button') and self.integrate_start_button.winfo_exists():
+            self.integrate_start_button.configure(state=task_button_state)
+        if hasattr(self, 'homology_map_start_button') and self.homology_map_start_button.winfo_exists():
+            self.homology_map_start_button.configure(state=task_button_state)
+        if hasattr(self, 'gff_query_start_button') and self.gff_query_start_button.winfo_exists():
+            self.gff_query_start_button.configure(state=task_button_state)
+        if hasattr(self, 'anno_start_button') and self.anno_start_button.winfo_exists(): # For annotation tab
+            self.anno_start_button.configure(state=task_button_state)
+        if hasattr(self, 'ai_start_button') and self.ai_start_button.winfo_exists(): # For AI assistant tab
+            self.ai_start_button.configure(state=task_button_state)
+        if hasattr(self, 'convert_start_button') and self.convert_start_button.winfo_exists(): # For XLSX to CSV tab
+            self.convert_start_button.configure(state=task_button_state)
 
         # 侧边栏和配置按钮
-        if hasattr(self, 'navigation_frame'):
-            for btn in [self.home_button, self.integrate_button, self.tools_button, self.load_config_button,
-                        self.gen_config_button]:
-                if btn: btn.configure(state=action_state)
+        if hasattr(self, 'navigation_frame'): # 确保导航框架已经创建
+            # 遍历这些按钮，并检查它们是否存在
+            for btn_name in ['home_button', 'editor_button', 'integrate_button', 'tools_button',
+                             'load_config_button', 'gen_config_button']: #
+                if hasattr(self, btn_name):
+                    btn = getattr(self, btn_name)
+                    if btn.winfo_exists(): # 确保控件在Tkinter中仍存在
+                        btn.configure(state=action_state)
 
     def start_download_task(self):
         if not self.current_config:
