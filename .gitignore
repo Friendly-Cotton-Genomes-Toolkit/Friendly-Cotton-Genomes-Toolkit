@@ -80,3 +80,4 @@ cotton_toolkit.egg-info
 friendly_cotton_toolkit.egg-info
 config.yml
 genome_sources_list.yml
+ui_settings.json
