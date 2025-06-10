@@ -1,5 +1,7 @@
-﻿import pandas as pd
+﻿import logging
+import pandas as pd
 
+logger = logging.getLogger("cotton_toolkit.tools.annotator")
 
 def match_genes(xlsx_file_path: str, csv_file_path: str, output_csv_path: str, xlsx_gene_column: str,
                 csv_query_column: str, csv_match_column: str,

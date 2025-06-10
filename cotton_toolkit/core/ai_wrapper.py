@@ -95,8 +95,9 @@ class AIWrapper:
 
     @staticmethod
     def get_models(provider: str, api_key: str, base_url: Optional[str] = None,
-                   cancel_event: Optional[threading.Event] = None, timeout: Optional[int] = None) -> list[str]:
-        """【新增】静态方法，用于获取指定服务商的模型列表。"""
+                   cancel_event: Optional[threading.Event] = None, timeout: Optional[int] = None,
+                   proxies: Optional[Dict[str, str]] = None) -> list[str]:  # 【新增】proxies 参数
+        """静态方法，用于获取指定服务商的模型列表。"""
         if not api_key:
             raise ValueError(_("API Key不能为空。"))
 
@@ -109,6 +110,7 @@ class AIWrapper:
                 "deepseek": "https://api.deepseek.com/v1",
                 "qwen": "https://dashscope.aliyuncs.com/api/v1",
                 "siliconflow": "https://api.siliconflow.cn/v1",
+                "grok": "https://api.x.ai/v1",  # 添加grok的默认查找地址
             }
             api_base = provider_map.get(provider.lower())
 
@@ -120,8 +122,8 @@ class AIWrapper:
         # Google的API比较特殊
         if provider == 'google':
             url = f"{api_base}/models"
-            # 传递 timeout 参数给 requests.get
-            response = requests.get(url, headers=headers, params={"pageSize": 1000}, timeout=timeout)
+            # 将 proxies 传递给 requests.get
+            response = requests.get(url, headers=headers, params={"pageSize": 1000}, timeout=timeout, proxies=proxies)
             response.raise_for_status()
             models = response.json().get("models", [])
             # 过滤出支持generateContent的模型
@@ -131,8 +133,8 @@ class AIWrapper:
             ])
         else:  # OpenAI-compatible
             url = f"{api_base}/models"
-            # 传递 timeout 参数给 requests.get
-            response = requests.get(url, headers=headers, timeout=timeout)
+            # 将 proxies 传递给 requests.get
+            response = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
             response.raise_for_status()
             models = response.json().get("data", [])
             return sorted([m["id"] for m in models])

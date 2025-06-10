@@ -1,12 +1,12 @@
 ﻿# cotton_toolkit/pipelines.py
-import gettext  #
-import gzip  #
-import os  #
-from typing import List, Dict, Any, Optional, Union, Callable, Tuple  # Callable for callbacks #
+import gzip
+import os
+import time
+from typing import List, Dict, Any, Optional, Callable, Tuple
 from urllib.parse import urlparse
+import pandas as pd
 
-import numpy as np  #
-import pandas as pd  #
+from cotton_toolkit.config.loader import get_genome_data_sources
 
 # --- 国际化和日志设置 ---
 # 假设 _ 函数已由主应用程序入口设置到 builtins
@@ -24,7 +24,7 @@ except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins�
 try:
     from .core.gff_parser import create_or_load_gff_db, get_features_in_region, DB_SUFFIX, \
     extract_gene_details  # extract_gene_details 如果需要 #
-    from .core.homology_mapper import map_genes_via_bridge  #
+    from .core.homology_mapper import map_genes_via_bridge, select_best_homologs  #
 
     CORE_MODULES_IMPORTED = True  #
     print("INFO (pipelines.py): Successfully imported core modules.")  #
@@ -94,149 +94,248 @@ REASONING_COL_NAME = 'Ms1_LoF_Support_Reasoning'  #
 MATCH_NOTE_COL_NAME = 'Match_Note'
 
 
-# 新增：独立同源映射功能
+# 独立同源映射功能
 def run_homology_mapping_standalone(
-    config: Dict[str, Any],
-    source_gene_ids_override: Optional[List[str]] = None,
-    source_assembly_id_override: Optional[str] = None,
-    target_assembly_id_override: Optional[str] = None,
-    s_to_b_homology_file_override: Optional[str] = None,
-    b_to_t_homology_file_override: Optional[str] = None,
-    output_csv_path: Optional[str] = None, # 新增输出路径参数
-    status_callback: Optional[Callable[[str], None]] = None,
-    progress_callback: Optional[Callable[[int, str], None]] = None,
-    task_done_callback: Optional[Callable[[bool], None]] = None
+        config: Dict[str, Any],
+        source_gene_ids_override: Optional[List[str]] = None,
+        source_assembly_id_override: Optional[str] = None,
+        target_assembly_id_override: Optional[str] = None,
+        s_to_b_homology_file_override: Optional[str] = None,
+        b_to_t_homology_file_override: Optional[str] = None,
+        output_csv_path: Optional[str] = None,
+        status_callback: Optional[Callable[[str], None]] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        task_done_callback: Optional[Callable[[bool], None]] = None
 ) -> bool:
     """
     独立运行基因组同源映射流程。
+    支持 棉花 -> 拟南芥 (一步) 和 棉花 -> 拟南芥 -> 棉花 (两步) 两种模式。
     """
+
     def _log_status(msg: str, level: str = "INFO"):
-        if status_callback: status_callback(f"[{level}] {msg}")
-        elif level == "ERROR": print(f"ERROR: {msg}")
-        elif level == "WARNING": print(f"WARNING: {msg}")
-        else: print(f"INFO: {msg}")
+        if status_callback:
+            status_callback(f"[{level}] {msg}")
+        elif level == "ERROR":
+            print(f"ERROR: {msg}")
+        else:
+            print(f"INFO: {msg}")
 
     def _log_progress(percent: int, msg: str):
-        if progress_callback: progress_callback(percent, msg)
-        else: print(f"PROGRESS [{percent}%]: {msg}")
+        if progress_callback:
+            progress_callback(percent, msg)
+        else:
+            print(f"PROGRESS [{percent}%]: {msg}")
 
-    overall_success = False
-    _log_status(_("开始独立同源映射流程..."))
-    _log_progress(0, _("初始化配置..."))
-
-    if not CORE_MODULES_IMPORTED:
-        _log_status(_("错误: 核心模块未加载，无法执行同源映射。"), "ERROR");
-        return False
+    # --- 新增：定义一个特殊的标识符来代表拟南芥 ---
+    ARABIDOPSIS_TARGET_ID = "arabidopsis_auto_select"
 
     pipeline_cfg = config.get('integration_pipeline', {})
     downloader_cfg = config.get('downloader', {})
 
-    # 获取基因组源信息，用于 slicer
-    genome_sources = {}
-    if 'genome_sources_file' in downloader_cfg:
-        from .config.loader import get_genome_data_sources as get_gs_func # 动态导入，避免循环依赖
-        genome_sources = get_gs_func(config) or {}
-
-    source_assembly_id = source_assembly_id_override if source_assembly_id_override else pipeline_cfg.get('bsa_assembly_id')
-    target_assembly_id = target_assembly_id_override if target_assembly_id_override else pipeline_cfg.get('hvg_assembly_id')
+    source_assembly_id = source_assembly_id_override or pipeline_cfg.get('bsa_assembly_id')
+    target_assembly_id = target_assembly_id_override or pipeline_cfg.get('hvg_assembly_id')
 
     if not all([source_assembly_id, target_assembly_id]):
-        _log_status(_("错误: 必须指定源基因组ID和目标基因组ID。"), "ERROR");
+        _log_status(_("错误: 必须指定源基因组ID和目标基因组ID。"), "ERROR")
+        if task_done_callback: task_done_callback(False)
         return False
-    if source_assembly_id == target_assembly_id:
-        _log_status(_("源基因组和目标基因组相同，无需执行同源映射。"), "INFO")
-        return True # 认为成功
-
-    s_to_b_homology_file = s_to_b_homology_file_override
-    b_to_t_homology_file = b_to_t_homology_file_override
-
-    # 尝试从配置中获取同源文件路径
-    homology_files_cfg = pipeline_cfg.get('homology_files', {})
-    if not s_to_b_homology_file:
-        s_to_b_homology_file = homology_files_cfg.get('bsa_to_bridge_csv')
-    if not b_to_t_homology_file:
-        b_to_t_homology_file = homology_files_cfg.get('bridge_to_hvg_csv')
-
-    if not all([s_to_b_homology_file, b_to_t_homology_file]):
-        _log_status(_("错误: 必须提供源到桥梁和桥梁到目标的同源文件路径。"), "ERROR");
-        return False
-    if not os.path.exists(s_to_b_homology_file):
-        _log_status(_("错误: 源到桥梁同源文件 '{}' 未找到。").format(s_to_b_homology_file), "ERROR");
-        return False
-    if not os.path.exists(b_to_t_homology_file):
-        _log_status(_("错误: 桥梁到目标同源文件 '{}' 未找到。").format(b_to_t_homology_file), "ERROR");
-        return False
-
-    try:
-        s_to_b_homology_df = pd.read_csv(s_to_b_homology_file)
-        b_to_t_homology_df = pd.read_csv(b_to_t_homology_file)
-    except Exception as e:
-        _log_status(_("加载同源文件时出错: {}").format(e), "ERROR");
-        return False
-    _log_progress(20, _("同源文件加载完毕。"))
 
     source_gene_ids = source_gene_ids_override
     if not source_gene_ids:
-        _log_status(_("错误: 必须提供需要映射的源基因ID列表。"), "ERROR");
+        _log_status(_("错误: 必须提供需要映射的源基因ID列表。"), "ERROR")
+        if task_done_callback: task_done_callback(False)
         return False
 
-    homology_cols = pipeline_cfg.get('homology_columns', {})
-    sel_criteria_s_to_b = pipeline_cfg.get('selection_criteria_source_to_bridge', {})
-    sel_criteria_b_to_t = pipeline_cfg.get('selection_criteria_bridge_to_target', {})
-    bridge_species_name = pipeline_cfg.get('bridge_species_name', "Arabidopsis_thaliana")
+    # 确定默认输出路径
+    final_output_path = output_csv_path
+    if not final_output_path:
+        final_output_dir = os.path.join(downloader_cfg.get('download_output_base_dir', "downloaded_cotton_data"),
+                                        "homology_map_results")
+        os.makedirs(final_output_dir, exist_ok=True)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        final_output_path = os.path.join(final_output_dir,
+                                         f"homology_map_{source_assembly_id}_to_{target_assembly_id}_{timestamp}.csv")
 
-    source_id_slicer = genome_sources.get(source_assembly_id, {}).get('homology_id_slicer')
-    bridge_id_slicer = genome_sources.get(target_assembly_id, {}).get('homology_id_slicer') # Assuming target assembly's slicer for bridge to target
+    # --- 新增：根据目标ID选择不同的执行路径 ---
+    if target_assembly_id == ARABIDOPSIS_TARGET_ID:
+        # --- 执行新的一步映射：棉花 -> 拟南芥 ---
+        _log_status(_("执行一步映射模式: 棉花 -> 拟南芥..."))
+        _log_progress(10, _("加载源到拟南芥的同源文件..."))
 
-    _log_status(_("开始执行同源映射算法..."))
-    _log_progress(40, _("执行映射..."))
-    try:
-        mapped_df, fuzzy_count = map_genes_via_bridge(
-            source_gene_ids=source_gene_ids,
-            source_assembly_name=source_assembly_id,
-            target_assembly_name=target_assembly_id,
-            bridge_species_name=bridge_species_name,
-            source_to_bridge_homology_df=s_to_b_homology_df,
-            bridge_to_target_homology_df=b_to_t_homology_df,
-            s_to_b_query_col=homology_cols.get('query', "Query"),
-            s_to_b_match_col=homology_cols.get('match', "Match"),
-            b_to_t_query_col=homology_cols.get('query', "Query"),
-            b_to_t_match_col=homology_cols.get('match', "Match"),
-            evalue_col=homology_cols.get('evalue', "Exp"),
-            score_col=homology_cols.get('score', "Score"),
-            pid_col=homology_cols.get('pid', "PID"),
-            selection_criteria_s_to_b=sel_criteria_s_to_b,
-            selection_criteria_b_to_t=sel_criteria_b_to_t,
-            source_id_slicer=source_id_slicer,
-            bridge_id_slicer=bridge_id_slicer
-        )
-        if fuzzy_count > 0:
-            _log_status(_("注意: 在同源映射中执行了 {} 次模糊匹配。").format(fuzzy_count), "WARNING")
+        # 获取源-桥梁同源文件
+        s_to_b_homology_file = s_to_b_homology_file_override or pipeline_cfg.get('homology_files', {}).get(
+            'bsa_to_bridge_csv')
+        if not s_to_b_homology_file or not os.path.exists(s_to_b_homology_file):
+            _log_status(_("错误: 源到拟南芥的同源文件未找到或未配置: {}").format(s_to_b_homology_file), "ERROR")
+            if task_done_callback: task_done_callback(False)
+            return False
 
-        if mapped_df.empty:
-            _log_status(_("未找到任何有效同源映射结果。"), "WARNING")
-            overall_success = True # 流程本身没出错，只是没找到结果
-        else:
-            _log_status(_("同源映射完成，找到 {} 条映射结果。").format(len(mapped_df)))
-            _log_progress(80, _("映射完成，正在写入结果。"))
+        try:
+            s_to_b_df = pd.read_csv(s_to_b_homology_file)
+            _log_progress(30, _("同源文件加载完毕。"))
 
-            final_output_path = output_csv_path
-            if not final_output_path:
-                # 默认输出到下载目录或临时目录
-                final_output_dir = os.path.join(downloader_cfg.get('download_output_base_dir', "downloaded_cotton_data"), "homology_map_results")
-                os.makedirs(final_output_dir, exist_ok=True)
-                final_output_path = os.path.join(final_output_dir, f"homology_map_{source_assembly_id}_to_{target_assembly_id}.csv")
+            # 从配置中获取筛选标准和列名
+            homology_cols = pipeline_cfg.get('homology_columns', {})
+            sel_criteria = pipeline_cfg.get('selection_criteria_source_to_bridge', {})
 
-            mapped_df.to_csv(final_output_path, index=False)
-            _log_status(_("同源映射结果已保存到: {}").format(final_output_path))
-            overall_success = True
+            _log_status(_("开始筛选最佳拟南芥同源基因..."))
+            _log_progress(50, _("筛选中..."))
 
-    except Exception as e:
-        _log_status(_("执行同源映射时发生错误: {}").format(e), "ERROR")
-        overall_success = False
-    finally:
-        if task_done_callback: task_done_callback(overall_success)
-    return overall_success
+            # 筛选出与输入基因相关的行
+            source_query_col = homology_cols.get('query', "Query")
+            related_homology_df = s_to_b_df[s_to_b_df[source_query_col].isin(source_gene_ids)]
+
+            # 调用 select_best_homologs
+            best_hits_df = select_best_homologs(
+                homology_df=related_homology_df,
+                query_gene_id_col=source_query_col,
+                match_gene_id_col=homology_cols.get('match', "Match"),
+                criteria=sel_criteria,
+                evalue_col_in_df=homology_cols.get('evalue', "Exp"),
+                score_col_in_df=homology_cols.get('score', "Score"),
+                pid_col_in_df=homology_cols.get('pid', "PID")
+            )
+
+            _log_progress(80, _("筛选完成。"))
+            if best_hits_df.empty:
+                _log_status(_("未找到任何符合条件的拟南芥同源基因。"), "WARNING")
+
+            best_hits_df.to_csv(final_output_path, index=False)
+            _log_status(_("一步映射结果已保存到: {}").format(final_output_path))
+            _log_progress(100, _("流程结束。"))
+            if task_done_callback: task_done_callback(True)
+            return True
+
+        except Exception as e:
+            _log_status(_("执行一步映射时发生错误: {}").format(e), "ERROR")
+            if task_done_callback: task_done_callback(False)
+            return False
+
+    else:
+        # --- 执行旧的两步映射：棉花 -> 拟南芥 -> 棉花 ---
+        _log_status(_("执行两步映射模式: 棉花 -> 桥梁 -> 棉花..."))
+        _log_progress(10, _("加载同源文件..."))
+
+        s_to_b_homology_file = s_to_b_homology_file_override or pipeline_cfg.get('homology_files', {}).get(
+            'bsa_to_bridge_csv')
+        b_to_t_homology_file = b_to_t_homology_file_override or pipeline_cfg.get('homology_files', {}).get(
+            'bridge_to_hvg_csv')
+
+        if not CORE_MODULES_IMPORTED:
+            _log_status(_("错误: 核心模块未加载，无法执行同源映射。"), "ERROR");
+            return False
+
+        pipeline_cfg = config.get('integration_pipeline', {})
+        downloader_cfg = config.get('downloader', {})
+
+        # 获取基因组源信息，用于 slicer
+        genome_sources = {}
+        if 'genome_sources_file' in downloader_cfg:
+            from .config.loader import get_genome_data_sources as get_gs_func # 动态导入，避免循环依赖
+            genome_sources = get_gs_func(config) or {}
+
+        source_assembly_id = source_assembly_id_override if source_assembly_id_override else pipeline_cfg.get('bsa_assembly_id')
+        target_assembly_id = target_assembly_id_override if target_assembly_id_override else pipeline_cfg.get('hvg_assembly_id')
+
+        if not all([source_assembly_id, target_assembly_id]):
+            _log_status(_("错误: 必须指定源基因组ID和目标基因组ID。"), "ERROR");
+            return False
+        if source_assembly_id == target_assembly_id:
+            _log_status(_("源基因组和目标基因组相同，无需执行同源映射。"), "INFO")
+            return True # 认为成功
+
+        s_to_b_homology_file = s_to_b_homology_file_override
+        b_to_t_homology_file = b_to_t_homology_file_override
+
+        # 尝试从配置中获取同源文件路径
+        homology_files_cfg = pipeline_cfg.get('homology_files', {})
+        if not s_to_b_homology_file:
+            s_to_b_homology_file = homology_files_cfg.get('bsa_to_bridge_csv')
+        if not b_to_t_homology_file:
+            b_to_t_homology_file = homology_files_cfg.get('bridge_to_hvg_csv')
+
+        if not all([s_to_b_homology_file, b_to_t_homology_file]):
+            _log_status(_("错误: 必须提供源到桥梁和桥梁到目标的同源文件路径。"), "ERROR");
+            return False
+        if not os.path.exists(s_to_b_homology_file):
+            _log_status(_("错误: 源到桥梁同源文件 '{}' 未找到。").format(s_to_b_homology_file), "ERROR");
+            return False
+        if not os.path.exists(b_to_t_homology_file):
+            _log_status(_("错误: 桥梁到目标同源文件 '{}' 未找到。").format(b_to_t_homology_file), "ERROR");
+            return False
+
+        try:
+            s_to_b_homology_df = pd.read_csv(s_to_b_homology_file)
+            b_to_t_homology_df = pd.read_csv(b_to_t_homology_file)
+            _log_progress(20, _("同源文件加载完毕。"))
+
+        except Exception as e:
+            _log_status(_("加载同源文件时出错: {}").format(e), "ERROR");
+            return False
+        _log_progress(20, _("同源文件加载完毕。"))
+
+        source_gene_ids = source_gene_ids_override
+        if not source_gene_ids:
+            _log_status(_("错误: 必须提供需要映射的源基因ID列表。"), "ERROR");
+            return False
+
+        homology_cols = pipeline_cfg.get('homology_columns', {})
+        sel_criteria_s_to_b = pipeline_cfg.get('selection_criteria_source_to_bridge', {})
+        sel_criteria_b_to_t = pipeline_cfg.get('selection_criteria_bridge_to_target', {})
+        bridge_species_name = pipeline_cfg.get('bridge_species_name', "Arabidopsis_thaliana")
+
+        source_id_slicer = genome_sources.get(source_assembly_id, {}).get('homology_id_slicer')
+        bridge_id_slicer = genome_sources.get(target_assembly_id, {}).get('homology_id_slicer') # Assuming target assembly's slicer for bridge to target
+
+        _log_status(_("开始执行同源映射算法..."))
+        _log_progress(40, _("执行映射..."))
+        try:
+            mapped_df, fuzzy_count = map_genes_via_bridge(
+                source_gene_ids=source_gene_ids,
+                source_assembly_name=source_assembly_id,
+                target_assembly_name=target_assembly_id,
+                bridge_species_name=bridge_species_name,
+                source_to_bridge_homology_df=s_to_b_homology_df,
+                bridge_to_target_homology_df=b_to_t_homology_df,
+                s_to_b_query_col=homology_cols.get('query', "Query"),
+                s_to_b_match_col=homology_cols.get('match', "Match"),
+                b_to_t_query_col=homology_cols.get('query', "Query"),
+                b_to_t_match_col=homology_cols.get('match', "Match"),
+                evalue_col=homology_cols.get('evalue', "Exp"),
+                score_col=homology_cols.get('score', "Score"),
+                pid_col=homology_cols.get('pid', "PID"),
+                selection_criteria_s_to_b=sel_criteria_s_to_b,
+                selection_criteria_b_to_t=sel_criteria_b_to_t,
+                source_id_slicer=source_id_slicer,
+                bridge_id_slicer=bridge_id_slicer
+            )
+            if fuzzy_count > 0:
+                _log_status(_("注意: 在同源映射中执行了 {} 次模糊匹配。").format(fuzzy_count), "WARNING")
+
+            if mapped_df.empty:
+                _log_status(_("未找到任何有效同源映射结果。"), "WARNING")
+                overall_success = True # 流程本身没出错，只是没找到结果
+            else:
+                _log_status(_("同源映射完成，找到 {} 条映射结果。").format(len(mapped_df)))
+                _log_progress(80, _("映射完成，正在写入结果。"))
+
+                final_output_path = output_csv_path
+                if not final_output_path:
+                    # 默认输出到下载目录或临时目录
+                    final_output_dir = os.path.join(downloader_cfg.get('download_output_base_dir', "downloaded_cotton_data"), "homology_map_results")
+                    os.makedirs(final_output_dir, exist_ok=True)
+                    final_output_path = os.path.join(final_output_dir, f"homology_map_{source_assembly_id}_to_{target_assembly_id}.csv")
+
+                mapped_df.to_csv(final_output_path, index=False)
+                _log_status(_("同源映射结果已保存到: {}").format(final_output_path))
+                overall_success = True
+
+        except Exception as e:
+            _log_status(_("执行同源映射时发生错误: {}").format(e), "ERROR")
+            overall_success = False
+        finally:
+            if task_done_callback: task_done_callback(overall_success)
+        return overall_success
 
 # 新增：独立GFF基因查询功能
 def run_gff_gene_lookup_standalone(
@@ -429,6 +528,108 @@ def run_gff_gene_lookup_standalone(
     _log_progress(100, _("GFF查询流程结束。"))
     if task_done_callback: task_done_callback(overall_success)
     return overall_success
+
+
+def run_cotton_to_ath_conversion(
+        config: Dict[str, Any],
+        source_assembly: str,
+        gene_ids: List[str],
+        status_callback: Optional[Callable[[str], None]] = None
+) -> Tuple[Dict[str, str], str]:
+    """
+    将棉花基因ID列表转换为拟南芥同源基因ID。
+
+    Args:
+        config (Dict[str, Any]): 主配置字典。
+        source_assembly (str): 源棉花基因组的ID (例如, 'NBI_v1.1')。
+        gene_ids (List[str]): 需要转换的棉花基因ID列表。
+        status_callback (Optional[Callable[[str], None]]): 用于报告状态更新的回调函数。
+
+    Returns:
+        Tuple[Dict[str, str], str]: 一个元组，包含 (结果字典, 拟南芥基因组类型字符串)。
+    """
+
+    def _log(msg: str):
+        if status_callback:
+            status_callback(msg)
+        else:
+            print(msg)
+
+    _log(f"开始从 {source_assembly} 到拟南芥的基因转换...")
+
+    # 1. 从配置中获取基因组来源信息
+    genome_sources = get_genome_data_sources(config)
+    if not genome_sources:
+        raise ValueError("无法加载基因组来源信息。")
+
+    source_info = genome_sources.get(source_assembly)
+    if not source_info:
+        raise ValueError(f"在基因组来源文件中未找到 '{source_assembly}' 的配置。")
+
+    homology_type = source_info.get('homology_type', _('未知版本'))
+    homology_url = source_info.get('homology_ath_url')
+    if not homology_url:
+        raise ValueError(f"基因组 '{source_assembly}' 未配置 'homology_ath_url'。")
+
+    # 2. 确定本地同源文件的路径 (假设已被下载和转换)
+    # downloader 会将 .xlsx.gz 或 .txt.gz 转换为 .csv
+    base_dir = config.get('downloader', {}).get('download_output_base_dir', 'downloaded_cotton_data')
+    safe_dir_name = source_info.get("species_name", source_assembly).replace(" ", "_").replace(".", "_").replace("(",
+                                                                                                                 "").replace(
+        ")", "").replace("'", "")
+    version_output_dir = os.path.join(base_dir, safe_dir_name)
+
+    # 尝试找到对应的CSV文件，这是下载和转换后的最终产物
+    # 从URL推断原始文件名
+    parsed_url = urlparse(homology_url)
+    original_filename = os.path.basename(parsed_url.path)
+    # 将 .xlsx.gz 或 .txt.gz 等后缀替换为 .csv
+    base_name_no_ext = os.path.splitext(os.path.splitext(original_filename)[0])[0]
+    homology_csv_path = os.path.join(version_output_dir, f"{base_name_no_ext}.csv")
+
+    if not os.path.exists(homology_csv_path):
+        raise FileNotFoundError(f"同源文件不存在: {homology_csv_path}。请先通过'数据下载'功能下载并转换该文件。")
+
+    _log(f"使用同源文件: {os.path.basename(homology_csv_path)}")
+
+    # 3. 读取同源文件并进行查找
+    homology_df = pd.read_csv(homology_csv_path)
+    homology_cols = config.get('integration_pipeline', {}).get('homology_columns', {})
+
+    # 获取用于筛选的最佳匹配标准
+    sel_criteria = config.get('integration_pipeline', {}).get('selection_criteria_source_to_bridge', {})
+
+    all_matches = homology_df[homology_df[homology_cols.get('query')].isin(gene_ids)]
+
+    # 使用 select_best_homologs 函数来找到最佳匹配
+    best_hits_df = select_best_homologs(
+        homology_df=all_matches,
+        query_gene_id_col=homology_cols.get('query'),
+        match_gene_id_col=homology_cols.get('match'),
+        criteria=sel_criteria,
+        evalue_col_in_df=homology_cols.get('evalue'),
+        score_col_in_df=homology_cols.get('score'),
+        pid_col_in_df=homology_cols.get('pid')
+    )
+
+    results = {}
+    if not best_hits_df.empty:
+        # 将结果转换为字典
+        results = pd.Series(
+            best_hits_df[homology_cols.get('match')].values,
+            index=best_hits_df[homology_cols.get('query')]
+        ).to_dict()
+
+    # 为未找到匹配的基因添加标记
+    for gene_id in gene_ids:
+        if gene_id not in results:
+            results[gene_id] = "Not Found"
+
+    _log(f"转换完成，处理了 {len(gene_ids)} 个基因ID。")
+
+    return results, homology_type
+
+
 
 # --- 主整合函数 ---
 def integrate_bsa_with_hvg(

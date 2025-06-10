@@ -135,8 +135,8 @@ except ImportError as e:
         if status_callback: status_callback("Mock download finished.")
 
 
-    def integrate_bsa_with_hvg(config, input_excel_path_override=None, output_sheet_name_override=None,
-                               status_callback=None, progress_callback=None):
+    def run_joint_analysis(config, input_excel_path_override=None, output_sheet_name_override=None,
+                           status_callback=None, progress_callback=None):
         print(
             f"MOCK (CLI): integrate_bsa_with_hvg called. Input: {input_excel_path_override}, Output Sheet: {output_sheet_name_override}")
         if status_callback: status_callback("Mock integration started.")
@@ -316,12 +316,12 @@ def handle_download_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
 
 def handle_integrate_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
     logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.integrate")  # 子logger
-    logger_cmd.info(_("执行整合分析命令..."))
+    logger_cmd.info(_("执行联合分析命令..."))
     if not config_main or 'integration_pipeline' not in config_main:
         logger_cmd.error(_("错误: 配置文件中缺少 'integration_pipeline' 配置部分。"))
         return
 
-    integrate_bsa_with_hvg(  # 调用已导入的pipelines函数
+    run_joint_analysis(  # 调用已导入的pipelines函数
         config_main,
         input_excel_path_override=args.input_excel,
         output_sheet_name_override=args.output_sheet
@@ -475,11 +475,11 @@ def cli_main_entry():
     group_force.add_argument("--no-force", action="store_false", dest="force_set", help=_("不强制重新下载 (默认)。"))
     parser_download.set_defaults(func=handle_download_cmd, force_set=None)
 
-    # 整合分析子命令
-    parser_integrate = subparsers.add_parser("integrate", help=_("整合BSA结果与HVG数据。"))
+    # 联合分析子命令
+    parser_integrate = subparsers.add_parser("joint_analysis", help=_("联合分析BSA结果与HVG数据，筛选候选基因。"))
     parser_integrate.add_argument("--input_excel", type=str, help=_("覆盖输入Excel文件路径。"))
     parser_integrate.add_argument("--output_sheet", type=str, help=_("覆盖输出工作表名称。"))
-    parser_integrate.set_defaults(func=handle_integrate_cmd)
+    parser_integrate.set_defaults(func=handle_joint_analysis_cmd)
 
     # 新增：同源映射子命令
     parser_homology_map = subparsers.add_parser("homology_map", help=_("独立执行基因组同源映射。"))

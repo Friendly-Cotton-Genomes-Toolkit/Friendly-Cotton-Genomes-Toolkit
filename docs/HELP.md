@@ -1,203 +1,318 @@
-﻿[中文（简体）](HELP.md) | [English](HELP_en.md) | [日本語](HELP_ja.md) | [繁體中文](HELP_zh-hant.md)
+# 友好棉花基因组工具包 (FCGT) - 帮助文档
+
+欢迎使用 FCGT！本帮助文档将引导您完成从配置到使用的全部流程，无论您是使用图形界面（GUI）还是命令行（CLI），都能在这里找到详细的指引。
+
+## 目录
+1.  [**核心概念：配置文件讲解**](#1-核心概念配置文件讲解)
+    * [`config.yml` 总览](#configyml-总览)
+    * [各部分详解](#各部分详解)
+2.  [**数据准备：输入文件格式要求**](#2-数据准备输入文件格式要求)
+    * [**【重点】联合分析输入要求**](#重点联合分析输入要求)
+        * [BSA 数据工作表](#bsa-数据工作表)
+        * [HVG 数据工作表](#hvg-数据工作表)
+    * [**其他工具输入要求**](#其他工具输入要求)
+        * [功能注释](#功能注释)
+        * [AI 助手](#ai-助手)
+        * [基因组转换 / 基因位点查询](#基因组转换--基因位点查询)
+3.  [**图形界面 (GUI) 使用教程**](#3-图形界面-gui-使用教程)
+    * [主界面与导航](#主界面与导航)
+    * [主页：开始你的工作](#主页开始你的工作)
+    * [配置编辑器：自定义你的工具](#配置编辑器自定义你的工具)
+    * [联合分析：核心流程](#联合分析核心流程)
+    * [数据工具：多功能瑞士军刀](#数据工具多功能瑞士军刀)
+4.  [**命令行 (CLI) 使用教程**](#4-命令行-cli-使用教程)
+    * [基本用法](#基本用法)
+    * [命令详解](#命令详解)
+5.  [**高级主题：网络代理**](#5-高级主题网络代理)
 
 ---
 
-# 友好棉花基因组分析工具包 （FCGT） - 帮助文档
+## 1. 核心概念：配置文件讲解
 
-本页提供了工具包使用所需的数据准备和配置文件设置的详细指南。
+FCGT 的所有行为都由一个核心配置文件 `config.yml` 指导。无论是 GUI 还是 CLI，都会读取这个文件来确定工作参数。理解这个文件是高效使用本工具的关键。
 
-## 目录
+### `config.yml` 总览
+这是一个 [YAML](https://yaml.org/) 格式的文件，具有清晰的层级结构，您可以使用任何文本编辑器打开它。它的主要部分包括：
 
-  * [1. 核心功能](https://www.google.com/search?q=%231-%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD)
-      * [1.1. 整合分析 (BSA区域筛选HVG)](https://www.google.com/search?q=%2311-%E6%95%B4%E5%90%88%E5%88%86%E6%9E%90-bsa%E5%8C%BA%E5%9F%9F%E7%AD%9B%E9%80%89hvg)
-      * [1.2. 基因组转换 (独立同源映射)](https://www.google.com/search?q=%2312-%E5%9F%BA%E5%9B%A0%E7%BB%84%E8%BD%AC%E6%8D%A2-%E7%8B%AC%E7%AB%8B%E5%90%8C%E6%BA%90%E6%98%A0%E5%B0%84)
-      * [1.3. 基因位点查询 (GFF查询)](https://www.google.com/search?q=%2313-%E5%9F%BA%E5%9B%A0%E4%BD%8D%E7%82%B9%E6%9F%A5%E8%AF%A2-gff%E6%9F%A5%E8%AF%A2)
-  * [2. 数据准备指南](https://www.google.com/search?q=%232-%E6%95%B0%E6%8D%AE%E5%87%86%E5%A4%87%E6%8C%87%E5%8D%97)
-      * [2.1. BSA 定位区域表](https://www.google.com/search?q=%2321-bsa-%E5%AE%9A%E4%BD%8D%E5%8C%BA%E5%9F%9F%E8%A1%A8)
-      * [2.2. 高变异基因 (HVG) 数据表](https://www.google.com/search?q=%2322-%E9%AB%98%E5%8F%98%E5%BC%82%E5%9F%BA%E5%9B%A0-hvg-%E6%95%B0%E6%8D%AE%E8%A1%A8)
-  * [3. 配置文件指南](https://www.google.com/search?q=%233-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E6%8C%87%E5%8D%97)
-      * [3.1. 主配置文件 (`config.yml`)](https://www.google.com/search?q=%2331-%E4%B8%BB%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6-configyml)
-      * [3.2. 基因组源文件 (`genome_sources_list.yml`)](https://www.google.com/search?q=%2332-%E5%9F%BA%E5%9B%A0%E7%BB%84%E6%BA%90%E6%96%87%E4%BB%B6-genome_sources_listyml)
+* `downloader`: 数据下载器相关的配置。
+* `ai_services`: AI 助手相关的配置，包括不同服务商的 API Key 和模型。
+* `ai_prompts`: AI 任务的指令模板（Prompt）。
+* `integration_pipeline`: “联合分析”核心流程的参数。
+* `annotation_tool`: 功能注释工具的配置。
 
------
+### 各部分详解
 
-## 1\. 核心功能
-
-本工具包主要提供三大核心功能，您可以在GUI的不同选项卡或使用CLI的不同子命令来调用它们。
-
-### 1.1. 整合分析 (BSA区域筛选HVG)
-
-此功能是工具包的核心，旨在**利用BSA定位到的基因组区域，来筛选您提供的高变异基因（HVG）列表**，从而大大缩小候选基因的范围，为后续的精细定位提供支持。
-
-**工作流程:**
-
-1.  **输入BSA区域**: 您需要在Excel的“BSA工作表”中提供与目标性状关联的基因组**区域**，必须包含 `chr`, `region.start`, `region.end` 这三列。
-2.  **查找区域内所有基因**: 工具会根据您在配置文件中指定的基因组版本（`bsa_assembly_id`），读取对应的GFF注释文件，并找出所有物理位置落在这个区间内的基因。
-3.  **与HVG列表取交集**: 接着，工具会读取您在“HVG工作表”中提供的基因列表。
-4.  **跨版本转换 (如果需要)**: 如果您的BSA数据和HVG数据基于**不同**的基因组版本，工具会自动执行“基因组转换”（同源映射），将第2步中找到的基因ID转换为HVG基因组版本上的对应ID，然后再与您的HVG列表取交集。
-5.  **输出结果**: 最终，一个既位于关键定位区间、又属于高变异基因的、高优先级的候选基因列表，将被输出到输入Excel文件的一个新工作表中。
-
-### 1.2. 基因组转换 (独立同源映射)
-
-此功能允许您独立地将一个基因组版本上的基因ID列表，转换为另一个版本上的同源基因ID。这对于在不同版本的基因组注释之间进行基因列表的“Liftover”非常有用。
-
-  * **输入**: 源基因ID列表、源基因组版本、目标基因组版本、以及两个同源关系文件（源-\>桥梁物种，桥梁物种-\>目标）。
-  * **输出**: 一个包含源基因、桥梁基因和成功映射的目标基因及其相关比对分数的CSV文件。
-
-### 1.3. 基因位点查询 (GFF查询)
-
-此功能允许您根据基因ID或基因组区域，快速地从GFF注释文件中提取详细的基因信息。
-
-  * **输入**: 基因组版本ID、一个或多个基因ID（逗号分隔） **或** 一个基因组区域（格式如 `Scaffold_A1:1000-5000`）。
-  * **输出**: 一个包含所查询基因的详细信息（如位置、链向、转录本、外显子、CDS坐标等）的CSV文件。
-
------
-
-## 2\. 数据准备指南
-
-为了确保分析流程能够顺利运行，请根据以下说明准备您的输入Excel文件。
-
-### 2.1. BSA 定位区域表
-
-这是包含您通过BSA (Bulked Segregant Analysis) 方法定位到的候选**区域**的表格。
-
-  * **Sheet 名称**: 表格所在的 Sheet 名称必须与 `config.yml` 文件中 `integration_pipeline.bsa_sheet_name` 的值一致 (默认为: `BSA_Results`)。
-  * **必需列**: 表格中必须包含以下三列，且列名必须与 `config.yml` 中 `bsa_columns` 的配置完全一致。
-
-| 列名 (默认) | 类型 | 说明 | 示例 |
-| :--- | :--- | :--- | :--- |
-| `chr` | 文本 | 染色体或支架(Scaffold)的ID。必须与GFF文件中的ID匹配。 | `Ghir_A03` |
-| `region.start`| 整数 | 候选区域的起始位置（1-based）。 | `10050` |
-| `region.end` | 整数 | 候选区域的结束位置（1-based）。 | `250000` |
-
-#### 示例表格 (`BSA_Results` Sheet):
-
-```
-chr				region.start   region.end   some_other_info
-Ghir_A03	    10050          25000        0.98
-Ghir_D04	    550000         780000       0.95
-...          	...            ...          ...
-```
-
------
-
-### 2.2. 高变异基因 (HVG) 数据表
-
-这是包含您筛选出的高变异基因 (Highly Variable Genes) 信息的表格。
-
-  * **Sheet 名称**: 表格所在的 Sheet 名称必须与 `config.yml` 文件中 `integration_pipeline.hvg_sheet_name` 的值一致 (默认为: `HVG_List`)。
-  * **必需列**: 表格中必须包含以下三列，且列名必须与 `config.yml` 中 `hvg_columns` 的配置完全一致。
-
-| 列名 (默认) | 类型 | 说明 | 示例 |
-| :--- | :--- | :--- | :--- |
-| `gene_id` | 文本 | 基因ID。必须与HVG数据所基于的基因组版本的GFF文件中的基因ID匹配。 | `Ghir_A01G000100` |
-| `hvg_category` | 文本 | HVG 分类。必须为以下三个值之一："WT特有TopHVG", "Ms1特有TopHVG", "共同TopHVG" | `WT特有TopHVG` |
-| `log2fc_WT_vs_Ms1`| 数字 | Log2 Fold Change (WT vs Ms1) 的值。 | `2.58` |
-
-#### 示例表格 (`HVG_List` Sheet):
-
-```
-gene_id          hvg_category   log2fc_WT_vs_Ms1   p_value
-Ghir_A01G000100  WT特有TopHVG   2.58               0.001
-Ghir_A01G000200  共同TopHVG     -1.75              0.025
-...              ...            ...                ...
-```
-
------
-
-## 3\. 配置文件指南
-
-工具包的行为由两个核心的 YAML (`.yml`) 配置文件驱动。您可以在GUI的“配置编辑”选项卡中修改它们。
-
-### 3.1. 主配置文件 (`config.yml`)
-
-这个文件是所有操作的控制中心。
-
-#### 通用设置
-
-| 参数 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `i18n_language` | 设置程序界面的语言。可选值:`zh-hans` `zh-hant`, `en` 等。 | `zh-hans` |
-
-#### 下载器配置 (`downloader`)
-
-此部分控制数据下载功能的行为。
-
-| 参数 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `genome_sources_file` | 指向包含基因组下载链接的 `genome_sources_list.yml` 文件。可以是相对路径或绝对路径。 | `genome_sources_list.yml` |
-| `download_output_base_dir` | 所有下载文件存放的基础目录。 | `downloaded_cotton_data` |
-| `force_download` | 是否强制重新下载已存在的文件。`true` 为是, `false` 为否。 | `false` |
-| `max_workers` | 多线程下载时使用的最大线程数。 | `3` |
-| `proxies` | 设置网络代理。如果不需要，请将 `http` 和 `https` 都设为 `null`。 | `http: "http://your-proxy:port"` |
-
-#### 整合流程配置 (`integration_pipeline`)
-
-此部分定义了**整合分析**以及**独立功能模块**所需的大部分参数。
-
-| 参数 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `input_excel_path` | 【整合分析】包含BSA和HVG数据的输入Excel文件路径。 | `data/my_analysis.xlsx` |
-| `bsa_sheet_name` | 【整合分析】输入Excel中BSA数据所在的工作表(Sheet)名称。 | `BSA_Results` |
-| `hvg_sheet_name` | 【整合分析】输入Excel中HVG数据所在的工作表(Sheet)名称。 | `HVG_List` |
-| `output_sheet_name` | 【整合分析】分析结果将被写入到输入Excel中的一个新工作表，这是该工作表的名称。 | `Combined_BSA_HVG_Analysis` |
-| `bsa_assembly_id` | 您的BSA数据所基于的基因组版本ID。此ID必须与 `genome_sources_list.yml` 中的ID匹配。 | `NBI_v1.1` |
-| `hvg_assembly_id` | 您的HVG数据所基于的基因组版本ID。如果与 `bsa_assembly_id` 相同，则跳过同源映射。 | `HAU_v2.0` |
-| `gff_files` | (可选) 手动指定GFF文件的路径。如果设为 `null`，程序会根据下载目录和版本ID自动推断路径。 | `NBI_v1.1: local/NBI.gff3.gz` |
-| `homology_files` | (可选) 手动指定同源关系CSV文件的路径。当BSA和HVG版本不同时需要。 | `bsa_to_bridge_csv: local/NBI_to_At.csv` |
-| `bridge_species_name` | 用于跨版本同源映射的桥梁物种名称。 | `Arabidopsis_thaliana` |
-| `gff_db_storage_dir` | gffutils数据库的缓存目录。 | `gff_databases_cache` |
-| `force_gff_db_creation` | 是否强制重新创建GFF数据库，即使缓存已存在。 | `false` |
-| `bsa_columns` | 定义BSA工作表中染色体、起始和结束位置的列名。 | `{chr: chr, start: region.start, end: region.end}` |
-| `hvg_columns` | 定义HVG工作表中基因ID、分类和Log2FC值的列名。 | `{gene_id: gene_id, category: hvg_category, ...}` |
-| `homology_columns` | 定义同源关系CSV文件中的列名。 | `{query: Query, match: Match, evalue: Exp, ...}` |
-| `selection_criteria_...` | 定义同源映射中筛选最佳匹配的详细标准（E-value, PID, Score阈值等）。 | `{top_n: 1, evalue_threshold: 1.0e-10, ...}` |
-| `common_hvg_log2fc_threshold` | 用于判断“共同TopHVG”类别基因表达差异是否显著的Log2FC绝对值阈值。 | `1.0` |
-
------
-
-> ### **💡 重要提示：关于基因ID的模糊匹配**
->
-> 在“整合分析”和“基因组转换”流程中，当程序根据您提供的基因ID在同源数据库中进行查找时，会自动启用 **模糊匹配** 机制。
->
->   * **工作原理**: 如果您提供的基因ID（例如 `Ghir.A01G000300`）在同源文件中没有找到完全相同的结果，程序会自动尝试查找所有以此ID为 **前缀** 的基因（例如 `Ghir.A01G000300.1`, `Ghir.A01G000300.2` 等）。
->   * **结果体现**:
->       * 当模糊匹配发生时，**GUI界面和命令行(CLI)的日志**中会显示一条警告信息，提示您此种匹配已发生。
->       * 在最终生成的Excel或CSV结果文件中，会有一个名为 **`Match_Note`** 的列。对于通过模糊匹配找到的条目，该列会明确标注 **"模糊匹配 on '原始ID'"** 及相关信息，方便您溯源和核对。
->
-> 这个功能旨在提高匹配的成功率，确保您不会因为基因ID后缀的微小差异（如转录本编号）而错失重要的同源关系。
-
------
-
-### 3.2. 基因组源文件 (`genome_sources_list.yml`)
-
-这个文件是一个清单，定义了每个棉花基因组版本的数据下载链接。
-
-  * **顶级键**: `genome_sources`。
-  * **子键**: 每个子键都是一个您自定义的、唯一的**基因组版本ID**（例如 `NBI_v1.1`）。这个ID将在主配置文件的 `bsa_assembly_id` 和 `hvg_assembly_id` 中被引用。
-
-每个基因组版本ID下包含以下参数：
-
-| 参数 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `gff3_url` | 该版本基因组GFF3注释文件的下载链接。 | `"https://.../NBI_v1.1.gene.gff3.gz"` |
-| `homology_ath_url` | 该版本与拟南芥（或其他桥梁物种）的同源关系文件的下载链接。通常是BLAST结果。 | `"https://.../blastx_..._vs_arabidopsis.xlsx.gz"` |
-| `species_name` | 物种和版本的详细名称，主要用于创建易于识别的下载目录名。 | `"Gossypium hirsutum (AD1) 'TM-1' genome NAU-NBI_v1.1"` |
-| `homology_id_slicer` | (可选) 用于剪切同源文件中基因ID的分隔符。例如，如果ID是`gene.1_other`，slicer设为`_`，程序会使用`gene.1`进行匹配。如果不需要剪切，设为 `null`。 | `_` |
-
-#### 示例文件 (`genome_sources_list.yml`):
-
+#### `downloader`
 ```yaml
-genome_sources:
-  NBI_v1.1:
-    gff3_url: "https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/genes/NBI_Gossypium_hirsutum_v1.1.gene.gff3.gz"
-    homology_ath_url: "https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/protein_homology_2019/blastx_G.hirsutum_NAU-NBI_v1.1_vs_arabidopsis.xlsx.gz"
-    species_name: "Gossypium hirsutum (AD1) 'TM-1' genome NAU-NBI_v1.1"
-    homology_id_slicer: "_"
-  
-  HAU_v2.0:
-    gff3_url: "https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/genes/TM-1_HAU_v2_gene.gff3.gz"
-    homology_ath_url: "https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz"
-    species_name: "Gossypium hirsutum (AD1) 'TM-1' genome HAU_v2.0"
-    homology_id_slicer: "_"
+downloader:
+  genome_sources_file: genome_sources_list.yml
+  download_output_base_dir: downloaded_cotton_data
+  force_download: false
+  max_workers: 3
+  proxies:
+    http: null
+    https: null
 ```
+* `genome_sources_file`: 定义基因组下载来源的另一个 YAML 文件路径，**通常保持默认即可**。
+* `download_output_base_dir`: 所有下载的基因组数据存放的根目录。
+* `force_download`: 是否强制重新下载已存在的文件。`false` 表示跳过已下载的文件。
+* `max_workers`: 下载时使用的最大线程数，合理设置可以加速下载。
+* `proxies`: 网络代理设置，详见 [网络代理](#5-高级主题网络代理) 部分。
+
+#### `ai_services`
+```yaml
+ai_services:
+  default_provider: google
+  providers:
+    google:
+      api_key: 'YOUR_GOOGLE_API_KEY'
+      model: 'gemini-1.5-flash'
+      base_url: null
+    openai:
+      api_key: 'YOUR_OPENAI_API_KEY'
+      model: 'gpt-4o'
+      base_url: null
+    # ... 其他服务商 ...
+```
+* `default_provider`: 在 GUI 的 AI 助手页面默认选择的服务商。
+* `providers`: 包含所有支持的 AI 服务商。
+    * `api_key`: **【必填】** 您从相应服务商获取的 API Key。
+    * `model`: 您希望使用的具体模型名称。
+    * `base_url`: 如果您使用第三方代理或私有部署的服务，请在此填写API的基地址。
+
+#### `integration_pipeline`
+这是**联合分析**功能的核心配置区域。
+```yaml
+integration_pipeline:
+  input_excel_path: "path/to/your/input.xlsx"
+  bsa_sheet_name: "BSA_QTL"
+  hvg_sheet_name: "HVG_results"
+  output_sheet_name: "Integrated_Candidates"
+  bsa_assembly_id: "NAU-NBI_v1.1"
+  hvg_assembly_id: "CRI_v1"
+  bridge_species_name: "arabidopsis"
+  # ... 其他高级参数 ...
+```
+* `input_excel_path`: 包含 BSA 和 HVG 数据的 Excel 文件路径。
+* `bsa_sheet_name` / `hvg_sheet_name`: Excel 中对应数据所在的工作表（Sheet）名称。
+* `output_sheet_name`: 分析结果将写入到这个新的工作表中。
+* `bsa_assembly_id` / `hvg_assembly_id`: 两个数据集分别对应的基因组版本ID，必须与 `genome_sources_list.yml` 中的ID一致。
+* `bridge_species_name`: 用于在不同版本间进行同源映射的“桥梁物种”，默认为拟南芥 `arabidopsis`。
+* `selection_criteria_*`: 定义了从“源->桥梁”和“桥梁->目标”两步同源筛选时所使用的严格标准（如 E-value, PID, Score 等），**建议高级用户修改**。
+
+---
+
+## 2. 数据准备：输入文件格式要求
+
+“Garbage in, garbage out.” 正确的数据格式是成功分析的第一步。
+
+### **【重点】联合分析输入要求**
+
+此功能是工具的核心，对输入格式要求最为严格。您需要准备一个 **Excel (`.xlsx`) 文件**，其中包含至少两个符合以下要求的工作表（Sheet）。
+
+#### BSA 数据工作表
+此工作表包含您通过 BSA (Bulked Segregant Analysis) 方法定位到的候选**区域**。
+
+* **Sheet 名称**: 表格所在的 Sheet 名称必须与 `config.yml` 文件中 `integration_pipeline.bsa_sheet_name` 的值一致 (默认为: `BSA_Results`)。
+* **必需列**: 表格中**必须**包含以下三列，列名（表头）必须与 `config.yml` 中 `bsa_columns` 的配置完全一致。
+
+| 列名 (默认)    | 数据类型 | 说明                                                         | 示例         |
+| :------------- | :------- | :----------------------------------------------------------- | :----------- |
+| `chr`          | 文本     | 染色体或支架(Scaffold)的ID。必须与GFF文件中的ID命名方式一致。 | `Ghir_A03`   |
+| `region.start` | 整数     | 候选区域的起始位置（1-based）。                              | `10050`      |
+| `region.end`   | 整数     | 候选区域的结束位置（1-based）。                              | `250000`     |
+
+* **示例表格** (`BSA_Results` Sheet):
+    ```
+    chr         region.start   region.end   some_other_info
+    Ghir_A03    10050          25000        0.98
+    Ghir_D04    550000         780000       0.95
+    ...         ...            ...          ...
+    ```
+
+#### HVG 数据工作表
+此工作表包含您筛选出的高变异基因 (Highly Variable Genes) 列表。
+
+* **Sheet 名称**: 表格所在的 Sheet 名称必须与 `config.yml` 文件中 `integration_pipeline.hvg_sheet_name` 的值一致 (默认为: `HVG_List`)。
+* **必需列**: 表格中**必须**包含以下三列，列名（表头）必须与 `config.yml` 中 `hvg_columns` 的配置完全一致。
+
+| 列名 (默认)        | 数据类型 | 说明                                                         | 示例              |
+| :----------------- | :------- | :----------------------------------------------------------- | :---------------- |
+| `gene_id`          | 文本     | 基因ID。必须与HVG数据所基于的基因组版本的GFF文件中的基因ID匹配。 | `Ghir_A01G000100` |
+| `hvg_category`     | 文本     | HVG 分类。用于后续的逻辑判断。                               | `WT特有TopHVG`    |
+| `log2fc_WT_vs_Ms1` | 数字     | Log2 Fold Change 的值。                                      | `2.58`            |
+
+* **示例表格** (`HVG_List` Sheet):
+    ```
+    gene_id          hvg_category   log2fc_WT_vs_Ms1   p_value
+    Ghir_A01G000100  WT特有TopHVG   2.58               0.001
+    Ghir_A01G000200  共同TopHVG     -1.75              0.025
+    ...              ...            ...                ...
+    ```
+
+### **其他工具输入要求**
+
+#### 功能注释
+* **文件格式**: Excel (`.xlsx`) 或 CSV (`.csv`)。
+* **要求**: 文件中必须有一列包含您想注释的**基因ID**。您需要在GUI界面上准确填写这一列的表头名称。
+
+#### AI 助手
+* **文件格式**: CSV (`.csv`)。
+* **要求**: 文件中必须有一列是您希望AI处理的**文本内容**。您需要在GUI上指定该列的表头，并为AI生成的新内容指定一个新的列名。
+
+#### 基因组转换 / 基因位点查询
+* **格式**: 在GUI界面的大文本框中直接粘贴基因列表，**每行一个基因ID**。不支持其他格式。
+
+---
+
+## 3. 图形界面 (GUI) 使用教程
+
+双击 `FCGT-GUI.exe` (或对应系统的可执行文件) 启动程序。
+
+### 主界面与导航
+* **左侧导航栏**: 用于切换四个主要功能页面：**主页**、**配置编辑器**、**联合分析**和**数据工具**。
+* **底部状态栏**: 左侧显示当前操作状态，右侧显示任务进度条。
+* **底部日志区**: 显示详细的操作日志，可通过“显示/隐藏日志”按钮控制。
+
+### 主页：开始你的工作
+这是程序的入口。
+1.  **加载配置**: 点击 **“加载配置文件...”** 选择您本地的 `config.yml` 文件。成功加载后，程序会解锁所有功能。
+2.  **生成配置**: 如果您是第一次使用，点击 **“生成默认配置...”**，选择一个空目录，程序会自动生成 `config.yml` 和 `genome_sources_list.yml` 两个模板文件。然后您需要根据本文第一部分的讲解，修改 `config.yml`（尤其是API Key），再回来加载它。
+
+### 配置编辑器：自定义你的工具
+这个页面是 `config.yml` 文件的可视化版本，您在这里做的所有修改，点击右上角的 **“应用并保存配置”** 按钮后都会被写入到文件中。
+* **AI服务商**: 对于每个AI服务商，您可以填写`API Key`和`Base URL`。填写 Key 后，点击 **“刷新”** 按钮，程序会联网获取该服务商支持的模型列表，并填充到下方的“模型”下拉框中。
+
+### 联合分析：核心流程
+这是FCGT的核心，用于筛选候选基因。
+1.  **指定文件**: 点击“浏览...”选择包含BSA和HVG数据的Excel文件。
+2.  **选择工作表**: 程序会自动读取Excel中的所有工作表名称，请在下方的两个下拉框中分别选择BSA和HVG数据所在的工作表。
+3.  **指定基因组版本**: 根据您的实验设计，在下方的两个下拉框中选择BSA和HVG数据对应的基因组版本。
+4.  **开始分析**: 点击 **“开始联合分析”** 按钮。程序将自动执行：
+    * 根据BSA区间提取基因。
+    * 将BSA基因和HVG基因通过“桥梁物种”进行同源映射，统一到同一版本。
+    * 取交集，找到最终的候选基因。
+    * 结果会作为新工作表写入到您指定的Excel文件中。
+
+### 数据工具：多功能瑞士军刀
+这里集合了多个实用的小工具。
+
+#### **数据下载**
+* 选择您需要下载的棉花基因组版本（可多选）。
+* **使用网络代理**: 如果您在 `config.yml` 中配置了代理地址，并希望下载时使用，请勾选此项。
+* **强制重新下载**: 如果勾选，即使本地已存在文件，程序也会重新下载。
+* 点击 **“开始下载”**。
+
+#### **基因组转换 (Liftover)**
+* 在左侧文本框中输入或粘贴源基因ID列表。
+* 在“源基因组版本”下拉框中选择这些ID对应的版本。
+* 在“目标基因组版本”下拉框中选择您想转换到的版本。**特别地**，您可以选择“拟南芥”，程序会自动寻找与您源基因ID同源的拟南芥基因。
+* 点击 **“开始同源映射”**，结果会保存为一个CSV文件。
+
+#### **基因位点查询**
+* 选择一个基因组版本。
+* **二选一查询**:
+    1.  在“染色体区域”框中输入 `染色体:起始-终止` 格式的坐标，如 `Ghir_A01:10000-20000`。
+    2.  或，在下方的大文本框中输入基因ID列表。
+* 点击 **“开始基因查询”**，程序会查找指定区域内的所有基因，或查询指定基因的坐标信息。
+
+#### **功能注释**
+* 选择一个包含基因ID列表的CSV或Excel文件。
+* 在“基因ID所在列名”中准确输入包含基因ID的列标题。
+* 勾选您需要的注释类型（GO, IPR, KEGG）。**此功能需要本地数据库支持，请确保已按要求配置好数据库路径。**
+* 点击 **“开始功能注释”**。
+
+#### **AI 助手**
+* 选择一个待处理的CSV文件。
+* 选择任务类型：“翻译”或“分析”。
+* 在下方的 **Prompt指令** 框中，修改或使用默认的指令模板。`{text}` 是一个占位符，程序运行时会自动替换为表格中每一行的内容。
+* 在“源列名”中填写您要处理的列的标题。
+* 在“新列名”中为AI生成的结果指定一个新的列标题。
+* 点击 **“开始AI任务”**。
+
+#### **XLSX转CSV**
+* 一个简单的小工具，选择一个Excel文件，它会把里面**所有**工作表的内容合并到**一个**CSV文件中。
+
+---
+
+## 4. 命令行 (CLI) 使用教程
+
+CLI提供了与GUI完全相同的功能，适合自动化和批量处理。
+
+### 基本用法
+所有命令都通过 `python -m cotton_toolkit.cli` 来调用。
+```bash
+# 查看所有可用命令
+python -m cotton_toolkit.cli --help
+```
+
+### 命令详解
+以下是主要命令及其常用参数：
+
+#### `download`
+下载基因组数据。
+```bash
+# 下载所有基因组
+python -m cotton_toolkit.cli download --config config.yml
+
+# 只下载特定版本，并强制覆盖
+python -m cotton_toolkit.cli download -c config.yml -v NAU-NBI_v1.1 CRI_v1 --force
+```
+
+#### `integrate`
+运行联合分析流程。
+```bash
+# 使用配置文件中的所有参数运行
+python -m cotton_toolkit.cli integrate -c config.yml
+
+# 命令行覆盖部分参数
+python -m cotton_toolkit.cli integrate -c config.yml --input-excel new_data.xlsx --bsa-sheet "QTL-2" --hvg-sheet "DEG"
+```
+
+#### `homology_map`
+进行同源基因映射 (Liftover)。
+```bash
+# 直接在命令行提供基因ID
+python -m cotton_toolkit.cli homology_map -c config.yml --genes Ghir.A01G000100,Ghir.A01G000200 --source_assembly NAU-NBI_v1.1 --target_assembly CRI_v1
+```
+
+#### `gff_query`
+查询基因位置信息。
+```bash
+# 按区域查询
+python -m cotton_toolkit.cli gff_query -c config.yml --assembly NAU-NBI_v1.1 --region Ghir_D05:10000-50000
+
+# 按基因ID查询
+python -m cotton_toolkit.cli gff_query -c config.yml --assembly NAU-NBI_v1.1 --genes Ghir.A01G000100,Ghir.D05G001800
+```
+
+#### `ai`
+执行AI任务。
+```bash
+python -m cotton_toolkit.cli ai -c config.yml --input data.csv --source-column "Description" --new-column "中文描述" --task-type translate
+```
+#### `convert`
+转换XLSX到CSV。
+```bash
+python -m cotton_toolkit.cli convert -i input.xlsx -o output.csv
+```
+---
+
+## 5. 高级主题：网络代理
+
+如果您的网络环境需要通过代理才能访问外部资源（如CottonGen、AI服务商等），FCGT 提供了代理支持。
+
+* **配置**: 在 `config.yml` 的 `downloader.proxies` 部分填写您的 `http` 和 `https` 代理地址。
+    ```yaml
+    proxies:
+      http: '[http://127.0.0.1:7890](http://127.0.0.1:7890)'
+      https: '[http://127.0.0.1:7890](http://127.0.0.1:7890)'
+    ```
+* **GUI中使用**:
+    * 在 **数据下载** 工具中，勾选“使用网络代理”开关。
+    * 在 **AI 助手** 工具中，勾选“使用网络代理”开关。
+* **CLI中使用**:
+    * CLI的 `download` 和 `ai` 命令会自动读取并使用配置文件中的代理，无需额外参数。
+
+> **注意**: 如果您在GUI中开启了代理开关，但在配置文件中并未填写有效的代理地址，程序会提示错误并终止任务。
+
