@@ -1,564 +1,404 @@
-﻿# cli.py
-# (建议将此文件放在项目根目录，或者作为 cotton_toolkit/cli.py 并通过 python -m cotton_toolkit.cli 运行)
-
-import argparse
+﻿import argparse
 import gettext
-import logging  # 用于日志记录
+import logging
 import os
 import sys
-from typing import Dict, Any, Optional, Callable  # 确保导入
-import webbrowser
-import yaml
-from pip._internal.utils.logging import setup_logging
-from cotton_toolkit import HELP_URL,VERSION as APP_VERSION
-from cotton_toolkit.tools_pipeline import run_ai_task, run_functional_annotation
-from cotton_toolkit.core.convertXlsx2csv import convert_xlsx_to_single_csv
+from typing import Dict, Any, Optional
 
-# --- 1. 定义应用名称 (用于i18n和logging) ---
+from cotton_toolkit.config.models import MainConfig
+from . import HELP_URL, VERSION as APP_VERSION
+from .core.ai_wrapper import AIWrapper
+from .tools_pipeline import run_ai_task, run_functional_annotation
+from .core.convertXlsx2csv import convert_xlsx_to_single_csv
+from .config.loader import load_config, generate_default_config_files
+from .core.downloader import download_genome_data
+from .pipelines import run_locus_conversion_standalone ,integrate_bsa_with_hvg, run_homology_mapping_standalone, run_gff_gene_lookup_standalone
+
+# --- 定义应用名称和翻译函数占位符 ---
 APP_NAME_FOR_I18N = "cotton_toolkit"
-
-# --- 2. 定义 _ 函数的初始占位符 (会被 setup_cli_i18n 覆盖) ---
 _ = lambda text: text
 
 
-# 动态添加项目根目录的父目录到sys.path，以允许从包外运行并导入包
-# 这使得可以直接运行 D:/Python/cotton_tool/cli.py (如果cotton_toolkit目录在D:/Python/cotton_tool/下)
-# 或者在打包后，这个逻辑就不那么重要了，因为包会被安装到site-packages
-if __package__ is None or __package__ == '':  # 如果是作为顶层脚本运行
-    # 获取 cli.py 所在的目录 (例如 D:/Python/cotton_tool)
-    cli_dir = os.path.dirname(os.path.abspath(__file__))
-    # 假设 cotton_toolkit 包是 cli.py 所在目录下的一个子目录
-    # 如果不是，可能需要调整，或者期望 cotton_toolkit 已在PYTHONPATH中或已安装
-    # 对于这里的示例，我们期望 cotton_toolkit 是一个与 cli.py 同级的目录（如果cli.py在根），
-    # 或者 cli.py 在 cotton_toolkit 内，此时上面的 sys.path 修改更复杂。
-    # 为简单起见，假设 cotton_toolkit 包可以被直接导入。
-    # 如果 cli.py 在项目根，cotton_toolkit 是一个子目录，则不需要修改sys.path
-    # 如果 cli.py 在 cotton_toolkit/cli.py，则需要 project_root = os.path.dirname(cli_dir)
-    #     if project_root not in sys.path: sys.path.insert(0, project_root)
-    pass
-
-try:
-    from cotton_toolkit.config.loader import load_config, get_genome_data_sources
-    from cotton_toolkit.core.downloader import download_genome_data, decompress_gz_to_temp_file
-    from cotton_toolkit.pipelines import integrate_bsa_with_hvg, run_homology_mapping_standalone, run_gff_gene_lookup_standalone, REASONING_COL_NAME # 新增导入
-    from cotton_toolkit.core.gff_parser import DB_SUFFIX
-
-    print(f"INFO (cli.py): Successfully imported real package modules.")
-    REAL_MODULES_LOADED = True
-except ImportError as e:
-    print(f"WARNING (cli.py): Could not import real package modules due to: {e}.")
-    print("             Using MOCK functions for CLI operation. Ensure package is installed or PYTHONPATH is set.")
-    REAL_MODULES_LOADED = False
-
-    # ... (原有MOCK函数定义保持不变，需要为新的 standalone 函数添加MOCK) ...
-    # MOCK for run_homology_mapping_standalone
-    def run_homology_mapping_standalone(config, source_gene_ids_override=None, source_assembly_id_override=None,
-                                      target_assembly_id_override=None, s_to_b_homology_file_override=None,
-                                      b_to_t_homology_file_override=None, output_csv_path=None,
-                                      status_callback=None, progress_callback=None, task_done_callback=None):
-        print(f"MOCK (CLI): run_homology_mapping_standalone called. Source: {source_gene_ids_override}")
-        if status_callback: status_callback("Mock homology mapping started.")
-        if progress_callback: progress_callback(100, "Mock homology mapping 100%")
-        if status_callback: status_callback("Mock homology mapping finished.")
-        if task_done_callback: task_done_callback(True)
-        return True
-
-    # MOCK for run_gff_gene_lookup_standalone
-    def run_gff_gene_lookup_standalone(config, assembly_id_override=None, gene_ids_override=None, region_override=None,
-                                     output_csv_path=None, status_callback=None, progress_callback=None, task_done_callback=None):
-        print(f"MOCK (CLI): run_gff_gene_lookup_standalone called. Assembly: {assembly_id_override}, Genes: {gene_ids_override}, Region: {region_override}")
-        if status_callback: status_callback("Mock GFF gene lookup started.")
-        if progress_callback: progress_callback(100, "Mock GFF gene lookup 100%")
-        if status_callback: status_callback("Mock GFF gene lookup finished.")
-        if task_done_callback: task_done_callback(True)
-        return True
-
-    # --- 定义MOCK函数和变量以便脚本能作为示例独立运行 ---
-    def load_config(path: str) -> Optional[Dict[str, Any]]:
-        print(f"MOCK (CLI): Loading config from '{path}'")
-        if not os.path.exists(path):
-            print(f"MOCK ERROR: Config file '{path}' not found.")
-            return None
-        # 返回一个更完整的模拟配置
-        return {
-            "_config_file_abs_path_": os.path.abspath(path),
-            "i18n_language": "en",
-            "downloader": {
-                "download_output_base_dir": "mock_cli_downloads",
-                "genome_sources_file": "mock_genome_sources.yaml",
-                "max_workers": 1, "force_download": False, "proxies": None,
-                "genome_sources": {  # 直接内嵌，因为get_genome_data_sources也是mock
-                    "MOCK_NBI_v1.1": {"gff3_url": "http://mock.url/NBI.gff3.gz",
-                                      "homology_ath_url": "http://mock.url/NBI_hom.xlsx.gz",
-                                      "species_name": "Mock_NBI_v1.1_sp"},
-                    "MOCK_HAU_v2.0": {"gff3_url": "http://mock.url/HAU.gff3.gz",
-                                      "homology_ath_url": "http://mock.url/HAU_hom.xlsx.gz",
-                                      "species_name": "Mock_HAU_v2.0_sp"}
-                }
-            },
-            "integration_pipeline": {
-                "input_excel_path": "mock_cli_input.xlsx",
-                "bsa_sheet_name": "BSA_Sheet_Mock", "hvg_sheet_name": "HVG_Sheet_Mock",
-                "output_sheet_name": "CLI_Output_Sheet_Mock",
-                "bsa_assembly_id": "MOCK_NBI_v1.1", "hvg_assembly_id": "MOCK_HAU_v2.0",
-                "gff_files": {"MOCK_NBI_v1.1": "mock_gff_A.gff3", "MOCK_HAU_v2.0": "mock_gff_B.gff3.gz"},
-                "homology_files": {"bsa_to_bridge_csv": "mock_hom_A_At.csv", "bridge_to_hvg_csv": "mock_hom_At_B.csv"},
-                "bsa_columns": {"chr": "chr", "start": "region.start", "end": "region.end"},
-                "hvg_columns": {"gene_id": "gene_id", "category": "hvg_category", "log2fc": "log2fc_WT_vs_Ms1"},
-                "homology_columns": {"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score",
-                                     "pid": "PID"},
-                "selection_criteria_source_to_bridge": {"top_n": 1},
-                "selection_criteria_bridge_to_target": {"top_n": 1},
-                "common_hvg_significant_log2fc_threshold": 1.0,
-                "gff_db_storage_dir": "mock_gff_dbs"
-            }
-        }
-
-
-
-
-    def get_genome_data_sources(cfg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        print("MOCK (CLI): get_genome_data_sources called.")
-        downloader_cfg = cfg.get('downloader', {})
-        if 'genome_sources' in downloader_cfg: return downloader_cfg['genome_sources']
-        # 模拟从文件加载 (如果需要更复杂的MOCK)
-        return None
-
-
-    def download_genome_data(config, genome_versions_to_download_override=None, force_download_override=None,
-                             output_base_dir_override=None, status_callback=None, progress_callback=None):
-        print(
-            f"MOCK (CLI): download_genome_data called. Versions: {genome_versions_to_download_override}, Force: {force_download_override}")
-        if status_callback: status_callback("Mock download started.")
-        if progress_callback: progress_callback(50, "Mock download 50%")
-        if progress_callback: progress_callback(100, "Mock download 100%")
-        if status_callback: status_callback("Mock download finished.")
-
-
-    def run_joint_analysis(config, input_excel_path_override=None, output_sheet_name_override=None,
-                           status_callback=None, progress_callback=None):
-        print(
-            f"MOCK (CLI): integrate_bsa_with_hvg called. Input: {input_excel_path_override}, Output Sheet: {output_sheet_name_override}")
-        if status_callback: status_callback("Mock integration started.")
-        if progress_callback: progress_callback(100, "Mock integration 100%")
-        if status_callback: status_callback("Mock integration finished.")
-        return True  # 模拟成功
-
-
-    # Mocks for downloader's internal helpers (downloader.py本身应该有这些占位符，这里是为了cli.py能独立运行)
-    def USER_CONVERTER_FUNC(xlsx, csv):
-        print(f"MOCK_CONVERTER (CLI): {xlsx} to {csv}"); return True
-
-
-    def decompress_gz_to_temp_file(gz, temp):
-        print(f"MOCK_DECOMPRESS (CLI): {gz} to {temp}"); return True
-
-
-    # Mocks for gff_parser and homology_mapper if pipelines.py can't import them
-    # 这些仅当 integrate_bsa_with_hvg 的MOCK版本需要它们时才必要
-    DB_SUFFIX = ".mock.db"
-    REASONING_COL_NAME = 'Ms1_LoF_Support_Reasoning_Mock'
-
-
-# --- 4. setup_cli_i18n 函数定义 ---
 def setup_cli_i18n(language_code: str = 'zh-hans', app_name: str = APP_NAME_FOR_I18N):
-
+    """设置命令行界面(CLI)的国际化(i18n)支持。"""
     try:
-        # 尝试定位 locales 目录
-        # 假设 cli.py 在项目根目录，而包 cotton_toolkit 是一个子目录，locales 在 cotton_toolkit/locales
-        script_dir = os.path.dirname(os.path.abspath(__file__))  # cli.py 所在的目录
-        # 尝试1: cotton_toolkit/locales (如果 cli.py 在项目根, cotton_toolkit是子包)
-        locale_dir = os.path.join(script_dir, "cotton_toolkit", "locales")
-        if not os.path.isdir(locale_dir):
-            # 尝试2: ../locales (如果 cli.py 在 cotton_toolkit/cli.py, locales在 cotton_toolkit/locales)
-            # 此时 script_dir 是 cotton_toolkit/cli.py 的目录，即 cotton_toolkit/
-            locale_dir = os.path.join(script_dir, 'locales')
-            if not os.path.isdir(locale_dir):
-                # 尝试3: 如果是作为已安装的包，gettext 或许能自己找到
-                # 作为最后的手段，假设 locales 就在当前工作目录的一个子目录里 (不太可能)
-                locale_dir = os.path.join(os.getcwd(), 'locales')
+        locales_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'locales')
+        if not os.path.isdir(locales_dir):
+            # 如果在打包的 .exe 中运行，locales 目录可能在 sys._MEIPASS
+            if hasattr(sys, '_MEIPASS'):
+                locales_dir = os.path.join(sys._MEIPASS, 'cotton_toolkit', 'locales')
 
-        # print(f"DEBUG (CLI i18n): Using locale_dir: {os.path.abspath(locale_dir)}, lang: {language_code}, app_name: {app_name}")
-
-        lang_translation = gettext.translation(app_name, localedir=locale_dir, languages=[language_code], fallback=True)
+        lang_translation = gettext.translation(
+            app_name,
+            localedir=locales_dir,
+            languages=[language_code],
+            fallback=True
+        )
         lang_translation.install()
-        translator_func = lang_translation.gettext
-
-        logging.info(f"CLI i18n: Language set to '{language_code}'.")  # 使用logging
-
+        return lang_translation.gettext
     except FileNotFoundError:
-        logging.warning(
-            f"CLI i18n: Translation files for '{language_code}' (domain: {app_name}) not found. Using default strings (English or source). Searched in paths like '{locale_dir}'.")
-        lang_translation = gettext.translation(app_name, localedir=locale_dir, languages=['zh-hans'], fallback=True)
-        lang_translation.install()
-        translator_func = lang_translation.gettext
-
+        return lambda text: text
     except Exception as e:
-        logging.error(f"Error during CLI i18n setup: {e}", exc_info=True)
-        lang_translation = gettext.translation(app_name, localedir=locale_dir, languages=['zh-hans'], fallback=True)
-        lang_translation.install()
-        translator_func = lang_translation.gettext
-
-    return translator_func
+        print(f"Warning: Could not set up language translation for '{language_code}'. Reason: {e}", file=sys.stderr)
+        return lambda text: text
 
 
-# 新增：处理 homology_map 命令的函数
-def handle_homology_map_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.homology_map")
-    logger_cmd.info(_("执行同源映射命令..."))
-
-    gene_ids_list = args.genes.split(',') if args.genes else None
-    if gene_ids_list:
-        gene_ids_list = [gid.strip() for gid in gene_ids_list if gid.strip()]
-
-    run_homology_mapping_standalone(
-        config=config_main,
-        source_gene_ids_override=gene_ids_list,
-        source_assembly_id_override=args.source_assembly,
-        target_assembly_id_override=args.target_assembly,
-        s_to_b_homology_file_override=args.homology_sb_file,
-        b_to_t_homology_file_override=args.homology_bt_file,
-        output_csv_path=args.output_csv,
-        status_callback=lambda msg: logger_cmd.info(f"Mapping Status: {msg}"),
-        progress_callback=lambda p, msg: logger_cmd.info(f"Mapping Progress [{p}%]: {msg}")
-    )
-
-# 新增：处理 gff_query 命令的函数
-def handle_gff_query_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.gff_query")
-    logger_cmd.info(_("执行GFF基因查询命令..."))
-
-    gene_ids_list = args.genes.split(',') if args.genes else None
-    if gene_ids_list:
-        gene_ids_list = [gid.strip() for gid in gene_ids_list if gid.strip()]
-
-    region_tuple = None
-    if args.region:
-        try:
-            parts = args.region.split(':')
-            chrom = parts[0]
-            start_end = parts[1].split('-')
-            start = int(start_end[0])
-            end = int(start_end[1])
-            region_tuple = (chrom, start, end)
-        except Exception:
-            logger_cmd.error(_("区域格式不正确。请使用 'chr:start-end' 格式。"))
-            return
-
-    if not gene_ids_list and not region_tuple:
-        logger_cmd.error(_("必须提供基因ID列表 (--genes) 或染色体区域 (--region)。"))
-        return
-
-    run_gff_gene_lookup_standalone(
-        config=config_main,
-        assembly_id_override=args.assembly,
-        gene_ids_override=gene_ids_list,
-        region_override=region_tuple,
-        output_csv_path=args.output_csv,
-        status_callback=lambda msg: logger_cmd.info(f"GFF Query Status: {msg}"),
-        progress_callback=lambda p, msg: logger_cmd.info(f"GFF Query Progress [{p}%]: {msg}")
-    )
+def get_about_text() -> str:
+    """生成“关于”文本，包含版本号和帮助链接。"""
+    return _("棉花基因组分析工具包 (Cotton Toolkit)\n版本: {}\n更多帮助请访问: {}").format(APP_VERSION, HELP_URL)
 
 
-def handle_convert_cmd(args, config_main):
-    logger_cmd = logging.getLogger(f"cotton_toolkit.cli.convert")
-    logger_cmd.info(_("执行 XLSX 到 CSV 的转换..."))
-
-    input_path = args.input
-    output_path = args.output
-
-    if not os.path.exists(input_path):
-        logger_cmd.error(_("错误: 输入文件 '{}' 不存在。").format(input_path))
-        return
-
-    if not output_path:
-        base_name = os.path.splitext(os.path.basename(input_path))[0]
-        output_path = os.path.join(os.path.dirname(input_path), f"{base_name}_merged.csv")
-        logger_cmd.info(_("未指定输出路径，将自动保存到: {}").format(output_path))
-
-    logger_cmd.info(_("此工具会将所有工作表合并到一个CSV文件中。"))
-
-    success = convert_xlsx_to_single_csv(input_path, output_path)
-
-    if success:
-        logger_cmd.info(_("转换成功！"))
-    else:
-        logger_cmd.error(_("转换失败，请检查文件格式或错误日志。"))
-
-# --- 6. 定义 handle_download_cmd 和 handle_integrate_cmd 函数 ---
 def handle_download_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.download")  # 子logger
-    logger_cmd.info(_("执行下载命令..."))
-    if not config_main or 'downloader' not in config_main:
-        logger_cmd.error(_("错误: 配置文件中缺少 'downloader' 配置部分。"))
-        return
+    """处理 'download' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.download")
+    logger_cmd.info(_("开始下载流程..."))
 
-    # 确保 config_main['downloader']['genome_sources'] 被正确填充
-    downloader_cfg = config_main['downloader']
-    if 'genome_sources_file' in downloader_cfg and 'genome_sources' not in downloader_cfg:
-        gs_data = get_genome_data_sources(config_main)  # 使用已导入的config_loader函数
-        if gs_data:
-            downloader_cfg['genome_sources'] = gs_data
-        else:
-            logger_cmd.error(_("错误: 无法从配置文件或指定的genome_sources_file中加载基因组源数据。"))
-            return
-    elif 'genome_sources' not in downloader_cfg:
-        logger_cmd.error(_("错误: 下载器配置中缺少 'genome_sources'。"))
-        return
+    versions_list = args.versions.split(',') if args.versions else None
 
-    download_genome_data(  # 调用已导入的downloader函数
-        config_main,
-        genome_versions_to_download_override=args.genomes,
-        force_download_override=args.force_set,  # args.force_set 会是 True, False, 或 None
-        output_base_dir_override=args.output_dir
+    # 从 MainConfig 对象更新
+    if hasattr(config_main, 'downloader'):
+        if args.force is not None:
+            config_main.downloader.force_download = args.force
+        if args.proxy is not None and not args.proxy:
+            config_main.downloader.proxies = None
+
+    success = download_genome_data(
+        config=config_main,
+        genome_versions_to_download_override=versions_list,
+        status_callback=logger_cmd.info,
+        progress_callback=lambda p, msg: logger_cmd.info(f"Progress {p}%: {msg}")
     )
+    if success:
+        logger_cmd.info(_("下载成功完成。"))
+    else:
+        logger_cmd.error(_("下载失败。"))
+        sys.exit(1)
 
 
 def handle_integrate_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.integrate")  # 子logger
-    logger_cmd.info(_("执行联合分析命令..."))
-    if not config_main or 'integration_pipeline' not in config_main:
-        logger_cmd.error(_("错误: 配置文件中缺少 'integration_pipeline' 配置部分。"))
-        return
+    """处理 'integrate' (联合分析) 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.integrate")
+    logger_cmd.info(_("开始整合分析流程..."))
 
-    run_joint_analysis(  # 调用已导入的pipelines函数
-        config_main,
-        input_excel_path_override=args.input_excel,
-        output_sheet_name_override=args.output_sheet
-        # status_callback 和 progress_callback 可以由CLI提供简单的打印函数
-        # status_callback=lambda msg: logger_cmd.info(f"Pipeline Status: {msg}"),
-        # progress_callback=lambda p, msg: logger_cmd.info(f"Pipeline Progress [{p}%]: {msg}")
+    excel_path_override = args.excel_path if args.excel_path else config_main.integration_pipeline.input_excel_path
+
+    def cli_progress_callback(percentage: int, message: str):
+        sys.stdout.write(f"\r[{'#' * (percentage // 5):<20}] {percentage}%: {message.strip()}")
+        sys.stdout.flush()
+        if percentage == 100:
+            sys.stdout.write('\n')
+
+    success = integrate_bsa_with_hvg(
+        config=config_main,
+        input_excel_path_override=excel_path_override,
+        status_callback=logger_cmd.info,
+        progress_callback=cli_progress_callback,
+    )
+    if success:
+        logger_cmd.info(_("整合分析流程成功完成。"))
+    else:
+        logger_cmd.error(_("整合分析流程执行失败。"))
+        sys.exit(1)
+
+
+def handle_homology_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    """处理 'homology' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.homology")
+    logger_cmd.info(_("开始同源映射..."))
+
+    gene_list = [g.strip() for g in args.genes.split(',')]
+
+    run_homology_mapping_standalone(
+        config=config_main,
+        source_gene_ids_override=gene_list,
+        source_assembly_id_override=args.source_asm,
+        target_assembly_id_override=args.target_asm,
+        output_csv_path=args.output_csv,
+        status_callback=logger_cmd.info,
+        progress_callback=lambda p, msg: logger_cmd.info(f"Progress {p}%: {msg}"),
+        task_done_callback=lambda s: logger_cmd.info(f"Task finished with success: {s}")
     )
 
-# --- 新增：生成“关于”信息的通用函数 ---
-def get_about_text(translator: Callable[[str], str]) -> str:
-    """
-    生成格式化、可翻译的“关于”信息文本。
 
-    Args:
-        translator: 翻译函数 (例如 gettext.gettext)。
-    """
-    _ = translator  # 在函数内部使用传入的翻译器
-    lines = [
-        "--------------------------------------------------",
-        f"{_('应用名称')}: {_('棉花基因组分析工具包')}",
-        f"{_('版本')}: {APP_VERSION}",
-        f"{_('作者')}: PureAmaya",
-        f"{_('开源许可')}: Apache License 2.0",
-        f"{_('人工智能')}: 本工具的开发依靠 Gemini 2.5 Pro (preview) 完成",
-        "--------------------------------------------------",
-        _("此工具包旨在整合BSA定位结果与HVG基因数据，"),
-        _("进行棉花功能缺失基因的筛选与优先级排序。"),
-        f"--------------------------------------------------",
-        f"{_('帮助文档')}: {HELP_URL}"
-    ]
-    return "\n".join(lines)
+def handle_gff_query_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    """处理 'gff-query' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.gff_query")
+    if not args.genes and not args.region:
+        logger_cmd.error(_("错误：必须提供 --genes 或 --region 参数。"))
+        sys.exit(1)
 
-# --- 新增：处理 about 命令的函数 ---
-def handle_about_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    """处理 'about' 子命令的函数。"""
-    # cli_main_entry 中已经设置好了 _ 函数，所以这里可以直接使用
-    print(get_about_text(translator=_))
+    gene_list = [g.strip() for g in args.genes.split(',')] if args.genes else None
+    region_tuple = None
+    if args.region:
+        try:
+            chrom, pos = args.region.split(':')
+            start, end = map(int, pos.split('-'))
+            region_tuple = (chrom, start, end)
+        except ValueError:
+            logger_cmd.error(_("错误：区域格式无效。请使用 'chr:start-end' 格式。"))
+            sys.exit(1)
 
-# --- 新增：处理 help 命令的函数 ---
-def handle_help_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.help")
-    logger_cmd.info(_("正在浏览器中打开在线帮助文档... URL: {}").format(HELP_URL))
-    try:
-        webbrowser.open(HELP_URL)
-    except Exception as e:
-        logger_cmd.error(_("无法自动打开帮助链接。请手动复制此链接到浏览器: {} \n错误: {}").format(HELP_URL, e))
+    logger_cmd.info(_("开始GFF基因查询..."))
+    run_gff_gene_lookup_standalone(
+        config=config_main,
+        assembly_id_override=args.assembly_id,
+        gene_ids_override=gene_list,
+        region_override=region_tuple,
+        output_csv_path=args.output_csv,
+        status_callback=logger_cmd.info,
+        progress_callback=lambda p, msg: logger_cmd.info(f"Progress {p}%: {msg}"),
+        task_done_callback=lambda s: logger_cmd.info(f"Task finished with success: {s}")
+    )
 
 
-
-# 处理 annotate 命令的函数
 def handle_annotate_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"cotton_toolkit.cli.annotate")
-    logger_cmd.info(_("执行功能注释命令..."))
-    output_dir = args.output_dir or os.path.join(os.path.dirname(args.input), "annotation_results")
+    """处理 'annotate' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.annotate")
+    anno_types = [t.strip() for t in args.types.split(',')]
+    logger_cmd.info(_("开始功能注释，类型: {}").format(', '.join(anno_types)))
     run_functional_annotation(
-        config=config_main, input_file=args.input, output_dir=output_dir,
-        annotation_types=args.types, gene_column_name=args.gene_column,
+        config=config_main,
+        input_file=args.input_file,
+        output_dir=args.output_dir,
+        annotation_types=anno_types,
+        gene_column_name=args.gene_column,
         status_callback=logger_cmd.info
     )
+    logger_cmd.info(_("注释完成。"))
 
+def handle_locus_convert_cmd(args: argparse.Namespace, config_main: MainConfig): # 使用 MainConfig 类型提示
+    """处理 'locus-convert' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.locus_convert")
+    logger_cmd.info(_("开始位点（区域）基因组转换..."))
 
-# 处理 ai 命令的函数
-def handle_ai_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
-    logger_cmd = logging.getLogger(f"cotton_toolkit.cli.ai")
-    logger_cmd.info(_("执行 AI 助手命令..."))
-    if args.task_type == 'analyze' and not args.prompt:
-        logger_cmd.error(_("错误: 'analyze' 任务需要使用 --prompt 参数提供一个提示模板。")); return
-    output_dir = args.output_dir or os.path.join(os.path.dirname(args.input), "ai_results")
+    if not all([args.source_assembly, args.target_assembly, args.region]):
+        logger_cmd.error(_("错误：必须提供 --source-assembly, --target-assembly 和 --region 参数。"))
+        sys.exit(1)
+
+    region_tuple = None
+    try:
+        parts = args.region.split(':')
+        if len(parts) == 2 and '-' in parts[1]:
+            chrom = parts[0]
+            start, end = map(int, parts[1].split('-'))
+            region_tuple = (chrom, start, end)
+        else:
+            raise ValueError("Format error")
+    except Exception:
+        logger_cmd.error(_("错误：区域格式无效。请使用 'chr:start-end' 格式。"))
+        sys.exit(1)
+
+    success = run_locus_conversion_standalone(
+        config=config_main,
+        source_assembly_id_override=args.source_assembly,
+        target_assembly_id_override=args.target_assembly,
+        region_override=region_tuple,
+        output_csv_path=args.output_csv,
+        status_callback=logger_cmd.info,
+        progress_callback=lambda p, msg: logger_cmd.info(f"Progress {p}%: {msg}"),
+        task_done_callback=lambda s: logger_cmd.info(f"Task finished with success: {s}")
+    )
+    if success:
+        logger_cmd.info(_("位点转换流程成功完成。"))
+    else:
+        logger_cmd.error(_("位点转换流程执行失败。"))
+        sys.exit(1)
+
+def handle_ai_task_cmd(args: argparse.Namespace, config_main: Dict[str, Any]):
+    """处理 'ai-task' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.ai_task")
+    logger_cmd.info(_("开始AI任务 '{}'...").format(args.task_type))
     run_ai_task(
-        config=config_main, input_file=args.input, output_dir=output_dir,
-        source_column=args.source_column, new_column=args.new_column,
-        task_type=args.task_type, custom_prompt_template=args.prompt,
+        config=config_main,
+        input_file=args.input_file,
+        output_dir=args.output_dir,
+        source_column=args.source_column,
+        new_column=args.new_column,
+        task_type=args.task_type,
+        custom_prompt_template=args.prompt,
         status_callback=logger_cmd.info
     )
+    logger_cmd.info(_("AI任务完成。"))
 
 
+def handle_convert_xlsx_cmd(args: argparse.Namespace, config_main: Optional[Dict[str, Any]]):
+    """处理 'convert-xlsx-to-csv' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.convert")
+    logger_cmd.info(_("正在转换 '{}'...").format(args.input_path))
+    success, result_path = convert_xlsx_to_single_csv(args.input_path, args.output_path)
+    if success:
+        logger_cmd.info(_("成功转换并保存至 '{}'。").format(result_path))
+    else:
+        logger_cmd.error(_("转换时出错: {}").format(result_path))
+        sys.exit(1)
 
-# --- 7. 定义 cli_main_entry 函数 ---
+
+def handle_generate_config_cmd(args: argparse.Namespace, config_main: Optional[Dict[str, Any]]):
+    """处理 'generate-config' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.generate_config")
+    logger_cmd.info(_("正在于 '{}' 生成默认配置文件...").format(args.output_dir))
+    success, main_path, gs_path = generate_default_config_files(args.output_dir, overwrite=args.overwrite)
+    if success:
+        logger_cmd.info(_("默认文件生成成功:\n- {}\n- {}").format(main_path, gs_path))
+    else:
+        logger_cmd.error(_("生成部分或全部配置文件失败。请检查现有文件或权限。"))
+        sys.exit(1)
+
+
+def handle_get_ai_models_cmd(args: argparse.Namespace, config_main: Optional[Dict[str, Any]]):
+    """处理 'get-ai-models' 子命令的函数。"""
+    logger_cmd = logging.getLogger(f"{APP_NAME_FOR_I18N}.cli.get_ai_models")
+    logger_cmd.info(_("正在为服务商 '{}' 获取模型列表...").format(args.provider))
+    try:
+        models = AIWrapper.get_models(
+            provider=args.provider,
+            api_key=args.api_key,
+            base_url=args.base_url,
+        )
+        if models:
+            for model in models:
+                print(model)
+        else:
+            logger_cmd.warning(_("未找到任何模型。"))
+    except Exception as e:
+        logger_cmd.critical(_("获取模型列表时发生严重错误: {}").format(e), exc_info=True)
+        sys.exit(1)
+
+
 def cli_main_entry():
     """CLI主入口函数"""
-    # 预解析语言参数，以便尽早设置i18n (如果需要argparse的help也被翻译)
+    # 预解析语言参数，以便帮助信息可以被翻译
     pre_parser = argparse.ArgumentParser(add_help=False)
-    pre_parser.add_argument("--lang", type=str, choices=['zh-hans', 'zh-hant', 'en', 'ja'])
-    pre_args, _remaining_argv = pre_parser.parse_known_args()
+    pre_parser.add_argument("--lang", default=os.getenv("FCGT_LANG", "zh-hans"),
+                            help="Language setting (e.g., en, zh-hans).")
+    pre_args, remaining_argv = pre_parser.parse_known_args()
+    global _
+    _ = setup_cli_i18n(language_code=pre_args.lang, app_name=APP_NAME_FOR_I18N)
 
-    # 优先命令行 --lang, 其次尝试从一个非常临时的config加载（如果存在），最后默认'en'
-    # 这一步的 _ 还是原始的 lambda text: text
-    initial_lang = pre_args.lang if pre_args.lang else 'zh-hans'
-    temp_config_for_lang_path = "config.yml"  # 假设一个默认名
-    if os.path.exists(temp_config_for_lang_path) and not pre_args.lang:
-        try:
-            with open(temp_config_for_lang_path, 'r', encoding='utf-8') as f_cfg_temp:
-                temp_cfg = yaml.safe_load(f_cfg_temp)
-                if isinstance(temp_cfg, dict) and 'i18n_language' in temp_cfg:
-                    initial_lang = temp_cfg['i18n_language']
-        except:
-            pass  # 忽略错误，使用默认语言
-
-    setup_cli_i18n(language_code=initial_lang, app_name=APP_NAME_FOR_I18N)  # 设置 _ 函数
-
-    # 现在 _() 可以用于翻译 argparse 的描述和帮助文本
+    # 主解析器
     parser = argparse.ArgumentParser(
         description=_("棉花基因组分析工具包 (Cotton Toolkit)"),
         formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("--config", type=str, default="config.yaml", help=_("配置文件路径 (YAML)。默认: %(default)s"))
-    parser.add_argument("--lang", type=str, choices=['en', 'zh_CN'], help=_("界面语言 (en/zh_CN)。覆盖配置。"))
-    parser.add_argument("--loglevel", type=str, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                        default="INFO", help=_("控制台日志级别。默认: %(default)s"))
-    parser.add_argument("--logfile", type=str, default="cotton_toolkit.log",
-                        help=_("日志文件路径。设为 'NONE' 则不记录到文件。默认: %(default)s"))
+    parser.add_argument('--version', action='version', version=f'%(prog)s {APP_VERSION}',
+                        help=_("显示程序版本号并退出。"))
+    parser.add_argument('--about', action='version', version=get_about_text(), help=_("显示关于本软件的信息。"))
+    parser.add_argument("--config", type=str, default="config.yml", help=_("配置文件路径 (YAML)。"))
+    parser.add_argument("--lang", default=os.getenv("FCGT_LANG", "zh-hans"), help=_("语言设置 (例如: en, zh-hans)。"))
+    parser.add_argument("--verbose", "-v", action="store_true", help=_("启用详细日志输出。"))
 
     subparsers = parser.add_subparsers(dest="command", title=_("可用命令"), help=_("选择子命令执行"))
     subparsers.required = True
 
-    # --- 【新增】XLSX转CSV子命令 ---
-    parser_convert = subparsers.add_parser("convert", help=_("将一个XLSX文件的所有工作表合并成一个CSV文件。"))
-    parser_convert.add_argument("-i", "--input", required=True, help=_("要转换的源 .xlsx 文件路径。"))
-    parser_convert.add_argument("-o", "--output", help=_("输出 .csv 文件的路径 (可选)。"))
-    parser_convert.set_defaults(func=handle_convert_cmd)
+    # 下载命令
+    parser_download = subparsers.add_parser("download", help=_("下载基因组数据。"))
+    parser_download.add_argument('--versions', default=None, help=_("要下载的基因组版本列表，以逗号分隔。默认为全部。"))
+    parser_download.add_argument('--force', action='store_true', default=None, help=_("即使文件已存在也强制重新下载。"))
+    parser_download.add_argument('--proxy', action='store_true', default=None, help=_("使用配置文件中定义的代理。"))
+    parser_download.set_defaults(func=handle_download_cmd)
 
-    # --- AI 助手子命令 ---
-    parser_ai = subparsers.add_parser("ai", help=_("使用AI批量处理表格数据。"))
-    parser_ai.add_argument("-i", "--input", required=True, help=_("要处理的输入CSV文件。"))
-    parser_ai.add_argument("-o", "--output-dir",
-                           help=_("存放结果的输出目录 (默认为输入文件同级目录下的 'ai_results')。"))
-    parser_ai.add_argument("--source-column", required=True, help=_("要处理的源列名。"))
-    parser_ai.add_argument("--new-column", required=True, help=_("存放结果的新列名。"))
-    parser_ai.add_argument("--task-type", required=True, choices=['translate', 'analyze'], help=_("要执行的任务类型。"))
-    parser_ai.add_argument("--prompt", help=_("执行'analyze'任务时使用的自定义提示模板 (必须包含'{text}')。"))
-    parser_ai.set_defaults(func=handle_ai_cmd)
+    # 联合分析命令
+    parser_integrate = subparsers.add_parser("integrate", help=_("联合分析BSA与HVG数据。"))
+    parser_integrate.add_argument('--excel-path', default=None, help=_("覆盖配置文件中的输入Excel文件路径。"))
+    parser_integrate.set_defaults(func=handle_integrate_cmd)
 
-    # --- 功能注释子命令 ---
-    parser_annotate = subparsers.add_parser("annotate", help=_("使用本地数据库为基因列表添加功能注释。"))
-    parser_annotate.add_argument("-i", "--input", required=True, help=_("包含基因列表的输入文件 (Excel/CSV)。"))
-    parser_annotate.add_argument("-o", "--output-dir",
-                                 help=_("存放注释结果的输出目录 (默认为输入文件同级目录下的 'annotation_results')。"))
-    parser_annotate.add_argument("-t", "--types", nargs='+', required=True,
-                                 choices=['go', 'ipr', 'kegg_orthologs', 'kegg_pathways'],
-                                 help=_("要执行的注释类型 (可多选)。"))
-    parser_annotate.add_argument("-g", "--gene-column", default="gene",
-                                 help=_("输入文件中基因ID所在列的名称 (默认: 'gene')。"))
-    parser_annotate.set_defaults(func=handle_annotate_cmd)
+    # 同源映射命令
+    parser_homology = subparsers.add_parser("homology", help=_("对基因列表进行同源映射。"))
+    parser_homology.add_argument('--genes', required=True, help=_("源基因ID列表，以逗号分隔。"))
+    parser_homology.add_argument('--source-asm', default=None, help=_("覆盖源基因组版本ID。"))
+    parser_homology.add_argument('--target-asm', default=None, help=_("覆盖目标基因组版本ID。"))
+    parser_homology.add_argument('--output-csv', default=None, help=_("保存输出CSV文件的路径。"))
+    parser_homology.set_defaults(func=handle_homology_cmd)
 
-    # 下载器子命令
-    parser_download = subparsers.add_parser("download", help=_("下载基因组数据 (GFF3, 同源文件)。"))
-    parser_download.add_argument("--genomes", nargs="+", metavar="GENOME_ID", help=_("要下载的基因组版本ID列表。"))
-    parser_download.add_argument("--output_dir", type=str, help=_("覆盖下载输出目录。"))
-    group_force = parser_download.add_mutually_exclusive_group()
-    group_force.add_argument("--force", action="store_true", dest="force_set", help=_("强制重新下载。"))
-    group_force.add_argument("--no-force", action="store_false", dest="force_set", help=_("不强制重新下载 (默认)。"))
-    parser_download.set_defaults(func=handle_download_cmd, force_set=None)
-
-    # 联合分析子命令
-    parser_integrate = subparsers.add_parser("joint_analysis", help=_("联合分析BSA结果与HVG数据，筛选候选基因。"))
-    parser_integrate.add_argument("--input_excel", type=str, help=_("覆盖输入Excel文件路径。"))
-    parser_integrate.add_argument("--output_sheet", type=str, help=_("覆盖输出工作表名称。"))
-    parser_integrate.set_defaults(func=handle_joint_analysis_cmd)
-
-    # 新增：同源映射子命令
-    parser_homology_map = subparsers.add_parser("homology_map", help=_("独立执行基因组同源映射。"))
-    parser_homology_map.add_argument("--genes", type=str, required=True,
-                                     help=_("要映射的源基因ID，多个用逗号分隔 (例如: GeneA1,GeneA2)。"))
-    parser_homology_map.add_argument("--source_assembly", type=str, help=_("源基因组版本ID (覆盖配置文件)。"))
-    parser_homology_map.add_argument("--target_assembly", type=str, help=_("目标基因组版本ID (覆盖配置文件)。"))
-    parser_homology_map.add_argument("--homology_sb_file", type=str,
-                                     help=_("源到桥梁的同源CSV文件路径 (覆盖配置文件)。"))
-    parser_homology_map.add_argument("--homology_bt_file", type=str,
-                                     help=_("桥梁到目标的同源CSV文件路径 (覆盖配置文件)。"))
-    parser_homology_map.add_argument("--output_csv", type=str, help=_("结果输出CSV文件路径。"))
-    parser_homology_map.set_defaults(func=handle_homology_map_cmd)
-
-    # 新增：GFF基因查询子命令
-    parser_gff_query = subparsers.add_parser("gff_query", help=_("独立查询GFF文件中的基因信息。"))
-    parser_gff_query.add_argument("--assembly", type=str, help=_("要查询的基因组版本ID (覆盖配置文件)。"))
-    parser_gff_query.add_argument("--genes", type=str, help=_("要查询的基因ID，多个用逗号分隔 (例如: GeneB1,GeneB2)。"))
-    parser_gff_query.add_argument("--region", type=str, help=_("要查询的染色体区域 (例如: chr1:1000-5000)。"))
-    parser_gff_query.add_argument("--output_csv", type=str, help=_("结果输出CSV文件路径。"))
+    # GFF查询命令
+    parser_gff_query = subparsers.add_parser("gff-query", help=_("从GFF文件查询基因信息。"))
+    parser_gff_query.add_argument('--assembly-id', required=True, help=_("要查询的基因组版本ID。"))
+    parser_gff_query.add_argument('--genes', default=None, help=_("基因ID列表，以逗号分隔。"))
+    parser_gff_query.add_argument('--region', default=None, help=_("区域字符串，例如: 'chr1:1000-5000'。"))
+    parser_gff_query.add_argument('--output-csv', default=None, help=_("保存输出CSV文件的路径。"))
     parser_gff_query.set_defaults(func=handle_gff_query_cmd)
 
-    # 新增：帮助子命令
-    parser_help = subparsers.add_parser("web_help", help=_("在浏览器中打开在线帮助文档。"))
-    parser_help.set_defaults(func=handle_help_cmd)
+    # 功能注释命令
+    parser_annotate = subparsers.add_parser("annotate", help=_("对基因列表进行功能注释。"))
+    parser_annotate.add_argument('--input-file', required=True, type=str, help=_("包含基因ID的输入文件 (Excel或CSV)。"))
+    parser_annotate.add_argument('--output-dir', default='annotation_results', help=_("保存注释结果的目录。"))
+    parser_annotate.add_argument('--types', required=True,
+                                 help=_("注释类型列表，以逗号分隔 (go, ipr, kegg_orthologs, kegg_pathways)。"))
+    parser_annotate.add_argument('--gene-column', default='gene', help=_("包含基因ID的列名。"))
+    parser_annotate.set_defaults(func=handle_annotate_cmd)
 
-    # 新增：关于子命令
-    parser_about = subparsers.add_parser("about", help=_("显示关于本应用的信息。"))
-    parser_about.set_defaults(func=handle_about_cmd)
+    # AI任务命令
+    parser_ai_task = subparsers.add_parser("ai-task", help=_("在CSV文件上运行批量AI任务。"))
+    parser_ai_task.add_argument('--input-file', required=True, type=str, help=_("输入的CSV文件。"))
+    parser_ai_task.add_argument('--output-dir', default='ai_results', help=_("保存AI任务结果的目录。"))
+    parser_ai_task.add_argument('--source-column', required=True, help=_("要处理的源列名。"))
+    parser_ai_task.add_argument('--new-column', required=True, help=_("要创建的新列名。"))
+    parser_ai_task.add_argument('--task-type', choices=['translate', 'analyze'], default='translate',
+                                help=_("要执行的AI任务类型。"))
+    parser_ai_task.add_argument('--prompt', default=None, help=_("自定义提示词模板。必须包含 {text}。"))
+    parser_ai_task.set_defaults(func=handle_ai_task_cmd)
 
-    args = parser.parse_args()  # sys.argv[1:] (如果之前用了 pre_parser, 这里用 _remaining_argv 可能更合适，但通常argparse能处理)
+    # locus-convert 命令（位点转换）
+    parser_locus_convert = subparsers.add_parser("locus-convert",
+                                                 help=_("将指定基因组的位点（区域）转换为另一个基因组的相应位点。"))
+    parser_locus_convert.add_argument('--source-assembly', required=True, help=_("源基因组版本ID。"))
+    parser_locus_convert.add_argument('--target-assembly', required=True, help=_("目标基因组版本ID。"))
+    parser_locus_convert.add_argument('--region', required=True, help=_("要转换的区域，格式例如: 'chr1:1000-5000'。"))
+    parser_locus_convert.add_argument('--output-csv', default=None, help=_("保存输出CSV文件的路径。"))
+    parser_locus_convert.set_defaults(func=handle_locus_convert_cmd)
 
-    # 1. 加载最终配置
-    config = load_config(args.config)
-    if not config: sys.exit(1)
-    if '_config_file_abs_path_' not in config: config['_config_file_abs_path_'] = os.path.abspath(args.config)
 
-    # 2. 最终设置国际化 (如果 --lang 在命令行中提供了，它优先)
-    final_language = args.lang if args.lang else config.get('i18n_language', 'en')
-    final_app_domain = config.get('i18n_app_domain', APP_NAME_FOR_I18N)  # 允许配置覆盖域名
-    if _("test") == "test" or args.lang:  # 如果 _ 还是透传或者命令行指定了新语言，重新设置
-        setup_cli_i18n(language_code=final_language, app_name=final_app_domain)
+    # XLSX转换命令
+    parser_convert = subparsers.add_parser("convert-xlsx-to-csv", help=_("将XLSX文件的所有工作表转换为单个CSV文件。"))
+    parser_convert.add_argument('--input-path', required=True, type=str, help=_("输入的XLSX文件路径。"))
+    parser_convert.add_argument('--output-path', default=None, help=_("输出的CSV文件路径。如果未提供，将自动生成。"))
+    parser_convert.set_defaults(func=handle_convert_xlsx_cmd)
 
-    # 3. 设置日志系统
-    logfile_to_use = args.logfile if str(args.logfile).upper() != 'NONE' else None
-    setup_logging(loglevel_console_str=args.loglevel, log_file=logfile_to_use)
+    # 生成配置命令
+    parser_gen_config = subparsers.add_parser("generate-config",
+                                              help=_("生成默认的 config.yml 和 genome_sources_list.yml 文件。"))
+    parser_gen_config.add_argument('--output-dir', default='.', help=_("生成默认配置文件的目录。"))
+    parser_gen_config.add_argument('--overwrite', action='store_true', help=_("覆盖已存在的配置文件。"))
+    parser_gen_config.set_defaults(func=handle_generate_config_cmd)
 
-    logger_main_cli = logging.getLogger(APP_NAME_FOR_I18N)  # 获取主logger
-    logger_main_cli.info(_("CLI启动。配置来自 '{}'，语言: '{}'，控制台日志级别: '{}'").format(
-        args.config, final_language, args.loglevel))
+    # 获取AI模型命令
+    parser_get_models = subparsers.add_parser("get-ai-models", help=_("获取指定AI服务商的模型列表。"))
+    parser_get_models.add_argument("--provider", required=True, help=_("AI服务商的标识 (例如: google, openai)。"))
+    parser_get_models.add_argument("--api-key", required=True, help=_("该服务商的API Key。"))
+    parser_get_models.add_argument("--base-url", default=None, help=_("可选的自定义API地址。"))
+    parser_get_models.set_defaults(func=handle_get_ai_models_cmd)
 
-    # 4. 执行命令
+    # --- 解析参数并执行命令 ---
+    args = parser.parse_args(remaining_argv)
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        stream=sys.stdout)
+
+    # 加载配置（对于不需要配置的命令则跳过）
+    config = None
+    if args.command not in ['generate-config', 'get-ai-models', 'convert-xlsx-to-csv']:
+        if not os.path.exists(args.config):
+            print(_("错误：配置文件 '{}' 未找到。").format(args.config), file=sys.stderr)
+            sys.exit(1)
+        config = load_config(args.config)
+        if not config:
+            print(_("错误：未能加载配置文件 '{}'。").format(args.config), file=sys.stderr)
+            sys.exit(1)
+
     if hasattr(args, 'func'):
-        # 再次处理 download 命令的 force_set，确保 None/True/False 正确传递
-        if args.command == "download":
-            if hasattr(args, 'force_set_true') and args.force_set_true:  # --force
-                args.force_set = True
-            elif hasattr(args, 'force_set_false') and args.force_set_false is False:  # --no-force
-                args.force_set = False
-            # else: args.force_set 保持为 None, download_genome_data 内部会用配置的默认值
         try:
             args.func(args, config)
         except Exception as e_cmd:
-            logger_main_cli.critical(_("执行命令 '{}' 时发生未捕获的严重错误: {}").format(args.command, e_cmd),
-                                     exc_info=True)
+            logging.getLogger(APP_NAME_FOR_I18N).critical(
+                _("执行命令 '{}' 时发生未捕获的错误: {}").format(args.command, e_cmd),
+                exc_info=True
+            )
             sys.exit(1)
     else:
         parser.print_help()
         sys.exit(1)
 
 
-# --- 8. 主程序入口 ---
 if __name__ == '__main__':
-    # 动态修改sys.path以允许从项目根目录运行 `python cotton_toolkit/cli.py` 并正确导入同级模块
-    # (这段代码在之前的回复中讨论过，如果需要，请保留或调整)
-    if (__package__ is None or __package__ == '') and not REAL_MODULES_LOADED:
-        # 仅在真实模块导入失败（即 MOCK 被使用）且作为脚本运行时尝试调整路径
-        # 这表明可能需要 python -m cotton_toolkit.cli 来运行
-        print("Info (cli.py __main__): Running as script and real modules might not have loaded due to path issues.")
-        print("Consider running as 'python -m cotton_toolkit.cli' from the project root if imports fail.")
-
     cli_main_entry()

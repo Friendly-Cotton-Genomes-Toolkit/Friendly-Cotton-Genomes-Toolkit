@@ -1,12 +1,16 @@
 ﻿# cotton_toolkit/pipelines.py
 import gzip
+import logging
 import os
 import time
+from dataclasses import asdict
 from typing import List, Dict, Any, Optional, Callable, Tuple
 from urllib.parse import urlparse
 import pandas as pd
 
-from cotton_toolkit.config.loader import get_genome_data_sources
+from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
+from cotton_toolkit.config.models import GenomeSourceItem, MainConfig, LocusConversionConfig, DownloaderConfig
+from cotton_toolkit.core.downloader import download_file
 
 # --- 国际化和日志设置 ---
 # 假设 _ 函数已由主应用程序入口设置到 builtins
@@ -20,11 +24,21 @@ except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins�
     def _(text: str) -> str:  #
         return text  #
 
+
+
 # --- 从实际的包核心模块导入功能 ---
 try:
-    from .core.gff_parser import create_or_load_gff_db, get_features_in_region, DB_SUFFIX, \
-    extract_gene_details  # extract_gene_details 如果需要 #
-    from .core.homology_mapper import map_genes_via_bridge, select_best_homologs  #
+    # 导入 gff_parser 中的函数
+    from cotton_toolkit.core.gff_parser import get_genes_in_region, get_gene_info_by_ids, \
+    extract_gene_details  # <-- 确保这一行存在且正确
+    # 导入 homology_mapper 中的函数
+    from cotton_toolkit.core.homology_mapper import load_and_map_homology, select_best_homologs, map_genes_via_bridge
+    # 导入 loader 中的函数，用于获取基因组源数据
+    from cotton_toolkit.config.loader import get_genome_data_sources
+    # 导入 downloader 中的函数，用于下载 GFF 和同源文件
+    from cotton_toolkit.core.downloader import download_file
+    from cotton_toolkit.config.models import MainConfig, IntegrationPipelineConfig, LocusConversionConfig, \
+        GenomeSourceItem  # 导入相关 Config 类
 
     CORE_MODULES_IMPORTED = True  #
     print("INFO (pipelines.py): Successfully imported core modules.")  #
@@ -92,6 +106,271 @@ except ImportError as e:
 # --- 定义模块级常量 ---
 REASONING_COL_NAME = 'Ms1_LoF_Support_Reasoning'  #
 MATCH_NOTE_COL_NAME = 'Match_Note'
+logger = logging.getLogger("cotton_toolkit.pipelines")
+
+# 将百分比转换为字符串
+def _format_progress_msg(percentage: int, message: str) -> str:
+    return f"[{percentage}%] {message}"
+
+
+# --- 新增：位点转换流程函数 ---
+def run_locus_conversion_standalone(
+        config: MainConfig,  # 传入 MainConfig 对象
+        source_assembly_id_override: Optional[str] = None,
+        target_assembly_id_override: Optional[str] = None,
+        region_override: Optional[Tuple[str, int, int]] = None,  # (chrom, start, end)
+        output_csv_path: Optional[str] = None,
+        status_callback: Optional[Callable[[str], None]] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        task_done_callback: Optional[Callable[[bool], None]] = None
+) -> bool:
+    def _log_status(msg: str, level: str = "INFO"):
+        if status_callback:
+            status_callback(msg)
+        else:
+            if level.upper() == "ERROR":
+                logger.error(msg)
+            elif level.upper() == "WARNING":
+                logger.warning(msg)
+            else:
+                logger.info(msg)
+
+    def _log_progress(percent: int, msg: str):
+        if progress_callback:
+            progress_callback(percent, msg)
+        else:
+            logger.info(f"[{percent}%] {msg}")
+
+    _log_status(_("开始位点（区域）基因组转换流程..."))
+    _log_progress(0, _("准备转换参数..."))
+
+    locus_cfg: LocusConversionConfig = config.locus_conversion
+    downloader_cfg: DownloaderConfig = config.downloader  # 获取 DownloaderConfig 实例
+    integration_pipeline_cfg = config.integration_pipeline  # 复用同源筛选标准
+
+    # 获取参数，优先使用 override，其次是配置
+    source_assembly_id = source_assembly_id_override
+    target_assembly_id = target_assembly_id_override
+    region = region_override
+    final_output_csv_path = output_csv_path
+
+    if not all([source_assembly_id, target_assembly_id, region]):
+        _log_status(_("错误: 缺少必要的输入参数（源基因组ID、目标基因组ID、区域）。"), "ERROR")
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    # 获取基因组源数据
+    genome_sources = get_genome_data_sources(config, logger=_log_status)
+    if not genome_sources:
+        _log_status(_("错误: 未能加载基因组源数据。"), "ERROR")
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    source_genome_info: GenomeSourceItem = genome_sources.get(source_assembly_id)
+    target_genome_info: GenomeSourceItem = genome_sources.get(target_assembly_id)
+
+    if not source_genome_info:
+        _log_status(_("错误: 源基因组 '{}' 未在基因组源列表中找到。").format(source_assembly_id), "ERROR")
+        if task_done_callback: task_done_callback(False)
+        return False
+    if not target_genome_info:
+        _log_status(_("错误: 目标基因组 '{}' 未在基因组源列表中找到。").format(target_assembly_id), "ERROR")
+        if task_done_callback: task_done_callback(False)
+        return False
+
+    # 确定位点转换任务的输出目录 (用于保存最终的 CSV 结果)
+    locus_conversion_results_dir = locus_cfg.output_dir_name
+    os.makedirs(locus_conversion_results_dir, exist_ok=True)
+
+    # GFF 数据库缓存目录
+    gff_db_storage_dir = locus_cfg.gff_db_storage_dir
+    os.makedirs(gff_db_storage_dir, exist_ok=True)
+    force_gff_db_creation = locus_cfg.force_gff_db_creation
+
+    _log_progress(10, _("参数校验与文件路径确定。"))
+
+    # --- 步骤 1: 获取源基因组 GFF 文件并查找区域内的基因 ---
+    _log_status(_("正在获取源基因组 '{}' 的 GFF 文件...").format(source_assembly_id))
+
+    # 首先尝试从主下载目录查找 GFF 文件
+    source_gff_local_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+
+    # 如果文件不存在于主下载目录，则下载它
+    if not source_gff_local_path or not os.path.exists(source_gff_local_path):
+        _log_status(f"INFO: {_('源基因组 GFF 文件未在预期位置找到，将尝试下载。')}")
+        source_gff_url = source_genome_info.gff3_url
+        # 下载到主下载目录，确保后续可重用
+        expected_download_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+        if not expected_download_path:  # Fallback if path couldn't be determined for some reason
+            expected_download_path = os.path.join(locus_conversion_results_dir,
+                                                  os.path.basename(urlparse(source_gff_url).path).split('?')[0])
+
+        if not download_file(source_gff_url, expected_download_path, downloader_cfg.force_download,
+                             task_desc=f"{source_assembly_id} GFF", proxies=downloader_cfg.proxies.to_dict()):
+            _log_status(_("错误: 无法下载源基因组 '{}' 的 GFF 文件。").format(source_assembly_id), "ERROR")
+            if task_done_callback: task_done_callback(False)
+            return False
+        source_gff_local_path = expected_download_path  # 更新为实际下载的路径
+    else:
+        _log_status(f"INFO: {_('源基因组 GFF 文件已存在于:')} {source_gff_local_path} {_('将直接使用。')}")
+
+    _log_progress(20, _("源基因组 GFF 文件准备完成。"))
+
+    _log_status(_("正在源基因组 '{}' 的区域 '{}:{}-{}' 中查找基因...").format(source_assembly_id, region[0], region[1],
+                                                                              region[2]))
+    source_genes_in_region = get_genes_in_region(
+        assembly_id=source_assembly_id,
+        gff_filepath=source_gff_local_path,
+        db_storage_dir=gff_db_storage_dir,
+        region=region,
+        force_db_creation=force_gff_db_creation,
+        status_callback=_log_status
+    )
+    if not source_genes_in_region:
+        _log_status(_("警告: 在源基因组 '{}' 的指定区域中未找到基因。").format(source_assembly_id), "WARNING")
+        if task_done_callback: task_done_callback(True)
+        return True
+
+    _log_status(_("在源区域找到 {} 个基因。").format(len(source_genes_in_region)))
+    source_gene_ids = [g['gene_id'] for g in source_genes_in_region]
+    _log_progress(40, _("源区域基因查找完成。"))
+
+    # --- 步骤 2: 获取同源映射文件并进行同源映射 ---
+    _log_status(
+        _("正在获取源基因组 '{}' 到目标基因组 '{}' 的同源映射文件...").format(source_assembly_id, target_assembly_id))
+
+    # 尝试从主下载目录查找 S2B 同源文件
+    homology_s2b_local_path = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
+
+    if not homology_s2b_local_path or not os.path.exists(homology_s2b_local_path):
+        _log_status(f"INFO: {_('源到桥梁物种同源映射文件未在预期位置找到，将尝试下载。')}")
+        homology_s2b_url = source_genome_info.homology_ath_url
+        expected_download_path = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
+        if not expected_download_path:
+            expected_download_path = os.path.join(locus_conversion_results_dir,
+                                                  os.path.basename(urlparse(homology_s2b_url).path).split('?')[0])
+
+        if not download_file(homology_s2b_url, expected_download_path, downloader_cfg.force_download,
+                             task_desc=f"{source_assembly_id}-Ath Homology", proxies=downloader_cfg.proxies.to_dict()):
+            _log_status(_("错误: 无法下载源到桥梁物种的同源映射文件。"), "ERROR")
+            if task_done_callback: task_done_callback(False)
+            return False
+        homology_s2b_local_path = expected_download_path
+    else:
+        _log_status(f"INFO: {_('源到桥梁物种同源映射文件已存在于:')} {homology_s2b_local_path} {_('将直接使用。')}")
+
+    _log_progress(50, _("同源映射文件准备完成。"))
+
+    s2b_criteria = integration_pipeline_cfg.selection_criteria_source_to_bridge
+    b2t_criteria = integration_pipeline_cfg.selection_criteria_bridge_to_target
+    homology_cols = integration_pipeline_cfg.homology_columns
+
+    _log_status(_("正在从源基因组 '{}' 映射基因到桥梁物种（拟南芥）...").format(source_assembly_id))
+    slicer_rule_source = source_genome_info.homology_id_slicer
+
+    source_to_bridge_homology_map = load_and_map_homology(
+        homology_file_path=homology_s2b_local_path,
+        homology_columns=homology_cols,
+        selection_criteria=asdict(s2b_criteria),
+        query_gene_ids=source_gene_ids,
+        homology_id_slicer=slicer_rule_source,
+        status_callback=_log_status
+    )
+    if not source_to_bridge_homology_map:
+        _log_status(_("警告: 未能找到源基因组到桥梁物种的同源映射。"), "WARNING")
+        if task_done_callback: task_done_callback(True)
+        return True
+
+    _log_progress(60, _("源基因组到桥梁物种映射完成。"))
+
+    # 获取桥梁物种到目标基因组的同源映射文件 URL
+    # 尝试从主下载目录查找 B2T 同源文件
+    homology_b2t_local_path = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+
+    if not homology_b2t_local_path or not os.path.exists(homology_b2t_local_path):
+        _log_status(f"INFO: {_('桥梁物种到目标基因组同源映射文件未在预期位置找到，将尝试下载。')}")
+        homology_b2t_url = target_genome_info.homology_ath_url  # 假设这是 Ath -> Target Cotton
+        expected_download_path = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+        if not expected_download_path:
+            expected_download_path = os.path.join(locus_conversion_results_dir,
+                                                  os.path.basename(urlparse(homology_b2t_url).path).split('?')[0])
+
+        if not download_file(homology_b2t_url, expected_download_path, downloader_cfg.force_download,
+                             task_desc=f"Ath-{target_assembly_id} Homology", proxies=downloader_cfg.proxies.to_dict()):
+            _log_status(_("错误: 无法下载桥梁物种到目标基因组的同源映射文件。"), "ERROR")
+            if task_done_callback: task_done_callback(False)
+            return False
+    else:
+        _log_status(
+            f"INFO: {_('桥梁物种到目标基因组同源映射文件已存在于:')} {homology_b2t_local_path} {_('将直接使用。')}")
+
+    _log_progress(70, _("桥梁物种到目标基因组同源映射文件准备完成。"))
+
+    bridge_gene_ids = set()
+    for s_id, matches in source_to_bridge_homology_map.items():
+        for match in matches:
+            bridge_gene_ids.add(match[homology_cols['match']])
+
+    _log_status(_("正在从桥梁物种映射基因到目标基因组 '{}'...").format(target_assembly_id))
+    slicer_rule_target = target_genome_info.homology_id_slicer
+
+    bridge_to_target_homology_map = load_and_map_homology(
+        homology_file_path=homology_b2t_local_path,
+        homology_columns=homology_cols,
+        selection_criteria=asdict(b2t_criteria),
+        query_gene_ids=list(bridge_gene_ids),
+        homology_id_slicer=slicer_rule_target,
+        status_callback=_log_status
+    )
+    if not bridge_to_target_homology_map:
+        _log_status(_("警告: 未能找到桥梁物种到目标基因组的同源映射。"), "WARNING")
+        if task_done_callback: task_done_callback(True)
+        return True
+    _log_progress(80, _("桥梁物种到目标基因组映射完成。"))
+
+    # --- 步骤 3: 获取目标基因在目标基因组中的位置 ---
+    _log_status(_("正在获取目标基因组 '{}' 的 GFF 文件...").format(target_assembly_id))
+
+    # 尝试从主下载目录查找目标 GFF 文件
+    target_gff_local_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
+
+    if not target_gff_local_path or not os.path.exists(target_gff_local_path):
+        _log_status(f"INFO: {_('目标基因组 GFF 文件未在预期位置找到，将尝试下载。')}")
+        target_gff_url = target_genome_info.gff3_url
+        expected_download_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
+        if not expected_download_path:
+            expected_download_path = os.path.join(locus_conversion_results_dir,
+                                                  os.path.basename(urlparse(target_gff_url).path).split('?')[0])
+
+        if not download_file(target_gff_url, expected_download_path, downloader_cfg.force_download,
+                             task_desc=f"{target_assembly_id} GFF", proxies=downloader_cfg.proxies.to_dict()):
+            _log_status(_("错误: 无法下载目标基因组 '{}' 的 GFF 文件。").format(target_assembly_id), "ERROR")
+            if task_done_callback: task_done_callback(False)
+            return False
+    else:
+        _log_status(f"INFO: {_('目标基因组 GFF 文件已存在于:')} {target_gff_local_path} {_('将直接使用。')}")
+
+    _log_progress(90, _("目标基因组 GFF 文件准备完成。"))
+
+    all_target_gene_ids = set()
+    for b_id, b_matches in bridge_to_target_homology_map.items():
+        for b_match in b_matches:
+            all_target_gene_ids.add(b_match[homology_cols['match']])
+
+    _log_status(_("正在目标基因组 '{}' 中查询映射到的基因位置信息...").format(target_assembly_id))
+    target_gene_info_map = get_gene_info_by_ids(
+        assembly_id=target_assembly_id,
+        gff_filepath=target_gff_local_path,
+        db_storage_dir=gff_db_storage_dir,
+        gene_ids=list(all_target_gene_ids),
+        force_db_creation=force_gff_db_creation,
+        status_callback=_log_status
+    )
+    if not target_gene_info_map:
+        _log_status(_("警告: 未能在目标基因组中找到任何映射到的基因的位置信息。"), "WARNING")
+        if task_done_callback: task_done_callback(True)
+        return True
+    _log_progress(95, _("目标基因位置查询完成。"))
 
 
 # 独立同源映射功能

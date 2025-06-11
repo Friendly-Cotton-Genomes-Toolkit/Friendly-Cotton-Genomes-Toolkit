@@ -12,6 +12,7 @@ import requests  # 用于HTTP请求
 from tqdm import tqdm  # 用于显示进度条
 
 from cotton_toolkit.core.convertXlsx2csv import convert_xlsx_to_single_csv
+from cotton_toolkit.config.loader import get_genome_data_sources
 
 # --- 国际化和日志设置 ---
 # 假设 _ 函数已由主应用程序入口设置到 builtins
@@ -182,15 +183,8 @@ def download_genome_data(
         _log_status(_("错误: 配置中未找到 'downloader' 部分。"), "ERROR")
         return False
 
-    # from ..config.loader import get_genome_data_sources # 实际应从这里导入
-    # 为了本模块的独立性（如果config loader未完全集成），暂时假设data_sources由config直接提供
-    # 或者由调用者（如CLI）在传入config前，已经调用 get_genome_data_sources 并填充了 config['downloader']['genome_sources']
-    data_sources = downloader_cfg.get('genome_sources')
+    data_sources = get_genome_data_sources(config, logger=_log_status)
     if not data_sources:
-        # 如果 config_loader.py 在同一个包内且可用，可以尝试加载
-        # from ..config.loader import get_genome_data_sources as get_gs_func # 避免命名冲突
-        # data_sources = get_gs_func(config)
-        # if not data_sources:
         _log_status(_("错误: 下载器配置中缺少 'genome_sources' 数据。"), "ERROR")
         return False
 

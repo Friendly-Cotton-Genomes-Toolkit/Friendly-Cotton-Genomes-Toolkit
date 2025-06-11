@@ -2,9 +2,11 @@
 import gzip
 import logging
 import os
-from typing import List, Dict, Optional, Union, Iterator, Any  # Iterator for streaming results, Any for attributes
+from typing import List, Dict, Optional, Union, Iterator, Any, \
+    Callable, Tuple  # Iterator for streaming results, Any for attributes
 
 import gffutils  # 用于解析GFF3文件并创建数据库
+import threading
 
 # --- 国际化和日志设置 ---
 # 假设 _ 函数已由主应用程序入口设置到 builtins
@@ -19,9 +21,275 @@ except (AttributeError, ImportError):
 
 logger = logging.getLogger("cotton_toolkit.gff_parser")
 
-# 默认的gffutils数据库文件名后缀
-DB_SUFFIX = ".gffutils.db"
+# --- 模块级 GFF 数据库缓存 ---
+_GFF_DB_PATHS_CREATED: Dict[str, bool] = {} # 缓存已创建的数据库路径，键是 db_path，值是 True
+_GFF_DB_LOCK = threading.Lock() # 用于同步对 _GFF_DB_PATHS_CREATED 的访问和数据库创建
 
+
+def create_gff_database(
+        gff_filepath: str,
+        db_path: str,
+        force_recreate: bool = False,
+        status_callback: Optional[Callable[[str], None]] = None
+) -> Optional[str]:
+    """
+    创建gffutils数据库。
+    """
+    log = status_callback if status_callback else logger.info
+    _log_error = status_callback if status_callback else logger.error  # Ensure error logs go through status_callback
+
+    with _GFF_DB_LOCK:
+        log(f"DEBUG: {_('尝试创建/加载GFF数据库:')} {db_path} {_('从:')} {gff_filepath}", level="DEBUG")  # 调试日志
+
+        if os.path.exists(db_path) and not force_recreate:
+            try:
+                # 尝试打开数据库检查其完整性，如果损坏则删除
+                temp_db_check = gffutils.FeatureDB(db_path, keep_order=True)
+                temp_db_check.conn.close()  # 关闭临时连接
+                log(_("GFF数据库已存在: {} (无需重新创建)").format(db_path))
+                _GFF_DB_PATHS_CREATED[db_path] = True
+                return db_path
+            except Exception as e:
+                _log_error(_("警告: 无法加载现有GFF数据库 '{}'，尝试重新创建：{}").format(db_path, e))
+                if os.path.exists(db_path):
+                    try:
+                        os.remove(db_path)
+                        log(_("已删除损坏的GFF数据库文件。"))
+                    except OSError as err:
+                        _log_error(_("错误: 无法删除损坏的GFF数据库文件 '{}': {}").format(db_path, err))
+                        return None
+
+        if os.path.exists(db_path):  # 如果存在但需要强制重新创建
+            _log_error(_("警告: 强制重新创建GFF数据库 '{}'。").format(db_path))
+            try:
+                os.remove(db_path)
+                log(_("已删除旧的GFF数据库文件。"))
+            except OSError as err:
+                _log_error(_("错误: 无法删除旧的GFF数据库文件 '{}': {}").format(db_path, err))
+                return None
+
+        log(_("正在创建GFF数据库：{} 从 {}").format(db_path, gff_filepath))
+        try:
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+            # --- 核心修改：调整推理标志 ---
+            # 设置 disable_infer_transcripts 和 disable_infer_genes 为 False，
+            # 允许 gffutils 推理基因和转录本，这对于不显式标记 'gene' 的 GFF 文件很重要。
+            db = gffutils.create_db(
+                gff_filepath,
+                db_path,
+                force=True,  # 强制创建新数据库
+                disable_infer_transcripts=False,  # <-- 修改为 False
+                disable_infer_genes=False,  # <-- 修改为 False
+                merge_strategy="create_new",  # 合并策略，根据数据调整
+                keep_order=True,
+                # 如果 GFF 文件中的基因 ID 位于 attributes 中，而不是直接作为 feature.id，
+                # 并且你不希望 gffutils 自己定义 ID，可以尝试指定 id_spec
+                # 例如: id_spec={'gene': ['ID', 'gene_id']}
+                # 但通常默认行为在 disable_infer=False 时足够。
+            )
+            log(_("GFF数据库创建成功: {}").format(db_path))
+            _GFF_DB_PATHS_CREATED[db_path] = True
+            return db_path
+        except Exception as e:
+            _log_error(_("错误: 创建GFF数据库 '{}' 失败: {}").format(db_path, e))
+            _GFF_DB_PATHS_CREATED[db_path] = False
+            return None
+
+
+# --- 新增函数：在线程中打开数据库连接 ---
+def _open_gff_db_connection(db_path: str) -> Optional[gffutils.FeatureDB]:
+    """
+    在当前线程中打开一个新的gffutils数据库连接。
+    """
+    try:
+        db = gffutils.FeatureDB(db_path, keep_order=True)
+        logger.debug(f"DEBUG: {_('新的GFF数据库连接在线程')} {threading.get_ident()} {_('中打开:')} {db_path}")
+        return db
+    except Exception as e:
+        logger.error(_("错误: 在线程 {} 中打开GFF数据库 '{}' 失败: {}").format(threading.get_ident(), db_path, e))
+        return None
+
+
+# --- 新增函数：根据区域查询基因 ---
+def get_genes_in_region(
+        assembly_id: str,
+        gff_filepath: str,
+        db_storage_dir: str,
+        region: Tuple[str, int, int],  # (chromosome, start, end)
+        force_db_creation: bool = False,
+        status_callback: Optional[Callable[[str], None]] = None
+) -> List[Dict[str, Any]]:
+    log = status_callback if status_callback else logger.info
+    genes_in_region_list = []
+
+    chrom, start, end = region
+
+    db_name = f"{assembly_id}_genes.db"
+    db_path = os.path.join(db_storage_dir, db_name)
+
+    db_created = False
+    with _GFF_DB_LOCK:
+        db_created = _GFF_DB_PATHS_CREATED.get(db_path, False)
+
+    if not db_created:
+        created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback)
+        if not created_db_path:
+            log(_("错误: 无法获取或创建GFF数据库，无法查询区域基因。"), level="ERROR")
+            return []
+
+    db = _open_gff_db_connection(db_path)
+    if not db:
+        log(_("错误: 无法在当前线程中打开GFF数据库连接，无法查询区域基因。"), level="ERROR")
+        return []
+
+    try:
+        log(_("正在基因组 '{}' 的区域 '{}:{}-{}' 中查询基因...").format(assembly_id, chrom, start, end))
+
+        # --- 新增调试：打印数据库中可用的 featuretypes ---
+        available_featuretypes = list(db.featuretypes())
+        log(f"DEBUG: {_('数据库中可用的 featuretypes:')} {available_featuretypes}", level="DEBUG")
+        if 'gene' not in available_featuretypes:
+            log(f"WARNING: {_('警告：数据库中没有找到 featuretype 为 \'gene\' 的特征。请检查GFF文件或调整 featuretype。可用类型:')} {available_featuretypes}",
+                level="WARNING")
+
+        # --- 修改查询 featuretype：尝试更通用的查询或根据日志调整 ---
+        # 默认尝试 'gene'
+        query_featuretype = 'gene'
+        # 如果 'gene' 不在可用类型中，并且有其他常见的基因类型，可以尝试
+        # 例如，如果 available_featuretypes 包含 'mRNA' 或 'transcript'，可以考虑用它们
+        # 但最好是根据实际 GFF 文件来确定最准确的类型。
+
+        # for ftype in ['mRNA', 'transcript', 'gene_feature', 'locus']: # 示例：可以遍历尝试
+        #     if ftype in available_featuretypes:
+        #         query_featuretype = ftype
+        #         log(f"INFO: {_('将使用特征类型:')} '{query_featuretype}' {_('进行查询。')}")
+        #         break
+
+        features = db.region(
+            region,  # 直接传递 (chrom, start, end) 元组
+            featuretype=query_featuretype  # 使用确定的特征类型
+        )
+
+        found_features_count = 0
+        for gene in features:  # 遍历查询结果
+            found_features_count += 1
+            gene_id = gene.attributes.get('ID', [gene.id])[0]
+            if '#' in gene_id:
+                gene_id = gene_id.split('#')[0]
+
+            genes_in_region_list.append({
+                "gene_id": gene_id,
+                "seqid": gene.seqid,
+                "start": gene.start,
+                "end": gene.end,
+                "strand": gene.strand,
+                "featuretype": gene.featuretype
+            })
+
+        genes_in_region_list.sort(key=lambda x: x['start'])
+
+        log(_("在区域中找到 {} 个基因。").format(len(genes_in_region_list)))
+        if found_features_count == 0:
+            log(f"WARNING: {_('虽然GFF查询没有报错，但在区域 {}:{}-{} 中没有找到任何指定类型的特征。请检查区域、染色体名称、以及GFF文件的内容。')}".format(
+                chrom, start, end), level="WARNING")
+
+        return genes_in_region_list
+
+    except Exception as e:
+        log(_("错误: 查询GFF数据库区域时发生错误: {}").format(e), level="ERROR")
+        return []
+    finally:
+        if db:
+            try:
+                db.conn.close()
+            except Exception as close_e:
+                logger.warning(_("警告: 关闭GFF数据库连接 '{}' 失败: {}").format(db_path, close_e))
+
+
+# --- 新增函数：根据基因ID列表查询基因信息 ---
+def get_gene_info_by_ids(
+        assembly_id: str,
+        gff_filepath: str,
+        db_storage_dir: str,
+        gene_ids: List[str],
+        force_db_creation: bool = False,
+        status_callback: Optional[Callable[[str], None]] = None
+) -> Dict[str, Dict[str, Any]]:
+    log = status_callback if status_callback else logger.info
+    gene_info_map = {}
+
+    db_name = f"{assembly_id}_genes.db"
+    db_path = os.path.join(db_storage_dir, db_name)
+
+    db_created = False
+    with _GFF_DB_LOCK:
+        db_created = _GFF_DB_PATHS_CREATED.get(db_path, False)
+
+    if not db_created:
+        created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback)
+        if not created_db_path:
+            log(_("错误: 无法获取或创建GFF数据库，无法查询基因信息。"), level="ERROR")
+            return {}
+
+    db = _open_gff_db_connection(db_path)
+    if not db:
+        log(_("错误: 无法在当前线程中打开GFF数据库连接，无法查询基因信息。"), level="ERROR")
+        return {}
+
+    try:
+        log(_("在基因组 '{}' 中查询 {} 个基因的详细信息...").format(assembly_id, len(gene_ids)))
+
+        # --- 新增调试：打印数据库中可用的 featuretypes ---
+        available_featuretypes = list(db.featuretypes())
+        log(f"DEBUG: {_('数据库中可用的 featuretypes:')} {available_featuretypes}", level="DEBUG")
+        if 'gene' not in available_featuretypes:
+            log(f"WARNING: {_('警告：数据库中没有找到 featuretype 为 \'gene\' 的特征。请检查GFF文件或调整 featuretype。可用类型:')} {available_featuretypes}",
+                level="WARNING")
+
+        for gene_id in gene_ids:
+            gene = None
+            try:
+                # 尝试通过 feature.id 查询（最有效率）
+                gene = db[gene_id]
+            except gffutils.exceptions.FeatureNotFoundError:
+                # 如果直接查找失败，并且基因 ID 格式可能与 GFF 的 ID 属性不同，
+                # 则尝试遍历并检查 attributes 中的 'ID'。
+                # 注意：对于大型 GFF 文件，全表扫描效率极低，考虑在 db.create_db 时建立索引
+                # 或者确保 gene_id 与 GFF features 的主 ID 匹配。
+                log(f"DEBUG: {_('基因ID')} '{gene_id}' {_('未通过直接查找找到，尝试通过属性查找。')}", level="DEBUG")
+                # 遍历所有 feature 检查 attributes
+                # 这个操作非常耗时，如果基因数量很多，会严重影响性能
+                # 更好的方法是在 create_db 时使用 id_spec 参数来指定如何从 attributes 中提取主 ID
+                for f in db.all_features():
+                    if 'ID' in f.attributes and gene_id in f.attributes['ID']:
+                        gene = f
+                        break
+
+            if gene:
+                effective_gene_id = gene.attributes.get('ID', [gene.id])[0]
+                if '#' in effective_gene_id:
+                    effective_gene_id = effective_gene_id.split('#')[0]
+
+                gene_info_map[effective_gene_id] = {
+                    "gene_id": effective_gene_id,
+                    "seqid": gene.seqid,
+                    "start": gene.start,
+                    "end": gene.end,
+                    "strand": gene.strand,
+                    "featuretype": gene.featuretype
+                }
+            else:
+                log(_("警告: 未在数据库中找到基因 '{}'。").format(gene_id), level="WARNING")
+
+        log(_("成功查询到 {} 个基因的详细信息。").format(len(gene_info_map)))
+        return gene_info_map
+    finally:
+        if db:
+            try:
+                db.conn.close()
+            except Exception as close_e:
+                logger.warning(_("警告: 关闭GFF数据库连接 '{}' 失败: {}").format(db_path, close_e))
 
 def create_or_load_gff_db(
         gff_file_path: str,
@@ -55,7 +323,7 @@ def create_or_load_gff_db(
         # 移除可能的 .gz 后缀，然后再移除 .gff3 或 .gff 后缀
         path_no_gz = os.path.splitext(gff_file_path)[0] if gff_file_path.lower().endswith(".gz") else gff_file_path
         base_name_no_ext = os.path.splitext(path_no_gz)[0]
-        db_path = base_name_no_ext + DB_SUFFIX
+        db_path = base_name_no_ext + 'DB_SUFFIX'
 
     # 确保db_path的目录存在
     db_dir = os.path.dirname(db_path)

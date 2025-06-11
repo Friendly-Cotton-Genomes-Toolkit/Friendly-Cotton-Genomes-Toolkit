@@ -1,7 +1,7 @@
 ﻿# cotton_toolkit/core/homology_mapper.py
 
 import logging
-from typing import List, Dict, Any, Union, Tuple, Optional
+from typing import List, Dict, Any, Union, Tuple, Optional, Callable
 
 import numpy as np
 import pandas as pd
@@ -19,6 +19,114 @@ except (AttributeError, ImportError):
 
 
 logger = logging.getLogger("cotton_toolkit.homology_mapper")
+
+
+# --- 新增：函数来处理 homology_id_slicer ---
+def _apply_id_slicer(gene_id: str, slicer_rule: Optional[str]) -> str:
+    """
+    根据 slicer_rule 对基因 ID 进行切片处理。
+    例如：slicer_rule='.', 则 'Ghir.A01G123400.1' 变为 'Ghir.A01G123400'
+    slicer_rule='_' 则 'Ghir_A01G123400' 变为 'Ghir_A01G123400' (如果需要处理到第一个 _)
+    这里我们假设 slicer_rule 是一个分隔符，我们需要它之前的部分。
+    更复杂的切片逻辑可能需要正则表达。
+    """
+    if slicer_rule and slicer_rule in gene_id:
+        return gene_id.split(slicer_rule)[0]
+    return gene_id
+
+# --- 核心同源映射函数 load_and_map_homology ---
+def load_and_map_homology(
+        homology_file_path: str,
+        homology_columns: Dict[str, str],
+        selection_criteria: Dict[str, Any],
+        query_gene_ids: Optional[List[str]] = None,
+        homology_id_slicer: Optional[str] = None, # 引入 slicer 参数
+        status_callback: Optional[Callable[[str], None]] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None
+) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    加载同源数据，并根据筛选标准和查询基因ID进行映射。
+    返回一个字典，键为查询基因ID，值为其所有符合条件的同源基因列表。
+    """
+    log = status_callback if status_callback else logger.info
+    log(f"INFO: {_('加载同源文件:')} {homology_file_path}")
+
+    homology_df = None
+    try:
+        # 支持 CSV 和 XLSX
+        if homology_file_path.lower().endswith('.csv'):
+            homology_df = pd.read_csv(homology_file_path)
+        elif homology_file_path.lower().endswith(('.xlsx', '.xls')):
+            homology_df = pd.read_excel(homology_file_path)
+        else:
+            log(_("错误: 不支持的同源文件格式。支持 .csv, .xlsx, .xls。"), level="ERROR")
+            return {}
+    except FileNotFoundError:
+        log(_("错误: 同源文件未找到: {}").format(homology_file_path), level="ERROR")
+        return {}
+    except Exception as e:
+        log(_("错误: 读取同源文件 {} 失败: {}").format(homology_file_path, e), level="ERROR")
+        return {}
+
+    # 重命名列以方便访问
+    df_cols = homology_df.columns
+    query_col = homology_columns.get('query')
+    match_col = homology_columns.get('match')
+    evalue_col = homology_columns.get('evalue')
+    score_col = homology_columns.get('score')
+    pid_col = homology_columns.get('pid')
+
+    required_cols = [query_col, match_col, evalue_col, score_col, pid_col]
+    if not all(col in df_cols for col in required_cols):
+        log(_("错误: 同源文件中缺少必要的列。需要: {}").format(", ".join(required_cols)), level="ERROR")
+        return {}
+
+    # 应用 ID 切片器
+    if homology_id_slicer:
+        homology_df[query_col] = homology_df[query_col].apply(lambda x: _apply_id_slicer(str(x), homology_id_slicer))
+        homology_df[match_col] = homology_df[match_col].apply(lambda x: _apply_id_slicer(str(x), homology_id_slicer))
+
+    # 筛选同源数据
+    filtered_df = homology_df.copy()
+
+    if selection_criteria:
+        if 'evalue_threshold' in selection_criteria and evalue_col:
+            filtered_df = filtered_df[filtered_df[evalue_col] <= selection_criteria['evalue_threshold']]
+        if 'pid_threshold' in selection_criteria and pid_col:
+            filtered_df = filtered_df[filtered_df[pid_col] >= selection_criteria['pid_threshold']]
+        if 'score_threshold' in selection_criteria and score_col:
+            filtered_df = filtered_df[filtered_df[score_col] >= selection_criteria['score_threshold']]
+
+    # 排序并取 Top N
+    if 'sort_by' in selection_criteria and selection_criteria['sort_by'] and \
+       'ascending' in selection_criteria and selection_criteria['ascending']:
+        try:
+            sort_cols = [homology_columns.get(c, c) for c in selection_criteria['sort_by']] # 确保用实际列名排序
+            filtered_df = filtered_df.sort_values(by=sort_cols, ascending=selection_criteria['ascending'])
+        except KeyError as e:
+            log(_("警告: 排序依据列 {} 不存在，跳过排序。").format(e), level="WARNING")
+
+    top_n = selection_criteria.get('top_n')
+    if top_n is not None and top_n > 0:
+        # 对每个查询基因，只保留 Top N
+        filtered_df = filtered_df.groupby(query_col).head(top_n).reset_index(drop=True)
+
+    # 过滤出 query_gene_ids 中的基因
+    if query_gene_ids:
+        # 应用 slicer 到查询 ID 列表，以确保一致性
+        query_gene_ids_processed = [_apply_id_slicer(gid, homology_id_slicer) for gid in query_gene_ids]
+        filtered_df = filtered_df[filtered_df[query_col].isin(query_gene_ids_processed)]
+        # 确保原始 query_gene_ids 在结果中被映射，如果它们在 homology_df 中有映射的话
+
+    # 构建最终的映射字典
+    homology_map: Dict[str, List[Dict[str, Any]]] = {}
+    for _c, row in filtered_df.iterrows():
+        query_id = row[query_col]
+        match_info = {col: row[col] for col in required_cols} # 包含所有关键同源信息
+        homology_map.setdefault(query_id, []).append(match_info)
+
+    log(_("同源映射完成。找到 {} 个查询基因的映射。").format(len(homology_map)))
+    return homology_map
 
 
 def select_best_homologs(

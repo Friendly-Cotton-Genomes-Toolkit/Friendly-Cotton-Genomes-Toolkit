@@ -1,96 +1,157 @@
-﻿import pandas as pd
+﻿# cotton_toolkit/core/convertXlsx2csv.py
+
+import pandas as pd
 import os
-import re  # re is not strictly needed for this version but keeping it from original
-import logging  # 用于日志记录
+import logging
+from typing import Optional, Callable  # 确保导入 Optional 和 Callable
 
-# 获取logger实例。主应用入口会配置根logger或包logger。
-# 这里我们获取一个特定于本模块的logger。
-logger = logging.getLogger("cotton_toolkit.convertXlsx2csv")
+# --- 国际化和日志设置 ---
+# 假设 _ 函数已由主应用程序入口设置到 builtins
+try:
+    import builtins
+
+    _ = builtins._  # type: ignore
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
 
 
+    if 'builtins' not in locals() or not hasattr(builtins, '_'):
+        print("Warning (convertXlsx2csv.py): builtins._ not found for i18n. Using pass-through.")
 
-def convert_xlsx_to_single_csv(xlsx_filepath: str, output_csv_filepath: str) -> bool:
+logger = logging.getLogger("cotton_toolkit.converter")
+
+
+def convert_xlsx_to_single_csv(
+        xlsx_filepath: str,
+        output_csv_filepath: Optional[str] = None,
+        header_row_index: int = 0,  # 新增参数：指定标题行索引，默认为0 (第一行)
+        status_callback: Optional[Callable[[str], None]] = None
+) -> bool:
     """
-    将XLSX文件的所有工作表合并内容到一个单一的CSV文件。
+    将一个Excel文件中的所有工作表内容合并到一个CSV文件中。
+    适用于所有工作表表头格式一致的情况。
 
-    参数:
-    xlsx_filepath (str): 输入的XLSX文件的路径。
-    output_csv_filepath (str): 输出的合并后CSV文件的完整路径。
+    Args:
+        xlsx_filepath (str): 输入的Excel文件路径。
+        output_csv_filepath (Optional[str]): 输出的CSV文件路径。如果为None，将自动生成。
+        header_row_index (int): 包含列名的行索引（从0开始计数）。默认为0 (第一行)。
+        status_callback (Optional[Callable[[str], None]]): 用于报告状态更新的回调函数。
+
+    Returns:
+        bool: 转换成功返回True，否则返回False。
     """
+    log = status_callback if status_callback else logger.info
+
+    if not os.path.exists(xlsx_filepath):
+        log(_("错误: 输入Excel文件未找到: {}").format(xlsx_filepath), level="ERROR")
+        return False
+
+    if not output_csv_filepath:
+        base_name = os.path.splitext(os.path.basename(xlsx_filepath))[0]
+        output_csv_filepath = os.path.join(os.path.dirname(xlsx_filepath), f"{base_name}_merged.csv")
+
     try:
-        # 读取Excel文件并获取所有工作表的名称
-        logger.info(f'正在转换： {xlsx_filepath}')
-
         xls = pd.ExcelFile(xlsx_filepath)
-        sheet_names = xls.sheet_names
-        logger.info(f"找到工作表: {sheet_names}")
+        all_sheets_df = []
 
-        if not sheet_names:
-            logger.warning(f"警告: 文件 '{xlsx_filepath}' 中没有找到任何工作表。")
+        log(_("正在处理Excel文件: {}").format(xlsx_filepath))
+        for sheet_name in xls.sheet_names:
+            log(_("读取工作表: {}").format(sheet_name))
+
+            # --- 核心修改：添加 header 参数 ---
+            # 告诉 pandas 从 header_row_index 这一行开始读取列名
+            df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index)
+            # --- 修改结束 ---
+
+            all_sheets_df.append(df)
+
+        if not all_sheets_df:
+            log(_("错误: Excel文件中没有找到任何工作表。"), level="ERROR")
             return False
+
+        # 合并所有工作表
+        merged_df = pd.concat(all_sheets_df, ignore_index=True)
+
+        # 保存为CSV
+        merged_df.to_csv(output_csv_filepath, index=False, encoding='utf-8')
+        log(_("所有工作表已成功合并并保存到CSV: {}").format(output_csv_filepath))
+        return True
 
     except FileNotFoundError:
-        logger.error(f"错误: 文件 '{xlsx_filepath}' 未找到。")
+        log(_("错误: 文件未找到，请检查路径: {}").format(xlsx_filepath), level="ERROR")
         return False
     except Exception as e:
-        logger.error(f"读取Excel文件时发生错误: {e}")
+        log(_("错误: 转换Excel文件到CSV时发生错误: {}").format(e), level="ERROR")
+        logger.exception("详细错误信息:")  # 打印完整的堆栈跟踪
         return False
 
-    all_sheets_data = []  # 用于存储从每个工作表读取的DataFrame
 
-    # 遍历每个工作表
-    for sheet_name in sheet_names:
-        logger.info(f"正在处理工作表: '{sheet_name}'...")
-        try:
-            # 读取当前工作表到pandas DataFrame
-            df_sheet = xls.parse(sheet_name)
+# --- 用于独立测试 convertXlsx2csv.py 的示例代码 ---
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-            # 可选: 如果希望在合并后的CSV中知道数据来自哪个原始工作表，
-            # 可以添加一列来存储工作表名称。
-            # df_sheet['original_sheet_name'] = sheet_name
+    # 创建一个模拟的Excel文件用于测试
+    test_xlsx_path = "test_data.xlsx"
+    test_csv_path = "merged_output.csv"
 
-            all_sheets_data.append(df_sheet)
-            logger.info(f"工作表 '{sheet_name}' 读取成功。")
+    # 包含描述性行和真正标题行的Excel数据
+    data_sheet1 = {
+        "Column A": [1, 2],
+        "Column B": ["x", "y"]
+    }
+    data_sheet2 = {
+        "Column A": [3, 4],
+        "Column B": ["z", "w"]
+    }
 
-        except Exception as e:
-            logger.error(f"处理工作表 '{sheet_name}' 时发生错误: {e}。将跳过此工作表。")
+    # 写入Excel文件，模拟一个首行是描述文字的情况
+    with pd.ExcelWriter(test_xlsx_path) as writer:
+        # Sheet1: 模拟第一行是描述，第二行是真实标题
+        df1_raw = pd.DataFrame({
+            "It may contain multiple worksheets": ["Column A", "Column B"],
+            "Unnamed: 1": ["x", "y"]  # 模拟 Unnamed 列
+        })
+        # 实际内容，不写入
+        # df1_actual_data = pd.DataFrame(data_sheet1)
+        # df1_raw.to_excel(writer, sheet_name='Sheet1', index=False, header=False, startrow=0)
+        # pd.DataFrame(data_sheet1).to_excel(writer, sheet_name='Sheet1', index=False, header=True, startrow=1)
 
-    if not all_sheets_data:
-        logger.error("没有成功读取任何工作表的数据。无法创建合并的CSV文件。")
-        return False
+        # 最简单的模拟，直接把描述行作为 DataFrame 的第一行
+        df_desc = pd.DataFrame([
+            ["It may contain multiple worksheets", "Unnamed: 1", "Unnamed: 2"],
+            ["真实列名1", "真实列名2", "真实列名3"],
+            ["数据1a", "数据1b", "数据1c"],
+            ["数据2a", "数据2b", "数据2c"]
+        ])
+        df_desc.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
 
-    # 合并所有工作表的DataFrame
-    # ignore_index=True 会重新生成从0开始的连续索引
-    # 如果不同工作表的列名不完全一致，pd.concat 会自动处理，
-    # 缺失的列会用NaN填充。
-    try:
-        combined_df = pd.concat(all_sheets_data, ignore_index=True)
-        logger.info("所有工作表数据已合并。")
-    except Exception as e:
-        logger.error(f"合并工作表数据时发生错误: {e}")
-        return False
+        df2 = pd.DataFrame(data_sheet2)
+        df2.to_excel(writer, sheet_name='Sheet2', index=False)
 
-    # 创建输出目录 (如果CSV文件路径包含尚不存在的目录)
-    output_dir = os.path.dirname(output_csv_filepath)
-    if output_dir and not os.path.exists(output_dir):  # output_dir可能为空字符串，如果只指定文件名
-        try:
-            os.makedirs(output_dir)
-            logger.info(f"创建输出目录: '{output_dir}'")
+    print(f"已创建模拟Excel文件: {test_xlsx_path}")
 
-        except OSError as e:
-            logger.error(f"错误: 无法创建输出目录 '{output_dir}': {e}")
-            return False
+    print("\n--- 尝试转换 (header_row_index=0, 默认行为) ---")
+    convert_xlsx_to_single_csv(test_xlsx_path, "output_default_header.csv")
 
-    elif not output_dir and not os.path.exists(os.getcwd()):  # 确保当前工作目录存在，虽然这很少见
-        logger.error(f"错误: 当前工作目录 '{os.getcwd()}' 不存在。")
-        return False
+    print("\n--- 尝试转换 (header_row_index=1, 跳过第一行描述) ---")
+    success = convert_xlsx_to_single_csv(test_xlsx_path, test_csv_path, header_row_index=1)
 
-    # 将合并后的DataFrame保存为CSV文件
-    try:
-        combined_df.to_csv(output_csv_filepath, index=False, encoding='utf-8')
-        logger.info(f"所有工作表已合并并保存为 '{output_csv_filepath}'")
-        return True
-    except Exception as e:
-        logger.error(f"保存合并后的CSV文件 '{output_csv_filepath}' 时发生错误: {e}")
-        return False
+    if success:
+        print(f"\n成功转换到: {test_csv_path}")
+        with open(test_csv_path, 'r', encoding='utf-8') as f:
+            print("--- CSV 内容 (前5行) ---")
+            for i, line in enumerate(f):
+                print(line.strip())
+                if i >= 4: break
+            print("------------------------")
+    else:
+        print("\n转换失败。")
 
+    # 清理
+    if os.path.exists(test_xlsx_path):
+        os.remove(test_xlsx_path)
+    if os.path.exists(test_csv_path):
+        os.remove(test_csv_path)
+    if os.path.exists("output_default_header.csv"):
+        os.remove("output_default_header.csv")
