@@ -67,6 +67,7 @@ Thumbs.db
 # 这些目录由程序在运行时创建，不应纳入版本控制
 /downloaded_cotton_data/
 /gff_databases_cache/
+locus_conversion_results/
 
 # 脚本中的测试输出目录
 /test_downloader_output/
