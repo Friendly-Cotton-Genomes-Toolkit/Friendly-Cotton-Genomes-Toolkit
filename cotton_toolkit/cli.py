@@ -12,7 +12,7 @@ from .tools_pipeline import run_ai_task, run_functional_annotation
 from .core.convertXlsx2csv import convert_xlsx_to_single_csv
 from .config.loader import load_config, generate_default_config_files
 from .core.downloader import download_genome_data
-from .pipelines import run_locus_conversion_standalone ,integrate_bsa_with_hvg, run_homology_mapping_standalone, run_gff_gene_lookup_standalone
+from .pipelines import run_locus_conversion_standalone ,integrate_bsa_with_hvg, run_gff_gene_lookup_standalone
 
 # --- 定义应用名称和翻译函数占位符 ---
 APP_NAME_FOR_I18N = "cotton_toolkit"

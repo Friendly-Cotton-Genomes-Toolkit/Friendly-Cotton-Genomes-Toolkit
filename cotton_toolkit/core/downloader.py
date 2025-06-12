@@ -5,6 +5,7 @@ import gzip  # 用于解压.gz文件
 import logging  # 用于日志记录
 import os
 import shutil  # 用于文件操作 (如 copyfileobj)
+import time  # <---【修改点1】新增导入，用于重试等待
 from typing import List, Dict, Optional, Callable, Any
 from urllib.parse import urlparse  # 用于从URL解析文件名
 
@@ -302,13 +303,27 @@ def download_genome_data(
                                     _log_status(_("调用用户转换函数处理 '{}' 时发生错误: {}").format(
                                         os.path.basename(temp_xlsx_path), conv_e), "ERROR")
                                 finally:
+                                    # ---【修改点2】线程安全的文件删除逻辑 ---
                                     if os.path.exists(temp_xlsx_path):
-                                        try:
-                                            os.remove(temp_xlsx_path); _log_status(
-                                                _("已删除临时解压文件: {}").format(temp_xlsx_path))
-                                        except OSError as e_del:
-                                            _log_status(_("删除临时文件 {} 失败: {}").format(temp_xlsx_path, e_del),
-                                                        "WARNING")
+                                        # 引入重试逻辑来删除临时文件，以应对Windows上的文件句柄释放延迟
+                                        for i in range(3):  # 最多重试3次
+                                            try:
+                                                os.remove(temp_xlsx_path)
+                                                _log_status(f"成功删除临时文件: {temp_xlsx_path}", "DEBUG")
+                                                break  # 删除成功，跳出循环
+                                            except PermissionError as e:
+                                                # 在Windows上，由于文件句柄释放延迟，可能会发生此错误
+                                                _log_status(f"删除临时文件 {temp_xlsx_path} 时权限错误 (尝试 {i + 1}/3): {e}", "WARNING")
+                                                if i < 2:  # 如果不是最后一次尝试，则等待
+                                                    time.sleep(0.5)  # 等待500毫秒
+                                                else:
+                                                    # 最后一次尝试后仍然失败，记录错误
+                                                    _log_status(f"删除临时文件 {temp_xlsx_path} 失败: {e}", "ERROR")
+                                            except Exception as e:
+                                                # 捕获其他可能的删除异常
+                                                _log_status(f"删除临时文件 {temp_xlsx_path} 时发生未知错误: {e}", "ERROR")
+                                                break # 发生其他错误，不再重试
+                                    # --- 修复结束 ---
                                 if conversion_ok:
                                     _log_status(_("同源数据已转换为CSV: {}").format(final_csv_path), "INFO")
                                 else:

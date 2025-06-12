@@ -13,6 +13,20 @@ _GENOME_SOURCES_CACHE: Optional[Dict[str, GenomeSourceItem]] = None  # 缓存的
 _LAST_CACHED_GS_FILE_PATH: Optional[str] = None
 
 
+# --- 国际化和日志设置 ---
+# 假设 _ 函数已由主应用程序入口设置到 builtins
+# 为了让静态检查工具识别 _，可以这样做：
+try:
+    import builtins
+
+    _ = builtins._  # type: ignore
+except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins失败
+    # 如果在测试或独立运行此模块时，_ 可能未设置
+    def _(text: str) -> str:
+        return text
+
+
+
 # --- 新增辅助函数：获取本地已下载文件的预期路径 ---
 def get_local_downloaded_file_path(
         main_config: MainConfig,

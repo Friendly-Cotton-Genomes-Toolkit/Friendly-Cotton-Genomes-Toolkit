@@ -271,8 +271,6 @@ def map_genes_via_bridge(
         b_to_t_match_col: str,
         selection_criteria_s_to_b: Dict[str, Any],
         selection_criteria_b_to_t: Dict[str, Any],
-        source_id_slicer: Optional[str] = None,
-        bridge_id_slicer: Optional[str] = None,
         evalue_col: str = "Exp",
         score_col: str = "Score",
         pid_col: str = "PID",
@@ -293,8 +291,6 @@ def map_genes_via_bridge(
         b_to_t_match_col (str): Match ID column name in the bridge-to-target DataFrame.
         selection_criteria_s_to_b (Dict[str, Any]): Filtering criteria for the source-to-bridge step.
         selection_criteria_b_to_t (Dict[str, Any]): Filtering criteria for the bridge-to-target step.
-        source_id_slicer (Optional[str]): Character to slice source query IDs by (e.g., '_').
-        bridge_id_slicer (Optional[str]): Character to slice bridge IDs by.
         evalue_col (str): The name of the E-value column.
         score_col (str): The name of the Score column.
         pid_col (str): The name of the PID column.
@@ -312,37 +308,30 @@ def map_genes_via_bridge(
     logger.info(_("开始通过 {} 将 {} 个源基因从 {} 映射到 {}...").format(
         bridge_species_name, len(set(source_gene_ids)), source_assembly_name, target_assembly_name))
 
-    # --- Apply ID Slicing ---
     s_to_b_df = source_to_bridge_homology_df.copy()
     b_to_t_df = bridge_to_target_homology_df.copy()
-
-    if source_id_slicer:
-        logger.info(f"Applying slicer '{source_id_slicer}' to source homology query IDs.")
-        s_to_b_df[s_to_b_query_col] = s_to_b_df[s_to_b_query_col].astype(str).str.split(source_id_slicer).str[0]
-
-    if bridge_id_slicer:
-        logger.info(f"Applying slicer '{bridge_id_slicer}' to bridge homology query/match IDs.")
-        s_to_b_df[s_to_b_match_col] = s_to_b_df[s_to_b_match_col].astype(str).str.split(bridge_id_slicer).str[0]
-        b_to_t_df[b_to_t_query_col] = b_to_t_df[b_to_t_query_col].astype(str).str.split(bridge_id_slicer).str[0]
 
     # --- Fuzzy Matching Logic ---
     fuzzy_match_count = 0
     expanded_source_ids = []
     source_id_notes = {}  # Maps the matched source ID back to a note about how it was found
 
-    available_source_ids = set(s_to_b_df[s_to_b_query_col].unique())
+    available_source_ids = set(s_to_b_df[s_to_b_query_col].astype(str).unique())
 
     for input_id in set(source_gene_ids):
-        if input_id in available_source_ids:
-            expanded_source_ids.append(input_id)
-            source_id_notes[input_id] = _("直接匹配")
+        str_input_id = str(input_id)
+        if str_input_id in available_source_ids:
+            expanded_source_ids.append(str_input_id)
+            source_id_notes[str_input_id] = _("直接匹配")
         else:
-            fuzzy_matches = [sid for sid in available_source_ids if str(sid).startswith(input_id)]
+            # The regex handles .1, .2 variations, but for cases where the homology file itself might have suffixes,
+            # this prefix matching can still be useful.
+            fuzzy_matches = [sid for sid in available_source_ids if sid.startswith(str_input_id)]
             if fuzzy_matches:
                 fuzzy_match_count += 1
                 expanded_source_ids.extend(fuzzy_matches)
                 for match in fuzzy_matches:
-                    source_id_notes[match] = _("模糊匹配 on '{}'").format(input_id)
+                    source_id_notes[match] = _("模糊匹配 on '{}'").format(str_input_id)
 
     if not expanded_source_ids:
         logger.warning(_("在源->桥梁同源数据中未找到任何与输入源基因匹配的记录 (包括模糊匹配)。"))
@@ -446,7 +435,7 @@ if __name__ == '__main__':
 
     # --- 4. 执行映射 ---
     logger.info("\n--- 调用 map_genes_via_bridge ---")
-    mapped_results_df = map_genes_via_bridge(
+    mapped_results_df, _ = map_genes_via_bridge(
         source_gene_ids=source_genes_to_map_example,
         source_assembly_name="CottonA_Demo",
         target_assembly_name="CottonB_Demo",
