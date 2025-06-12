@@ -68,6 +68,7 @@ Thumbs.db
 /downloaded_cotton_data/
 /gff_databases_cache/
 locus_conversion_results/
+genomes/
 
 # 脚本中的测试输出目录
 /test_downloader_output/
