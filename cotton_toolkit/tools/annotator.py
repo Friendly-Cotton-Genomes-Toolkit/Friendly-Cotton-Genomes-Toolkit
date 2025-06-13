@@ -1,79 +1,146 @@
-﻿import logging
+﻿# cotton_toolkit/tools/annotator.py
+
+import logging
+import os
 import pandas as pd
+from typing import List, Dict, Optional, Callable
 
-logger = logging.getLogger("cotton_toolkit.tools.annotator")
+from ..config.models import MainConfig, GenomeSourceItem
+from ..config.loader import get_local_downloaded_file_path
 
-def match_genes(xlsx_file_path: str, csv_file_path: str, output_csv_path: str, xlsx_gene_column: str,
-                csv_query_column: str, csv_match_column: str,
-                csv_description_column: str):
-    try:
-        # 1. 读取xlsx文件，获取“修正的基因名”列表
-        df_xlsx = pd.read_excel(xlsx_file_path)
-        # 确保列名正确，并获取唯一的基因名列表
-        if xlsx_gene_column not in df_xlsx.columns:
-            raise ValueError(f"错误: XLSX文件中未找到列 '{xlsx_gene_column}'")
-        xlsx_gene_names = df_xlsx[xlsx_gene_column].dropna().unique().tolist()
-        print(f"从XLSX文件加载了 {len(xlsx_gene_names)} 个唯一的基因名。")
-        if not xlsx_gene_names:
-            print("警告: XLSX文件中的基因名列表为空。")
-            exit()
+logger = logging.getLogger("cotton_toolkit.annotator")
+_ = lambda text: text  # Placeholder for i18n
 
-        # 2. 读取csv文件
-        df_csv = pd.read_csv(csv_file_path)
-        # 确保列名正确
-        required_csv_cols = [csv_query_column, csv_match_column, csv_description_column]
-        for col in required_csv_cols:
-            if col not in df_csv.columns:
-                raise ValueError(f"错误: CSV文件中未找到列 '{col}'")
-        print(f"从CSV文件加载了 {len(df_csv)} 行数据。")
 
-        # 3. 创建一个字典来存储每个xlsx基因名匹配到的所有信息
-        # 键是 "修正的基因名"，值是一个字典，包含 Match, Description, Query 的集合 (set)
-        # 使用集合可以自动处理重复项
-        results_dict = {gene_name: {'Match': set(), 'Description': set(), 'Query': set()} for gene_name in xlsx_gene_names}
+class Annotator:
+    """
+    一个用于处理基因功能注释的类。
+    """
 
-        # 4. 遍历CSV文件的每一行，进行匹配
-        matched_csv_rows_count = 0
-        for index, csv_row in df_csv.iterrows():
-            query_val = str(csv_row[csv_query_column])  # 确保是字符串
-            match_val = str(csv_row[csv_match_column])
-            desc_val = str(csv_row[csv_description_column])
+    def __init__(
+            self,
+            main_config: MainConfig,
+            genome_info: GenomeSourceItem,
+            status_callback: Optional[Callable[[str, str], None]] = None,
+            progress_callback: Optional[Callable[[int, str], None]] = None
+    ):
+        """
+        初始化注释器。
 
-            for xlsx_gene in xlsx_gene_names:
-                # 核心匹配逻辑：CSV的Query列是否以XLSX的基因名开头
-                if query_val.startswith(xlsx_gene):
-                    results_dict[xlsx_gene]['Match'].add(match_val)
-                    results_dict[xlsx_gene]['Description'].add(desc_val)
-                    results_dict[xlsx_gene]['Query'].add(query_val)
-                    matched_csv_rows_count += 1
-                    break  # 假设一个CSV Query只对应一个XLSX基因名前缀
+        Args:
+            main_config (MainConfig): 主配置对象。
+            genome_info (GenomeSourceItem): 当前要注释的基因组的配置信息。
+            status_callback (Callable): 用于报告状态更新的回调函数。
+            progress_callback (Callable): 用于报告进度的回调函数。
+        """
+        self.config = main_config
+        self.genome_info = genome_info
+        self.log = status_callback if status_callback else lambda msg, level: logger.info(f"[{level}] {msg}")
+        self.progress = progress_callback if progress_callback else lambda p, m: logger.info(f"[{p}%] {m}")
+        self.db_cache = {}  # 用于缓存已加载的注释文件
 
-        print(f"CSV中有 {matched_csv_rows_count} 行数据与XLSX中的基因名匹配。")
+    def _load_annotation_db(self, db_key: str) -> Optional[pd.DataFrame]:
+        """加载指定的注释数据库文件。"""
+        if db_key in self.db_cache:
+            return self.db_cache[db_key]
 
-        # 5. 准备输出数据
-        output_data = []
-        for gene_name, data in results_dict.items():
-            if data['Query']:  # 只输出那些在CSV中找到匹配的基因
-                # 对集合中的元素排序后用分号连接，确保输出顺序一致性
-                output_data.append({
-                    '修正的基因名': gene_name,
-                    'Match': '; '.join(sorted(list(data['Match']))),
-                    'Description': '; '.join(sorted(list(data['Description']))),
-                    'Querys(所有匹配到的query)': '; '.join(sorted(list(data['Query'])))
-                })
+        self.log(f"正在加载 {db_key} 注释数据库...", "INFO")
+        db_path = get_local_downloaded_file_path(self.config, self.genome_info, db_key)
 
-        if not output_data:
-            print("没有找到任何匹配项，不生成输出文件。")
-        else:
-            # 6. 创建输出DataFrame并保存到CSV
-            output_df = pd.DataFrame(output_data)
-            output_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')  # utf-8-sig 确保Excel能正确打开中文
-            print(f"匹配结果已保存到: {output_csv_path}")
-            print(f"共输出了 {len(output_df)} 条匹配的基因信息。")
+        if not db_path or not os.path.exists(db_path):
+            self.log(f"警告: 未找到 {db_key} 的注释文件，路径: {db_path}。请先下载数据。", "WARNING")
+            return None
 
-    except FileNotFoundError:
-        print(f"错误: 文件未找到。请检查 '{xlsx_file_path}' 和 '{csv_file_path}' 的路径是否正确。")
-    except ValueError as ve:
-        print(ve)
-    except Exception as e:
-        print(f"发生了一个意外错误: {e}")
+        try:
+            # 假设所有注释文件都是Excel格式
+            df = pd.read_excel(db_path, engine='openpyxl')
+            self.db_cache[db_key] = df
+            self.log(f"{db_key} 数据库加载成功。", "DEBUG")
+            return df
+        except Exception as e:
+            self.log(f"错误: 加载注释文件 {db_path} 时失败: {e}", "ERROR")
+            return None
+
+    def annotate_genes(self, gene_ids: List[str], annotation_types: List[str]) -> pd.DataFrame:
+        """
+        对给定的基因列表执行功能注释。
+
+        Args:
+            gene_ids (List[str]): 需要注释的基因ID列表。
+            annotation_types (List[str]): 要执行的注释类型列表 (例如 ['go', 'ipr'])。
+
+        Returns:
+            pd.DataFrame: 一个包含所有注释结果的DataFrame。
+        """
+        if not gene_ids:
+            return pd.DataFrame()
+
+        # 创建一个基础的DataFrame，以输入的基因为索引
+        final_df = pd.DataFrame(gene_ids, columns=['Gene_ID']).set_index('Gene_ID')
+
+        total_steps = len(annotation_types)
+        for i, anno_type in enumerate(annotation_types):
+            self.progress(int((i / total_steps) * 100), _("正在处理 {} 注释...").format(anno_type))
+
+            # 映射UI/配置文件中的key到实际的URL key
+            url_key_map = {
+                'go': 'GO_url',
+                'ipr': 'IPR_url',
+                'kegg_orthologs': 'KEGG_orthologs_url',
+                'kegg_pathways': 'KEGG_pathways_url'
+            }
+
+            # 使用一个更通用的方式来获取文件名，基于URL
+            db_local_path_key = url_key_map.get(anno_type)
+            if not db_local_path_key:
+                self.log(f"警告：未知的注释类型 '{anno_type}'", "WARNING")
+                continue
+
+            anno_df = self._load_annotation_db(db_local_path_key)
+            if anno_df is None:
+                continue
+
+            # 标准化列名
+            anno_cols = self.config.annotation_tool.database_columns
+            query_col = anno_cols.get('query', 'Query')
+            match_col = anno_cols.get('match', 'Match')
+            desc_col = anno_cols.get('description', 'Description')
+
+            if query_col not in anno_df.columns:
+                self.log(f"错误: 在 {anno_type} 注释文件中找不到查询列 '{query_col}'", "ERROR")
+                continue
+
+            # 筛选与输入基因匹配的行
+            matched_rows = anno_df[anno_df[query_col].isin(gene_ids)].copy()
+
+            if matched_rows.empty:
+                continue
+
+            # 将同一基因的多个注释合并为一行
+            def aggregate_annotations(series):
+                # 过滤掉NaN或None值，然后合并
+                return "; ".join(series.dropna().astype(str).unique())
+
+            # 定义聚合字典
+            agg_dict = {}
+            if match_col in matched_rows.columns:
+                agg_dict[match_col] = aggregate_annotations
+            if desc_col in matched_rows.columns:
+                agg_dict[desc_col] = aggregate_annotations
+
+            if not agg_dict:
+                self.log(f"警告：在 {anno_type} 文件中找不到匹配或描述列。", "WARNING")
+                continue
+
+            grouped = matched_rows.groupby(query_col).agg(agg_dict).reset_index()
+            grouped = grouped.rename(columns={
+                query_col: 'Gene_ID',
+                match_col: f'{anno_type}_ID',
+                desc_col: f'{anno_type}_Description'
+            }).set_index('Gene_ID')
+
+            # 将结果合并到最终的DataFrame中
+            final_df = final_df.join(grouped, how='left')
+
+        self.progress(100, _("所有注释处理完成。"))
+        return final_df.reset_index()

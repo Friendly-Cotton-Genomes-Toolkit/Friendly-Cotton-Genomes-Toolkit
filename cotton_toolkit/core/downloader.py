@@ -16,20 +16,13 @@ from cotton_toolkit.core.convertXlsx2csv import convert_xlsx_to_single_csv
 from cotton_toolkit.config.loader import get_genome_data_sources
 
 # --- 国际化和日志设置 ---
-# 假设 _ 函数已由主应用程序入口设置到 builtins
-# 为了让静态检查工具识别 _，可以这样做：
 try:
     import builtins
-
-    _ = builtins._  # type: ignore
-except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins失败
-    # 如果在测试或独立运行此模块时，_ 可能未设置
+    _ = builtins._
+except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
-
-    if 'builtins' not in locals() or not hasattr(builtins, '_'):  # 再次检查，避免重复打印
-        print("Warning (downloader.py): builtins._ not found for i18n. Using pass-through.")
 
 # 获取logger实例。主应用入口会配置根logger或包logger。
 # 这里我们获取一个特定于本模块的logger。
@@ -184,7 +177,7 @@ def download_genome_data(
         _log_status(_("错误: 配置中未找到 'downloader' 部分。"), "ERROR")
         return False
 
-    data_sources = get_genome_data_sources(config, logger=_log_status)
+    data_sources = get_genome_data_sources(config, logger_func=_log_status)
     if not data_sources:
         _log_status(_("错误: 下载器配置中缺少 'genome_sources' 数据。"), "ERROR")
         return False

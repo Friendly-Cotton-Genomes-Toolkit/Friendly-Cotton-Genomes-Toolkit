@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import sqlite3
 from typing import Dict, Any, Optional, Callable, List, Tuple
 
@@ -84,6 +85,25 @@ def extract_gene_details(feature: gffutils.Feature) -> Dict[str, Any]:
         'aliases': attributes.get('Alias', ['N/A'])[0],
         'description': attributes.get('description', ['N/A'])[0]
     }
+
+
+def _apply_regex_to_id(gene_id: str, regex_pattern: Optional[str]) -> str:
+    """
+    使用正则表达式从一个字符串中提取基因ID，并清除首尾空白。
+    """
+    # [FIXED] 关键修正：在所有操作之前，先对原始ID进行strip()处理，去除首尾空格
+    processed_id = str(gene_id).strip()
+
+    if not regex_pattern:
+        return processed_id  # 返回清理过的ID
+
+    match = re.search(regex_pattern, processed_id)
+    if match and match.groups():
+        # 返回捕获组内容，它已经是干净的
+        return match.group(1)
+
+    # 如果正则不匹配，返回清理过的原始ID
+    return processed_id
 
 
 def get_genes_in_region(
