@@ -220,7 +220,7 @@ def map_genes_via_bridge(
     # 清理辅助列并返回
     final_df = final_df.drop(columns=['Source_Parsed', 'Target_Parsed', 'homology_priority_score'], errors='ignore')
 
-    # --- 【新增】为结果文件添加版本备注 ---
+    # --- 为结果文件添加版本备注 ---
     notes = []
     if source_genome_info.bridge_version and source_genome_info.bridge_version.lower() == 'tair10':
         notes.append(f"Source uses tair10.")

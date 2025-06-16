@@ -20,6 +20,8 @@ import customtkinter as ctk
 import pandas as pd
 import yaml
 from PIL import Image
+
+from cotton_toolkit.core.convertXlsx2csv import convert_all_sheets_to_csv
 from cotton_toolkit.utils.localization import setup_localization
 
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
@@ -34,11 +36,11 @@ from cotton_toolkit.pipelines import (
     run_integrate_pipeline,
     run_homology_mapping,
     run_functional_annotation,
-    run_ai_task, run_gff_lookup
+    run_ai_task, run_gff_lookup,
+    run_locus_conversion
 )
 from ui import ProgressDialog, MessageDialog
 from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
-
 
 print("INFO: gui_app.py - All modules imported.")
 
@@ -667,7 +669,6 @@ class CottonToolkitApp(ctk.CTk):
         mode_map_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("系统")}
         self.selected_appearance_var.set(mode_map_to_display.get(appearance_mode, _("系统")))
 
-
     def _save_ui_settings(self):
         """保存UI设置，现在只处理外观模式。"""
         settings_path = self._get_settings_path()
@@ -680,23 +681,22 @@ class CottonToolkitApp(ctk.CTk):
         except IOError as e:
             self._log_to_viewer(f"{_('错误: 无法保存外观设置:')} {e}", "ERROR")
 
-
     def show_info_message(self, title: str, message: str):
         self._log_to_viewer(f"INFO - {title}: {message}", "INFO")
-        dialog = MessageDialog(parent=self, title=_(title), message=_(message), icon_type="info",app_font=self.app_font)
+        dialog = MessageDialog(parent=self, title=_(title), message=_(message), icon_type="info",
+                               app_font=self.app_font)
         dialog.wait_window()
 
     def show_error_message(self, title: str, message: str):
         self._log_to_viewer(f"ERROR - {title}: {message}", "ERROR")
-        dialog = MessageDialog(parent=self, title=_(title), message=message, icon_type="error",app_font=self.app_font)
+        dialog = MessageDialog(parent=self, title=_(title), message=message, icon_type="error", app_font=self.app_font)
         dialog.wait_window()
-
 
     def show_warning_message(self, title: str, message: str):
         self._log_to_viewer(f"WARNING - {title}: {message}", "WARNING")
-        dialog = MessageDialog(parent=self, title=_(title), message=_(message), icon_type="warning",app_font=self.app_font)
+        dialog = MessageDialog(parent=self, title=_(title), message=_(message), icon_type="warning",
+                               app_font=self.app_font)
         dialog.wait_window()
-
 
     def _load_image_resource(self, file_name, size=(24, 24)):
         try:
@@ -1435,11 +1435,11 @@ class CottonToolkitApp(ctk.CTk):
         version_card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(version_card, text=_("第二步: 指定版本和参数"), font=self.app_font_bold).grid(row=0,
-                                                                                                         column=0,
-                                                                                                         columnspan=2,
-                                                                                                         padx=15,
-                                                                                                         pady=15,
-                                                                                                         sticky="w")
+                                                                                                   column=0,
+                                                                                                   columnspan=2,
+                                                                                                   padx=15,
+                                                                                                   pady=15,
+                                                                                                   sticky="w")
         bsa_assembly_label = ctk.CTkLabel(version_card, text=_("BSA基因组版本:"), font=self.app_font)
         bsa_assembly_label.grid(row=1, column=0, padx=(15, 5), pady=10, sticky="w")
         self.integrate_bsa_assembly_dropdown = ctk.CTkOptionMenu(version_card, variable=self.selected_bsa_assembly,
@@ -1554,7 +1554,6 @@ class CottonToolkitApp(ctk.CTk):
 
     def start_xlsx_to_csv_conversion(self):
         """启动XLSX到CSV的转换任务"""
-        from cotton_toolkit.core.convertXlsx2csv import convert_xlsx_to_single_csv
 
         input_path = self.xlsx_input_entry.get().strip()
         output_path = self.csv_output_entry.get().strip()
@@ -1578,7 +1577,7 @@ class CottonToolkitApp(ctk.CTk):
         # 在后台线程中运行转换，防止UI卡顿
         threading.Thread(
             target=lambda: (
-                result := convert_xlsx_to_single_csv(input_path, output_path),
+                result := convert_all_sheets_to_csv(input_path, output_path),
                 self.task_done_callback(result, self.active_task_name)
             ),
             daemon=True
@@ -1912,18 +1911,17 @@ class CottonToolkitApp(ctk.CTk):
             task_name=_("AI 助手任务"),
             target_func=run_ai_task,
             kwargs={
-                'config' : temp_config,
-        'input_file' : input_file,
-        'output_dir' : output_dir,
-        'source_column' : source_col,
-        'new_column' : new_col,
-        'task_type' : task_type,
-        'custom_prompt_template' : prompt,
-        'status_callback' : self.gui_status_callback,
-        'cli_overrides' : cli_overrides,
+                'config': temp_config,
+                'input_file': input_file,
+                'output_dir': output_dir,
+                'source_column': source_col,
+                'new_column': new_col,
+                'task_type': task_type,
+                'custom_prompt_template': prompt,
+                'status_callback': self.gui_status_callback,
+                'cli_overrides': cli_overrides,
             }
         )
-
 
     def _update_ai_assistant_tab_info(self):
         """
@@ -2099,8 +2097,6 @@ class CottonToolkitApp(ctk.CTk):
 
         # 3. 更新当前界面的语言
         self.update_language_ui(new_language_code)
-
-
 
     def _create_status_widgets_structure(self):
         self.status_bar_frame = ctk.CTkFrame(self.main_container, height=35, corner_radius=0)
@@ -2378,7 +2374,7 @@ class CottonToolkitApp(ctk.CTk):
         source_frame = ctk.CTkFrame(main_input_frame, fg_color="transparent")
         source_frame.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
         source_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(source_frame, text=_("源基因组:")).grid(row=0, column=0, padx=5)
+        ctk.CTkLabel(source_frame, text=_("源基因组:"), font=self.app_font).grid(row=0, column=0, padx=5)
         self.homology_map_source_assembly_dropdown = ctk.CTkOptionMenu(source_frame,
                                                                        variable=self.selected_homology_source_assembly,
                                                                        values=assembly_ids,
@@ -2389,7 +2385,7 @@ class CottonToolkitApp(ctk.CTk):
         target_frame = ctk.CTkFrame(main_input_frame, fg_color="transparent")
         target_frame.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
         target_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(target_frame, text=_("目标基因组:")).grid(row=0, column=0, padx=5)
+        ctk.CTkLabel(target_frame, text=_("目标基因组:"), font=self.app_font).grid(row=0, column=0, padx=5)
         self.homology_map_target_assembly_dropdown = ctk.CTkOptionMenu(target_frame,
                                                                        variable=self.selected_homology_target_assembly,
                                                                        values=assembly_ids,
@@ -2472,8 +2468,6 @@ class CottonToolkitApp(ctk.CTk):
 
         self.homology_target_version_warning_label = ctk.CTkLabel(warning_frame, text="", font=self.app_comment_font)
         self.homology_target_version_warning_label.grid(row=0, column=1, sticky="w")
-
-
 
     def _populate_gff_query_tab_structure(self, parent_frame):
         """
@@ -3002,7 +2996,8 @@ class CottonToolkitApp(ctk.CTk):
         self.cancel_current_task_event.clear()
 
         # 使用新的 ProgressDialog
-        self.progress_dialog = ProgressDialog(self, title=task_name, on_cancel=self.cancel_current_task_event.set)
+        self.progress_dialog = ProgressDialog(self, title=task_name, on_cancel=self.cancel_current_task_event.set,
+                                              app_font=self.app_font)
 
         kwargs['cancel_event'] = self.cancel_current_task_event
         kwargs['status_callback'] = self.gui_status_callback
@@ -3010,16 +3005,18 @@ class CottonToolkitApp(ctk.CTk):
 
         def task_wrapper():
             success = False
+            result_data = None
             try:
                 # 直接调用目标函数
-                target_func(**kwargs)
+                result_data = target_func(**kwargs)
                 success = True  # 如果函数没有抛出异常，我们假定它成功了
             except Exception as e:
                 detailed_error = f"{_('一个意外的严重错误发生')}: {e}\n--- TRACEBACK ---\n{traceback.format_exc()}"
                 self.gui_status_callback(detailed_error, "ERROR")
                 success = False
             finally:
-                self.message_queue.put(("task_done", (success, task_name)))
+                # --- 将返回值打包发送到消息队列 ---
+                self.message_queue.put(("task_done", (success, task_name, result_data)))
 
         threading.Thread(target=task_wrapper, daemon=True).start()
 
@@ -3163,7 +3160,6 @@ class CottonToolkitApp(ctk.CTk):
         # 将日志消息放入队列，由主线程处理
         self.log_queue.put((message, level))
 
-
     def gui_status_callback(self, message: str, level: str = "INFO"):
         """
         线程安全的回调函数，用于更新状态栏和日志。
@@ -3272,11 +3268,32 @@ class CottonToolkitApp(ctk.CTk):
                         self.show_error_message(_("加载失败"), str(result_data))
 
                 elif message_type == "task_done":
-                    success, task_display_name = data
+                    success, task_display_name, result_data = data
+
                     if self.progress_dialog and self.progress_dialog.winfo_exists():
-                        # 调用弹窗自己的关闭方法，该方法现在是即时销毁
                         self.progress_dialog.on_cancel()
                     self.progress_dialog = None
+
+                    self._update_button_states(is_task_running=False)
+
+                    self.active_task_name = None
+                    status_msg = f"{task_display_name} {_('完成。')}" if success else f"{task_display_name} {_('失败或被取消。')}"
+                    self.status_label.configure(text=status_msg)
+
+                    if task_display_name == _("位点转换"):
+                        if hasattr(self, 'locus_conversion_result_textbox'):
+                            textbox = self.locus_conversion_result_textbox
+                            textbox.configure(state="normal")
+                            textbox.delete("1.0", tk.END)
+                            if success and result_data:
+                                textbox.insert("1.0", result_data)  # 显示返回的坐标字符串
+
+                            elif success:
+                                textbox.insert("1.0", _("未找到有效的同源区域。"))
+                            else:
+                                textbox.insert("1.0", _("任务执行失败，无结果。"))
+                            textbox.configure(state="disabled")
+
 
 
                 elif message_type == "error":
@@ -3514,7 +3531,8 @@ class CottonToolkitApp(ctk.CTk):
                 message=_("配置文件 '{}' 已存在于所选目录中。\n\n您想覆盖它吗？\n(选择“否”将直接加载现有文件)").format(
                     main_config_filename),
                 buttons=[_("是 (覆盖)"), _("否 (加载)")],
-                icon_type="question"
+                icon_type="question",
+                app_font=self.app_font
             )
 
             if user_choice == _("是 (覆盖)"):
@@ -3621,7 +3639,6 @@ class CottonToolkitApp(ctk.CTk):
             target_func=run_download_pipeline,
             kwargs={'config': self.current_config, 'cli_overrides': cli_overrides}
         )
-
 
     def _show_about_window(self):
         """
@@ -3801,12 +3818,11 @@ class CottonToolkitApp(ctk.CTk):
     # ----------------------------------------------------------------------
     def _populate_locus_conversion_tab_structure(self, parent_frame):
         """
-        填充位点转换工具的UI界面。
-        【已修复】将基因ID输入框替换为区域输入框，以匹配任务逻辑。
+        【全新修改版】填充位点转换工具的UI界面。
+        移除文件输出控件，增加结果显示文本框。
         """
         parent_frame.grid_columnconfigure(0, weight=1)
 
-        # --- 顶部的基因组选择菜单 (保持不变) ---
         assembly_ids = [_("无可用版本")]
         if self.genome_sources_data:
             ids = list(self.genome_sources_data.keys())
@@ -3834,35 +3850,34 @@ class CottonToolkitApp(ctk.CTk):
         )
         self.locus_target_assembly_dropdown.grid(row=0, column=3, padx=(5, 10), pady=5, sticky="ew")
 
-        # --- 【核心修改】将基因ID输入框替换为区域输入框 ---
         input_card = ctk.CTkFrame(parent_frame, fg_color="transparent")
         input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
         input_card.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(input_card, text=_("输入染色体区域:"), font=self.app_font_bold).grid(row=0, column=0, sticky="w")
-
-        # 创建正确的 Entry 控件，并赋值给 self.locus_conversion_region_entry
         self.locus_conversion_region_entry = ctk.CTkEntry(
             input_card,
             font=self.app_font,
             placeholder_text=_("例如: A03:1000-2000")
         )
         self.locus_conversion_region_entry.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+
+        # --- 【修改】移除文件输出，增加结果显示区域 ---
+        result_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        result_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(15, 0))
+        result_frame.grid_columnconfigure(0, weight=1)
+        result_frame.grid_rowconfigure(1, weight=1)
+
+        ctk.CTkLabel(result_frame, text=_("转换结果:"), font=self.app_font_bold).grid(row=0, column=0, sticky="w")
+        self.locus_conversion_result_textbox = ctk.CTkTextbox(
+            result_frame,
+            height=80,
+            font=self.app_font_mono,  # 使用等宽字体以获得更好的对齐效果
+            state="disabled",  # 设置为只读，但用户仍可复制
+            wrap="word"
+        )
+        self.locus_conversion_result_textbox.grid(row=1, column=0, sticky="ew", pady=(5, 0))
         # --- 修改结束 ---
-
-        # --- 输出和运行按钮 (保持不变, 行号顺延) ---
-        output_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        output_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(10, 0))
-        output_frame.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(output_frame, text=_("结果输出CSV文件:"), font=self.app_font_bold).grid(row=0, column=0,
-                                                                                             sticky="w", pady=(0, 5))
-        self.locus_conversion_output_csv_entry = ctk.CTkEntry(output_frame, font=self.app_font)
-        self.locus_conversion_output_csv_entry.grid(row=1, column=0, sticky="ew", padx=(0, 10))
-        ctk.CTkButton(output_frame, text=_("选择目录"), font=self.app_font,
-                      command=lambda: self._select_output_directory(self.locus_conversion_output_csv_entry)).grid(row=1,
-                                                                                                                  column=1,
-                                                                                                                  sticky="e")
 
         run_button = ctk.CTkButton(parent_frame, text=_("开始转换"), font=self.app_font_bold,
                                    command=self.start_locus_conversion_task)
@@ -3875,31 +3890,34 @@ class CottonToolkitApp(ctk.CTk):
         source_assembly = self.selected_locus_source_assembly.get()
         target_assembly = self.selected_locus_target_assembly.get()
         region_str = self.locus_conversion_region_entry.get().strip()
-        if not all([source_assembly, target_assembly, region_str]): self.show_error_message(_("输入缺失"),
-                                                                                            _("请选择基因组并输入区域。")); return
+        if not all([source_assembly, target_assembly, region_str]):
+            self.show_error_message(_("输入缺失"), _("请选择基因组并输入区域。"))
+            return
 
         try:
             chrom, pos_range = region_str.split(':')
             start, end = map(int, pos_range.split('-'))
             region_tuple = (chrom, start, end)
         except ValueError:
-            self.show_error_message(_("输入错误"), _("区域格式不正确，请使用 'Chr:Start-End' 格式。"));
+            self.show_error_message(_("输入错误"), _("区域格式不正确，请使用 'Chr:Start-End' 格式。"))
             return
+
+        # --- 在任务开始前，清空上一次的结果 ---
+        if hasattr(self, 'locus_conversion_result_textbox'):
+            self.locus_conversion_result_textbox.configure(state="normal")
+            self.locus_conversion_result_textbox.delete("1.0", tk.END)
+            self.locus_conversion_result_textbox.configure(state="disabled")
 
         self._start_task(
             task_name=_("位点转换"),
-            target_func=run_homology_mapping,  # 注意：统一调用 run_homology_mapping
+            target_func=run_locus_conversion,
             kwargs={
                 'config': self.current_config,
                 'source_assembly_id': source_assembly,
                 'target_assembly_id': target_assembly,
-                'gene_ids': None,
                 'region': region_tuple,
-                'output_csv_path': self.locus_conversion_output_csv_entry.get().strip() or None,
-                'criteria_overrides': None
             }
         )
-
 
     def _select_output_directory(self, target_entry_widget: ctk.CTkEntry):
         """
@@ -4079,7 +4097,7 @@ class CottonToolkitApp(ctk.CTk):
         info_frame.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
         info_frame.grid_columnconfigure(0, weight=1)
 
-        title_label = ctk.CTkLabel(info_frame, text=_("基因组类别鉴定工具"), font=ctk.CTkFont(size=15, weight="bold"))
+        title_label = ctk.CTkLabel(info_frame, text=_("基因组类别鉴定工具"), font=self.app_subtitle_font)
         title_label.grid(row=0, column=0, padx=10, pady=(5, 2), sticky="w")
 
         desc_label = ctk.CTkLabel(info_frame, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"),
@@ -4347,7 +4365,8 @@ class CottonToolkitApp(ctk.CTk):
         ok_color = ("#2E7D32", "#A5D6A7")  # 绿色正常
 
         # 检查源基因组标签是否存在并更新
-        if hasattr(self, 'homology_source_version_warning_label') and self.homology_source_version_warning_label.winfo_exists():
+        if hasattr(self,
+                   'homology_source_version_warning_label') and self.homology_source_version_warning_label.winfo_exists():
             source_info = self.genome_sources_data.get(source_id)
             if source_info and hasattr(source_info, 'bridge_version'):
                 if source_info.bridge_version and source_info.bridge_version.lower() == 'tair10':
@@ -4362,7 +4381,8 @@ class CottonToolkitApp(ctk.CTk):
                 self.homology_source_version_warning_label.configure(text="")
 
         # 检查目标基因组标签是否存在并更新
-        if hasattr(self, 'homology_target_version_warning_label') and self.homology_target_version_warning_label.winfo_exists():
+        if hasattr(self,
+                   'homology_target_version_warning_label') and self.homology_target_version_warning_label.winfo_exists():
             target_info = self.genome_sources_data.get(target_id)
             if target_info and hasattr(target_info, 'homology_type'):
                 if target_info.homology_type and target_info.homology_type.lower() == 'TAIR10':
@@ -4375,7 +4395,6 @@ class CottonToolkitApp(ctk.CTk):
                     )
             else:
                 self.homology_target_version_warning_label.configure(text="")
-
 
     def _on_locus_assembly_selection(self, event=None):
         """

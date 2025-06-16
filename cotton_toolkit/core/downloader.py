@@ -12,7 +12,7 @@ from urllib.parse import urlparse  # 用于从URL解析文件名
 import requests  # 用于HTTP请求
 from tqdm import tqdm  # 用于显示进度条
 
-from cotton_toolkit.core.convertXlsx2csv import convert_xlsx_to_single_csv
+from cotton_toolkit.core.convertXlsx2csv import convert_all_sheets_to_csv
 from cotton_toolkit.config.loader import get_genome_data_sources
 
 # --- 国际化和日志设置 ---
@@ -285,7 +285,7 @@ def download_genome_data(
                             if decompress_gz_to_temp_file(gz_excel_path, temp_xlsx_path):
                                 conversion_ok = False
                                 try:
-                                    if convert_xlsx_to_single_csv(temp_xlsx_path, final_csv_path):
+                                    if convert_all_sheets_to_csv(temp_xlsx_path, final_csv_path):
                                         _log_status(
                                             _("用户转换函数成功处理 '{}'。").format(os.path.basename(temp_xlsx_path)))
                                         conversion_ok = True
