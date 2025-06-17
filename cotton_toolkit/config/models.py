@@ -341,7 +341,7 @@ class GenomeSourcesConfig(ConfigDataModel):
             gene_id_regex=r'(Gohir\.[AD]\d{2}G\d{6})'
         ),
         "HAU_v1": GenomeSourceItem(
-            species_name="Gossypium hirsutum (AD1) 'TM-1' genome HAU_v1 / v1.1",
+            species_name="Gossypium hirsutum (AD1) 'TM-1' genome HAU_v1 (v1.1)",
             gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/genes/Ghirsutum_gene_model.gff3.gz",
             GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_genes2Go.xlsx.gz",
             IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_genes2IPR.xlsx.gz",

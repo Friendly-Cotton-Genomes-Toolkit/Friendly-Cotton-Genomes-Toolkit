@@ -4,6 +4,7 @@ import concurrent.futures  # 用于多线程
 import gzip  # 用于解压.gz文件
 import logging  # 用于日志记录
 import os
+import re
 import shutil  # 用于文件操作 (如 copyfileobj)
 import time  # <---【修改点1】新增导入，用于重试等待
 from typing import List, Dict, Optional, Callable, Any
@@ -12,8 +13,8 @@ from urllib.parse import urlparse  # 用于从URL解析文件名
 import requests  # 用于HTTP请求
 from tqdm import tqdm  # 用于显示进度条
 
-from cotton_toolkit.core.convertXlsx2csv import convert_all_sheets_to_csv
-from cotton_toolkit.config.loader import get_genome_data_sources
+from cotton_toolkit.config.models import DownloaderConfig, GenomeSourceItem
+from cotton_toolkit.core.convertXlsx2csv import convert_excel_to_standard_csv
 
 # --- 国际化和日志设置 ---
 try:
@@ -29,21 +30,15 @@ except (AttributeError, ImportError):
 logger = logging.getLogger("cotton_toolkit.downloader")
 
 
-def decompress_gz_to_temp_file(gz_filepath: str, temp_output_filepath: str) -> bool:
-    """
-    解压 .gz 文件到指定的临时文件路径。
-    """
+def decompress_gz_to_temp_file(gz_filepath: str, temp_output_filepath: str, log: Callable) -> bool:
+    """解压 .gz 文件到指定的临时文件路径。"""
     try:
-        with gzip.open(gz_filepath, 'rb') as f_in:
-            with open(temp_output_filepath, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        logger.info(_("文件 '{}' 已成功解压到 '{}'").format(os.path.basename(gz_filepath), temp_output_filepath))
+        with gzip.open(gz_filepath, 'rb') as f_in, open(temp_output_filepath, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+        log(f"DEBUG: Successfully decompressed '{os.path.basename(gz_filepath)}' to temporary file.")
         return True
-    except FileNotFoundError:
-        logger.error(_("解压失败: 源文件 '{}' 未找到。").format(gz_filepath))
-        return False
     except Exception as e:
-        logger.error(_("解压文件 '{}' 失败: {}").format(gz_filepath, e))
+        log(f"ERROR: Failed to decompress file '{gz_filepath}': {e}")
         return False
 
 
@@ -131,259 +126,113 @@ def download_file(
 
 
 def download_genome_data(
-        config: Dict[str, Any],
-        genome_versions_to_download_override: Optional[List[str]] = None,
-        force_download_override: Optional[bool] = None,
-        output_base_dir_override: Optional[str] = None,
-        status_callback: Optional[Callable[[str], None]] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
+    downloader_config: DownloaderConfig,
+    version_id: str,
+    genome_info: GenomeSourceItem,
+    file_key: str,
+    url: str,
+    force: bool,
+    proxies: Optional[Dict[str, str]],
+    status_callback: Callable,
 ) -> bool:
     """
-    为指定的棉花基因组版本多线程下载GFF3注释和与拟南芥的同源基因数据。
-    参数主要从配置字典中获取，并允许部分被命令行参数覆盖。
-    下载的同源基因文件（如果为.xlsx.gz）会被尝试转换为.csv。
-
-    Args:
-        config (Dict[str, Any]): 包含下载器配置 ('downloader') 和可能的基因组源数据 ('genome_sources') 的主配置字典。
-        genome_versions_to_download_override (Optional[List[str]]): 覆盖配置，指定要下载的基因组版本列表。
-        force_download_override (Optional[bool]): 覆盖配置中的 'force_download' 设置。
-        output_base_dir_override (Optional[str]): 覆盖配置中的 'download_output_base_dir'。
-        status_callback (Optional[Callable[[str], None]]): 用于向调用者（如GUI）报告状态更新的回调。
-        progress_callback (Optional[Callable[[int, str], None]]): 用于向调用者报告进度的回调 (百分比, 消息)。
+    【全新版本】下载单个指定的基因组数据文件，并处理后续操作。
+    此函数现在由 run_download_pipeline 在多线程中为每个文件调用一次。
     """
+    log = status_callback
 
-    def _log_status(msg: str, level: str = "INFO"):
-        if status_callback:
-            status_callback(msg)
-        else:
-            if level.upper() == "ERROR":
-                logger.error(msg)
-            elif level.upper() == "WARNING":
-                logger.warning(msg)
-            else:
-                logger.info(msg)
+    # 1. 构建输出目录和文件路径
+    base_dir = downloader_config.download_output_base_dir
+    safe_species_name = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_")
+    version_output_dir = os.path.join(base_dir, safe_species_name)
 
-    def _log_progress(percent: int, msg: str):
-        if progress_callback:
-            progress_callback(percent, msg)
-        else:
-            logger.info(f"[{percent}%] {msg}")
-
-    _log_status(_("初始化下载流程..."))
-    _log_progress(0, _("准备下载参数..."))
-
-    downloader_cfg = config.get('downloader')
-    if not downloader_cfg:
-        _log_status(_("错误: 配置中未找到 'downloader' 部分。"), "ERROR")
+    # 【修正 WinError 183】使用 exist_ok=True, 多线程同时调用也不会报错
+    try:
+        os.makedirs(version_output_dir, exist_ok=True)
+    except OSError as e:
+        log(f"ERROR: Failed to create directory {version_output_dir}. Reason: {e}")
         return False
 
-    data_sources = get_genome_data_sources(config, logger_func=_log_status)
-    if not data_sources:
-        _log_status(_("错误: 下载器配置中缺少 'genome_sources' 数据。"), "ERROR")
-        return False
+    filename = os.path.basename(urlparse(url).path)
+    local_path = os.path.join(version_output_dir, filename)
 
-    output_base_dir = output_base_dir_override if output_base_dir_override else \
-        downloader_cfg.get('download_output_base_dir', "cotton_genome_data")
-    force_download = force_download_override if force_download_override is not None else \
-        downloader_cfg.get('force_download', False)
-    max_workers = int(downloader_cfg.get('max_workers', 4))  # 确保是整数
-    proxies = downloader_cfg.get('proxies')
-
-    if not os.path.exists(output_base_dir):
-        try:
-            os.makedirs(output_base_dir); _log_status(_("已创建基础输出目录: {}").format(output_base_dir))
-        except OSError as e:
-            _log_status(_("创建基础输出目录 {} 失败: {}").format(output_base_dir, e), "ERROR")
-            return False
-
-    versions_to_process = []
-    if genome_versions_to_download_override:
-        versions_to_process = [v for v in genome_versions_to_download_override if v in data_sources]
-        skipped = [v for v in genome_versions_to_download_override if v not in data_sources]
-        if skipped: _log_status(_("警告: 版本 {} 未定义，已跳过。").format(", ".join(skipped)), "WARNING")
+    # 2. 检查文件是否存在以及是否需要强制下载
+    if not force and os.path.exists(local_path):
+        log(f"INFO: 文件已存在，跳过下载: {os.path.basename(local_path)}")
+        # 即使跳过下载，也检查是否需要进行后续转换
+        is_download_successful = True
     else:
-        versions_to_process = list(data_sources.keys())
+        # 3. 开始下载
+        description = f"{version_id}_{file_key}"
+        log(f"INFO: 开始下载: {description}...")
+        is_download_successful = _download_file_with_progress(url, local_path, description, proxies, log)
 
-    if not versions_to_process: _log_status(_("没有有效的基因组版本被指定下载。")); return False
-    _log_status(_("将尝试下载的基因组版本: {}").format(", ".join(versions_to_process)))
-    _log_progress(5, _("版本列表确定。"))
+    # 4. 如果下载成功，执行后续操作（如解压和转换）
+    if is_download_successful and file_key == 'homology_ath' and local_path.lower().endswith(".xlsx.gz"):
+        gz_excel_path = local_path
+        base_name, _ = os.path.splitext(os.path.basename(gz_excel_path))  # xxx.xlsx
+        csv_filename = os.path.splitext(base_name)[0] + ".csv"  # xxx.csv
+        final_csv_path = os.path.join(os.path.dirname(gz_excel_path), csv_filename)
 
-    download_specs = []
-    for version_name in versions_to_process:
-        genome_info = data_sources.get(version_name)
-        if not genome_info: _log_status(_("警告: 未找到版本 '{}' 的信息，跳过。").format(version_name),
-                                        "WARNING"); continue
+        if not force and os.path.exists(final_csv_path):
+            log(f"INFO: 对应的CSV文件已存在，跳过转换: {csv_filename}")
+        else:
+            log(f"INFO: 尝试将 {os.path.basename(gz_excel_path)} 转换为 CSV...")
+            temp_xlsx_path = os.path.splitext(gz_excel_path)[0]
+            if decompress_gz_to_temp_file(gz_excel_path, temp_xlsx_path, log):
+                try:
+                    convert_excel_to_standard_csv(temp_xlsx_path, final_csv_path)
+                except Exception as e:
+                    log(f"ERROR: 转换Excel到CSV时发生错误: {e}")
+                finally:
+                    # 线程安全的文件删除
+                    if os.path.exists(temp_xlsx_path):
+                        for i in range(3):
+                            try:
+                                os.remove(temp_xlsx_path)
+                                break
+                            except PermissionError:
+                                time.sleep(0.5)
+                            except Exception as e:
+                                log(f"ERROR: 删除临时文件 {temp_xlsx_path} 失败: {e}")
+                                break
 
-        safe_dir_name = genome_info.get("species_name", version_name).replace(" ", "_").replace(".", "_").replace("(",
-                                                                                                                  "").replace(
-            ")", "").replace("'", "")
-        version_output_dir = os.path.join(output_base_dir, safe_dir_name)
+    return is_download_successful
 
-        for file_key, file_type_desc, default_name_pattern, is_excel in [
-            ("gff3_url", _('GFF3'), "{}_annotations.gff3.gz", False),
-            ("homology_ath_url", _('同源数据'), "{}_homology_ath.xlsx.gz", True)
-        ]:
-            url = genome_info.get(file_key)
-            if url:
-                parsed_url = urlparse(url)
-                filename = os.path.basename(parsed_url.path) if parsed_url.path and '.' in os.path.basename(
-                    parsed_url.path) else default_name_pattern.format(safe_dir_name)
-                target_path = os.path.join(version_output_dir, filename)
-                download_specs.append({
-                    'url': url, 'target_path': target_path,
-                    'desc_for_tqdm': f"{version_name}_{file_type_desc}",
-                    'version_name': version_name, 'file_type': file_type_desc,
-                    'is_homology_excel': is_excel
-                })
-            else:
-                _log_status(_("信息: 版本 {} 未提供 {} 下载链接。").format(version_name, file_type_desc), "INFO")
 
-    overall_success = True
+def _download_file_with_progress(
+        url: str,
+        local_path: str,
+        description: str,
+        proxies: Optional[Dict[str, str]],
+        status_callback: Optional[Callable] = None
+) -> bool:
+    """一个带有tqdm进度条的文件下载辅助函数。"""
+    log = status_callback if status_callback else print
+    try:
+        with requests.get(url, stream=True, proxies=proxies, timeout=60) as r:
+            r.raise_for_status()
+            total_size = int(r.headers.get('content-length', 0))
 
-    if not download_specs: _log_status(_("没有文件需要下载。")); return True
-    _log_status(_("准备下载 {} 个文件，使用最多 {} 个并发线程... (代理: {})").format(
-        len(download_specs), max_workers, proxies if proxies else _("系统默认/无")))
-    _log_progress(10, _("下载任务列表已创建。"))
+            with tqdm(
+                    total=total_size, unit='iB', unit_scale=True, desc=description,
+                    ncols=100, leave=False, ascii=" #",
+            ) as pbar:
+                with open(local_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            pbar.update(len(chunk))
 
-    successful_downloads = 0
-    failed_downloads = 0
-    total_tasks = len(download_specs)
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_spec = {
-            executor.submit(download_file, spec['url'], spec['target_path'], force_download, spec['desc_for_tqdm'],
-                            proxies): spec
-            for spec in download_specs
-        }
-        completed_count = 0
-        for future in tqdm(concurrent.futures.as_completed(future_to_spec), total=total_tasks, desc=_("总体下载进度"),
-                           unit="file"):
-            spec = future_to_spec[future]
-            completed_count += 1
-            current_progress_percent = int((completed_count / total_tasks) * 100)
-            try:
-                download_successful = future.result()
-                if download_successful:
-                    successful_downloads += 1
-                    _log_status(_("成功下载: {} 的 {} -> {}").format(spec['version_name'], spec['file_type'],
-                                                                     spec['target_path']), "INFO")
-
-                    if spec['is_homology_excel'] and spec['target_path'].lower().endswith((".xlsx.gz", ".xls.gz")):
-                        gz_excel_path = spec['target_path']
-                        base_name_no_gz_ext = os.path.splitext(os.path.basename(gz_excel_path))[0]  # xxx.xlsx
-                        csv_filename = os.path.splitext(base_name_no_gz_ext)[0] + ".csv"  # xxx.csv
-                        final_csv_path = os.path.join(os.path.dirname(gz_excel_path), csv_filename)
-
-                        _log_status(_("尝试转换同源Excel文件: {} -> {}").format(os.path.basename(gz_excel_path),
-                                                                                os.path.basename(final_csv_path)))
-
-                        if not force_download and os.path.exists(final_csv_path):
-                            _log_status(_("CSV 文件已存在: {} (跳过转换)").format(final_csv_path))
-                        else:
-                            # 临时的解压后xlsx文件名 (与gz同名，但去掉.gz)
-                            temp_xlsx_path = os.path.splitext(gz_excel_path)[0]
-                            if decompress_gz_to_temp_file(gz_excel_path, temp_xlsx_path):
-                                conversion_ok = False
-                                try:
-                                    if convert_all_sheets_to_csv(temp_xlsx_path, final_csv_path):
-                                        _log_status(
-                                            _("用户转换函数成功处理 '{}'。").format(os.path.basename(temp_xlsx_path)))
-                                        conversion_ok = True
-                                    else:
-                                        _log_status(_("用户转换函数报告处理 '{}' 失败。").format(
-                                            os.path.basename(temp_xlsx_path)), "WARNING")
-                                except Exception as conv_e:
-                                    _log_status(_("调用用户转换函数处理 '{}' 时发生错误: {}").format(
-                                        os.path.basename(temp_xlsx_path), conv_e), "ERROR")
-                                finally:
-                                    # ---【修改点2】线程安全的文件删除逻辑 ---
-                                    if os.path.exists(temp_xlsx_path):
-                                        # 引入重试逻辑来删除临时文件，以应对Windows上的文件句柄释放延迟
-                                        for i in range(3):  # 最多重试3次
-                                            try:
-                                                os.remove(temp_xlsx_path)
-                                                _log_status(f"成功删除临时文件: {temp_xlsx_path}", "DEBUG")
-                                                break  # 删除成功，跳出循环
-                                            except PermissionError as e:
-                                                # 在Windows上，由于文件句柄释放延迟，可能会发生此错误
-                                                _log_status(f"删除临时文件 {temp_xlsx_path} 时权限错误 (尝试 {i + 1}/3): {e}", "WARNING")
-                                                if i < 2:  # 如果不是最后一次尝试，则等待
-                                                    time.sleep(0.5)  # 等待500毫秒
-                                                else:
-                                                    # 最后一次尝试后仍然失败，记录错误
-                                                    _log_status(f"删除临时文件 {temp_xlsx_path} 失败: {e}", "ERROR")
-                                            except Exception as e:
-                                                # 捕获其他可能的删除异常
-                                                _log_status(f"删除临时文件 {temp_xlsx_path} 时发生未知错误: {e}", "ERROR")
-                                                break # 发生其他错误，不再重试
-                                    # --- 修复结束 ---
-                                if conversion_ok:
-                                    _log_status(_("同源数据已转换为CSV: {}").format(final_csv_path), "INFO")
-                                else:
-                                    _log_status(_("警告: 同源文件 {} 未能成功转换为CSV。").format(
-                                        os.path.basename(gz_excel_path)), "WARNING")
-                            else:  # 解压失败
-                                _log_status(_("解压 {} 失败，无法进行CSV转换。").format(os.path.basename(gz_excel_path)),
-                                            "WARNING")
-                else:  # download_successful is False
-                    failed_downloads += 1
-                    overall_success = False # 任何一个下载失败都标记
-            except Exception as exc:
-                failed_downloads += 1
-                _log_status(
-                    _("下载任务 {} ({}) 产生了一个异常: {}").format(spec['version_name'], spec['file_type'], exc),
-                    "ERROR")
-                overall_success = False
-
-            _log_progress(current_progress_percent, _("已处理 {}/{} 个下载任务").format(completed_count, total_tasks))
-
-    summary_msg = _("\n下载摘要: {} 个文件成功, {} 个文件失败。").format(successful_downloads, failed_downloads)
-    final_msg = _("所有指定的下载任务已完成。")
-    _log_status(summary_msg)
-    _log_status(final_msg)
-    _log_progress(100, _("下载流程结束。"))
-
-    return overall_success
-
-# --- 用于独立测试 downloader.py 的示例代码 ---
-if __name__ == '__main__':
-    # 设置基本的日志记录，以便在独立运行时能看到logger的输出
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # 模拟一个主配置字典
-    mock_config = {
-        "downloader": {
-            "genome_sources": {
-                "NBI_v1.1_test": {  # 与 GENOME_DATA_SOURCES 中的键名匹配
-                    "gff3_url": "https://www.cottongen.org/files/GACI_CSG_AtDt_merged_Jun2018.gff3.gz",  # 一个真实但可能较大的文件
-                    "homology_ath_url": "http://www.ebi.ac.uk/QuickGO/GAnnotation?format=tsv&geneProductId=A0A075ENS8",
-                    # 一个小的xlsx.gz替代品 (实际是tsv)
-                    # 为了测试，最好找到一个真实的、小的 .xlsx.gz
-                    "species_name": "Gossypium_hirsutum_NBI_v1.1_testdl"
-                },
-                "INVALID_URL_TEST": {
-                    "gff3_url": "http://invalid.url/somefile.gff3.gz",
-                    "species_name": "Invalid_Test_sp"
-                }
-            },
-            "download_output_base_dir": "test_downloader_output",
-            "force_download": False,  # 改为True以测试下载
-            "max_workers": 2,
-            "proxies": None  # {"http": "...", "https": "..."}
-        },
-        # 可以添加其他应用的配置部分，如果 downloader 内部的辅助函数（如get_genome_data_sources）依赖它们
-        # '_config_file_abs_path_': os.getcwd() # 模拟主配置文件路径
-    }
-
-    # 清理上次的测试输出目录
-    if os.path.exists(mock_config['downloader']['download_output_base_dir']):
-        shutil.rmtree(mock_config['downloader']['download_output_base_dir'])
-        print(f"已清理旧的测试下载目录: {mock_config['downloader']['download_output_base_dir']}")
-
-    print(_("--- 开始独立测试 downloader.py ---"))
-    download_genome_data(
-        config=mock_config,
-        # genome_versions_to_download_override=["NBI_v1.1_test", "INVALID_URL_TEST"],
-        force_download_override=True  # 强制下载以测试
-    )
-    print(_("--- downloader.py 测试结束 ---"))
+            if total_size != 0 and os.path.getsize(local_path) < total_size:
+                log(f"WARNING: Downloaded size for {description} is less than expected. The file might be incomplete.")
+                return False
+            return True
+    except requests.exceptions.RequestException as e:
+        log(f"ERROR: Failed to download {description} from {url}. Network error: {e}")
+        if os.path.exists(local_path): os.remove(local_path)
+        return False
+    except Exception as e:
+        log(f"ERROR: An unexpected error occurred while downloading {description}: {e}")
+        if os.path.exists(local_path): os.remove(local_path)
+        return False

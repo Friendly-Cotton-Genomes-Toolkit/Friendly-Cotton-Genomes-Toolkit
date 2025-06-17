@@ -6,6 +6,7 @@ import re
 import tempfile
 import threading
 import time
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from dataclasses import asdict
 from typing import List, Dict, Any, Optional, Callable, Tuple
 import gzip
@@ -22,6 +23,9 @@ from .core.gff_parser import get_genes_in_region, extract_gene_details, create_g
 from .core.homology_mapper import map_genes_via_bridge
 from .tools.batch_ai_processor import process_single_csv_file
 from .tools.annotator import Annotator
+from .tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
+from .tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, plot_enrichment_cnet
+from .utils.gene_utils import map_transcripts_to_genes
 
 # --- 国际化和日志设置 ---
 try:
@@ -121,35 +125,6 @@ def _update_criteria_from_cli(base_criteria: HomologySelectionCriteria,
             elif value:
                 updated_criteria_dict[key] = value
     return HomologySelectionCriteria(**updated_criteria_dict)
-
-
-# --- 核心流程函数 ---
-
-def run_download_pipeline(
-        config: MainConfig,
-        cli_overrides: Optional[Dict[str, Any]] = None,
-        status_callback: Callable = print,
-        progress_callback: Optional[Callable] = None,
-        cancel_event: Optional[threading.Event] = None
-):
-    """执行数据下载流程。"""
-    downloader_cfg = config.downloader
-    cli_overrides = cli_overrides or {}
-
-    _update_config_from_overrides(downloader_cfg, cli_overrides)
-    if cli_overrides.get('http_proxy') or cli_overrides.get('https_proxy'):
-        downloader_cfg.proxies.http = cli_overrides.get('http_proxy')
-        downloader_cfg.proxies.https = cli_overrides.get('https_proxy')
-
-    status_callback(_("下载流程开始..."))
-
-    download_genome_data(
-        config=config,
-        genome_versions_to_download_override=cli_overrides.get("versions"),
-        status_callback=status_callback,
-        progress_callback=progress_callback,
-    )
-    status_callback(_("下载流程结束。"))
 
 
 def run_integrate_pipeline(
@@ -295,7 +270,7 @@ def run_integrate_pipeline(
         if hvg_ids:
             for hvg_id in hvg_ids:
                 hvg_data = hvg_info_map.get(hvg_id, {})
-                hvg_gene_info = extract_gene_details(gff_B_db, hvg_id) if gff_B_db else {}
+                hvg_gene_info = extract_gene_details(gff_B_db) if gff_B_db else {}
                 row = {**bsa_gene_row, "Mapped_HVG_Gene_ID": hvg_id, "HVG_Chr": hvg_gene_info.get('chrom'), **hvg_data}
                 final_data.append(row)
         else:
@@ -790,3 +765,246 @@ def run_gff_lookup(
 
     progress(100, _("GFF查询流程结束。"))
     return True
+
+
+# GO KEGG 富集分析
+def run_download_pipeline(
+        config: MainConfig,
+        cli_overrides: Optional[Dict[str, Any]] = None,
+        status_callback: Optional[Callable] = None,
+        progress_callback: Optional[Callable] = None,
+        cancel_event: Optional[threading.Event] = None
+):
+    """
+    【ID修正版】执行数据下载流程。
+    """
+    # ... (函数前半部分，包括日志设置、参数解析、构建all_download_tasks列表的代码都保持不变) ...
+    log = status_callback if status_callback else print
+    progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
+    log("INFO: 下载流程开始...")
+    downloader_cfg = config.downloader
+    genome_sources = get_genome_data_sources(config, logger_func=log)
+    if cli_overrides is None: cli_overrides = {}
+    versions_to_download = cli_overrides.get("versions")
+    if versions_to_download is None:
+        versions_to_download = list(genome_sources.keys())
+    force_download = cli_overrides.get("force", downloader_cfg.force_download)
+    proxies = cli_overrides.get("proxies")
+    max_workers = downloader_cfg.max_workers
+    log(f"INFO: 将尝试下载的基因组版本: {', '.join(versions_to_download)}")
+
+    all_download_tasks = []
+    ALL_FILE_KEYS = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+    for version_id in versions_to_download:
+        genome_info = genome_sources.get(version_id)
+        if not genome_info:
+            log(f"WARNING: 在基因组源中未找到版本 '{version_id}'，已跳过。")
+            continue
+        for file_key in ALL_FILE_KEYS:
+            url = getattr(genome_info, f"{file_key}_url", None)
+            if url:
+                all_download_tasks.append({
+                    "version_id": version_id,  # <-- 将version_id也加入任务信息中
+                    "genome_info": genome_info,
+                    "file_key": file_key,
+                    "url": url
+                })
+
+    if not all_download_tasks:
+        log("WARNING: 没有找到任何有效的URL可供下载。")
+        return
+
+    log(f"INFO: 准备下载 {len(all_download_tasks)} 个文件...")
+
+    successful_downloads = 0
+    failed_downloads = 0
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_task = {
+            # 【核心修正】在提交任务时，将 task["version_id"] 作为新参数传递
+            executor.submit(
+                download_genome_data,
+                downloader_config=config.downloader,
+                version_id=task["version_id"],  # <-- 新增传递的参数
+                genome_info=task["genome_info"],
+                file_key=task["file_key"],
+                url=task["url"],
+                force=force_download,
+                proxies=proxies,
+                status_callback=log
+            ): task for task in all_download_tasks
+        }
+
+        # ... (后续的循环、进度更新、日志总结部分代码保持不变) ...
+        for i, future in enumerate(as_completed(future_to_task)):
+            if cancel_event and cancel_event.is_set():
+                log("INFO: 下载任务已被用户取消。")
+                break
+            task_info = future_to_task[future]
+            try:
+                if future.result():
+                    successful_downloads += 1
+                else:
+                    failed_downloads += 1
+            except Exception as exc:
+                # 使用 version_id 而不是不存在的 genome_info.id
+                log(f"ERROR: 下载 {task_info['version_id']} 的 {task_info['file_key']} 文件时发生严重错误: {exc}")
+                failed_downloads += 1
+            progress((i + 1) * 100 // len(all_download_tasks),
+                     f"{_('总体下载进度')} ({i + 1}/{len(all_download_tasks)})")
+
+    log(f"INFO: 所有指定的下载任务已完成。成功: {successful_downloads}, 失败: {failed_downloads}。")
+
+
+def run_enrichment_pipeline(
+        config: MainConfig,
+        assembly_id: str,
+        study_gene_ids: List[str],
+        analysis_type: str,
+        plot_types: List[str],
+        output_dir: str,
+        status_callback: Optional[Callable] = None,
+        progress_callback: Optional[Callable] = None,
+        cancel_event: Optional[threading.Event] = None,
+        gene_log2fc_map: Optional[Dict[str, float]] = None,
+        collapse_transcripts: bool = False,
+        top_n: int = 20,
+        sort_by: str = 'FDR',
+        show_title: bool = True,
+        width: float = 10,
+        height: float = 8,
+        file_format: str = 'png'
+) -> Optional[List[str]]:
+    """
+    【全功能修正版】执行富集分析与可视化的完整流程。
+    """
+    log = status_callback if status_callback else print
+    progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
+
+    log(f"INFO: {analysis_type.upper()} 富集与可视化流程启动。")
+
+    if collapse_transcripts:
+        original_count = len(study_gene_ids)
+        log("INFO: 正在将RNA合并到基因...")
+        study_gene_ids = map_transcripts_to_genes(study_gene_ids)
+        log(f"INFO: 基因列表已从 {original_count} 个RNA合并为 {len(study_gene_ids)} 个唯一基因。")
+
+    try:
+        genome_sources = get_genome_data_sources(config, logger_func=log)
+        genome_info = genome_sources.get(assembly_id)
+        if not genome_info:
+            log(f"ERROR: 无法在配置中找到基因组 '{assembly_id}'。")
+            return None
+        gene_id_regex = genome_info.gene_id_regex if hasattr(genome_info, 'gene_id_regex') else None
+    except Exception as e:
+        log(f"ERROR: 获取基因组源数据时失败: {e}")
+        return None
+
+    os.makedirs(output_dir, exist_ok=True)
+    enrichment_df = None
+
+    # --- 步骤 1: 执行核心富集分析 ---
+    if analysis_type == 'go':
+        progress(20, _("正在执行GO富集分析..."))
+        gaf_path = get_local_downloaded_file_path(config, genome_info, 'GO')
+        if not gaf_path or not os.path.exists(gaf_path):
+            log(f"ERROR: 未找到 '{assembly_id}' 的GO注释关联文件 (GAF)。请先下载数据。")
+            return None
+        enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, gaf_path=gaf_path, output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
+
+    elif analysis_type == 'kegg':
+        progress(20, _("正在执行KEGG富集分析..."))
+        pathways_path = get_local_downloaded_file_path(config, genome_info, 'KEGG_pathways')
+        if not pathways_path or not os.path.exists(pathways_path):
+            log(f"ERROR: 未找到 '{assembly_id}' 的KEGG通路文件。请先下载数据。")
+            return None
+        enrichment_df = run_kegg_enrichment(study_gene_ids=study_gene_ids, kegg_pathways_path=pathways_path, output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
+
+
+    else:
+        log(f"ERROR: 未知的分析类型 '{analysis_type}'。")
+        return None
+
+    if cancel_event and cancel_event.is_set():
+        log("INFO: 任务在分析后被取消。")
+        return None
+
+    if enrichment_df is None or enrichment_df.empty:
+        log("WARNING: 富集分析未发现任何显著结果，流程终止。")
+        return []  # 返回空列表表示成功但无结果
+
+    progress(70, _("富集分析完成，正在生成图表..."))
+
+    # --- 步骤 2: 遍历并生成所有请求的图表 ---
+    generated_plots = []
+
+    plot_kwargs_common = {
+        'top_n': top_n, 'sort_by': sort_by, 'show_title': show_title, 'width': width, 'height': height
+    }
+
+    if analysis_type == 'go' and 'Namespace' in enrichment_df.columns:
+        namespaces = enrichment_df['Namespace'].unique()
+        for ns in namespaces:
+            df_sub = enrichment_df[enrichment_df['Namespace'] == ns]
+            if df_sub.empty: continue
+
+            title_ns = f"GO Enrichment - {ns}"
+            file_prefix_ns = f"go_enrichment_{ns}"
+
+            if 'bubble' in plot_types:
+                output_path = os.path.join(output_dir, f"{file_prefix_ns}_bubble.{file_format}")
+                plot_path = plot_enrichment_bubble(enrichment_df=df_sub, output_path=output_path, title=title_ns,
+                                                   **plot_kwargs_common)
+                if plot_path: generated_plots.append(plot_path)
+
+            if 'bar' in plot_types:
+                # !!!!!!!!!!!!!!! 这是修改点 !!!!!!!!!!!!!!!
+                # 将 has_log2fc=... 替换为 gene_log2fc_map=...
+                output_path = os.path.join(output_dir, f"{file_prefix_ns}_bar.{file_format}")
+                plot_path = plot_enrichment_bar(enrichment_df=df_sub, output_path=output_path, title=title_ns,
+                                                gene_log2fc_map=gene_log2fc_map, **plot_kwargs_common)
+                if plot_path: generated_plots.append(plot_path)
+
+            if 'upset' in plot_types:
+                output_path = os.path.join(output_dir, f"{file_prefix_ns}_upset.{file_format}")
+                plot_path = plot_enrichment_upset(enrichment_df=df_sub, output_path=output_path, top_n=top_n)
+                if plot_path: generated_plots.append(plot_path)
+
+            if 'cnet' in plot_types:
+                output_path = os.path.join(output_dir, f"{file_prefix_ns}_cnet.{file_format}")
+                plot_path = plot_enrichment_cnet(enrichment_df=df_sub, output_path=output_path, top_n=top_n,
+                                                 gene_log2fc_map=gene_log2fc_map)
+                if plot_path: generated_plots.append(plot_path)
+    else:
+        title = f"{analysis_type.upper()} Enrichment"
+        file_prefix = f"{analysis_type}_enrichment"
+
+        if 'bubble' in plot_types:
+            output_path = os.path.join(output_dir, f"{file_prefix}_bubble.{file_format}")
+            plot_path = plot_enrichment_bubble(enrichment_df=enrichment_df, output_path=output_path, title=title,
+                                               **plot_kwargs_common)
+            if plot_path: generated_plots.append(plot_path)
+
+        if 'bar' in plot_types:
+            # !!!!!!!!!!!!!!! 这是另一个修改点 !!!!!!!!!!!!!!!
+            # 同样，替换参数
+            output_path = os.path.join(output_dir, f"{file_prefix}_bar.{file_format}")
+            plot_path = plot_enrichment_bar(enrichment_df=enrichment_df, output_path=output_path, title=title,
+                                            gene_log2fc_map=gene_log2fc_map, **plot_kwargs_common)
+            if plot_path: generated_plots.append(plot_path)
+
+        if 'upset' in plot_types:
+            output_path = os.path.join(output_dir, f"{file_prefix}_upset.{file_format}")
+            plot_path = plot_enrichment_upset(enrichment_df=enrichment_df, output_path=output_path, top_n=top_n)
+            if plot_path: generated_plots.append(plot_path)
+
+        if 'cnet' in plot_types:
+            output_path = os.path.join(output_dir, f"{file_prefix}_cnet.{file_format}")
+            plot_path = plot_enrichment_cnet(enrichment_df=enrichment_df, output_path=output_path, top_n=top_n,
+                                             gene_log2fc_map=gene_log2fc_map)
+            if plot_path: generated_plots.append(plot_path)
+
+    progress(100, _("所有图表已生成。"))
+    log(f"SUCCESS: 流程完成。在 '{output_dir}' 中成功生成 {len(generated_plots)} 个图表。", "SUCCESS")
+
+    return generated_plots

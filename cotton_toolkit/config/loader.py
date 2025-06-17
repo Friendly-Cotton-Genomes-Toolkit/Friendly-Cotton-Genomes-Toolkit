@@ -1,6 +1,8 @@
 ﻿# cotton_toolkit/config/loader.py
 
 import os
+import re
+
 import yaml
 import logging  # Ensure logging is imported
 from typing import Any, Dict, Optional, Tuple
@@ -34,34 +36,36 @@ def get_local_downloaded_file_path(
         file_type: str
 ) -> Optional[str]:
     """
-    根据主配置和基因组信息，确定本地已下载文件的预期绝对路径。
+    【全功能修正版】根据主配置和基因组信息，确定本地已下载文件的预期绝对路径。
     """
     downloader_cfg = main_config.downloader
     if not downloader_cfg or not downloader_cfg.download_output_base_dir:
         return None
 
+    # --- 路径构建逻辑 (保持不变) ---
     base_download_dir = downloader_cfg.download_output_base_dir
     config_abs_path = main_config._config_file_abs_path_
-
     if not os.path.isabs(base_download_dir):
         if config_abs_path and os.path.dirname(config_abs_path):
             base_download_dir = os.path.join(os.path.dirname(config_abs_path), base_download_dir)
         else:
             base_download_dir = os.path.join(os.getcwd(), base_download_dir)
-
     base_download_dir = os.path.abspath(base_download_dir)
-
-    safe_dir_name = genome_info.species_name.replace(" ", "_").replace(".", "_").replace("(", "").replace(")",
-                                                                                                          "").replace(
-        "'", "")
+    safe_dir_name = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_")
     version_output_dir = os.path.join(base_download_dir, safe_dir_name)
 
+    # --- 【核心修正点】补全所有文件类型的映射 ---
     url_map = {
         'gff3': (genome_info.gff3_url, f"{safe_dir_name}_annotations.gff3.gz"),
-        'homology_ath': (genome_info.homology_ath_url, f"{safe_dir_name}_homology_ath.xlsx.gz")
+        'homology_ath': (genome_info.homology_ath_url, f"{safe_dir_name}_homology_ath.xlsx.gz"),
+        'GO': (genome_info.GO_url, f"{safe_dir_name}_genes2Go.txt.gz"),
+        'IPR': (genome_info.IPR_url, f"{safe_dir_name}_genes2IPR.txt.gz"),
+        'KEGG_pathways': (genome_info.KEGG_pathways_url, f"{safe_dir_name}_KEGG-pathways.txt.gz"),
+        'KEGG_orthologs': (genome_info.KEGG_orthologs_url, f"{safe_dir_name}_KEGG-orthologs.txt.gz"),
     }
 
     if file_type not in url_map:
+        # 如果请求的类型不在地图中，返回None
         return None
 
     url, default_name_pattern = url_map[file_type]
@@ -69,17 +73,21 @@ def get_local_downloaded_file_path(
     if not url:
         return None
 
+    # 从URL确定标准文件名
     parsed_url = urlparse(url)
     filename = os.path.basename(parsed_url.path) if parsed_url.path and '.' in os.path.basename(
         parsed_url.path) else default_name_pattern
 
-    if filename.lower().endswith((".xlsx.gz", ".xls.gz")):
+    # --- 【逻辑修正】只对同源文件优先查找CSV ---
+    # 对于 homology_ath 类型的 .xlsx.gz 文件，优先返回已转换的 .csv 文件
+    if file_type == 'homology_ath' and filename.lower().endswith((".xlsx.gz", ".xls.gz")):
         base_name_no_gz_ext = os.path.splitext(filename)[0]
         csv_filename = os.path.splitext(base_name_no_gz_ext)[0] + ".csv"
         local_csv_path = os.path.join(version_output_dir, csv_filename)
         if os.path.exists(local_csv_path):
-            return local_csv_path
+            return local_csv_path  # 如果CSV存在，优先返回它
 
+    # 对于所有其他文件，或同源文件的CSV不存在时，返回原始下载文件的路径
     local_path = os.path.join(version_output_dir, filename)
     return local_path
 

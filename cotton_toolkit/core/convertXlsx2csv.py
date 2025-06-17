@@ -1,70 +1,73 @@
-﻿import logging
+﻿# cotton_toolkit/core/convertXlsx2csv.py
+
 import pandas as pd
-from typing import List
+import gzip
+import io
+import os
+from typing import Callable
 
-# 获取logger实例
-logger = logging.getLogger("cotton_toolkit.core.convertXlsx2csv")
 
-
-def convert_all_sheets_to_csv(input_path: str, output_path: str) -> bool:
+def convert_excel_to_standard_csv(
+        excel_path: str,
+        output_csv_path: str,
+        logger_func: Callable = print
+) -> bool:
     """
-    将 .xlsx 文件中的所有sheet合并并转换为一个 .csv 文件。
-
-    - 跳过每个sheet的前两行，使用第三行作为唯一的表头。
+    将一个可能包含多个sheet的Excel文件（支持.gz压缩）转换为一个单一的、标准的CSV文件。
     - 合并所有sheet的数据。
-    - 最终的CSV文件只在第一行包含一个表头，内部无多余表头或空行。
+    - 忽略所有原始表头，并为合并后的数据设置标准表头 ['GeneID', 'TermID', 'Description', 'Namespace', ...]。
 
     Args:
-        input_path (str): 输入的 .xlsx 文件路径。
-        output_path (str): 输出的 .csv 文件路径。
+        excel_path (str): 输入的Excel文件路径。
+        output_csv_path (str): 输出的标准CSV文件路径。
+        logger_func (Callable): 用于记录日志的回调函数。
 
     Returns:
-        bool: 转换成功返回True，否则返回False。
+        bool: 如果转换成功则返回 True，否则返回 False。
     """
     try:
-        with pd.ExcelFile(input_path, engine='openpyxl') as excel_file:
-            sheet_names = excel_file.sheet_names
-            if not sheet_names:
-                logger.error(f"无法在 '{input_path}' 中找到任何sheet。")
-                return False
+        logger_func(f"INFO: Standardizing Excel file: {os.path.basename(excel_path)}")
 
-            all_dfs: List[pd.DataFrame] = []
+        # 根据是否以 .gz 结尾来选择打开方式
+        open_func = gzip.open if excel_path.lower().endswith('.gz') else open
 
-            # 1. 遍历所有sheet，使用第3行作为表头，忽略前面的内容
-            for sheet_name in sheet_names:
-                try:
-                    # header=2 是实现您需求的关键：跳过前2行，用第3行做表头
-                    df_sheet = pd.read_excel(excel_file, sheet_name=sheet_name, header=2)
+        with open_func(excel_path, 'rb') as f:
+            # 使用BytesIO作为内存中的二进制文件缓冲区
+            buffer = io.BytesIO(f.read())
 
-                    if not df_sheet.empty:
-                        all_dfs.append(df_sheet)
-                        logger.info(f"成功读取 sheet: '{sheet_name}'，包含 {len(df_sheet)} 行数据。")
-                    else:
-                        logger.warning(f"Sheet '{sheet_name}' 为空，已跳过。")
-                except Exception as e:
-                    logger.warning(f"读取 sheet '{sheet_name}' 时出错，已跳过: {e}")
+        # 读取所有sheet，header=None表示不将任何行作为表头
+        all_sheets = pd.read_excel(buffer, sheet_name=None, header=None, engine='openpyxl')
 
-            if not all_dfs:
-                logger.error(f"在 '{input_path}' 中未找到任何包含数据的有效sheet进行转换。")
-                return False
+        if not all_sheets:
+            logger_func(f"WARNING: Excel file '{os.path.basename(excel_path)}' is empty or has no sheets.")
+            return False
 
-            # 2. 合并所有读取到的DataFrame。因为表头一致，数据会正确对齐。
-            # 合并后只有一个表头。
-            final_df = pd.concat(all_dfs, ignore_index=True)
+        # 使用concat将所有sheet的DataFrame垂直合并成一个
+        combined_df = pd.concat(all_sheets.values(), ignore_index=True)
 
-        # 3. 将最终的DataFrame写入CSV。
-        # 默认行为就是将表头写在第一行，且只写一次。
-        final_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+        # 去除完全为空的行
+        combined_df.dropna(how='all', inplace=True)
 
-        logger.info(
-            f"成功将 '{input_path}' 中的 {len(all_dfs)} 个sheet合并转换为 '{output_path}'，总计 {len(final_df)} 行。")
+        if combined_df.empty:
+            logger_func(f"WARNING: After combining all sheets, no data was found in '{os.path.basename(excel_path)}'.")
+            return False
+
+        # 为合并后的数据设置标准化的列名
+        num_columns = len(combined_df.columns)
+        standard_headers = ['GeneID', 'TermID', 'Description', 'Namespace']
+        # 根据实际列数动态生成表头
+        new_headers = standard_headers[:num_columns]
+        if num_columns > len(standard_headers):
+            new_headers.extend([f'ExtraCol_{i + 1}' for i in range(num_columns - len(standard_headers))])
+
+        combined_df.columns = new_headers
+
+        # 将标准化的DataFrame保存为CSV文件，确保第一行是我们的标准表头
+        combined_df.to_csv(output_csv_path, index=False)
+
+        logger_func(f"SUCCESS: Standardized file saved to: {os.path.basename(output_csv_path)}")
         return True
-    except FileNotFoundError:
-        logger.error(f"转换失败: 输入文件未找到 at '{input_path}'")
-        return False
-    except Exception as e:
-        logger.exception(f"转换 '{input_path}' 时发生未知错误。")
-        return False
 
-# 使用示例
-# convert_all_sheets_to_csv("your_input_file.xlsx", "your_output_file.csv")
+    except Exception as e:
+        logger_func(f"ERROR: Failed to convert Excel file '{os.path.basename(excel_path)}'. Reason: {e}")
+        return False

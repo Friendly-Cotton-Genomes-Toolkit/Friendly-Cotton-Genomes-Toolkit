@@ -144,3 +144,77 @@ class Annotator:
 
         self.progress(100, _("所有注释处理完成。"))
         return final_df.reset_index()
+
+
+def load_go_annotations(gaf_path: str, logger_func: Callable = print) -> pd.DataFrame:
+    """
+    从 GAF (或类似格式的 Excel/CSV) 文件中加载 GO 注释数据。
+
+    这个新版本能够智能处理包含表头的文件，并能适应不同列数的文件，
+    只要前两列是基因ID和GO ID即可。
+
+    Args:
+        gaf_path (str): GO 注释文件的路径 (可以是 .gz 压缩的)。
+        logger_func (Callable): 用于记录日志的回调函数。
+
+    Returns:
+        pd.DataFrame: 包含 'GeneID' 和 'GO_ID' 列的 DataFrame。
+                      如果文件有第三、四列，也会被保留。
+    """
+    logger_func(f"INFO: 正在从 {os.path.basename(gaf_path)} 加载GO注释数据...")
+    logger_func(f"INFO: Loading annotation file: {gaf_path}")
+
+    try:
+        if gaf_path.endswith('.gz'):
+            with gzip.open(gaf_path, 'rb') as f:
+                content = f.read()
+        else:
+            with open(gaf_path, 'rb') as f:
+                content = f.read()
+
+        file_extension = os.path.splitext(gaf_path.replace('.gz', ''))[1]
+
+        # --- 这是修改的核心 ---
+        # 1. 自动读取表头 (header=0)
+        # 2. 安全地重命名列
+        if file_extension in ['.xlsx', '.xls']:
+            df = pd.read_excel(io.BytesIO(content), header=0, engine='openpyxl')
+        elif file_extension == '.csv':
+            df = pd.read_csv(io.BytesIO(content), header=0)
+        elif file_extension == '.txt':
+            df = pd.read_csv(io.BytesIO(content), header=0, sep='\t')
+        else:
+            logger_func(f"ERROR: 不支持的文件格式: {file_extension}")
+            raise ValueError(f"Unsupported file format: {file_extension}")
+
+        # 获取原始列名
+        original_columns = df.columns.tolist()
+
+        # 定义程序内部需要的核心列名映射关系
+        # 我们只关心前两列：基因ID 和 GO ID
+        rename_map = {
+            original_columns[0]: 'GeneID',
+            original_columns[1]: 'GO_ID'
+        }
+
+        # 为了兼容性，如果存在第三列和第四列，也给它们一个标准名字
+        if len(original_columns) > 2:
+            rename_map[original_columns[2]] = 'GO_Term'
+        if len(original_columns) > 3:
+            # 兼容带有 Namespace 的文件
+            rename_map[original_columns[3]] = 'Namespace'
+
+        df.rename(columns=rename_map, inplace=True)
+        # --- 修改结束 ---
+
+        # 数据清洗：去除任何可能存在的空值行
+        df.dropna(subset=['GeneID', 'GO_ID'], inplace=True)
+        df = df.astype({'GeneID': str, 'GO_ID': str})
+
+        logger_func(f"SUCCESS: Loaded and processed {len(df)} annotation entries.")
+        return df[['GeneID', 'GO_ID'] + [col for col in ['GO_Term', 'Namespace'] if col in df.columns]]
+
+    except Exception as e:
+        logger_func(f"ERROR: 解析GO注释文件时出错: {e}", "ERROR")
+        # 在GUI中显示更详细的错误
+        raise RuntimeError(f"Failed to parse GO annotation file '{os.path.basename(gaf_path)}'. Reason: {e}") from e

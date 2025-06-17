@@ -1,7 +1,8 @@
 ﻿# cotton_toolkit/utils/gene_utils.py
 
 import re
-from typing import Optional, Tuple
+import pandas as pd
+from typing import List, Union, Optional, Tuple
 
 
 def parse_gene_id(gene_id: str) -> Optional[Tuple[str, str]]:
@@ -37,3 +38,33 @@ def parse_gene_id(gene_id: str) -> Optional[Tuple[str, str]]:
         return (subgenome, chromosome)
 
     return None
+
+
+def normalize_gene_ids(gene_ids: pd.Series, pattern: str) -> pd.Series:
+    """
+    【修正版】使用正则表达式从基因ID中提取标准部分。
+    此版本经过加固，即使正则表达式包含多个捕获组，也能稳定地只返回第一列结果。
+    """
+    try:
+        # --- 这是核心修改 ---
+        # 1. expand=True 确保 str.extract 的返回结果永远是一个DataFrame。
+        # 2. .iloc[:, 0] 明确选取这个DataFrame的第一列。
+        # 这样，无论用户在YAML中定义的pattern有多少个括号，函数都能稳定返回一个Series。
+        return gene_ids.str.extract(f"({pattern})", expand=True).iloc[:, 0]
+        # --- 修改结束 ---
+    except Exception as e:
+        # 如果模式无效或出现其他错误，打印警告并返回原始数据
+        print(f"Warning: Failed to apply regex for gene ID normalization. Reason: {e}")
+        return gene_ids
+
+def map_transcripts_to_genes(gene_ids: List[str]) -> List[str]:
+    """
+    将转录本ID列表合并为其父基因ID列表。
+    例如：['GENE.1', 'GENE.2', 'OTHERGENE'] -> ['GENE', 'OTHERGENE']
+    规则：去除点、破折号或下划线后面的 't' 或 'T' 及数字后缀。
+    """
+    # 正则表达式：匹配. or - or _，可选的't'或'T'，以及结尾的一个或多个数字
+    pattern = re.compile(r'[\._-][Tt]?\d+$')
+    # 使用集合来自动处理合并后的重复基因ID
+    unique_genes = {pattern.sub('', gid) for gid in gene_ids}
+    return sorted(list(unique_genes))
