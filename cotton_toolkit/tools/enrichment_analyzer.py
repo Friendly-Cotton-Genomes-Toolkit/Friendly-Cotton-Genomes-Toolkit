@@ -7,6 +7,7 @@ from typing import List, Optional, Callable
 
 from .data_loader import load_annotation_data
 from ..core.convertXlsx2csv import convert_excel_to_standard_csv
+from ..utils.file_utils import prepare_input_file
 from ..utils.gene_utils import normalize_gene_ids
 
 
@@ -138,17 +139,31 @@ def _perform_hypergeometric_test(
     return results_df.sort_values(by='FDR')
 
 
+def run_go_enrichment(
+        study_gene_ids: List[str],
+        go_annotation_path: str,  # 这是用户传入的原始文件路径
+        status_callback: Callable,
+        output_dir: str,
+        gene_id_regex: Optional[str] = None
+) -> Optional[pd.DataFrame]:
+    # 使用新的通用函数来准备注释文件
+    # 假设我们将缓存文件放在输出目录下的 .cache 子目录中
+    cache_dir = os.path.join(output_dir, '.cache')
+    prepared_go_path = prepare_input_file(go_annotation_path, status_callback, cache_dir)
 
-def run_go_enrichment(study_gene_ids: List[str], gaf_path: str, output_dir: str, status_callback: Optional[Callable] = print,
-                      gene_id_regex: Optional[str] = None, **kwargs) -> Optional[pd.DataFrame]:
-    try:
-        annotation_file_to_load = _prepare_annotation_file(gaf_path, status_callback)
-        background_df = load_annotation_data(annotation_file_to_load, status_callback)
-        if background_df is None or background_df.empty:
-            raise ValueError("加载的GO注释文件为空或格式不正确。")
-    except Exception as e:
-        status_callback(f"ERROR: 准备GO背景文件时出错: {e}")
+    if not prepared_go_path:
+        status_callback("ERROR: GO注释文件准备失败，富集分析终止。")
         return None
+
+    # 后续代码现在可以安全地假设 prepared_go_path 是一个标准CSV文件
+    status_callback("INFO: 正在加载处理后的GO注释背景数据...")
+    try:
+        # 直接读取已标准化的CSV文件
+        background_df = pd.read_csv(prepared_go_path)
+    except Exception as e:
+        status_callback(f"ERROR: 读取标准化注释文件失败: {e}")
+        return None
+
     # 调用时参数保持不变，因为现在定义和调用已经匹配
     return _perform_hypergeometric_test(study_gene_ids, background_df, status_callback, output_dir, gene_id_regex=gene_id_regex)
 

@@ -68,3 +68,34 @@ def map_transcripts_to_genes(gene_ids: List[str]) -> List[str]:
     # 使用集合来自动处理合并后的重复基因ID
     unique_genes = {pattern.sub('', gid) for gid in gene_ids}
     return sorted(list(unique_genes))
+
+
+def parse_region_string(region_str: str) -> Optional[Tuple[str, int, int]]:
+    """
+    【新增工具函数】解析灵活格式的区域字符串。
+    支持 'Chr:Start-End' 或 'Chr:Start..End' 格式。
+
+    :param region_str: 用户输入的区域字符串。
+    :return: 一个包含 (染色体, 开始位置, 结束位置) 的元组，如果格式不正确则返回 None。
+    """
+    if not isinstance(region_str, str):
+        return None
+
+    # 将 '..' 替换为 '-' 以统一格式
+    normalized_str = region_str.replace('..', '-')
+
+    # 使用正则表达式匹配 "染色体:开始-结束"
+    match = re.match(r'^\s*([^:]+?)\s*:\s*(\d+)\s*-\s*(\d+)\s*$', normalized_str)
+
+    if match:
+        chrom = match.group(1).strip()
+        start = int(match.group(2))
+        end = int(match.group(3))
+
+        # 保证 start <= end
+        if start > end:
+            start, end = end, start
+
+        return chrom, start, end
+
+    return None

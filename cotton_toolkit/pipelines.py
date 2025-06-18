@@ -17,6 +17,7 @@ from .config.loader import get_genome_data_sources, get_local_downloaded_file_pa
 from .config.models import (
     MainConfig, HomologySelectionCriteria, GenomeSourceItem
 )
+from .core import gff_parser
 from .core.ai_wrapper import AIWrapper
 from .core.downloader import download_genome_data
 from .core.gff_parser import get_genes_in_region, extract_gene_details, create_gff_database, get_gene_info_by_ids
@@ -25,7 +26,7 @@ from .tools.batch_ai_processor import process_single_csv_file
 from .tools.annotator import Annotator
 from .tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
 from .tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, plot_enrichment_cnet
-from .utils.gene_utils import map_transcripts_to_genes
+from .utils.gene_utils import map_transcripts_to_genes, parse_region_string
 
 # --- 国际化和日志设置 ---
 try:
@@ -405,169 +406,96 @@ def run_homology_mapping(
     log(_("同源映射流程成功完成，结果已保存至: {}").format(final_output_path), "SUCCESS")
 
 
-# (紧跟在 run_homology_mapping 函数之后添加)
+
 
 def run_locus_conversion(
-        config: MainConfig,
+        config: MainConfig, # config 就是 main_config
         source_assembly_id: str,
         target_assembly_id: str,
         region: Tuple[str, int, int],
-        status_callback: Callable = print,
-        progress_callback: Optional[Callable] = None,
-        cancel_event: Optional[threading.Event] = None
-) -> Optional[str]:
-    """
-    专用于位点转换。
-    优先在目标基因组中寻找与源染色体同名的染色体。如果找不到，则回退到
-    寻找包含最多同源基因的染色体策略。
+        status_callback: Callable,
+        **kwargs
+) -> Optional[pd.DataFrame]:
+    """【已修正】从源基因组区域映射到目标基因组同源基因。"""
+    status_callback("INFO", f"开始位点转换：从 {source_assembly_id} 映射到 {target_assembly_id}")
 
-    Args:
-        config: 主配置对象。
-        source_assembly_id: 源基因组的ID。
-        target_assembly_id: 目标基因组的ID。
-        region: 一个元组，表示源基因组中的区域 (chrom, start, end)。
-        status_callback: 用于状态更新的回调函数。
-        progress_callback: 用于进度更新的回调函数。
-        cancel_event: 用于取消任务的线程事件。
-
-    Returns:
-        一个包含目标区域范围的字符串，或者在失败/无结果时返回 None。
-    """
-    log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
-    progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
-
-    temp_output_path = None
-    try:
-        # 为了获取中间的同源映射结果，我们创建一个临时文件
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.csv', encoding='utf-8-sig') as tmp_file:
-            temp_output_path = tmp_file.name
-
-        log(_("步骤 1/3: 正在执行核心同源映射..."))
-
-        # 调用通用的、输出文件到CSV的 run_homology_mapping 函数
-        # 它会处理从区域提取基因ID的逻辑
-        run_homology_mapping(
-            config=config,
-            source_assembly_id=source_assembly_id,
-            target_assembly_id=target_assembly_id,
-            region=region,
-            output_csv_path=temp_output_path,
-            status_callback=status_callback,
-            progress_callback=progress_callback,
-            cancel_event=cancel_event
-        )
-
-        if cancel_event and cancel_event.is_set():
-            log(_("任务已取消。"), "WARNING")
-            return None
-
-        # 检查映射是否成功生成了包含数据的文件
-        if not os.path.exists(temp_output_path) or os.path.getsize(temp_output_path) == 0:
-            log(_("核心映射未产生任何结果，无法进行位点转换。"), "WARNING")
-            return None
-
-        # 从临时文件中读取目标基因ID
-        result_df = pd.read_csv(temp_output_path)
-        if result_df.empty or 'Target_Gene_ID' not in result_df.columns:
-            log(_("映射结果为空或格式不正确。"), "WARNING")
-            return None
-
-        target_gene_ids = result_df['Target_Gene_ID'].dropna().unique().tolist()
-        if not target_gene_ids:
-            log(_("映射成功但未能提取任何有效的目标基因ID。"), "WARNING")
-            return None
-
-    finally:
-        # 无论成功与否，都确保删除临时文件
-        if temp_output_path and os.path.exists(temp_output_path):
-            try:
-                os.remove(temp_output_path)
-                log(_("已清理临时文件。"), "DEBUG")
-            except OSError as e:
-                log(f"{_('清理临时文件时出错')}: {e}", "WARNING")
-
-    # --- 从这里开始的逻辑，用于计算坐标范围 ---
-
-    log(_("步骤 2/3: 正在为 {} 个目标基因查询坐标...").format(len(target_gene_ids)))
-
-    # 获取GFF文件路径
-    try:
-        genome_sources = get_genome_data_sources(config, logger_func=log)
-        target_genome_info = genome_sources.get(target_assembly_id)
-        target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
-        gff_db_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
-                                  config.integration_pipeline.gff_db_storage_dir)
-    except Exception as e:
-        log(f"{_('获取目标GFF文件路径时出错')}: {e}", "ERROR")
+    # 1. 修正：调用 get_genome_data_sources 时传入 main_config 和 logger_func
+    # 2. 修正：get_genome_data_sources 返回的是字典，使用 .get() 方法按键获取值
+    all_genomes = get_genome_data_sources(config, logger_func=status_callback)
+    if all_genomes is None: # 添加错误处理
+        status_callback("ERROR", "未能加载基因组源数据。")
         return None
 
-    if not target_gff_path or not os.path.exists(target_gff_path):
-        log(_("错误: 目标基因组 '{}' 的GFF文件未找到，无法计算坐标。").format(target_assembly_id), "ERROR")
+    # 从字典中直接获取 GenomeSourceItem 对象
+    source_genome_info = all_genomes.get(source_assembly_id)
+    target_genome_info = all_genomes.get(target_assembly_id)
+
+    if not (source_genome_info and target_genome_info):
+        status_callback("ERROR", "无法在配置中找到源或目标基因组的信息。")
         return None
 
-    # 查询坐标
-    target_coords_df = get_gene_info_by_ids(
-        assembly_id=target_assembly_id,
-        gff_filepath=target_gff_path,
-        db_storage_dir=gff_db_dir,
-        gene_ids=target_gene_ids,
-        force_db_creation=config.integration_pipeline.force_gff_db_creation,
-        status_callback=log
+    # 获取同源文件路径
+    s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
+    b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+
+    # 加载同源文件
+    s_to_b_df = _load_data_file(s_to_b_homology_file, status_callback)
+    b_to_t_df = _load_data_file(b_to_t_homology_file, status_callback)
+
+    if s_to_b_df is None or b_to_t_df is None:
+        status_callback("ERROR", "无法加载同源映射文件。请确保数据已下载且路径正确。")
+        return None
+
+    source_gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+    target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
+
+    if not all([source_gff_path, target_gff_path]):
+        status_callback("ERROR", "缺少必要的GFF文件，请在'数据源管理'中检查。")
+        return None
+
+    pipeline_cfg = config.integration_pipeline
+    project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
+    gff_db_dir = os.path.join(project_root, pipeline_cfg.gff_db_storage_dir)
+    os.makedirs(gff_db_dir, exist_ok=True)
+
+
+    status_callback("INFO", f"在源基因组 '{source_assembly_id}' 中查找区域内的基因...")
+    source_genes = gff_parser.get_genes_in_region(
+        assembly_id=source_assembly_id, gff_filepath=source_gff_path,
+        db_storage_dir=gff_db_dir, region=region, status_callback=status_callback,
+        force_db_creation=pipeline_cfg.force_gff_db_creation
     )
 
-    if target_coords_df.empty:
-        log(_("未能查询到任何目标基因的坐标信息。"), "WARNING")
-        return None
+    if not source_genes:
+        status_callback("WARNING", "在源基因组的指定区域内未找到任何基因。")
+        return pd.DataFrame()
 
-    log(_("步骤 3/3: 正在按指定规则筛选主要同源区域..."))
+    source_gene_ids = [gene['gene_id'] for gene in source_genes]
+    status_callback("INFO", f"找到 {len(source_gene_ids)} 个源基因，正在进行同源映射...")
 
-    source_chrom_name = region[0]
-    final_coords_df = None
-    best_target_chrom = None
+    # 获取同源映射的筛选标准和列名
+    selection_criteria_s_to_b = asdict(pipeline_cfg.selection_criteria_source_to_bridge)
+    selection_criteria_b_to_t = asdict(pipeline_cfg.selection_criteria_bridge_to_target)
+    homology_cols = pipeline_cfg.homology_columns
 
-    # 1. 优先策略：尝试寻找与源染色体完全同名的目标染色体
-    direct_match_df = target_coords_df[target_coords_df['chrom'] == source_chrom_name]
+    # 调用 map_genes_via_bridge
+    mapped_df, _C = map_genes_via_bridge(
+        source_gene_ids=source_gene_ids,
+        source_assembly_name=source_assembly_id,
+        target_assembly_name=target_assembly_id,
+        bridge_species_name=pipeline_cfg.bridge_species_name, # 从配置中获取
+        source_to_bridge_homology_df=s_to_b_df,
+        bridge_to_target_homology_df=b_to_t_df,
+        selection_criteria_s_to_b=selection_criteria_s_to_b,
+        selection_criteria_b_to_t=selection_criteria_b_to_t,
+        homology_columns=homology_cols,
+        source_genome_info=source_genome_info,
+        target_genome_info=target_genome_info,
+        status_callback=status_callback
+    )
+    return mapped_df
 
-    if not direct_match_df.empty:
-        # 如果找到了同名染色体，并且上面有基因，就用它
-        log(f"INFO: 已成功筛选出与源染色体同名的目标染色体 '{source_chrom_name}' 上的同源基因。", "INFO")
-        final_coords_df = direct_match_df
-        best_target_chrom = source_chrom_name
-    else:
-        # 2. 回退策略：如果找不到同名染色体，则使用“最多基因”策略
-        log(f"WARNING: 在目标基因组中未找到名为 '{source_chrom_name}' 的同源染色体。将回退到查找包含最多同源基因的染色体。",
-            "WARNING")
 
-        chrom_hit_counts = target_coords_df['chrom'].value_counts()
-        log(f"DEBUG: 各目标染色体上的同源基因数量: {chrom_hit_counts.to_dict()}", "DEBUG")
-
-        if not chrom_hit_counts.empty:
-            # 识别基因数量最多的染色体
-            best_target_chrom_from_counts = chrom_hit_counts.index[0]
-            log(f"INFO: 回退策略: 已选择包含最多同源基因的染色体 '{best_target_chrom_from_counts}' ({chrom_hit_counts.iloc[0]} 个基因) 作为输出。",
-                "INFO")
-
-            # 筛选出只属于这个“最多基因”染色体的坐标
-            final_coords_df = target_coords_df[target_coords_df['chrom'] == best_target_chrom_from_counts]
-            best_target_chrom = best_target_chrom_from_counts
-        else:
-            log("ERROR: 无法确定主要目标染色体。", "ERROR")
-            return None
-
-    # 确保我们最终有数据可以处理
-    if final_coords_df is None or final_coords_df.empty:
-        log("ERROR: 经过筛选后，没有可用于计算区间的坐标数据。", "ERROR")
-        return None
-
-    # 3. 在最终选定的数据集上计算外包围框
-    min_start_val = final_coords_df['start'].min()
-    max_end_val = final_coords_df['end'].max()
-
-    # 4. 格式化最终的输出字符串
-    final_output_string = f"{best_target_chrom}:{min_start_val}-{max_end_val}"
-
-    log(_("成功转换为目标区域: {}").format(final_output_string), "SUCCESS")
-    return final_output_string
 
 
 
@@ -776,7 +704,7 @@ def run_download_pipeline(
         cancel_event: Optional[threading.Event] = None
 ):
     """
-    【ID修正版】执行数据下载流程。
+    执行数据下载流程。
     """
     # ... (函数前半部分，包括日志设置、参数解析、构建all_download_tasks列表的代码都保持不变) ...
     log = status_callback if status_callback else print
@@ -910,7 +838,7 @@ def run_enrichment_pipeline(
         if not gaf_path or not os.path.exists(gaf_path):
             log(f"ERROR: 未找到 '{assembly_id}' 的GO注释关联文件 (GAF)。请先下载数据。")
             return None
-        enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, gaf_path=gaf_path, output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
+        enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, go_annotation_path=gaf_path, output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
 
     elif analysis_type == 'kegg':
         progress(20, _("正在执行KEGG富集分析..."))

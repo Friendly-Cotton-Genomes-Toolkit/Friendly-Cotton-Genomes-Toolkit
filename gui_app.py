@@ -32,10 +32,10 @@ from cotton_toolkit.core.ai_wrapper import AIWrapper
 from cotton_toolkit.pipelines import (
     run_download_pipeline,
     run_integrate_pipeline,
-    run_homology_mapping,
     run_functional_annotation,
     run_ai_task, run_gff_lookup,
-    run_locus_conversion, run_enrichment_pipeline
+    run_locus_conversion, run_enrichment_pipeline,
+    run_homology_mapping
 )
 from ui import ProgressDialog, MessageDialog,AnnotationTab
 from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
@@ -3149,12 +3149,14 @@ class CottonToolkitApp(ctk.CTk):
                             textbox = self.locus_conversion_result_textbox
                             textbox.configure(state="normal")
                             textbox.delete("1.0", tk.END)
-                            if success and result_data:
-                                textbox.insert("1.0", result_data)  # 显示返回的坐标字符串
+                            # 修正：使用 .empty 属性检查 DataFrame 是否为空
+                            if success and result_data is not None and not result_data.empty:
+                                # 将 DataFrame 转换为字符串进行显示，例如使用 to_string()
+                                textbox.insert("1.0", result_data.to_string(index=False))
 
-                            elif success:
+                            elif success and (result_data is None or result_data.empty):
                                 textbox.insert("1.0", _("未找到有效的同源区域。"))
-                            else:
+                            else: # success is False
                                 textbox.insert("1.0", _("任务执行失败，无结果。"))
                             textbox.configure(state="disabled")
 
@@ -3244,6 +3246,7 @@ class CottonToolkitApp(ctk.CTk):
             logging.critical(f"Unhandled exception in check_queue_periodic: {e}", exc_info=True)
 
         self.after(100, self.check_queue_periodic)
+
 
     def _check_and_hide_startup_dialog(self):
         """

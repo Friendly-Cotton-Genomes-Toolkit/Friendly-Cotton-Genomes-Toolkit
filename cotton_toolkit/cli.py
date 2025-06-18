@@ -149,5 +149,7 @@ def ai_task(ctx, input_file, source_column, new_column, task_type, prompt, tempe
         cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info
     )
 
+
+
 if __name__ == '__main__':
     cli()

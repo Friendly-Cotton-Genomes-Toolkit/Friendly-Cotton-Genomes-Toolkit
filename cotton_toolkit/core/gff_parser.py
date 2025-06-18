@@ -1,10 +1,10 @@
 ﻿# cotton_toolkit/core/gff_parser.py
-
+import gzip
 import logging
 import os
 import re
 import sqlite3
-from typing import Dict, Any, Optional, Callable, List, Tuple
+from typing import Dict, Any, Optional, Callable, List, Tuple, Iterator, Union
 
 import gffutils
 import pandas as pd
@@ -23,13 +23,78 @@ logger = logging.getLogger("cotton_toolkit.gff_parser")
 db_cache = Cache("gff_databases_cache/db_objects")  # 使用 diskcache 缓存数据库对象
 
 
+def _find_full_seqid(db: gffutils.FeatureDB, chrom_part: str, log: Callable) -> Optional[str]:
+    """
+    【新增辅助函数】使用正则表达式在数据库中查找完整的序列ID (seqid)。
+    例如，将用户输入的 'A01' 匹配到数据库中的 'Ghir_A01'。
+    """
+    all_seqids = list(db.seqids())
+    log(f"数据库中所有可用的序列ID: {all_seqids[:10]}...", "DEBUG")
+
+    # 优先进行精确匹配 (不区分大小写)
+    for seqid in all_seqids:
+        if seqid.lower() == chrom_part.lower():
+            log(f"精确匹配成功: '{chrom_part}' -> '{seqid}'", "INFO")
+            return seqid
+
+    # 如果精确匹配失败，则使用正则表达式进行模糊匹配
+    # 这个正则表达式会查找以用户输入结尾的seqid，例如 `..._A01`, `...-A01`, `...A01`
+    pattern = re.compile(f".*[^a-zA-Z0-9]{re.escape(chrom_part)}$|^{re.escape(chrom_part)}$", re.IGNORECASE)
+
+    matches = [seqid for seqid in all_seqids if pattern.match(seqid)]
+
+    if len(matches) == 1:
+        log(f"模糊匹配成功: '{chrom_part}' -> '{matches[0]}'", "INFO")
+        return matches[0]
+
+    if len(matches) > 1:
+        log(f"警告: 发现多个可能的匹配项 for '{chrom_part}': {matches}。将使用第一个: {matches[0]}", "WARNING")
+        return matches[0]
+
+    log(f"错误: 无法在数据库中找到与 '{chrom_part}' 匹配的序列ID。", "ERROR")
+    return None
+
+
+def _gff_gene_filter(gff_filepath: str) -> Iterator[Union[gffutils.feature.Feature, str]]:
+    """
+    一个生成器函数，用于逐行读取GFF文件。
+    现在此函数会直接将 feature 类型为 'gene' 的行解析为 gffutils.Feature 对象再 yield。
+    注释行则作为字符串 yield。
+    """
+    is_gzipped = gff_filepath.endswith('.gz')
+    opener = gzip.open if is_gzipped else open
+    mode = 'rt' if is_gzipped else 'r'
+
+    logger.debug(f"Opening {'gzipped ' if is_gzipped else ''}file for parsing: {gff_filepath}")
+
+    with opener(gff_filepath, mode, encoding='utf-8', errors='ignore') as gff_file:
+        for line in gff_file:
+            # GFF的注释行（以'#'开头），直接作为字符串传递出去
+            if line.startswith('#'):
+                yield line
+                continue
+
+            columns = line.strip().split('\t')
+            # 确保是有效的GFF行并且是我们需要的 'gene' 特征
+            if len(columns) > 2 and columns[2] == 'gene':
+                try:
+                    # --- 核心修改 ---
+                    # 将该行文本就地解析成一个 gffutils.Feature 对象
+                    feature_obj = gffutils.feature.feature_from_line(line)
+                    # 产出解析好的对象，而不是字符串
+                    yield feature_obj
+                except Exception as e:
+                    # 如果某一行格式有问题，记录警告并跳过，避免整个流程中断
+                    logger.warning(f"Skipping malformed GFF line: {line.strip()} | Error: {e}")
+
+
 def create_gff_database(gff_filepath: str, db_path: str, force: bool = False,
                         status_callback: Optional[Callable[[str, str], None]] = None):
     """
     从 GFF3 文件创建 gffutils 数据库。
+    【已修改】现在只索引 feature 类型为 'gene' 的条目来加速建库。
     """
     log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
-
 
     # --- 不仅检查文件是否存在，还检查文件大小是否大于0 ---
     # 这可以防止因之前创建失败而留下的0字节文件导致后续错误。
@@ -46,18 +111,24 @@ def create_gff_database(gff_filepath: str, db_path: str, force: bool = False,
     if not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
-    log(f"正在创建GFF数据库：{os.path.basename(db_path)} 从 {os.path.basename(gff_filepath)}", "INFO")
+    log(f"正在创建GFF数据库(仅包含基因)：{os.path.basename(db_path)} 从 {os.path.basename(gff_filepath)}",
+        "INFO")  # 修改了日志信息
 
     try:
+        # --- 核心修改 ---
+        # 使用 _gff_gene_filter 生成器作为 gffutils.create_db 的输入
+        gene_iterator = _gff_gene_filter(gff_filepath)
+
         gffutils.create_db(
-            gff_filepath,
+            gene_iterator,  # <--- 使用迭代器而不是文件路径
             dbfn=db_path,
             force=force,
             keep_order=True,
             merge_strategy="merge",
             sort_attribute_values=True,
-            disable_infer_transcripts=True,
-            disable_infer_genes=True
+            disable_infer_transcripts=True,  # 保持不变
+            disable_infer_genes=True,  # 保持不变
+
         )
         log(f"成功创建GFF数据库: {os.path.basename(db_path)}", "INFO")
         return db_path
@@ -110,17 +181,18 @@ def get_genes_in_region(
         assembly_id: str,
         gff_filepath: str,
         db_storage_dir: str,
-        region: Tuple[str, int, int],
+        region: Tuple[str, int, int],  # region 参数现在被理解为 (用户输入的染色体部分, start, end)
         force_db_creation: bool = False,
         status_callback: Optional[Callable[[str, str], None]] = None
 ) -> List[Dict[str, Any]]:
     """
-    【全新实现】从GFF文件中查找位于特定染色体区域内的所有基因。
+    【已修改】从GFF文件中查找位于特定染色体区域内的所有基因。
+    现在能够智能匹配染色体ID。
     """
     log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
 
     db_path = os.path.join(db_storage_dir, f"{assembly_id}_genes.db")
-    chrom, start, end = region
+    user_chrom_part, start, end = region
 
     try:
         created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback)
@@ -129,11 +201,19 @@ def get_genes_in_region(
 
         db = gffutils.FeatureDB(created_db_path, keep_order=True)
 
-        log(f"正在查询区域: {chrom}:{start}-{end}", "INFO")
-        genes_in_region = list(db.region(region=(chrom, start, end), featuretype='gene'))
+        # --- 核心修改 ---
+        # 1. 调用辅助函数，用用户输入的部分ID去查找完整的ID
+        full_seqid = _find_full_seqid(db, user_chrom_part, log)
+
+        if not full_seqid:
+            return []  # 如果找不到匹配的染色体，直接返回空列表
+
+        # 2. 使用查找到的完整ID进行区域查询
+        log(f"正在查询区域: {full_seqid}:{start}-{end} (用户输入: {user_chrom_part})", "INFO")
+        genes_in_region = list(db.region(region=(full_seqid, start, end), featuretype='gene'))
 
         if not genes_in_region:
-            log(f"在区域 {chrom}:{start}-{end} 未找到 'gene' 类型的特征。", "WARNING")
+            log(f"在区域 {full_seqid}:{start}-{end} 未找到 'gene' 类型的特征。", "WARNING")
             return []
 
         results = [extract_gene_details(gene) for gene in genes_in_region]
