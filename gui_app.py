@@ -35,7 +35,7 @@ from cotton_toolkit.pipelines import (
     run_functional_annotation,
     run_ai_task, run_gff_lookup,
     run_locus_conversion, run_enrichment_pipeline,
-    run_homology_mapping
+    run_homology_mapping, run_preprocess_annotation_files
 )
 from ui import ProgressDialog, MessageDialog,AnnotationTab
 from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
@@ -1658,64 +1658,62 @@ class CottonToolkitApp(ctk.CTk):
 
     def start_annotation_task(self):
         """
-        【最终版】启动功能注释任务。
-        此函数从GUI收集所有必要信息，并调用后端pipeline。
+        【最终修正版】启动功能注释任务。
+        根据 annotation_tab.py 的实际UI控件进行修正。
         """
-        # 1. 配置检查：确保主配置文件已加载
+        # 1. 配置检查
         if not self.current_config:
             self.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        # 2. 收集输入：从GUI控件中获取用户输入
+        # 2. 从UI控件收集参数
+        try:
+            # 从 self.app 动态添加的属性中获取控件和值
+            gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
+            gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
 
-        # 从基因ID文本框获取并清洗基因列表
-        gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
-        # 兼容逗号和换行符作为分隔符
-        gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
-        if not gene_ids:
-            self.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。"))
+            # 【修正】获取唯一的基因组ID
+            assembly_id = self.selected_annotation_assembly.get()
+
+            # 从复选框获取要执行的注释类型
+            anno_types = []
+            if self.go_anno_var.get(): anno_types.append('go')
+            if self.ipr_anno_var.get(): anno_types.append('ipr')
+            if self.kegg_ortho_anno_var.get(): anno_types.append('kegg_orthologs')
+            if self.kegg_path_anno_var.get(): anno_types.append('kegg_pathways')
+
+            output_path = self.annotation_output_csv_entry.get().strip() or None
+
+
+        except AttributeError as e:
+            self.show_error_message(_("UI错误"), _("功能注释选项卡似乎缺少必要的UI控件。错误: {}").format(e))
             return
 
-        # 从下拉菜单获取基因组版本
-        assembly_id = self.selected_annotation_assembly.get()
-        if not assembly_id or assembly_id == _("无可用版本"):
-            self.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
-            return
+        if not gene_ids: self.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。")); return
+        if not assembly_id or assembly_id == _("无可用版本"): self.show_error_message(_("输入缺失"),
+                                                                                      _("请选择一个基因组版本。")); return
+        if not anno_types: self.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。")); return
 
-        # 从复选框获取要执行的注释类型
-        anno_types = []
-        if self.go_anno_var.get():
-            anno_types.append('go')
-        if self.ipr_anno_var.get():
-            anno_types.append('ipr')
-        if self.kegg_ortho_anno_var.get():
-            anno_types.append('kegg_orthologs')
-        if self.kegg_path_anno_var.get():
-            anno_types.append('kegg_pathways')
-
-        if not anno_types:
-            self.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。"))
-            return
-
-        # 从输入框获取输出文件路径（可选）
-        output_path = self.annotation_output_csv_entry.get().strip() or None
-
-        # 3. 打包任务参数
-        # 创建一个字典，包含所有需要传递给后端函数 `run_functional_annotation` 的参数
+        # output_path 是可选的，不强制检查
         task_kwargs = {
             'config': self.current_config,
             'gene_ids': gene_ids,
-            'assembly_id': assembly_id,
+            'source_genome': assembly_id,
+            'target_genome': assembly_id,
+            'bridge_species': self.current_config.integration_pipeline.bridge_species_name,
             'annotation_types': anno_types,
-            'output_csv_path': output_path,
+            'output_path': output_path,
+            'output_dir': os.path.join(os.getcwd(), "annotation_results")
         }
 
-        # 4. 派发任务
-        # 调用通用的任务启动器，它会处理UI更新和后台线程
         self._start_task(
+
             task_name=_("功能注释"),
+
             target_func=run_functional_annotation,
+
             kwargs=task_kwargs
+
         )
 
     def start_ai_task(self):
@@ -2047,6 +2045,15 @@ class CottonToolkitApp(ctk.CTk):
                                                                                       padx=10, pady=(10, 15),
                                                                                       sticky="w")
 
+        # --- 新增：预处理按钮 ---
+        preprocess_button = ctk.CTkButton(
+            options_frame,
+            text=_("预处理注释文件 (转为标准CSV)"),
+            font=self.app_font,
+            command=self.start_preprocess_task
+        )
+        preprocess_button.grid(row=3, column=0, columnspan=2, padx=10, pady=(10, 15), sticky="ew")
+
         # --- 代理开关 ---
         proxy_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
         proxy_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=5)
@@ -2073,6 +2080,19 @@ class CottonToolkitApp(ctk.CTk):
         if directory and self.download_output_dir_entry:
             self.download_output_dir_entry.delete(0, tk.END)
             self.download_output_dir_entry.insert(0, directory)
+
+    def start_preprocess_task(self):
+        """启动注释文件预处理任务。"""
+        if not self.current_config:
+            self.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+
+        self._start_task(
+            task_name=_("预处理注释文件"),
+            target_func=run_preprocess_annotation_files,
+            kwargs={'config': self.current_config}
+        )
+
 
     def _update_download_genomes_list(self):
         """
@@ -2389,13 +2409,18 @@ class CottonToolkitApp(ctk.CTk):
                      font=self.app_font_bold).grid(row=0, column=0, sticky="w", pady=(0, 5))
         self.gff_query_genes_textbox = ctk.CTkTextbox(input_frame, height=120, font=self.app_font, wrap="word")
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", rowspan=2, padx=(0, 10))
-        self._add_placeholder(self.gff_query_genes_textbox, self.placeholder_genes_gff_key)
+        self.gff_query_genes_textbox.after(
+            100,
+            lambda: self._add_placeholder(self.gff_query_genes_textbox, self.placeholder_key_gff_genes)
+        )
+
         self.gff_query_genes_textbox.bind("<FocusIn>",
                                           lambda event: self._clear_placeholder(self.gff_query_genes_textbox,
                                                                                 self.placeholder_key_gff_genes))
         self.gff_query_genes_textbox.bind("<FocusOut>",
                                           lambda event: self._add_placeholder(self.gff_query_genes_textbox,
                                                                               self.placeholder_key_gff_genes))
+
 
         self.gff_query_genes_textbox.bind("<KeyRelease>", self._on_gff_query_gene_input_change)
         self.gff_query_gene_input_widget = self.gff_query_genes_textbox
@@ -2585,22 +2610,6 @@ class CottonToolkitApp(ctk.CTk):
                 self.editor_scroll_frame.grid_rowconfigure(0, weight=1)
                 if hasattr(self, 'save_editor_button'): self.save_editor_button.configure(state="disabled")
                 return  # 不往下执行数据填充
-
-        # 4. 如果UI已经存在，无论当前配置是否已更新，都尝试用新数据填充/更新它。
-        #    这将确保当 current_config 在外部（比如通过加载文件）更新时，编辑器界面也会刷新。
-        if self.current_config:
-            self._apply_config_values_to_editor()  # 确保每次打开编辑器时，都用最新的配置刷新 UI
-        else:
-            # 如果到这里仍然没有配置（例如，程序刚启动且无默认配置），则禁用保存按钮
-            if hasattr(self, 'save_editor_button'): self.save_editor_button.configure(state="disabled")
-            return
-
-        # 4. 如果UI已经存在，则什么都不做，以保留用户的输入
-        if self.current_config:
-            pass
-        else:
-            # 如果到这里仍然没有配置（例如，程序刚启动且无默认配置），则禁用保存按钮
-            if hasattr(self, 'save_editor_button'): self.save_editor_button.configure(state="disabled")
 
     def _setup_fonts(self):
         """设置全局字体，并实现字体栈回退机制。"""
@@ -2958,7 +2967,7 @@ class CottonToolkitApp(ctk.CTk):
 
     def start_gff_query_task(self):
         """
-        【最终版】启动GFF基因查询任务。
+        启动GFF基因查询任务。
         此函数从GUI收集所有必要信息，并统一调用后端的 run_gff_lookup 函数。
         """
         # 1. 配置检查
@@ -2983,8 +2992,9 @@ class CottonToolkitApp(ctk.CTk):
         region_tuple = None
 
         # 3. 输入验证和处理 (确保基因列表和区域二选一)
-
-        has_genes = gene_ids_text and gene_ids_text != _(self.placeholder_key_gff_genes)
+        placeholder_text = _(self.placeholders.get(self.placeholder_key_gff_genes, ""))
+        # 判断条件：文本框内容不为空，并且内容不等于占位符文本
+        has_genes = bool(gene_ids_text and gene_ids_text != placeholder_text)
         has_region = bool(region_str)
 
         if not has_genes and not has_region:
@@ -3983,11 +3993,11 @@ class CottonToolkitApp(ctk.CTk):
 
         # 当切换到“数据工具”选项卡时，确保基因组下拉菜单是最新的
         # 因为数据下载、基因组转换、功能注释等工具都在这个 Tabview 内部
-        if tab_name == self.tab_keys["homology"] or \
-                tab_name == self.tab_keys["locus_conversion"] or \
-                tab_name == self.tab_keys["gff_query"] or \
-                tab_name == self.tab_keys["annotation"] or \
-                tab_name == self.tab_keys["download"]:  # Download tab also uses genome sources
+        if tab_name == self.TAB_TITLE_KEYS["homology"] or \
+                tab_name == self.TAB_TITLE_KEYS["locus_conversion"] or \
+                tab_name == self.TAB_TITLE_KEYS["gff_query"] or \
+                tab_name == self.TAB_TITLE_KEYS["annotation"] or \
+                tab_name == self.TAB_TITLE_KEYS["download"]:  # Download tab also uses genome sources
             self._update_assembly_id_dropdowns()
 
     def _update_homology_file_display_for_locus_tab(self):

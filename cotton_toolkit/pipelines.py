@@ -688,40 +688,63 @@ def run_ai_task(
 
 def run_functional_annotation(
         config: MainConfig,
-        gene_list_path: str,
         source_genome: str,
         target_genome: str,
         bridge_species: str,
-        annotation_db_path: str,
-        output_dir: str,
+        annotation_types: List[str],
         status_callback: Callable[[str, str], None],
-        progress_callback: Optional[Callable] = None,
-        # 其他您可能需要的参数...
-):
+        output_dir: Optional[str] = None,
+        output_path: Optional[str] = None,
+        gene_list_path: Optional[str] = None,
+        gene_ids: Optional[List[str]] = None,
+        custom_db_dir: Optional[str] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        cancel_event: Optional[threading.Event] = None
+) -> None:
     """
-    执行功能注释流水线，按需进行同源转换并解决参数问题。
+    【完整且最终修正版】执行功能注释流水线。
+
+    此函数功能完备，支持:
+    - 通过基因ID列表或文件路径输入。
+    - 在源和目标基因组不同时，自动执行同源映射。
+    - 支持任务取消。
+    - 支持手动指定一个包含所有注释文件的数据库目录 (custom_db_dir)。
+    - 支持手动指定一个完整的输出文件路径 (output_path)，否则在输出目录 (output_dir) 中自动生成。
     """
     log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
+    progress = progress_callback if progress_callback else lambda p, m: log(f"[{p}%] {m}")
 
     # --- 步骤 1: 准备输入基因列表 ---
-    try:
-        study_genes_df = pd.read_csv(gene_list_path)
-        source_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
-        if not source_gene_ids:
-            log("输入的基因列表为空。", "ERROR")
+    progress(0, _("准备输入基因列表..."))
+    source_gene_ids = []
+    if gene_ids:
+        source_gene_ids = list(set(gene_ids))
+        log(f"INFO: 从参数直接获取了 {len(source_gene_ids)} 个唯一基因ID。")
+    elif gene_list_path and os.path.exists(gene_list_path):
+        try:
+            log(f"INFO: 正在从文件 '{os.path.basename(gene_list_path)}' 中读取基因列表...")
+            study_genes_df = pd.read_csv(gene_list_path)
+            source_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
+            log(f"INFO: 从文件中读取了 {len(source_gene_ids)} 个唯一基因ID。")
+        except Exception as e:
+            log(f"读取基因列表文件时出错: {e}", "ERROR")
             return
-    except Exception as e:
-        log(f"读取基因列表时出错: {e}", "ERROR")
+    else:
+        log("错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。", "ERROR")
+        return
+
+    if not source_gene_ids:
+        log("输入的基因列表为空，流程终止。", "ERROR")
         return
 
     genes_to_annotate = source_gene_ids
-    original_to_target_map_df = None
+    original_to_target_map_df = pd.DataFrame({'Source_Gene_ID': source_gene_ids})
 
-    # --- 步骤 2: 按需进行同源转换 (参数准备) ---
+    # --- 步骤 2: 按需进行同源转换 ---
+    progress(20, _("检查是否需要同源映射..."))
     if source_genome != target_genome:
         log(f"源基因组 ({source_genome}) 与目标基因组 ({target_genome}) 不同，准备进行同源转换。", "INFO")
 
-        # 2.1 获取所有基因组的配置信息
         genome_sources = get_genome_data_sources(config, logger_func=log)
         source_genome_info = genome_sources.get(source_genome)
         target_genome_info = genome_sources.get(target_genome)
@@ -731,28 +754,24 @@ def run_functional_annotation(
             log("一个或多个基因组名称无效，无法找到配置信息。", "ERROR")
             return
 
-        # 2.2 获取必要的同源文件路径
-        s_to_b_homology_file = get_local_downloaded_file_path(config.data_dir,
-                                                              source_genome_info.get_homology_file(bridge_species))
-        b_to_t_homology_file = get_local_downloaded_file_path(config.data_dir,
-                                                              target_genome_info.get_homology_file(bridge_species))
+        progress(30, _("加载同源数据文件..."))
+        s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
+        b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
 
-        if not s_to_b_homology_file or not b_to_t_homology_file:
-            log("缺少必要的同源文件，无法进行转换。", "ERROR")
+        if not all([s_to_b_homology_file, b_to_t_homology_file, os.path.exists(s_to_b_homology_file),
+                    os.path.exists(b_to_t_homology_file)]):
+            log("缺少必要的同源文件，无法进行转换。请先下载数据。", "ERROR")
             return
 
-        # 2.3 加载同源文件为DataFrame
-        source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
-        bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
+        source_to_bridge_homology_df = pd.read_excel(s_to_b_homology_file)
+        bridge_to_target_homology_df = pd.read_excel(b_to_t_homology_file)
 
-        # 2.4 准备其他参数
-        selection_criteria_s_to_b = config.get_selection_criteria(source_genome)
-        selection_criteria_b_to_t = config.get_selection_criteria(target_genome)
-        homology_columns = config.get_homology_columns_config()
+        selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge.to_dict()
+        selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target.to_dict()
+        homology_columns = config.integration_pipeline.homology_columns
 
-        # 2.5 调用核心映射函数
-        log("正在通过桥梁物种进行基因映射...", "INFO")
-        mapped_df, _ = map_genes_via_bridge(
+        progress(40, _("正在通过桥梁物种进行基因映射..."))
+        mapped_df, _c = map_genes_via_bridge(
             source_gene_ids=source_gene_ids,
             source_assembly_name=source_genome,
             target_assembly_name=target_genome,
@@ -764,49 +783,82 @@ def run_functional_annotation(
             homology_columns=homology_columns,
             source_genome_info=source_genome_info,
             target_genome_info=target_genome_info,
-            bridge_genome_info=bridge_genome_info,  # 传递桥梁物种信息
-            status_callback=status_callback
+            bridge_genome_info=bridge_genome_info,
+            status_callback=status_callback,
+            cancel_event=cancel_event
         )
+
+        if cancel_event and cancel_event.is_set():
+            log("任务在同源映射阶段被用户取消。", "INFO")
+            return
 
         if mapped_df is None or mapped_df.empty:
             log("同源转换未能映射到任何基因，流程终止。", "WARNING")
             return
 
-        # 更新待注释的基因列表为转换后的目标基因ID
         genes_to_annotate = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
         original_to_target_map_df = mapped_df[['Source_Gene_ID', 'Target_Gene_ID']]
 
-    # --- 步骤 3: 初始化 Annotator 并执行注释 ---
-    log("正在初始化注释器...", "INFO")
-    cache_dir = os.path.join(output_dir, '.cache')  # 定义缓存目录
+    # --- 步骤 3: 初始化 Annotator ---
+    progress(60, _("初始化注释器..."))
+    genome_sources = get_genome_data_sources(config, logger_func=log)
+    target_genome_info = genome_sources.get(target_genome)
+    if not target_genome_info:
+        log(f"错误：无法为目标基因组 {target_genome} 找到配置信息。", "ERROR")
+        return
 
-    # 使用正确的参数初始化 Annotator
     annotator = Annotator(
-        annotation_db_path=annotation_db_path,
-        target_genome_id=target_genome,  # 明确目标基因组
+        main_config=config,
+        genome_info=target_genome_info,
         status_callback=status_callback,
-        cache_dir=cache_dir
+        progress_callback=progress_callback,
+        custom_db_dir=custom_db_dir
     )
 
-    log(f"正在为 {len(genes_to_annotate)} 个基因执行功能注释...", "INFO")
-    result_df = annotator.annotate_gene_list(genes_to_annotate)  # 传入待注释的基因列表
+    # --- 步骤 4: 执行注释 ---
+    progress(70, _("正在为 {len(genes_to_annotate)} 个基因执行功能注释..."))
+    result_df = annotator.annotate_genes(genes_to_annotate, annotation_types)
 
-    # --- 步骤 4: 处理并保存结果 ---
+    if cancel_event and cancel_event.is_set():
+        log("任务在注释阶段被用户取消。", "INFO")
+        return
+
+    # --- 步骤 5: 处理并保存结果 ---
+    progress(90, _("整理并保存结果..."))
     if result_df is not None and not result_df.empty:
         # 如果进行了同源转换，将注释结果与原始基因ID关联起来
-        if original_to_target_map_df is not None:
-            # result_df 的第一列是目标基因ID，我们将其重命名以便合并
-            result_df.rename(columns={result_df.columns[0]: 'Target_Gene_ID'}, inplace=True)
+        if 'Target_Gene_ID' in original_to_target_map_df.columns:
             final_df = pd.merge(original_to_target_map_df, result_df, on='Target_Gene_ID', how='left')
         else:
             final_df = result_df
 
-        output_file = os.path.join(output_dir, f"{os.path.basename(gene_list_path)}_annotated.csv")
-        final_df.to_csv(output_file, index=False)
-        log(f"注释成功！结果已保存至: {output_file}", "SUCCESS")
+        # --- 决定最终输出路径 ---
+        final_output_path = ""
+        if output_path:
+            final_output_path = output_path
+            # 确保其父目录存在
+            os.makedirs(os.path.dirname(final_output_path), exist_ok=True)
+        elif output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            base_name = "annotation_result"
+            if gene_list_path:
+                base_name = os.path.splitext(os.path.basename(gene_list_path))[0]
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            final_output_path = os.path.join(output_dir, f"{base_name}_{timestamp}.csv")
+        else:
+            log("错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。", "ERROR")
+            return
+
+        try:
+            final_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
+            log(f"注释成功！结果已保存至: {final_output_path}", "SUCCESS")
+        except Exception as e:
+            log(f"保存结果到 {final_output_path} 时发生错误: {e}", "ERROR")
+
     else:
         log("注释完成，但没有生成任何结果。", "WARNING")
 
+    progress(100, _("功能注释流程结束。"))
 
 
 
@@ -1138,3 +1190,65 @@ def run_enrichment_pipeline(
     log(f"SUCCESS: 流程完成。在 '{output_dir}' 中成功生成 {len(generated_plots)} 个图表。", "SUCCESS")
 
     return generated_plots
+
+
+def run_preprocess_annotation_files(
+        config: MainConfig,
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        cancel_event: Optional[threading.Event] = None
+) -> bool:
+    """
+    【新增】预处理所有已下载的注释文件，将它们从 .xlsx.gz 转换为标准的 .csv 格式。
+    标准的 .csv 文件将包含正确的表头 ('Query', 'Match', 'Description')。
+    """
+    log = status_callback if status_callback else print
+    progress = progress_callback if progress_callback else lambda p, m: log(f"[{p}%] {m}")
+
+    log("INFO: 开始预处理注释文件（转换为CSV）...")
+    progress(0, "初始化...")
+
+    genome_sources = get_genome_data_sources(config)
+    if not genome_sources:
+        log("ERROR: 未能加载基因组源数据。", "ERROR")
+        return False
+
+    tasks = []
+    ALL_ANNO_KEYS = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
+    for genome_id, genome_info in genome_sources.items():
+        for key in ALL_ANNO_KEYS:
+            source_path = get_local_downloaded_file_path(config, genome_info, key)
+            if source_path and os.path.exists(source_path):
+                # 定义输出的CSV文件路径（在同一目录下，后缀改为.csv）
+                output_path = os.path.splitext(source_path)[0] + '.csv'
+                tasks.append((source_path, output_path))
+
+    if not tasks:
+        log("WARNING: 未找到任何需要预处理的已下载注释文件。", "WARNING")
+        return True
+
+    total_tasks = len(tasks)
+    log(f"INFO: 找到 {total_tasks} 个文件需要进行预处理。")
+    success_count = 0
+
+    for i, (source, output) in enumerate(tasks):
+        if cancel_event and cancel_event.is_set():
+            log("INFO: 任务被用户取消。", "INFO")
+            return False
+
+        progress((i + 1) * 100 // total_tasks, f"正在转换: {os.path.basename(source)}")
+
+        # 调用核心转换函数
+        # 注意：convert_excel_to_standard_csv 内部应该返回 True/False
+        try:
+            # 我们假设转换函数会处理解压和读取
+            if convert_excel_to_standard_csv(source, output, log):
+                success_count += 1
+            else:
+                log(f"WARNING: 转换文件 {os.path.basename(source)} 失败。", "WARNING")
+        except Exception as e:
+            log(f"ERROR: 转换文件 {os.path.basename(source)} 时发生严重错误: {e}", "ERROR")
+
+    log(f"SUCCESS: 预处理完成。成功转换 {success_count}/{total_tasks} 个文件。", "SUCCESS")
+    progress(100, "全部完成。")
+    return True

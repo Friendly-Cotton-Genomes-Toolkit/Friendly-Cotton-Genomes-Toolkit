@@ -1,6 +1,7 @@
 ﻿# cotton_toolkit/cli.py
 import builtins
 import logging
+import os
 import sys
 import threading
 from .utils.localization import setup_localization
@@ -12,7 +13,7 @@ from .pipelines import (
     run_download_pipeline,
     run_integrate_pipeline,
     run_homology_mapping,
-    run_ai_task
+    run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files
 )
 from .config.loader import load_config, generate_default_config_files, MainConfig
 
@@ -156,6 +157,105 @@ def ai_task(ctx, input_file, source_column, new_column, task_type, prompt, tempe
         config=ctx.obj.config, input_file=input_file, source_column=source_column,
         new_column=new_column, task_type=task_type, custom_prompt_template=prompt,
         cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info
+    )
+
+
+@cli.command('gff-query')
+@click.option('--assembly-id', required=True, help=_("要查询的基因组版本ID。"))
+@click.option('--genes', help=_("要查询的基因ID列表，以逗号分隔。"))
+@click.option('--region', help=_("要查询的染色体区域，格式如 'A01:10000-20000'。"))
+@click.option('--output-csv', type=click.Path(), help=_("【可选】保存结果的CSV文件路径。不提供则自动命名。"))
+@click.pass_context
+def gff_query(ctx, assembly_id, genes, region, output_csv):
+    """
+    从GFF文件中查询基因信息。
+    可根据基因ID列表或染色体区域进行查询。
+    """
+    # 输入验证
+    if not genes and not region:
+        raise click.UsageError(_("错误: 必须提供 --genes 或 --region 参数之一。"))
+    if genes and region:
+        click.echo(_("警告: 同时提供了 --genes 和 --region，将优先使用 --genes。"), err=True)
+        region = None
+
+    gene_list = [g.strip() for g in genes.split(',')] if genes else None
+    region_tuple = None
+    if region:
+        try:
+            chrom, pos_range = region.split(':')
+            start, end = map(int, pos_range.split('-'))
+            region_tuple = (chrom.strip(), start, end)
+        except ValueError:
+            raise click.BadParameter(_("区域格式无效。请使用 'Chr:Start-End' 格式。"), param_hint='--region')
+
+    click.echo(_("正在启动GFF查询..."))
+
+    # 调用后端流水线
+    success = run_gff_lookup(
+        config=ctx.obj.config,
+        assembly_id=assembly_id,
+        gene_ids=gene_list,
+        region=region_tuple,
+        output_csv_path=output_csv,
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")  # CLI日志回调
+    )
+
+    if success:
+        click.echo(_("GFF查询任务成功完成。"))
+    else:
+        click.echo(_("GFF查询任务失败。"), err=True)
+
+
+@cli.command('annotate')
+@click.option('--genes', required=True, help=_("要注释的基因ID列表，以逗号分隔。或包含基因列表的文件路径。"))
+@click.option('--assembly-id', required=True, help=_("基因ID所属的基因组版本。"))
+@click.option('--types', default='go,ipr', help=_("要执行的注释类型，以逗号分隔 (go,ipr,kegg_orthologs,kegg_pathways)。"))
+@click.option('--output-path', type=click.Path(), help=_("【可选】指定完整的输出CSV文件路径。"))
+@click.pass_context
+def annotate(ctx, genes, assembly_id, types, output_path):
+    """对基因列表进行功能注释。"""
+
+    gene_ids_list = []
+    gene_list_file = None
+    if os.path.exists(genes):
+        gene_list_file = genes
+        click.echo(_("从文件读取基因列表: {}").format(genes))
+    else:
+        gene_ids_list = [g.strip() for g in genes.split(',') if g.strip()]
+        click.echo(_("从命令行参数读取 {} 个基因ID。").format(len(gene_ids_list)))
+
+    if not gene_ids_list and not gene_list_file:
+        raise click.UsageError(_("错误: 'genes' 参数既不是有效的文件路径，也不是基因ID列表。"))
+
+    anno_types = [t.strip() for t in types.split(',') if t.strip()]
+    if not anno_types:
+        raise click.BadParameter(_("必须至少提供一种注释类型。"), param_hint='--types')
+
+    # 准备备用输出目录
+    output_dir = os.path.join(os.getcwd(), "annotation_results")
+
+    run_functional_annotation(
+        config=ctx.obj.config,
+        source_genome=assembly_id,
+        target_genome=assembly_id,  # 在CLI中，假定源和目标相同
+        bridge_species=ctx.obj.config.integration_pipeline.bridge_species_name,
+        annotation_types=anno_types,
+        gene_ids=gene_ids_list,
+        gene_list_path=gene_list_file,
+        output_dir=output_dir,
+        output_path=output_path,
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")
+    )
+
+
+@cli.command('preprocess-annos')
+@click.pass_context
+def preprocess_annos(ctx):
+    """预处理所有已下载的注释文件，转换为标准的CSV格式。"""
+    click.echo(_("正在启动注释文件预处理流程..."))
+    run_preprocess_annotation_files(
+        config=ctx.obj.config,
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")
     )
 
 
