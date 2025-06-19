@@ -211,6 +211,7 @@ class HomologySelectionCriteria(ConfigDataModel):
     pid_threshold: float = 30.0
     score_threshold: float = 50.0
     prioritize_subgenome: bool = True
+    strict_subgenome_priority: bool = True
 
 
 @dataclass
@@ -308,7 +309,7 @@ class GenomeSourceItem(ConfigDataModel):
 
 
     def is_cotton(self) -> bool:
-        """【修正】现在基于新的 genome_type 字段进行判断。"""
+        """现在基于新的 genome_type 字段进行判断。"""
         return self.genome_type.lower() == 'cotton'
 
 

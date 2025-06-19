@@ -1,15 +1,16 @@
 ﻿# cotton_toolkit/pipelines.py
 
+import gzip
 import logging
 import os
 import re
-import tempfile
 import threading
 import time
+import traceback
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from dataclasses import asdict
 from typing import List, Dict, Any, Optional, Callable, Tuple
-import gzip
+
 import pandas as pd
 
 from .config.loader import get_genome_data_sources, get_local_downloaded_file_path
@@ -17,17 +18,16 @@ from .config.loader import get_genome_data_sources, get_local_downloaded_file_pa
 from .config.models import (
     MainConfig, HomologySelectionCriteria, GenomeSourceItem
 )
-from .core import gff_parser
 from .core.ai_wrapper import AIWrapper
 from .core.convertXlsx2csv import convert_excel_to_standard_csv
 from .core.downloader import download_genome_data
 from .core.gff_parser import get_genes_in_region, extract_gene_details, create_gff_database, get_gene_info_by_ids
-from .core.homology_mapper import map_genes_via_bridge, load_and_map_homology
-from .tools.batch_ai_processor import process_single_csv_file
+from .core.homology_mapper import map_genes_via_bridge
 from .tools.annotator import Annotator
+from .tools.batch_ai_processor import process_single_csv_file
 from .tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
 from .tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, plot_enrichment_cnet
-from .utils.gene_utils import map_transcripts_to_genes, parse_region_string
+from .utils.gene_utils import map_transcripts_to_genes
 
 # --- 国际化和日志设置 ---
 try:
@@ -350,356 +350,193 @@ def run_homology_mapping(
         config: MainConfig,
         source_assembly_id: str,
         target_assembly_id: str,
-        gene_ids: Optional[List[str]] = None,
-        region: Optional[Tuple[str, int, int]] = None,
-        output_csv_path: Optional[str] = None,
-        criteria_overrides: Optional[Dict[str, Any]] = None,
-        status_callback: Callable = print,
+        gene_ids: Optional[List[str]],
+        region: Optional[Tuple[str, int, int]],
+        output_csv_path: Optional[str],
+        criteria_overrides: Optional[Dict[str, Any]],
+        status_callback: Callable,
+        calculate_target_locus: bool = False,
         progress_callback: Optional[Callable] = None,
         cancel_event: Optional[threading.Event] = None
-) -> Tuple[pd.DataFrame, Optional[str]]:
+) -> Optional[pd.DataFrame]:
     """
-    Performs homology mapping from a source genome to a target genome via a bridge genome.
-
-    Args:
-        config (MainConfig): The main configuration object.
-        source_assembly_id (str): The ID of the source genome assembly.
-        target_assembly_id (str): The ID of the target genome assembly.
-        gene_ids (Optional[List[str]]): A list of gene IDs to map. If None, all genes are considered.
-        region (Optional[Tuple[str, int, int]]): A genomic region (chromosome, start, end) to filter genes.
-        output_csv_path (Optional[str]): The path to save the final homology mapping CSV.
-                                          If None, the CSV will not be saved.
-        criteria_overrides (Optional[Dict[str, Any]]): Dictionary to override selection criteria.
-        status_callback (Callable): Callback function for status updates.
-        progress_callback (Optional[Callable]): Callback function for progress updates (0-100).
-        cancel_event (Optional[threading.Event]): Event to signal cancellation.
-
-    Returns:
-        Tuple[pd.DataFrame, Optional[str]]: A tuple containing the resulting DataFrame and
-                                             the path to the saved CSV file (or None if not saved).
+    【最终版】执行同源基因映射。根据 calculate_target_locus 参数决定是否计算目标概要位点。
     """
     log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
-    progress = progress_callback if progress_callback else lambda p, m: log(f"Progress {p}%: {m}")
-
-    log(_("开始同源映射流程..."))
-
-    if cancel_event and cancel_event.is_set():
-        log(_("同源映射已取消。"))
-        return pd.DataFrame(), None
 
     try:
-        # Load genome information using get_genome_data_sources from loader.py
+        # 步骤 1 & 2: 加载配置和数据 (此部分逻辑不变)
+        log(_("步骤 1&2: 加载配置和同源数据..."), "INFO")
         genome_sources = get_genome_data_sources(config, logger_func=log)
-        if not genome_sources:
-            log(_("错误：无法加载基因组源数据。"), "ERROR")
-            return pd.DataFrame(), None
-
-        source_genome_info: GenomeSourceItem = genome_sources.get(source_assembly_id)
-        target_genome_info: GenomeSourceItem = genome_sources.get(target_assembly_id)
-
-        # 修正：从 config.integration_pipeline 获取 bridge_species_name
+        source_genome_info = genome_sources.get(source_assembly_id)
+        target_genome_info = genome_sources.get(target_assembly_id)
         bridge_species_name = config.integration_pipeline.bridge_species_name
-        bridge_genome_info: GenomeSourceItem = genome_sources.get(bridge_species_name)
+        bridge_genome_info = genome_sources.get(bridge_species_name)
 
-        # 增强的基因组信息检查
-        missing_genomes = []
-        if not source_genome_info:
-            missing_genomes.append(f"源基因组 '{source_assembly_id}'")
-        if not target_genome_info:
-            missing_genomes.append(f"目标基因组 '{target_assembly_id}'")
-        if not bridge_genome_info:
-            missing_genomes.append(f"桥梁基因组 '{bridge_species_name}'")
+        if not all([source_genome_info, target_genome_info, bridge_genome_info]):
+            log(_("错误: 一个或多个指定的基因组名称无效。"), "ERROR")
+            return None
 
-        if missing_genomes:
-            log(_("错误：无法加载所有必要的基因组信息。以下条目未在genome_sources_list.yml中找到或名称不匹配：{}。").format(
-                ", ".join(missing_genomes)), "ERROR")
-            return pd.DataFrame(), None
+        source_gene_ids = gene_ids
+        if region:
+            gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+            gff_db_cache_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
+                                            config.integration_pipeline.gff_db_storage_dir)
+            genes_in_region_list = get_genes_in_region(
+                assembly_id=source_assembly_id, gff_filepath=gff_path, db_storage_dir=gff_db_cache_dir, region=region,
+                force_db_creation=config.integration_pipeline.force_gff_db_creation, status_callback=log
+            )
+            if not genes_in_region_list:
+                log(f"在区域 {region} 中未找到任何基因。", "WARNING");
+                return None
+            source_gene_ids = [gene['gene_id'] for gene in genes_in_region_list]
 
-        log(f"源基因组: {source_genome_info.species_name} ({source_assembly_id}), 桥梁基因组: {bridge_genome_info.species_name} ({bridge_species_name}), 目标基因组: {target_genome_info.species_name} ({target_assembly_id})")
+        if not source_gene_ids:
+            log(_("错误: 输入的基因列表为空。"), "ERROR");
+            return None
 
-        # Apply criteria overrides
-        # 修正：SelectionCriteria 实例应直接从 config.integration_pipeline 获取
-        temp_s2b_criteria = config.integration_pipeline.selection_criteria_source_to_bridge
-        temp_b2t_criteria = config.integration_pipeline.selection_criteria_bridge_to_target
+        s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
+        b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+        source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
+        bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
 
-        # 【核心修正】将 criteria_overrides 中的值应用到 temp_s2b_criteria 和 temp_b2t_criteria
+        # 步骤 3: 执行映射 (此部分逻辑不变)
+        log(_("步骤 3: 通过桥梁物种执行基因映射..."), "INFO")
+        selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge
+        selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target
         if criteria_overrides:
-            log(f"应用同源映射筛选标准覆盖: {criteria_overrides}", "DEBUG")
+            s2b_dict = selection_criteria_s_to_b.to_dict()
+            b2t_dict = selection_criteria_b_to_t.to_dict()
             for key, value in criteria_overrides.items():
-                if hasattr(temp_s2b_criteria, key):
-                    setattr(temp_s2b_criteria, key, value)
-                    log(f"  源到桥梁标准 '{key}' 已覆盖为: {value}", "DEBUG")
-                if hasattr(temp_b2t_criteria, key):
-                    setattr(temp_b2t_criteria, key, value)
-                    log(f"  桥梁到目标标准 '{key}' 已覆盖为: {value}", "DEBUG")
-
-        log(f"源到桥梁筛选标准: {temp_s2b_criteria.to_dict()}")  # 使用.to_dict()方法
-        log(f"桥梁到目标筛选标准: {temp_b2t_criteria.to_dict()}")  # 使用.to_dict()方法
-
-        # Ensure homology data is downloaded and converted
-        # 修正：homology_data_dir 路径应根据config.downloader.download_output_base_dir来构建
-        homology_data_dir = config.downloader.download_output_base_dir
-        os.makedirs(homology_data_dir, exist_ok=True)
-
-        progress(5, _("下载同源数据（如果不存在）..."))
-
-        required_homology_tasks = []
-
-        # 源基因组到桥梁物种的同源文件 URL 和信息
-        s2b_url = source_genome_info.homology_ath_url  #
-        s2b_file_key = 'homology_ath'  # 用于 download_genome_data 的 file_key 参数
-        s2b_version_id = source_assembly_id  # 用于 download_genome_data 的 version_id 参数
-
-        if s2b_url:
-            required_homology_tasks.append({
-                'url': s2b_url,
-                'file_key': s2b_file_key,
-                'version_id': s2b_version_id,
-                'genome_info': source_genome_info,
-                'force': config.downloader.force_download,  #
-                'proxies': config.downloader.proxies.to_dict() if config.downloader.proxies else None,  #
-            })
-        else:
-            log(f"警告：源基因组 {source_assembly_id} 未配置同源URL。", "WARNING")
-
-        # 目标基因组到桥梁物种的同源文件 URL 和信息
-        b2t_url = target_genome_info.homology_ath_url  #
-        b2t_file_key = 'homology_ath'  # 用于 download_genome_data 的 file_key 参数
-        b2t_version_id = target_assembly_id  # 用于 download_genome_data 的 version_id 参数
-
-        if b2t_url:
-            required_homology_tasks.append({
-                'url': b2t_url,
-                'file_key': b2t_file_key,
-                'version_id': b2t_version_id,
-                'genome_info': target_genome_info,
-                'force': config.downloader.force_download,  #
-                'proxies': config.downloader.proxies.to_dict() if config.downloader.proxies else None,  #
-            })
-        else:
-            log(f"警告：目标基因组 {target_assembly_id} 未配置同源URL。", "WARNING")
-
-        if not required_homology_tasks:
-            log("错误：没有可下载的同源文件URL。", "ERROR")
-            return pd.DataFrame(), None
-
-        with ThreadPoolExecutor(max_workers=len(required_homology_tasks)) as executor:
-            futures = []
-            for task in required_homology_tasks:
-                # 直接调用 download_genome_data
-                futures.append(executor.submit(
-                    download_genome_data,
-                    config.downloader,  #
-                    task['version_id'],
-                    task['genome_info'],
-                    task['file_key'],
-                    task['url'],
-                    task['force'],
-                    task['proxies'],
-                    log
-                ))
-            for future in futures:
-                future.result()  # Wait for downloads to complete
-
-        if cancel_event and cancel_event.is_set():
-            log(_("同源映射已取消。"))
-            return pd.DataFrame(), None
-
-        progress(15, _("转换同源文件（如果需要）..."))
-        # 调用辅助函数来处理文件夹中的所有 xlsx/xlsx.gz 到 csv
-        convert_all_xlsx_in_folder_to_csv(homology_data_dir, log)
-
-        # 重新构建同源文件的路径，确保是 .csv 版本
-        # 注意：这里需要根据 download_genome_data 的实际输出逻辑来确定路径
-        # download_genome_data 内部处理了命名规则，所以需要根据其规则来获取路径
-        # 它会在 homology_data_dir/<species_name>/<filename.csv> 这样的路径
-        # 从 source_genome_info 和 target_genome_info 获取 species_name
-        source_safe_species_name = re.sub(r'[\\/*?:"<>|]', "_", source_genome_info.species_name).replace(" ", "_")
-        target_safe_species_name = re.sub(r'[\\/*?:"<>|]', "_", target_genome_info.species_name).replace(" ", "_")
-
-        s2b_filename = os.path.basename(s2b_url.split('?')[0])
-        s2b_csv_filename = os.path.splitext(os.path.splitext(s2b_filename)[0])[0] + ".csv"  # xxx.xlsx.gz -> xxx.csv
-        source_to_bridge_homology_file_path = os.path.join(homology_data_dir, source_safe_species_name,
-                                                           s2b_csv_filename)
-
-        b2t_filename = os.path.basename(b2t_url.split('?')[0])
-        b2t_csv_filename = os.path.splitext(os.path.splitext(b2t_filename)[0])[0] + ".csv"  # xxx.xlsx.gz -> xxx.csv
-        bridge_to_target_homology_file_path = os.path.join(homology_data_dir, target_safe_species_name,
-                                                           b2t_csv_filename)
-
-        if not os.path.exists(source_to_bridge_homology_file_path):
-            log(f"错误：源到桥梁同源文件 {source_to_bridge_homology_file_path} 不存在或转换失败。", "ERROR")
-            return pd.DataFrame(), None
-        if not os.path.exists(bridge_to_target_homology_file_path):
-            log(f"错误：桥梁到目标同源文件 {bridge_to_target_homology_file_path} 不存在或转换失败。", "ERROR")
-            return pd.DataFrame(), None
-
-        progress(25, _("加载同源数据..."))
-        source_to_bridge_homology_df = create_homology_df(source_to_bridge_homology_file_path)  # 调用辅助函数
-        bridge_to_target_homology_df = create_homology_df(bridge_to_target_homology_file_path)  # 调用辅助函数
-
-        # 修正：homology_columns 应该从 config.integration_pipeline 中获取
+                if value is not None:
+                    if key in s2b_dict: s2b_dict[key] = value
+                    if key in b2t_dict: b2t_dict[key] = value
+            selection_criteria_s_to_b = type(selection_criteria_s_to_b)(**s2b_dict)
+            selection_criteria_b_to_t = type(selection_criteria_b_to_t)(**b2t_dict)
         homology_columns = config.integration_pipeline.homology_columns
-        source_gene_ids = gene_ids  # Filter by input gene_ids if provided
-
-        # 修正：bridge_id_regex 应该从 bridge_genome_info 中获取
-        # 确保 bridge_genome_info.gene_id_regex 存在，否则使用默认值
-        bridge_id_regex = bridge_genome_info.gene_id_regex if hasattr(bridge_genome_info,
-                                                                      'gene_id_regex') and bridge_genome_info.gene_id_regex else r'(AT[1-5MC]G\d{5})'
-
-        # --- 核心同源映射逻辑：调用 map_genes_via_bridge ---
-        progress(40, _("正在执行同源映射（通过桥梁物种）..."))
 
 
-        mapped_df, _g = map_genes_via_bridge(
-            source_gene_ids=gene_ids,  # 传入用户提供的基因ID列表
+        mapped_df, failed_genes = map_genes_via_bridge(
+            source_gene_ids=source_gene_ids,
             source_assembly_name=source_assembly_id,
             target_assembly_name=target_assembly_id,
             bridge_species_name=bridge_species_name,
             source_to_bridge_homology_df=source_to_bridge_homology_df,
             bridge_to_target_homology_df=bridge_to_target_homology_df,
-            selection_criteria_s_to_b=temp_s2b_criteria.to_dict(),  # 转换为字典传递给 map_genes_via_bridge
-            selection_criteria_b_to_t=temp_b2t_criteria.to_dict(),  # 转换为字典传递给 map_genes_via_bridge
+            selection_criteria_s_to_b=selection_criteria_s_to_b.to_dict(),
+            selection_criteria_b_to_t=selection_criteria_b_to_t.to_dict(),
             homology_columns=homology_columns,
             source_genome_info=source_genome_info,
             target_genome_info=target_genome_info,
-            bridge_genome_info=bridge_genome_info,  # 传递 bridge_genome_info 对象
-            status_callback=log,
+            bridge_genome_info=bridge_genome_info,
+            status_callback=status_callback,
             cancel_event=cancel_event
         )
 
-        # map_genes_via_bridge 返回的是最终映射好的 DataFrame
-        final_mapped_results_df = mapped_df
-
-        if final_mapped_results_df.empty:
-            log(_("映射完成，但未找到任何有效的同源关系。"), "WARNING")
-            return pd.DataFrame(), None
-
-        # 新增: 保存源到桥梁的匹配记录 (这里现在是最终结果，因为 map_genes_via_bridge 已经处理了)
-        output_parent_dir = os.path.dirname(output_csv_path) if output_csv_path else os.path.dirname(
-            config._config_file_abs_path_)
-        output_base_name_for_report = os.path.splitext(os.path.basename(output_csv_path))[
-            0] if output_csv_path else f"{source_assembly_id}_to_{target_assembly_id}"
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        final_report_path = os.path.join(output_parent_dir,
-                                         f"{output_base_name_for_report}_final_homology_report_{timestamp}.csv")
-
-        if not final_mapped_results_df.empty:
-            dir_path = os.path.dirname(final_report_path)
-            if not os.path.isdir(dir_path):
-                os.makedirs(dir_path)  # 使用 makedirs 以创建多级目录
-            final_mapped_results_df.to_csv(final_report_path, index=False, encoding='utf-8-sig')
-            log(f"最终同源映射结果已保存至: {final_report_path}", "INFO")  # 改为INFO
-        else:
-            log("同源映射完成，但未生成结果文件。", "WARNING")
-
-        log(_("同源映射完成。找到 {} 条记录。").format(len(final_mapped_results_df)), "INFO")
-        final_output_path_main = None
+        log(_("步骤 4: 保存映射结果..."), "INFO")
         if output_csv_path:
-            final_mapped_results_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
-            log(f"结果已保存到: {output_csv_path}", "SUCCESS")  # 改为SUCCESS
-            final_output_path_main = output_csv_path
+            # 准备自定义头部
+            source_locus_str = f"{source_assembly_id} | {region[0]}:{region[1]}-{region[2]}" if region else f"{source_assembly_id} | {len(source_gene_ids)} genes"
+            header_line1 = f"# 源基因组的位点（即用户输入的位点）: {source_locus_str}\n"
 
-        progress(100, _("同源映射流程已完成。"))
-        return final_mapped_results_df, final_output_path_main
+            target_locus_summary = ""
+            if calculate_target_locus:
+                log("正在计算目标概要位点...", "INFO")
+                if mapped_df is not None and not mapped_df.empty:
+                    target_gene_ids_list = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
+                    if target_gene_ids_list:
+                        target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
+                        gff_db_cache_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
+                                                        config.integration_pipeline.gff_db_storage_dir)
+                        target_genes_details_df = get_gene_info_by_ids(
+                            assembly_id=target_assembly_id, gff_filepath=target_gff_path,
+                            db_storage_dir=gff_db_cache_dir, gene_ids=target_gene_ids_list, status_callback=log
+                        )
+
+                        # --- 核心修正点 1：修复 KeyError ---
+                        if target_genes_details_df is not None and not target_genes_details_df.empty:
+                            locus_bounds = target_genes_details_df.groupby('chrom').agg(min_start=('start', 'min'),
+                                                                                        max_end=('end',
+                                                                                                 'max')).reset_index()
+                            summary_parts = [f"{row['chrom']}:{row['min_start']}-{row['max_end']}" for _, row in
+                                             locus_bounds.iterrows()]
+                            target_locus_summary = " | " + (
+                                ", ".join(summary_parts) if summary_parts else "无具体位点信息")
+                        # 如果找不到坐标信息，则概要留空
+                else:
+                    target_locus_summary = " | 无映射结果"
+
+            header_line2 = f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id}{target_locus_summary}\n"
+
+            # --- 核心修正点 2：改进失败基因报告 ---
+            with open(output_csv_path, 'w', encoding='utf-8-sig', newline='') as f:
+                # 写入头部信息
+                f.write(header_line1)
+                f.write(header_line2)
+                f.write("#\n")  # 写入一个空注释行作为分隔
+
+                # 写入成功匹配的结果表格
+                if mapped_df is not None and not mapped_df.empty:
+                    mapped_df.to_csv(f, index=False, lineterminator='\n')
+                else:
+                    f.write("# 未找到任何成功的同源匹配。\n")
+
+                # 如果有匹配失败的基因，在表格下方追加一个新部分
+                if failed_genes:
+                    f.write("\n\n")  # 写入两个换行符作为间隔
+                    f.write("# --- 匹配失败的源基因 ---\n")
+                    failed_df = pd.DataFrame({
+                        'Failed_Source_Gene_ID': failed_genes,
+                        'Reason': "未能在目标基因组中找到满足所有筛选条件（如E-value, PID, 严格模式等）的同源基因。"
+                    })
+                    failed_df.to_csv(f, index=False, lineterminator='\n')
+
+            log(f"结果已成功保存到: {output_csv_path}", "SUCCESS")
+        else:
+            log("未提供输出路径，跳过保存文件。", "INFO")
+
+        return mapped_df
 
     except Exception as e:
-        log(f"同源映射过程中发生错误: {e}", "ERROR")
-        import traceback
-        logger.error(traceback.format_exc())
-        return pd.DataFrame(), None
+        log(f"流水线执行过程中发生意外错误: {e}", "ERROR")
+        log(traceback.format_exc(), "DEBUG")
+        return None
+
 
 
 
 def run_locus_conversion(
-        config: MainConfig, # config 就是 main_config
-        source_assembly_id: str,
-        target_assembly_id: str,
-        region: Tuple[str, int, int],
-        status_callback: Callable,
-        **kwargs
-) -> Optional[pd.DataFrame]:
-    """【已修正】从源基因组区域映射到目标基因组同源基因。"""
-    status_callback("INFO", f"开始位点转换：从 {source_assembly_id} 映射到 {target_assembly_id}")
-
-    # 1. 修正：调用 get_genome_data_sources 时传入 main_config 和 logger_func
-    # 2. 修正：get_genome_data_sources 返回的是字典，使用 .get() 方法按键获取值
-    all_genomes = get_genome_data_sources(config, logger_func=status_callback)
-    if all_genomes is None: # 添加错误处理
-        status_callback("ERROR", "未能加载基因组源数据。")
-        return None
-
-    # 从字典中直接获取 GenomeSourceItem 对象
-    source_genome_info = all_genomes.get(source_assembly_id)
-    target_genome_info = all_genomes.get(target_assembly_id)
-
-    if not (source_genome_info and target_genome_info):
-        status_callback("ERROR", "无法在配置中找到源或目标基因组的信息。")
-        return None
-
-    # 获取同源文件路径
-    s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
-    b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
-
-    # 加载同源文件
-    s_to_b_df = _load_data_file(s_to_b_homology_file, status_callback)
-    b_to_t_df = _load_data_file(b_to_t_homology_file, status_callback)
-
-    if s_to_b_df is None or b_to_t_df is None:
-        status_callback("ERROR", "无法加载同源映射文件。请确保数据已下载且路径正确。")
-        return None
-
-    source_gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
-    target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
-
-    if not all([source_gff_path, target_gff_path]):
-        status_callback("ERROR", "缺少必要的GFF文件，请在'数据源管理'中检查。")
-        return None
-
-    pipeline_cfg = config.integration_pipeline
-    project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
-    gff_db_dir = os.path.join(project_root, pipeline_cfg.gff_db_storage_dir)
-    os.makedirs(gff_db_dir, exist_ok=True)
-
-
-    status_callback("INFO", f"在源基因组 '{source_assembly_id}' 中查找区域内的基因...")
-    source_genes = gff_parser.get_genes_in_region(
-        assembly_id=source_assembly_id, gff_filepath=source_gff_path,
-        db_storage_dir=gff_db_dir, region=region, status_callback=status_callback,
-        force_db_creation=pipeline_cfg.force_gff_db_creation
-    )
-
-    if not source_genes:
-        status_callback("WARNING", "在源基因组的指定区域内未找到任何基因。")
-        return pd.DataFrame()
-
-    source_gene_ids = [gene['gene_id'] for gene in source_genes]
-    status_callback("INFO", f"找到 {len(source_gene_ids)} 个源基因，正在进行同源映射...")
-
-    # 获取同源映射的筛选标准和列名
-    selection_criteria_s_to_b = asdict(pipeline_cfg.selection_criteria_source_to_bridge)
-    selection_criteria_b_to_t = asdict(pipeline_cfg.selection_criteria_bridge_to_target)
-    homology_cols = pipeline_cfg.homology_columns
-
-    # 调用 map_genes_via_bridge
-    mapped_df, _C = map_genes_via_bridge(
-        source_gene_ids=source_gene_ids,
-        source_assembly_name=source_assembly_id,
-        target_assembly_name=target_assembly_id,
-        bridge_species_name=pipeline_cfg.bridge_species_name, # 从配置中获取
-        source_to_bridge_homology_df=s_to_b_df,
-        bridge_to_target_homology_df=b_to_t_df,
-        selection_criteria_s_to_b=selection_criteria_s_to_b,
-        selection_criteria_b_to_t=selection_criteria_b_to_t,
-        homology_columns=homology_cols,
-        source_genome_info=source_genome_info,
-        target_genome_info=target_genome_info,
-        status_callback=status_callback
-    )
-    return mapped_df
-
-
-
+    config: MainConfig,
+    source_assembly_id: str,
+    target_assembly_id: str,
+    region: Tuple[str, int, int],
+    output_path: str,
+    status_callback: Callable,
+    criteria_overrides: Optional[Dict[str, Any]] = None,
+    **kwargs
+) -> None:
+    """
+    【已修改】通过调用核心同源映射流程，执行基于区域的位点转换。
+    """
+    log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
+    try:
+        log("位点转换任务正在调用核心同源映射流程...", "INFO")
+        run_homology_mapping(
+            config=config,
+            source_assembly_id=source_assembly_id,
+            target_assembly_id=target_assembly_id,
+            gene_ids=None,
+            region=region,
+            output_csv_path=output_path,
+            criteria_overrides=criteria_overrides,
+            status_callback=status_callback,
+            calculate_target_locus=True,  # <<< 核心修改：强制开启位点计算
+            progress_callback=kwargs.get('progress_callback'),
+            cancel_event=kwargs.get('cancel_event')
+        )
+    except Exception as e:
+        log(f"位点转换流程出错: {e}", "ERROR")
+        log(traceback.format_exc(), "DEBUG")
 
 
 def run_ai_task(
@@ -762,53 +599,126 @@ def run_ai_task(
 
 def run_functional_annotation(
         config: MainConfig,
-        gene_ids: List[str],
-        assembly_id: str,
-        annotation_types: List[str],
-        output_csv_path: Optional[str] = None,
-        status_callback: Callable = print,
+        gene_list_path: str,
+        source_genome: str,
+        target_genome: str,
+        bridge_species: str,
+        annotation_db_path: str,
+        output_dir: str,
+        status_callback: Callable[[str, str], None],
         progress_callback: Optional[Callable] = None,
-        **kwargs
+        # 其他您可能需要的参数...
 ):
-    """执行功能注释流程。"""
+    """
+    执行功能注释流水线，按需进行同源转换并解决参数问题。
+    """
     log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
-    progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
 
-    log(_("功能注释流程开始..."))
-
-    genome_sources = get_genome_data_sources(config, logger_func=log)
-    genome_info = genome_sources.get(assembly_id)
-    if not genome_info:
-        log(f"错误: 未在配置中找到基因组 '{assembly_id}' 的信息。", "ERROR")
+    # --- 步骤 1: 准备输入基因列表 ---
+    try:
+        study_genes_df = pd.read_csv(gene_list_path)
+        source_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
+        if not source_gene_ids:
+            log("输入的基因列表为空。", "ERROR")
+            return
+    except Exception as e:
+        log(f"读取基因列表时出错: {e}", "ERROR")
         return
 
-    try:
-        annotator = Annotator(
-            main_config=config,
-            genome_info=genome_info,
-            status_callback=log,
-            progress_callback=progress
-        )
-        result_df = annotator.annotate_genes(gene_ids, annotation_types)
+    genes_to_annotate = source_gene_ids
+    original_to_target_map_df = None
 
-        if result_df.empty:
-            log("警告: 未找到任何注释信息。", "WARNING")
+    # --- 步骤 2: 按需进行同源转换 (参数准备) ---
+    if source_genome != target_genome:
+        log(f"源基因组 ({source_genome}) 与目标基因组 ({target_genome}) 不同，准备进行同源转换。", "INFO")
+
+        # 2.1 获取所有基因组的配置信息
+        genome_sources = get_genome_data_sources(config, logger_func=log)
+        source_genome_info = genome_sources.get(source_genome)
+        target_genome_info = genome_sources.get(target_genome)
+        bridge_genome_info = genome_sources.get(bridge_species)
+
+        if not all([source_genome_info, target_genome_info, bridge_genome_info]):
+            log("一个或多个基因组名称无效，无法找到配置信息。", "ERROR")
             return
 
-        final_output_path = output_csv_path
-        if not final_output_path:
-            project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
-            output_dir = os.path.join(project_root, config.annotation_tool.output_dir_name)
-            os.makedirs(output_dir, exist_ok=True)
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            final_output_path = os.path.join(output_dir, f"annotation_{assembly_id}_{timestamp}.csv")
+        # 2.2 获取必要的同源文件路径
+        s_to_b_homology_file = get_local_downloaded_file_path(config.data_dir,
+                                                              source_genome_info.get_homology_file(bridge_species))
+        b_to_t_homology_file = get_local_downloaded_file_path(config.data_dir,
+                                                              target_genome_info.get_homology_file(bridge_species))
 
-        result_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-        log(_("功能注释结果已保存到: {}").format(final_output_path), "SUCCESS")
+        if not s_to_b_homology_file or not b_to_t_homology_file:
+            log("缺少必要的同源文件，无法进行转换。", "ERROR")
+            return
 
-    except Exception as e:
-        log(f"执行功能注释时发生错误: {e}", "ERROR")
-        logger.exception("完整错误堆栈:")
+        # 2.3 加载同源文件为DataFrame
+        source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
+        bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
+
+        # 2.4 准备其他参数
+        selection_criteria_s_to_b = config.get_selection_criteria(source_genome)
+        selection_criteria_b_to_t = config.get_selection_criteria(target_genome)
+        homology_columns = config.get_homology_columns_config()
+
+        # 2.5 调用核心映射函数
+        log("正在通过桥梁物种进行基因映射...", "INFO")
+        mapped_df, _ = map_genes_via_bridge(
+            source_gene_ids=source_gene_ids,
+            source_assembly_name=source_genome,
+            target_assembly_name=target_genome,
+            bridge_species_name=bridge_species,
+            source_to_bridge_homology_df=source_to_bridge_homology_df,
+            bridge_to_target_homology_df=bridge_to_target_homology_df,
+            selection_criteria_s_to_b=selection_criteria_s_to_b,
+            selection_criteria_b_to_t=selection_criteria_b_to_t,
+            homology_columns=homology_columns,
+            source_genome_info=source_genome_info,
+            target_genome_info=target_genome_info,
+            bridge_genome_info=bridge_genome_info,  # 传递桥梁物种信息
+            status_callback=status_callback
+        )
+
+        if mapped_df is None or mapped_df.empty:
+            log("同源转换未能映射到任何基因，流程终止。", "WARNING")
+            return
+
+        # 更新待注释的基因列表为转换后的目标基因ID
+        genes_to_annotate = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
+        original_to_target_map_df = mapped_df[['Source_Gene_ID', 'Target_Gene_ID']]
+
+    # --- 步骤 3: 初始化 Annotator 并执行注释 ---
+    log("正在初始化注释器...", "INFO")
+    cache_dir = os.path.join(output_dir, '.cache')  # 定义缓存目录
+
+    # 使用正确的参数初始化 Annotator
+    annotator = Annotator(
+        annotation_db_path=annotation_db_path,
+        target_genome_id=target_genome,  # 明确目标基因组
+        status_callback=status_callback,
+        cache_dir=cache_dir
+    )
+
+    log(f"正在为 {len(genes_to_annotate)} 个基因执行功能注释...", "INFO")
+    result_df = annotator.annotate_gene_list(genes_to_annotate)  # 传入待注释的基因列表
+
+    # --- 步骤 4: 处理并保存结果 ---
+    if result_df is not None and not result_df.empty:
+        # 如果进行了同源转换，将注释结果与原始基因ID关联起来
+        if original_to_target_map_df is not None:
+            # result_df 的第一列是目标基因ID，我们将其重命名以便合并
+            result_df.rename(columns={result_df.columns[0]: 'Target_Gene_ID'}, inplace=True)
+            final_df = pd.merge(original_to_target_map_df, result_df, on='Target_Gene_ID', how='left')
+        else:
+            final_df = result_df
+
+        output_file = os.path.join(output_dir, f"{os.path.basename(gene_list_path)}_annotated.csv")
+        final_df.to_csv(output_file, index=False)
+        log(f"注释成功！结果已保存至: {output_file}", "SUCCESS")
+    else:
+        log("注释完成，但没有生成任何结果。", "WARNING")
+
+
 
 
 def run_gff_lookup(

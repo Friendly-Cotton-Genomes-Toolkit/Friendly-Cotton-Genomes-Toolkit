@@ -204,7 +204,8 @@ class CottonToolkitApp(ctk.CTk):
         self.homology_evalue_var = tk.StringVar(value="1e-10")
         self.homology_pid_var = tk.StringVar(value="30.0")
         self.homology_score_var = tk.StringVar(value="50.0")
-        self.homology_subgenome_priority_var = tk.BooleanVar(value=True)
+        self.homology_strict_priority_var = tk.BooleanVar(value=True) # “基因组转换”的开关，默认开启
+        self.locus_strict_priority_var = tk.BooleanVar(value=True)    # “位点转换”的开关，默认开启
         self.ai_temperature_var = tk.DoubleVar(value=0.7)
         self.integrate_log2fc_var = tk.StringVar(value="1.0")
 
@@ -1729,7 +1730,7 @@ class CottonToolkitApp(ctk.CTk):
         cli_overrides = {"temperature": self.ai_temperature_var.get()}
 
         if not all([input_file, source_col, new_col]):
-            self.show_error_message(_("输入缺失"), _("请输入文件路径、源列名和新列名。"));
+            self.show_error_message(_("输入缺失"), _("请输入文件路径、源列名和新列名。"))
             return
 
         # --- 根据任务类型从对应的输入框获取Prompt ---
@@ -1740,7 +1741,7 @@ class CottonToolkitApp(ctk.CTk):
             prompt = self.ai_translate_prompt_textbox.get("1.0", tk.END).strip()
 
         if not prompt or "{text}" not in prompt:
-            self.show_error_message(_("Prompt格式错误"), _("Prompt指令不能为空，且必须包含占位符 '{text}'。"));
+            self.show_error_message(_("Prompt格式错误"), _("Prompt指令不能为空，且必须包含占位符 '{text}'。"))
             return
         # --- 修改结束 ---
 
@@ -2209,13 +2210,9 @@ class CottonToolkitApp(ctk.CTk):
         self.integrate_start_button.pack(fill="x", padx=5, pady=(10, 5))
 
     def _populate_homology_map_tab_structure(self, parent_frame):
-        """
-        填充基因组转换（同源映射）选项卡内容。
-        【优化】新增高级筛选选项卡片。
-        """
+        """填充基因组转换（同源映射）选项卡UI界面。"""
         parent_frame.grid_columnconfigure(0, weight=1)
 
-        # --- Part 1: 主要输入区域 ---
         main_input_frame = ctk.CTkFrame(parent_frame)
         main_input_frame.pack(fill="x", padx=10, pady=10)
         main_input_frame.grid_columnconfigure(1, weight=1)
@@ -2226,13 +2223,21 @@ class CottonToolkitApp(ctk.CTk):
                                                                                                    sticky="w")
         self.homology_map_genes_textbox = ctk.CTkTextbox(main_input_frame, height=150, font=self.app_font, wrap="word")
         self.homology_map_genes_textbox.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
-        # ... (textbox的placeholder和事件绑定逻辑不变)
+
+        self._add_placeholder(self.homology_map_genes_textbox, self.placeholder_key_homology)
+        self.homology_map_genes_textbox.bind("<FocusIn>",
+                                             lambda e: self._clear_placeholder(self.homology_map_genes_textbox,
+                                                                               self.placeholder_key_homology))
+        self.homology_map_genes_textbox.bind("<FocusOut>",
+                                             lambda e: self._add_placeholder(self.homology_map_genes_textbox,
+                                                                             self.placeholder_key_homology))
+        self.homology_map_genes_textbox.bind("<KeyRelease>", self._on_homology_gene_input_change)
 
         ctk.CTkLabel(main_input_frame, text=_("2. 选择源与目标基因组:"), font=self.app_font_bold).grid(row=2, column=0,
                                                                                                        padx=10,
                                                                                                        pady=(15, 5),
                                                                                                        sticky="w")
-        # (源、目标基因组下拉菜单的创建逻辑不变)
+
         assembly_ids = list(self.genome_sources_data.keys()) if self.genome_sources_data else [_("无可用版本")]
 
         source_frame = ctk.CTkFrame(main_input_frame, fg_color="transparent")
@@ -2257,7 +2262,16 @@ class CottonToolkitApp(ctk.CTk):
                                                                        font=self.app_font)
         self.homology_map_target_assembly_dropdown.grid(row=0, column=1, padx=5, sticky="ew")
 
-        # --- 【新增】Part 2: 高级筛选选项 ---
+        warning_frame = ctk.CTkFrame(main_input_frame, fg_color="transparent")
+        warning_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=0, sticky="ew")
+        warning_frame.grid_columnconfigure((0, 1), weight=1)
+
+        self.homology_source_version_warning_label = ctk.CTkLabel(warning_frame, text="", font=self.app_comment_font)
+        self.homology_source_version_warning_label.grid(row=0, column=0, sticky="w")
+
+        self.homology_target_version_warning_label = ctk.CTkLabel(warning_frame, text="", font=self.app_comment_font)
+        self.homology_target_version_warning_label.grid(row=0, column=1, sticky="w")
+
         advanced_options_card = ctk.CTkFrame(parent_frame, fg_color=("gray90", "gray25"))
         advanced_options_card.pack(fill="x", padx=10, pady=10)
         advanced_options_card.grid_columnconfigure(1, weight=1)
@@ -2271,7 +2285,6 @@ class CottonToolkitApp(ctk.CTk):
                                                                                                                     10),
                                                                                                               sticky="w")
 
-        # E-value 和 PID
         ctk.CTkLabel(advanced_options_card, text=_("E-value ≤"), font=self.app_font).grid(row=1, column=0, padx=(10, 0),
                                                                                           pady=5, sticky="e")
         self.homology_evalue_entry = ctk.CTkEntry(advanced_options_card, textvariable=self.homology_evalue_var)
@@ -2282,7 +2295,6 @@ class CottonToolkitApp(ctk.CTk):
         self.homology_pid_entry = ctk.CTkEntry(advanced_options_card, textvariable=self.homology_pid_var)
         self.homology_pid_entry.grid(row=1, column=3, padx=(5, 10), pady=5, sticky="ew")
 
-        # Score 和 Top N
         ctk.CTkLabel(advanced_options_card, text=_("Score ≥"), font=self.app_font).grid(row=2, column=0, padx=(10, 0),
                                                                                         pady=5, sticky="e")
         self.homology_score_entry = ctk.CTkEntry(advanced_options_card, textvariable=self.homology_score_var)
@@ -2294,14 +2306,22 @@ class CottonToolkitApp(ctk.CTk):
                                                  placeholder_text=_("0 表示所有"))
         self.homology_top_n_entry.grid(row=2, column=3, padx=(5, 10), pady=5, sticky="ew")
 
-        # 亚组倾向性开关
-        self.homology_subgenome_switch = ctk.CTkSwitch(advanced_options_card, text=_("优先排序亚组匹配的基因"),
-                                                       variable=self.homology_subgenome_priority_var,
-                                                       font=self.app_font)
-        self.homology_subgenome_switch.grid(row=3, column=0, columnspan=4, padx=10, pady=10, sticky="w")
+        switch_frame = ctk.CTkFrame(advanced_options_card, fg_color="transparent")
+        switch_frame.grid(row=3, column=0, columnspan=4, padx=10, pady=(5, 10), sticky="w")
 
-        # --- Part 3: 输出和运行 ---
-        # (这部分逻辑与之前类似，但现在放到了最下面)
+        self.homology_strict_switch = ctk.CTkSwitch(
+            switch_frame, text=_("仅匹配同亚组、同源染色体上的基因 (严格模式)"),
+            variable=self.homology_strict_priority_var,
+            font=self.app_font,
+            command=self._toggle_homology_warning_label
+        )
+        self.homology_strict_switch.pack(side="left")
+
+        self.homology_warning_label = ctk.CTkLabel(
+            switch_frame, text=_("关闭后可能导致不同染色体的基因发生错配"),
+            text_color=("#D32F2F", "#E57373")
+        )
+
         output_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
         output_frame.pack(fill="x", padx=10, pady=(5, 10))
         output_frame.grid_columnconfigure(1, weight=1)
@@ -2322,16 +2342,29 @@ class CottonToolkitApp(ctk.CTk):
                                                        command=self.start_homology_map_task)
         self.start_homology_map_button.grid(row=0, column=0, sticky="e")
 
-        # --- 【新增】用于显示版本警告的标签 ---
-        warning_frame = ctk.CTkFrame(main_input_frame, fg_color="transparent")
-        warning_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=0, sticky="ew")
-        warning_frame.grid_columnconfigure((0, 1), weight=1)
+        self._toggle_homology_warning_label()
 
-        self.homology_source_version_warning_label = ctk.CTkLabel(warning_frame, text="", font=self.app_comment_font)
-        self.homology_source_version_warning_label.grid(row=0, column=0, sticky="w")
+    def _toggle_homology_warning_label(self):
+        """根据“基因组转换”的严格模式开关，显示或隐藏警告标签。"""
+        # 确保UI控件已创建
+        if not hasattr(self, 'homology_warning_label'):
+            return
 
-        self.homology_target_version_warning_label = ctk.CTkLabel(warning_frame, text="", font=self.app_comment_font)
-        self.homology_target_version_warning_label.grid(row=0, column=1, sticky="w")
+        if self.homology_strict_priority_var.get():
+            self.homology_warning_label.pack_forget()  # 开关开启，隐藏警告
+        else:
+            # 开关关闭，显示警告
+            self.homology_warning_label.pack(side="left", padx=15, pady=0)
+
+    def _toggle_locus_warning_label(self):
+        """根据“位点转换”的严格模式开关，显示或隐藏警告标签。"""
+        if not hasattr(self, 'locus_warning_label'):
+            return
+
+        if self.locus_strict_priority_var.get():
+            self.locus_warning_label.pack_forget()
+        else:
+            self.locus_warning_label.pack(side="left", padx=15, pady=0)
 
     def _populate_gff_query_tab_structure(self, parent_frame):
         """
@@ -2835,7 +2868,7 @@ class CottonToolkitApp(ctk.CTk):
         try:
             log2fc_override = float(self.integrate_log2fc_var.get())
         except (ValueError, TypeError):
-            self.show_error_message(_("输入错误"), _("Log2FC 阈值必须是有效的数字。"));
+            self.show_error_message(_("输入错误"), _("Log2FC 阈值必须是有效的数字。"))
             return
 
         cli_overrides = {
@@ -2903,10 +2936,10 @@ class CottonToolkitApp(ctk.CTk):
                 "evalue_threshold": float(self.homology_evalue_var.get()),
                 "pid_threshold": float(self.homology_pid_var.get()),
                 "score_threshold": float(self.homology_score_var.get()),
-                "prioritize_subgenome": self.homology_subgenome_priority_var.get()
+                "strict_subgenome_priority": self.homology_strict_priority_var.get()
             }
         except (ValueError, TypeError):
-            self.show_error_message(_("输入错误"), _("高级筛选选项中的阈值必须是有效的数字。"));
+            self.show_error_message(_("输入错误"), _("高级筛选选项中的阈值必须是有效的数字。"))
             return
 
         self._start_task(
@@ -3467,16 +3500,16 @@ class CottonToolkitApp(ctk.CTk):
                                                                           _("基因组源内容的YAML格式不正确。")); return  #
             with open(abs_path, 'w', encoding='utf-8') as f:
                 f.write(content_to_save)  #
-            self._log_to_viewer(f"{_('基因组源文件已保存到:')} {abs_path}");
-            self.show_info_message(_("保存成功"), _("基因组源文件已成功保存。"))  #
+            self._log_to_viewer(f"{_('基因组源文件已保存到:')} {abs_path}")
+            self.show_info_message(_("保存成功"), _("基因组源文件已成功保存。"))
         except yaml.YAMLError as e:
-            self.show_error_message(_("保存错误"), f"{_('基因组源YAML解析错误:')} {e}");
+            self.show_error_message(_("保存错误"), f"{_('基因组源YAML解析错误:')} {e}")
             self._log_to_viewer(
-                f"ERROR: {_('基因组源YAML解析错误:')} {e}", level="ERROR")  #
+                f"ERROR: {_('基因组源YAML解析错误:')} {e}", level="ERROR")
         except Exception as e:
-            self.show_error_message(_("保存错误"), f"{_('保存基因组源文件时发生错误:')} {e}");
+            self.show_error_message(_("保存错误"), f"{_('保存基因组源文件时发生错误:')} {e}")
             self._log_to_viewer(
-                f"ERROR: {_('保存基因组源文件时发生错误:')} {e}", level="ERROR")  #
+                f"ERROR: {_('保存基因组源文件时发生错误:')} {e}", level="ERROR")
 
     def _update_button_states(self, is_task_running=False):
         action_state = "disabled" if is_task_running else "normal"
@@ -3733,8 +3766,8 @@ class CottonToolkitApp(ctk.CTk):
     # ----------------------------------------------------------------------
     def _populate_locus_conversion_tab_structure(self, parent_frame):
         """
-        【全新修改版】填充位点转换工具的UI界面。
-        移除文件输出控件，增加结果显示文本框。
+        【最终版】填充位点转换工具的UI界面。
+        增加严格模式开关和警告标签。
         """
         parent_frame.grid_columnconfigure(0, weight=1)
 
@@ -3744,6 +3777,7 @@ class CottonToolkitApp(ctk.CTk):
             if ids:
                 assembly_ids = ids
 
+        # Part 1: 基因组选择
         top_frame = ctk.CTkFrame(parent_frame)
         top_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         top_frame.grid_columnconfigure(1, weight=1)
@@ -3765,6 +3799,7 @@ class CottonToolkitApp(ctk.CTk):
         )
         self.locus_target_assembly_dropdown.grid(row=0, column=3, padx=(5, 10), pady=5, sticky="ew")
 
+        # Part 2: 输入区域
         input_card = ctk.CTkFrame(parent_frame, fg_color="transparent")
         input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
         input_card.grid_columnconfigure(0, weight=1)
@@ -3777,51 +3812,79 @@ class CottonToolkitApp(ctk.CTk):
         )
         self.locus_conversion_region_entry.grid(row=1, column=0, sticky="ew", pady=(5, 0))
 
-        # --- 【修改】移除文件输出，增加结果显示区域 ---
-        result_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        result_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(15, 0))
-        result_frame.grid_columnconfigure(0, weight=1)
-        result_frame.grid_rowconfigure(1, weight=1)
+        # Part 3: 高级选项 (严格模式开关)
+        adv_options_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        adv_options_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(10, 0))
 
-        ctk.CTkLabel(result_frame, text=_("转换结果:"), font=self.app_font_bold).grid(row=0, column=0, sticky="w")
-        self.locus_conversion_result_textbox = ctk.CTkTextbox(
-            result_frame,
-            height=80,
-            font=self.app_font_mono,  # 使用等宽字体以获得更好的对齐效果
-            state="disabled",  # 设置为只读，但用户仍可复制
-            wrap="word"
+        switch_frame = ctk.CTkFrame(adv_options_frame, fg_color="transparent")
+        switch_frame.pack(side="left", anchor="w", padx=0)
+
+        self.locus_strict_switch = ctk.CTkSwitch(
+            switch_frame, text=_("仅匹配同亚组、同源染色体上的基因 (严格模式)"),
+            variable=self.locus_strict_priority_var,
+            font=self.app_font,
+            command=self._toggle_locus_warning_label
         )
-        self.locus_conversion_result_textbox.grid(row=1, column=0, sticky="ew", pady=(5, 0))
-        # --- 修改结束 ---
+        self.locus_strict_switch.pack(side="left")
 
+        self.locus_warning_label = ctk.CTkLabel(
+            switch_frame, text=_("关闭后可能导致不同染色体的基因发生错配"),
+            text_color=("#D32F2F", "#E57373"),
+            font=self.app_font_bold
+        )
+        # 初始不显示，因为开关默认开启
+
+        # Part 4: 输出路径选择
+        output_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        output_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=(15, 0))
+        output_frame.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(output_frame, text=_("选择输出CSV文件路径:"), font=self.app_font_bold).grid(row=0, column=0,
+                                                                                                 sticky="w")
+
+        output_entry_frame = ctk.CTkFrame(output_frame, fg_color="transparent")
+        output_entry_frame.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+        output_entry_frame.grid_columnconfigure(0, weight=1)
+
+        self.locus_conversion_output_entry = ctk.CTkEntry(output_entry_frame, font=self.app_font,
+                                                          placeholder_text=_("点击“另存为”选择保存位置"))
+        self.locus_conversion_output_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+        ctk.CTkButton(output_entry_frame, text=_("另存为..."), width=100, font=self.app_font,
+                      command=lambda: self._browse_save_file(self.locus_conversion_output_entry,
+                                                             [("CSV files", "*.csv")])).grid(row=0, column=1)
+
+        # Part 5: 运行按钮
         run_button = ctk.CTkButton(parent_frame, text=_("开始转换"), font=self.app_font_bold,
                                    command=self.start_locus_conversion_task)
-        run_button.grid(row=3, column=0, padx=10, pady=(20, 10), sticky="e")
+        run_button.grid(row=4, column=0, padx=10, pady=(20, 10), sticky="e")
+
+        # 首次加载时，根据默认开关状态设置警告标签
+        self._toggle_locus_warning_label()
+
+
 
     def start_locus_conversion_task(self):
-        """【统一调用】启动位点转换任务 (基于区域)。"""
+        """【已修改】启动位点转换任务 (基于区域)，现在传递输出路径。"""
         if not self.current_config: self.show_error_message(_("错误"), _("请先加载配置文件。")); return
 
         source_assembly = self.selected_locus_source_assembly.get()
         target_assembly = self.selected_locus_target_assembly.get()
         region_str = self.locus_conversion_region_entry.get().strip()
-        if not all([source_assembly, target_assembly, region_str]):
-            self.show_error_message(_("输入缺失"), _("请选择基因组并输入区域。"))
+
+        # <<<--- 新增：获取输出路径 ---
+        output_path = self.locus_conversion_output_entry.get().strip()
+
+        if not all([source_assembly, target_assembly, region_str, output_path]):
+            self.show_error_message(_("输入缺失"), _("请选择基因组、输入区域并指定输出文件路径。"))
             return
 
         try:
             chrom, pos_range = region_str.split(':')
             start, end = map(int, pos_range.split('-'))
-            region_tuple = (chrom, start, end)
+            region_tuple = (chrom.strip(), start, end)
         except ValueError:
             self.show_error_message(_("输入错误"), _("区域格式不正确，请使用 'Chr:Start-End' 格式。"))
             return
-
-        # --- 在任务开始前，清空上一次的结果 ---
-        if hasattr(self, 'locus_conversion_result_textbox'):
-            self.locus_conversion_result_textbox.configure(state="normal")
-            self.locus_conversion_result_textbox.delete("1.0", tk.END)
-            self.locus_conversion_result_textbox.configure(state="disabled")
 
         self._start_task(
             task_name=_("位点转换"),
@@ -3831,6 +3894,7 @@ class CottonToolkitApp(ctk.CTk):
                 'source_assembly_id': source_assembly,
                 'target_assembly_id': target_assembly,
                 'region': region_tuple,
+                'output_path': output_path,
             }
         )
 

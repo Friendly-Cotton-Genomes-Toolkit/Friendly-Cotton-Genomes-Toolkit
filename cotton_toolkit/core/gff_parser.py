@@ -69,9 +69,8 @@ def _gff_gene_filter(gff_filepath: str) -> Iterator[Union[gffutils.feature.Featu
 
     with opener(gff_filepath, mode, encoding='utf-8', errors='ignore') as gff_file:
         for line in gff_file:
-            # GFF的注释行（以'#'开头），直接作为字符串传递出去
+            # 直接跳过注释行，不再 yield 任何字符串
             if line.startswith('#'):
-                yield line
                 continue
 
             columns = line.strip().split('\t')

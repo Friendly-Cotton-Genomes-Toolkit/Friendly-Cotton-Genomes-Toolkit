@@ -94,6 +94,7 @@ def integrate(ctx, excel_path, log2fc_threshold):
     }
     run_integrate_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info)
 
+
 @cli.command()
 @click.option('--genes', help=_("源基因ID列表，以逗号分隔。"))
 @click.option('--region', help=_("源基因组区域, 格式如 'Chr01:1000-5000'。"))
@@ -104,9 +105,9 @@ def integrate(ctx, excel_path, log2fc_threshold):
 @click.option('--evalue', type=float, help=_("E-value阈值。"))
 @click.option('--pid', type=float, help=_("序列一致性百分比(PID)阈值。"))
 @click.option('--score', type=float, help=_("BLAST得分(Score)阈值。"))
-@click.option('--no-subgenome-priority', is_flag=True, help=_("禁用亚组倾向性排序。"))
+@click.option('--no-strict-priority', is_flag=True, default=False, help=_("禁用严格的同亚组/同源染色体匹配模式。"))
 @click.pass_context
-def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, evalue, pid, score, no_subgenome_priority):
+def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, evalue, pid, score, no_strict_priority):
     """对基因列表或区域进行高级同源映射。"""
     if not genes and not region:
         raise click.UsageError(_("错误: 必须提供 --genes 或 --region 参数之一。"))
@@ -121,16 +122,24 @@ def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, eval
         except ValueError:
             raise click.BadParameter(_("区域格式无效。请使用 'chr:start-end' 格式。"), param_hint='--region')
 
+    # --- 修改点 ---
+    # 根据新的开关设置参数
     criteria_overrides = {
         "top_n": top_n, "evalue_threshold": evalue, "pid_threshold": pid,
-        "score_threshold": score, "prioritize_subgenome": not no_subgenome_priority
+        "score_threshold": score, "strict_subgenome_priority": not no_strict_priority
     }
+
+    # 如果关闭了严格模式，显示红色警告
+    if no_strict_priority:
+        click.secho(_("警告: 严格模式已关闭，可能导致不同染色体的基因发生错配。"), fg='red', err=True)
+
     run_homology_mapping(
         config=ctx.obj.config, gene_ids=gene_list, region=region_tuple,
         source_assembly_id=source_asm, target_assembly_id=target_asm,
         output_csv_path=output_csv, criteria_overrides=criteria_overrides,
         status_callback=ctx.obj.logger.info
     )
+
 
 @cli.command('ai-task')
 @click.option('--input-file', required=True, type=click.Path(exists=True, dir_okay=False), help=_("输入的CSV文件。"))

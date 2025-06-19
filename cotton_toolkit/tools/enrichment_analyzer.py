@@ -141,27 +141,30 @@ def _perform_hypergeometric_test(
 
 def run_go_enrichment(
         study_gene_ids: List[str],
-        go_annotation_path: str,  # 这是用户传入的原始文件路径
+        go_annotation_path: str,  # 这是用户传入的原始文件路径 (可以是xlsx, txt, csv)
         status_callback: Callable,
         output_dir: str,
         gene_id_regex: Optional[str] = None
 ) -> Optional[pd.DataFrame]:
-    # 使用新的通用函数来准备注释文件
-    # 假设我们将缓存文件放在输出目录下的 .cache 子目录中
+    # --- 核心修改点 ---
+    # 1. 定义一个用于存放转换后文件的缓存目录
     cache_dir = os.path.join(output_dir, '.cache')
+
+    # 2. 调用通用的文件准备函数
     prepared_go_path = prepare_input_file(go_annotation_path, status_callback, cache_dir)
 
     if not prepared_go_path:
-        status_callback("ERROR: GO注释文件准备失败，富集分析终止。")
+        status_callback("GO注释文件准备失败，富集分析终止。", "ERROR")
         return None
+    # --- 修改结束 ---
 
-    # 后续代码现在可以安全地假设 prepared_go_path 是一个标准CSV文件
-    status_callback("INFO: 正在加载处理后的GO注释背景数据...")
+    # 后续代码现在可以安全地假设 prepared_go_path 是一个标准格式的CSV文件
+    status_callback("正在加载处理后的GO注释背景数据...", "INFO")
     try:
         # 直接读取已标准化的CSV文件
         background_df = pd.read_csv(prepared_go_path)
     except Exception as e:
-        status_callback(f"ERROR: 读取标准化注释文件失败: {e}")
+        status_callback(f"读取标准化注释文件失败: {e}", "ERROR")
         return None
 
     # 调用时参数保持不变，因为现在定义和调用已经匹配
