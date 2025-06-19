@@ -3167,9 +3167,16 @@ class CottonToolkitApp(ctk.CTk):
                 elif message_type == "task_done":
                     success, task_display_name, result_data = data
 
-                    if self.progress_dialog and self.progress_dialog.winfo_exists():
-                        self.progress_dialog.close()
-                    self.progress_dialog = None
+                    try:
+                        if self.progress_dialog and self.progress_dialog.winfo_exists():
+                            self.progress_dialog.close()
+                    except tk.TclError as e:
+                        # 记录这个无害的错误，但程序不会因此中断
+                        self._log_to_viewer(f"Harmless TclError caught while closing progress dialog: {e}", "DEBUG")
+                    finally:
+                        # 无论是否出错，都清空引用
+                        self.progress_dialog = None
+
 
                     self._update_button_states(is_task_running=False)
 

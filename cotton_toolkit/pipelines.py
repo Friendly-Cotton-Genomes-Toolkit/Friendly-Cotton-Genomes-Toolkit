@@ -503,41 +503,130 @@ def run_homology_mapping(
         return None
 
 
-
-
 def run_locus_conversion(
-    config: MainConfig,
-    source_assembly_id: str,
-    target_assembly_id: str,
-    region: Tuple[str, int, int],
-    output_path: str,
-    status_callback: Callable,
-    criteria_overrides: Optional[Dict[str, Any]] = None,
-    **kwargs
+        config: MainConfig,
+        source_assembly_id: str,
+        target_assembly_id: str,
+        region: Tuple[str, int, int],
+        output_path: str,
+        status_callback: Callable,
+        criteria_overrides: Optional[Dict[str, Any]] = None,
+        **kwargs
 ) -> None:
     """
-    【已修改】通过调用核心同源映射流程，执行基于区域的位点转换。
+    【已修正参数错误】通过调用核心同源映射流程，执行带概要位点计算的位点转换。
     """
     log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
+
     try:
-        log("位点转换任务正在调用核心同源映射流程...", "INFO")
-        run_homology_mapping(
-            config=config,
-            source_assembly_id=source_assembly_id,
-            target_assembly_id=target_assembly_id,
-            gene_ids=None,
-            region=region,
-            output_csv_path=output_path,
-            criteria_overrides=criteria_overrides,
+        log("步骤1: 加载配置...", "INFO")
+        genome_sources = get_genome_data_sources(config, logger_func=log)
+        source_genome_info = genome_sources.get(source_assembly_id)
+        target_genome_info = genome_sources.get(target_assembly_id)
+        bridge_species_name = config.integration_pipeline.bridge_species_name
+        bridge_genome_info = genome_sources.get(bridge_species_name)
+
+        if not all([source_genome_info, target_genome_info, bridge_genome_info]):
+            log(f"错误: 无法为 {source_assembly_id}, {target_assembly_id} 或 {bridge_species_name} 找到配置。", "ERROR")
+            return
+
+        # 步骤1.1: 从GFF中获取源基因ID
+        gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+        gff_db_cache_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
+                                        config.integration_pipeline.gff_db_storage_dir)
+        source_gene_list = get_genes_in_region(
+            assembly_id=source_assembly_id, gff_filepath=gff_path,
+            db_storage_dir=gff_db_cache_dir, region=region,
+            force_db_creation=config.integration_pipeline.force_gff_db_creation,
+            status_callback=log,
+            gene_id_regex=source_genome_info.gene_id_regex
+        )
+        if not source_gene_list:
+            log(f"在区域 {region} 中未找到任何基因。", "WARNING");
+            return
+        source_gene_ids = [gene['gene_id'] for gene in source_gene_list]
+
+        # 步骤1.2: 准备调用 map_genes_via_bridge 所需的所有参数
+        s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
+        b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+        source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
+        bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
+
+        selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge
+        selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target
+        if criteria_overrides:
+            s2b_dict = selection_criteria_s_to_b.to_dict()
+            b2t_dict = selection_criteria_b_to_t.to_dict()
+            for key, value in criteria_overrides.items():
+                if value is not None:
+                    if key in s2b_dict: s2b_dict[key] = value
+                    if key in b2t_dict: b2t_dict[key] = value
+            selection_criteria_s_to_b = type(selection_criteria_s_to_b)(**s2b_dict)
+            selection_criteria_b_to_t = type(selection_criteria_b_to_t)(**b2t_dict)
+        homology_columns = config.integration_pipeline.homology_columns
+
+        # 步骤 2: 调用核心映射逻辑
+        log("正在执行核心同源映射...", "INFO")
+        mapped_df, failed_genes = map_genes_via_bridge(
+            source_gene_ids=source_gene_ids,
+            source_assembly_name=source_assembly_id,
+            target_assembly_name=target_assembly_id,
+            bridge_species_name=bridge_species_name,
+            source_to_bridge_homology_df=source_to_bridge_homology_df,
+            bridge_to_target_homology_df=bridge_to_target_homology_df,
+            selection_criteria_s_to_b=selection_criteria_s_to_b.to_dict(),
+            selection_criteria_b_to_t=selection_criteria_b_to_t.to_dict(),
+            homology_columns=homology_columns,
+            source_genome_info=source_genome_info,
+            target_genome_info=target_genome_info,
+            bridge_genome_info=bridge_genome_info,
             status_callback=status_callback,
-            calculate_target_locus=True,  # <<< 核心修改：强制开启位点计算
-            progress_callback=kwargs.get('progress_callback'),
             cancel_event=kwargs.get('cancel_event')
         )
+
+        # 步骤 3: 计算目标概要位点
+        target_locus_summary = "无具体位点信息"
+        if mapped_df is not None and not mapped_df.empty:
+            target_gene_ids_list = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
+            if target_gene_ids_list:
+                target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
+                target_genes_details_df = get_gene_info_by_ids(
+                    assembly_id=target_assembly_id,
+                    gff_filepath=target_gff_path,
+                    db_storage_dir=gff_db_cache_dir,
+                    gene_ids=target_gene_ids_list,
+                    status_callback=log,
+                    gene_id_regex=target_genome_info.gene_id_regex  # 传递目标正则
+                )
+                if not target_genes_details_df.empty:
+                    locus_bounds = target_genes_details_df.groupby('chrom').agg(min_start=('start', 'min'),
+                                                                                max_end=('end', 'max')).reset_index()
+                    summary_parts = [f"{row['chrom']}:{row['min_start']}-{row['max_end']}" for _, row in
+                                     locus_bounds.iterrows()]
+                    target_locus_summary = ", ".join(summary_parts)
+
+        # 步骤 4: 写入最终的CSV文件
+        header_line1 = f"# 源基因组的位点（即用户输入的位点）: {source_assembly_id} | {region[0]}:{region[1]}-{region[2]}\n"
+        header_line2 = f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id} | {target_locus_summary}\n"
+        failed_genes_str = ",".join(failed_genes) if failed_genes else "无"
+        header_line3 = f"# 匹配失败的源基因 ({len(failed_genes)}): {failed_genes_str}\n"
+
+        output_dir = os.path.dirname(output_path)
+        if output_dir: os.makedirs(output_dir, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
+            f.write(header_line1)
+            f.write(header_line2)
+            f.write(header_line3)
+            if mapped_df is not None and not mapped_df.empty:
+                mapped_df.to_csv(f, index=False, lineterminator='\n')
+            else:
+                f.write("# 未找到任何成功的同源匹配。\n")
+
+        log(f"位点转换结果已成功保存到: {output_path}", "SUCCESS")
+
     except Exception as e:
         log(f"位点转换流程出错: {e}", "ERROR")
         log(traceback.format_exc(), "DEBUG")
-
 
 def run_ai_task(
         config: MainConfig,

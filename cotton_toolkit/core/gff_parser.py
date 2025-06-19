@@ -25,7 +25,7 @@ db_cache = Cache("gff_databases_cache/db_objects")  # 使用 diskcache 缓存数
 
 def _find_full_seqid(db: gffutils.FeatureDB, chrom_part: str, log: Callable) -> Optional[str]:
     """
-    【新增辅助函数】使用正则表达式在数据库中查找完整的序列ID (seqid)。
+    使用正则表达式在数据库中查找完整的序列ID (seqid)。
     例如，将用户输入的 'A01' 匹配到数据库中的 'Ghir_A01'。
     """
     all_seqids = list(db.seqids())
@@ -87,47 +87,50 @@ def _gff_gene_filter(gff_filepath: str) -> Iterator[Union[gffutils.feature.Featu
                     logger.warning(f"Skipping malformed GFF line: {line.strip()} | Error: {e}")
 
 
-def create_gff_database(gff_filepath: str, db_path: str, force: bool = False,
-                        status_callback: Optional[Callable[[str, str], None]] = None):
+def create_gff_database(
+        gff_filepath: str,
+        db_path: str,
+        force: bool = False,
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        id_regex: Optional[str] = None  # <<< 新增参数
+):
     """
     从 GFF3 文件创建 gffutils 数据库。
-    【已修改】现在只索引 feature 类型为 'gene' 的条目来加速建库。
+    现在可以使用正则表达式来规范化数据库中的主键ID。
     """
     log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
 
-    # --- 不仅检查文件是否存在，还检查文件大小是否大于0 ---
-    # 这可以防止因之前创建失败而留下的0字节文件导致后续错误。
     if os.path.exists(db_path) and os.path.getsize(db_path) > 0 and not force:
         log(f"数据库 '{os.path.basename(db_path)}' 已存在且有效，直接使用。", "DEBUG")
-        return db_path
-
-    # 如果文件存在但为空，或者需要强制重建，则打印相应信息
-    if os.path.exists(db_path) and not force:
-        log(f"数据库 '{os.path.basename(db_path)}' 已存在，直接使用。", "DEBUG")
         return db_path
 
     db_dir = os.path.dirname(db_path)
     if not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
-    log(f"正在创建GFF数据库(仅包含基因)：{os.path.basename(db_path)} 从 {os.path.basename(gff_filepath)}",
-        "INFO")  # 修改了日志信息
+    log(f"正在创建GFF数据库(仅包含基因)：{os.path.basename(db_path)} 从 {os.path.basename(gff_filepath)}", "INFO")
 
     try:
-        # --- 核心修改 ---
-        # 使用 _gff_gene_filter 生成器作为 gffutils.create_db 的输入
+        # --- 核心修改：定义ID规范化函数 ---
+        def id_spec_func(feature):
+            # 如果提供了正则表达式，则用它来处理ID，否则返回原始ID
+            original_id = feature.attributes.get('ID', [None])[0]
+            if not original_id:
+                return None  # 如果没有ID属性，则忽略此特征
+            return _apply_regex_to_id(original_id, id_regex) if id_regex else original_id
+
         gene_iterator = _gff_gene_filter(gff_filepath)
 
         gffutils.create_db(
-            gene_iterator,  # <--- 使用迭代器而不是文件路径
+            gene_iterator,
             dbfn=db_path,
             force=force,
+            id_spec=id_spec_func,
             keep_order=True,
             merge_strategy="merge",
             sort_attribute_values=True,
-            disable_infer_transcripts=True,  # 保持不变
-            disable_infer_genes=True,  # 保持不变
-
+            disable_infer_transcripts=True,
+            disable_infer_genes=True,
         )
         log(f"成功创建GFF数据库: {os.path.basename(db_path)}", "INFO")
         return db_path
@@ -180,13 +183,13 @@ def get_genes_in_region(
         assembly_id: str,
         gff_filepath: str,
         db_storage_dir: str,
-        region: Tuple[str, int, int],  # region 参数现在被理解为 (用户输入的染色体部分, start, end)
+        region: Tuple[str, int, int],
         force_db_creation: bool = False,
-        status_callback: Optional[Callable[[str, str], None]] = None
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        gene_id_regex: Optional[str] = None  # <<< 新增参数
 ) -> List[Dict[str, Any]]:
     """
-    【已修改】从GFF文件中查找位于特定染色体区域内的所有基因。
-    现在能够智能匹配染色体ID。
+    从GFF文件中查找位于特定染色体区域内的所有基因。
     """
     log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
 
@@ -194,26 +197,20 @@ def get_genes_in_region(
     user_chrom_part, start, end = region
 
     try:
-        created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback)
+        # 将正则表达式传递给数据库创建函数
+        created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback,
+                                              id_regex=gene_id_regex)
         if not created_db_path:
             raise RuntimeError("无法获取或创建GFF数据库，无法查询区域基因。")
 
         db = gffutils.FeatureDB(created_db_path, keep_order=True)
-
-        # --- 核心修改 ---
-        # 1. 调用辅助函数，用用户输入的部分ID去查找完整的ID
         full_seqid = _find_full_seqid(db, user_chrom_part, log)
 
         if not full_seqid:
-            return []  # 如果找不到匹配的染色体，直接返回空列表
+            return []
 
-        # 2. 使用查找到的完整ID进行区域查询
         log(f"正在查询区域: {full_seqid}:{start}-{end} (用户输入: {user_chrom_part})", "INFO")
         genes_in_region = list(db.region(region=(full_seqid, start, end), featuretype='gene'))
-
-        if not genes_in_region:
-            log(f"在区域 {full_seqid}:{start}-{end} 未找到 'gene' 类型的特征。", "WARNING")
-            return []
 
         results = [extract_gene_details(gene) for gene in genes_in_region]
         log(f"在区域内共找到 {len(results)} 个基因。", "INFO")
@@ -231,17 +228,17 @@ def get_gene_info_by_ids(
         db_storage_dir: str,
         gene_ids: List[str],
         force_db_creation: bool = False,
-        status_callback: Optional[Callable[[str, str], None]] = None
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        gene_id_regex: Optional[str] = None # <<< 新增参数
 ) -> pd.DataFrame:
     """
-    【全新实现】根据基因ID列表，从GFF数据库中批量查询基因信息。
+    根据基因ID列表，从GFF数据库中批量查询基因信息。
     """
     log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
-
     db_path = os.path.join(db_storage_dir, f"{assembly_id}_genes.db")
-
     try:
-        created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback)
+        # 将正则表达式传递给数据库创建函数
+        created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback, id_regex=gene_id_regex)
         if not created_db_path:
             raise RuntimeError("无法获取或创建GFF数据库，无法查询基因ID。")
 
@@ -251,6 +248,7 @@ def get_gene_info_by_ids(
         found_genes = []
         not_found_ids = []
 
+        # 由于数据库的键现在是标准化的，我们可以直接进行精确查找
         for gene_id in gene_ids:
             try:
                 gene_feature = db[gene_id]
@@ -259,11 +257,9 @@ def get_gene_info_by_ids(
                 not_found_ids.append(gene_id)
 
         if not_found_ids:
-            log(f"警告: {len(not_found_ids)} 个基因ID未在GFF数据库中找到: {', '.join(not_found_ids[:5])}{'...' if len(not_found_ids) > 5 else ''}",
-                "WARNING")
+            log(f"警告: {len(not_found_ids)} 个基因ID未在GFF数据库中找到: {', '.join(not_found_ids[:5])}{'...' if len(not_found_ids) > 5 else ''}", "WARNING")
 
         if not found_genes:
-            log("未找到任何匹配的基因信息。", "INFO")
             return pd.DataFrame()
 
         result_df = pd.DataFrame(found_genes)
