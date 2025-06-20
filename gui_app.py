@@ -64,28 +64,114 @@ class CottonToolkitApp(ctk.CTk):
         "openai_compatible": {"name": _("通用OpenAI兼容接口")}
     }
 
+    # 在 gui_app.py 的 CottonToolkitApp 类中
+
     def __init__(self):
         super().__init__()
 
-        self.title_text_key = "友好棉花基因组工具包 - FCGT"
+        self.title_text_key = _("友好棉花基因组工具包 - FCGT")
         self.title(_(self.title_text_key))
-        self.geometry("1000x700")
-        self.minsize(1000, 700)
+        self.geometry("1000x700")  # 建议稍微调大初始尺寸
+        self.minsize(800, 600)
 
-        # --- 【第1步】初始化所有变量 ---
-        self.log_queue = queue.Queue()
+        # ======================================================================
+        # --- 步骤 1: 声明并初始化所有实例属性 ---
+        # ======================================================================
+
+        # --- 核心数据 ---
         self.current_config: Optional[MainConfig] = None
         self.config_path: Optional[str] = None
-        self.ui_settings: Dict[str, Any] = {}
+        self.genome_sources_data: Optional[Dict[str, Any]] = None
+        self.excel_sheet_cache: Dict[str, List[str]] = {}
+
+        # --- 任务与消息队列 ---
+        self.log_queue: Queue = Queue()
         self.message_queue: Queue = Queue()
+        self.active_task_name: Optional[str] = None
+        self.progress_dialog: Optional[ProgressDialog] = None
+        self.cancel_current_task_event = threading.Event()
+        self.cancel_model_fetch_event = threading.Event()
+        self.error_dialog_lock = threading.Lock()
+
+        # --- UI状态与设置 ---
+        self.ui_settings: Dict[str, Any] = {}
         self.about_window: Optional[ctk.CTkToplevel] = None
         self.translatable_widgets: Dict[ctk.CTkBaseClass, Any] = {}
-        self.active_task_name: Optional[str] = None
         self.log_viewer_visible: bool = False
-        self.error_dialog_lock: threading.Lock = threading.Lock()
-        self.tool_tab_frames: Dict[str, ctk.CTkFrame] = {}
-        self.tool_tab_ui_loaded: Dict[str, bool] = {}
-        # --- 为富集分析与绘图功能初始化所有Tkinter变量 ---
+
+        # --- 主框架 ---
+        self.top_frame = None
+        self.navigation_frame = None
+        self.main_content_frame = None
+        self.home_frame = None
+        self.editor_frame = None
+        self.integrate_frame = None
+        self.tools_frame = None
+        self.log_viewer_frame = None
+        self.status_bar_frame = None
+        self.tools_notebook = None
+
+        # --- 字体和颜色 ---
+        self._setup_fonts()
+        self.secondary_text_color = ("#495057", "#999999")
+        self.placeholder_color = ("#868e96", "#5c5c5c")
+        self.default_text_color = ctk.ThemeManager.theme["CTkTextbox"]["text_color"]
+        try:
+            self.default_label_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
+        except Exception:
+            self.default_label_text_color = ("#000000", "#FFFFFF")
+
+        # --- 图像资源 ---
+        self.logo_image = self._load_image_resource("logo.png", (48, 48))
+        self.home_icon = self._load_image_resource("home.png")
+        self.integrate_icon = self._load_image_resource("integrate.png")
+        self.tools_icon = self._load_image_resource("tools.png")
+        self.settings_icon = self._load_image_resource("settings.png")
+        self.folder_icon = self._load_image_resource("folder.png")
+        self.new_file_icon = self._load_image_resource("new-file.png")
+        self.help_icon = self._load_image_resource("help.png")
+        self.info_icon = self._load_image_resource("info.png")
+
+        # --- Tkinter变量 ---
+        # 通用
+        self.selected_language_var = tk.StringVar()
+        self.selected_appearance_var = tk.StringVar()
+        # 下载页面
+        self.download_genome_vars: Dict[str, tk.BooleanVar] = {}
+        self.download_force_checkbox_var = tk.BooleanVar(value=False)
+        self.download_proxy_var = tk.BooleanVar(value=False)
+        # 联合分析页面
+        self.selected_bsa_assembly = tk.StringVar()
+        self.selected_hvg_assembly = tk.StringVar()
+        self.selected_bsa_sheet = tk.StringVar()
+        self.selected_hvg_sheet = tk.StringVar()
+        self.integrate_log2fc_var = tk.StringVar(value="1.0")
+        # AI助手页面
+        self.ai_task_type_var = tk.StringVar(value=_("翻译"))
+        self.ai_proxy_var = tk.BooleanVar(value=False)
+        self.ai_temperature_var = tk.DoubleVar(value=0.7)
+        self.ai_selected_provider_var = tk.StringVar()
+        self.ai_selected_model_var = tk.StringVar()
+        # 工具 - 基因组转换
+        self.selected_homology_source_assembly = tk.StringVar()
+        self.selected_homology_target_assembly = tk.StringVar()
+        self.homology_top_n_var = tk.StringVar(value="1")
+        self.homology_evalue_var = tk.StringVar(value="1e-10")
+        self.homology_pid_var = tk.StringVar(value="30.0")
+        self.homology_score_var = tk.StringVar(value="50.0")
+        self.homology_strict_priority_var = tk.BooleanVar(value=True)
+        # 工具 - 位点转换
+        self.selected_locus_source_assembly = tk.StringVar()
+        self.selected_locus_target_assembly = tk.StringVar()
+        self.locus_strict_priority_var = tk.BooleanVar(value=True)
+        # 工具 - GFF查询
+        self.selected_gff_query_assembly = tk.StringVar()
+        # 工具 - 功能注释与富集分析
+        self.selected_annotation_assembly = tk.StringVar()
+        self.go_anno_var = tk.BooleanVar(value=True)
+        self.ipr_anno_var = tk.BooleanVar(value=True)
+        self.kegg_ortho_anno_var = tk.BooleanVar(value=False)
+        self.kegg_path_anno_var = tk.BooleanVar(value=False)
         self.analysis_type_var = tk.StringVar(value="GO")
         self.has_header_var = tk.BooleanVar(value=False)
         self.has_log2fc_var = tk.BooleanVar(value=False)
@@ -100,21 +186,11 @@ class CottonToolkitApp(ctk.CTk):
         self.bar_plot_var = tk.BooleanVar(value=True)
         self.upset_plot_var = tk.BooleanVar(value=False)
         self.cnet_plot_var = tk.BooleanVar(value=False)
-        self.enrichment_output_dir_entry = None
-        self.enrichment_output_dir_entry = None
 
-        # 日志同步
-        setup_global_logger(log_level_str="INFO", log_queue=self.log_queue)
-
-        #  用于管理后台任务
-        self.progress_dialog: Optional[ProgressDialog] = None
-        self.cancel_current_task_event = threading.Event()
-
-        # 定义UI中使用的占位符文本
+        # --- 占位符 ---
         self.placeholder_key_homology = "placeholder_genes_homology"
         self.placeholder_key_gff_genes = "placeholder_genes_gff"
         self.placeholder_key_gff_region = "placeholder_gff_region"
-
         self.placeholders = {
             self.placeholder_key_homology: _(
                 "输入基因ID (每行一个或用逗号/Tab分隔)。\n"
@@ -131,7 +207,7 @@ class CottonToolkitApp(ctk.CTk):
             self.placeholder_key_gff_region: "例如: A03:1000-2000",
         }
 
-        # --- 关键修改：定义固定的、程序化的选项卡键和顺序 ---
+        # --- 选项卡和编辑器状态 ---
         self.TAB_TITLE_KEYS = {
             "download": "数据下载",
             "homology": "基因组转换",
@@ -142,97 +218,28 @@ class CottonToolkitApp(ctk.CTk):
             "genome_identifier": "基因组类别鉴定",
             "xlsx_to_csv": "XLSX转CSV"
         }
-        # 这个列表保证了选项卡的显示顺序是固定的
+
         self.TOOL_TAB_ORDER = ["download", "homology", "locus_conversion", "gff_query", "annotation", "ai_assistant",
                                "genome_identifier", "xlsx_to_csv"]
+        self.tool_tab_frames: Dict[str, ctk.CTkFrame] = {}
+        self.tool_tab_ui_loaded: Dict[str, bool] = {}
+        self.editor_ui_built: bool = False
 
-        self.editor_ui_loaded: bool = False
+        # ======================================================================
+        # --- 步骤 2: 初始化日志、加载设置并创建UI布局 ---
+        # ======================================================================
 
-        self.cancel_model_fetch_event: threading.Event = threading.Event()
-        self.progress_dialog: Optional[ctk.CTkToplevel] = None
-        self.progress_dialog_text_var: Optional[tk.StringVar] = None
-        self.progress_dialog_bar: Optional[ctk.CTkProgressBar] = None
-
-        self.excel_sheet_cache = {}
-
-        self.placeholder_genes_homology_key: str = "例如:\nGhir.A01G000100\nGhir.A01G000200\n(每行一个基因ID，或逗号分隔)"
-        self.placeholder_genes_gff_key: str = "例如:\nGhir.D05G001800\nGhir.D05G001900\n(每行一个基因ID，与下方区域查询二选一)"
-
-        self.DOWNLOAD_TASK_KEY = "download"
-        self.INTEGRATE_TASK_KEY = "integrate"
-        self.HOMOLOGY_MAP_TASK_KEY = "homology_map"
-        self.GFF_QUERY_TASK_KEY = "gff_query"
-
-        self.selected_language_var = tk.StringVar()
-        self.selected_appearance_var = tk.StringVar()
-        self.ai_task_type_var = tk.StringVar(value=_("翻译"))
-        self.go_anno_var = tk.BooleanVar(value=True)
-        self.ipr_anno_var = tk.BooleanVar(value=True)
-        self.kegg_ortho_anno_var = tk.BooleanVar(value=False)
-        self.kegg_path_anno_var = tk.BooleanVar(value=False)
-        self.selected_bsa_assembly = tk.StringVar()
-        self.selected_hvg_assembly = tk.StringVar()
-        self.selected_bsa_sheet = tk.StringVar()
-        self.selected_hvg_sheet = tk.StringVar()
-        self.selected_homology_source_assembly = tk.StringVar()
-        self.selected_homology_target_assembly = tk.StringVar()
-        self.selected_gff_query_assembly = tk.StringVar()
-        self.download_force_checkbox_var = tk.BooleanVar()
-        self.download_genome_vars: Dict[str, tk.BooleanVar] = {}
-        self.download_proxy_var = tk.BooleanVar(value=False)
-        self.ai_proxy_var = tk.BooleanVar(value=False)
-        self.selected_locus_source_assembly = tk.StringVar()
-        self.selected_locus_target_assembly = tk.StringVar()
-        self.selected_annotation_assembly = tk.StringVar()
-
-        self.homology_map_s2b_file_path_var = tk.StringVar(value=_("根据基因组自动识别"))
-        self.homology_map_b2t_file_path_var = tk.StringVar(value=_("根据基因组自动识别"))
-        self.locus_conversion_s2b_file_path_var = tk.StringVar(value=_("根据基因组自动识别"))
-        self.locus_conversion_b2t_file_path_var = tk.StringVar(value=_("根据基因组自动识别"))
-
-        self.homology_map_gene_input_widget = None
-        self.locus_conversion_gene_input_widget = None
-        self.gff_query_gene_input_widget = None
-        self.annotation_gene_input_widget = None
-        self.identifier_genes_textbox = None
-        self.identifier_result_label = None
-
-        self.genome_sources_data: Optional[Dict[str, Any]] = None
-
-        # --- 【新增】为新UI控件初始化Tkinter变量 ---
-        self.homology_top_n_var = tk.StringVar(value="1")
-        self.homology_evalue_var = tk.StringVar(value="1e-10")
-        self.homology_pid_var = tk.StringVar(value="30.0")
-        self.homology_score_var = tk.StringVar(value="50.0")
-        self.homology_strict_priority_var = tk.BooleanVar(value=True) # “基因组转换”的开关，默认开启
-        self.locus_strict_priority_var = tk.BooleanVar(value=True)    # “位点转换”的开关，默认开启
-        self.ai_temperature_var = tk.DoubleVar(value=0.7)
-        self.integrate_log2fc_var = tk.StringVar(value="1.0")
-
-        self._setup_fonts()
-
-        self.secondary_text_color = ("#495057", "#999999")
-        self.placeholder_color = ("#868e96", "#5c5c5c")
-        self.default_text_color = ctk.ThemeManager.theme["CTkTextbox"]["text_color"]
-        try:
-            self.default_label_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-        except Exception:
-            self.default_label_text_color = ("#000000", "#FFFFFF")
-
-        self.logo_image = self._load_image_resource("logo.png", (48, 48))
-        self.home_icon = self._load_image_resource("home.png")
-        self.integrate_icon = self._load_image_resource("integrate.png")
-        self.tools_icon = self._load_image_resource("tools.png")
-        self.settings_icon = self._load_image_resource("settings.png")
-        self.folder_icon = self._load_image_resource("folder.png")
-        self.new_file_icon = self._load_image_resource("new-file.png")
-        self.help_icon = self._load_image_resource("help.png")
-        self.info_icon = self._load_image_resource("info.png")
+        setup_global_logger(log_level_str="INFO", log_queue=self.log_queue)
 
         self._load_ui_settings()
         self._create_layout()
         self._init_pages_and_final_setup()
+
+        # ======================================================================
+        # --- 步骤 3: 启动后台加载任务 ---
+        # ======================================================================
         self._start_app_async_startup()
+
 
     def toggle_log_viewer(self):
         """切换日志文本框的可见性。"""
@@ -410,6 +417,7 @@ class CottonToolkitApp(ctk.CTk):
         # 创建日志文本框，但先不显示
         self.log_textbox = ctk.CTkTextbox(self.log_viewer_frame, height=140, state="disabled", wrap="word",
                                           font=self.app_font)
+        self._bind_mouse_wheel_to_scrollable(self.log_textbox)
         # 注意：这里只创建，不调用 .grid()，因为它默认是隐藏的
 
         self._update_log_tag_colors()
@@ -800,6 +808,7 @@ class CottonToolkitApp(ctk.CTk):
             label = ctk.CTkLabel(row_frame, text=label_text, font=self.app_font)
             label.grid(row=0, column=0, sticky="nw", padx=(5, 10))
             textbox = ctk.CTkTextbox(row_frame, height=120, font=self.app_font, wrap="word")
+            self._bind_mouse_wheel_to_scrollable(textbox)
             textbox.grid(row=0, column=1, sticky="ew")
             if tooltip:
                 tooltip_label = ctk.CTkLabel(row_frame, text=tooltip, font=self.app_comment_font,
@@ -911,10 +920,31 @@ class CottonToolkitApp(ctk.CTk):
             card = create_provider_card(providers_container_frame, provider_display_name)
             safe_key = p_key.replace('-', '_')
 
+            # API Key 输入行
             apikey_entry = create_entry_row(card, "  " + _("API Key"), "")
-            model_selector = create_model_selector_row(card, "  " + _("模型"), _("要使用的模型名称。"), p_key)
-            baseurl_entry = create_entry_row(card, "  " + _("Base URL"), "")
 
+            # 模型选择器行
+            model_selector = create_model_selector_row(card, "  " + _("模型"), _("要使用的模型名称。"), p_key)
+
+            # Base URL 输入行
+            baseurl_entry = create_entry_row(card, "  " + _("Base URL"),
+                                             _("部分服务商或代理需要填写，例如 http://localhost:8080/v1"))
+
+            # --- 新增：测试连接按钮 ---
+            test_button_frame = ctk.CTkFrame(card, fg_color="transparent")
+            test_button_frame.grid(row=card.grid_size()[1], column=1, sticky="e", padx=10, pady=(5, 10))
+
+            test_button = ctk.CTkButton(
+                test_button_frame,
+                text=_("测试连接"),
+                width=100,
+                font=self.app_font,
+                # 使用 lambda 传递当前的服务商key
+                command=lambda p_k=p_key: self.start_ai_connection_test(p_k)
+            )
+            test_button.pack()
+
+            # 保存对控件的引用
             setattr(self, f"ai_{safe_key}_apikey_entry", apikey_entry)
             setattr(self, f"ai_{safe_key}_model_selector", model_selector)
             setattr(self, f"ai_{safe_key}_baseurl_entry", baseurl_entry)
@@ -973,7 +1003,53 @@ class CottonToolkitApp(ctk.CTk):
         self.b2t_pid_entry = create_entry_row(parent, _("PID阈值"), _("匹配PID的最小值。"))
         self.b2t_score_entry = create_entry_row(parent, _("Score阈值"), _("匹配Score的最小值。"))
 
-    # ==================== 请将以下完整方法添加到您的 App 类中 ====================
+    def start_ai_connection_test(self, provider_key: str):
+        """
+        启动一个后台任务来测试指定的AI服务商连接。
+        """
+        self._log_to_viewer(f"INFO: 正在测试 '{provider_key}' 的连接...")
+
+        # 1. 从UI输入框直接获取最新的配置信息
+        safe_key = provider_key.replace('-', '_')
+        try:
+            api_key = getattr(self, f"ai_{safe_key}_apikey_entry").get().strip()
+
+            model_selector = getattr(self, f"ai_{safe_key}_model_selector")
+            _frame, entry, dropdown, dropdown_var, _button = model_selector
+            model = dropdown_var.get() if dropdown.winfo_viewable() else entry.get().strip()
+
+            base_url = getattr(self, f"ai_{safe_key}_baseurl_entry").get().strip() or None
+        except AttributeError:
+            self.show_error_message(_("UI错误"), _("配置编辑器UI尚未完全加载。"))
+            return
+
+        # 2. 检查代理设置
+        proxies = None
+        if self.ai_proxy_var.get():
+            http_proxy = self.downloader_proxy_http_entry.get().strip()
+            https_proxy = self.downloader_proxy_https_entry.get().strip()
+            if http_proxy or https_proxy:
+                proxies = {'http': http_proxy, 'https': https_proxy}
+
+        # 3. 显示一个小的“测试中”弹窗
+        self.progress_dialog = ProgressDialog(self, title=_("正在测试..."), app_font=self.app_font)
+        self.progress_dialog.update_progress(0, _("正在连接到 {}...").format(provider_key))
+
+        # 4. 在后台线程中执行测试
+        def test_thread():
+            success, message = AIWrapper.test_connection(
+                provider=provider_key,
+                api_key=api_key,
+                model=model,
+                base_url=base_url,
+                proxies=proxies
+            )
+            # 将结果放入消息队列，由主线程处理
+            self.message_queue.put(("ai_test_result", (success, message)))
+
+        threading.Thread(target=test_thread, daemon=True).start()
+
+
 
     def _apply_config_values_to_editor(self):
         """
@@ -1544,27 +1620,73 @@ class CottonToolkitApp(ctk.CTk):
             self.ai_analyze_prompt_textbox.insert("1.0", analy_prompt)
 
     def _populate_ai_assistant_tab_structure(self, page):
-        """创建AI助手页面，为不同任务提供独立的、可编辑的Prompt输入框。"""
+        """
+        创建AI助手页面UI。
+        - 用交互式下拉菜单替换静态信息显示。
+        - 添加“刷新模型”和“测试连接”按钮。
+        """
         page.grid_columnconfigure(0, weight=1)
-        page.grid_rowconfigure(1, weight=1)  # Row for main_card
+        page.grid_rowconfigure(2, weight=1)  # 让主卡片可以垂直扩展
 
+        # --- 1. 顶部标题 ---
         ctk.CTkLabel(page, text=_("使用AI批量处理表格数据"), font=self.app_title_font, wraplength=500).grid(
-            row=0, column=0, pady=(20, 10), padx=20, sticky="n")  # Use grid
+            row=0, column=0, pady=(20, 10), padx=20, sticky="n")
 
-        # AI信息卡片
-        ai_info_card = ctk.CTkFrame(page, fg_color=("gray90", "gray20"))
-        ai_info_card.grid(row=1, column=0, sticky="ew", padx=20, pady=10)  # Use grid
-        ai_info_card.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(ai_info_card, text=_("当前AI配置:"), font=self.app_font_bold).grid(row=0, column=0, padx=10,
-                                                                                        pady=(10, 5), sticky="w")
-        self.ai_info_provider_label = ctk.CTkLabel(ai_info_card, text=_("服务商: -"), font=self.app_font)
-        self.ai_info_provider_label.grid(row=1, column=0, padx=20, pady=2, sticky="w")
-        self.ai_info_model_label = ctk.CTkLabel(ai_info_card, text=_("模型: -"), font=self.app_font)
-        self.ai_info_model_label.grid(row=1, column=1, padx=10, pady=2, sticky="w")
-        self.ai_info_key_label = ctk.CTkLabel(ai_info_card, text=_("API Key: -"), font=self.app_font)
-        self.ai_info_key_label.grid(row=2, column=0, columnspan=2, padx=20, pady=(2, 10), sticky="w")
+        # --- 2. AI模型选择卡片 ---
+        model_card = ctk.CTkFrame(page)
+        model_card.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
+        model_card.grid_columnconfigure(1, weight=1)
 
-        # --- UI主要功能区域 ---
+        # 服务商选择
+        ctk.CTkLabel(model_card, text=_("AI服务商:"), font=self.app_font_bold).grid(
+            row=0, column=0, padx=10, pady=(10, 5), sticky="w")
+
+        provider_display_names = [v['name'] for v in self.AI_PROVIDERS.values()]
+        self.ai_provider_dropdown = ctk.CTkOptionMenu(
+            model_card,
+            variable=self.ai_selected_provider_var,
+            values=provider_display_names,
+            font=self.app_font,
+            dropdown_font=self.app_font,
+            command=self._on_ai_provider_selected
+        )
+        self.ai_provider_dropdown.grid(row=0, column=1, columnspan=2, padx=10, pady=(10, 5), sticky="ew")
+
+        # 模型选择
+        ctk.CTkLabel(model_card, text=_("模型:"), font=self.app_font_bold).grid(
+            row=1, column=0, padx=10, pady=(5, 10), sticky="w")
+
+        model_selector_frame = ctk.CTkFrame(model_card, fg_color="transparent")
+        model_selector_frame.grid(row=1, column=1, columnspan=2, padx=10, pady=(5, 10), sticky="ew")
+        model_selector_frame.grid_columnconfigure(0, weight=1)
+
+        self.ai_model_entry = ctk.CTkEntry(model_selector_frame, textvariable=self.ai_selected_model_var,
+                                           font=self.app_font)
+        self.ai_model_entry.grid(row=0, column=0, sticky="ew")
+
+        self.ai_model_dropdown = ctk.CTkOptionMenu(
+            model_selector_frame,
+            variable=self.ai_selected_model_var,
+            values=[_("点击刷新")],
+            font=self.app_font,
+            dropdown_font=self.app_font
+        )
+        self.ai_model_dropdown.grid(row=0, column=0, sticky="ew")
+        self.ai_model_dropdown.grid_remove()  # 默认隐藏
+
+        # 操作按钮
+        button_frame = ctk.CTkFrame(model_selector_frame, fg_color="transparent")
+        button_frame.grid(row=0, column=1, padx=(10, 0))
+
+        refresh_button = ctk.CTkButton(button_frame, text=_("刷新"), width=60, font=self.app_font,
+                                       command=self._refresh_ai_models_on_tab)
+        refresh_button.pack(side="left", padx=(0, 5))
+
+        test_button = ctk.CTkButton(button_frame, text=_("测试"), width=60, font=self.app_font,
+                                    command=self.start_ai_test_on_tab)
+        test_button.pack(side="left")
+
+        # --- 3. 任务参数卡片 ---
         main_card = ctk.CTkFrame(page)
         main_card.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 10))  # Use grid
         main_card.grid_columnconfigure(1, weight=1)
@@ -1599,9 +1721,11 @@ class CottonToolkitApp(ctk.CTk):
         # Create Prompt input boxes for translation and analysis tasks
         self.ai_translate_prompt_textbox = ctk.CTkTextbox(main_card, height=100, font=self.app_font)
         self.ai_translate_prompt_textbox.grid(row=3, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="nsew")
+        self._bind_mouse_wheel_to_scrollable(self.ai_translate_prompt_textbox)
 
         self.ai_analyze_prompt_textbox = ctk.CTkTextbox(main_card, height=100, font=self.app_font)
         self.ai_analyze_prompt_textbox.grid(row=3, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="nsew")
+        self._bind_mouse_wheel_to_scrollable(self.ai_analyze_prompt_textbox)
 
         # Other parameters
         param_frame = ctk.CTkFrame(main_card, fg_color="transparent")
@@ -1628,10 +1752,7 @@ class CottonToolkitApp(ctk.CTk):
         self.ai_start_button.grid(row=3, column=0, sticky="ew", padx=20,
                                   pady=(0, 20))  # Use grid for consistency within 'page'
 
-        # Initial display of the correct Prompt input box based on default task type
-        self._on_ai_task_type_change(self.ai_task_type_var.get())
-
-        # 【新增】Temperature 滑块
+        # Temperature 滑块
         temp_frame = ctk.CTkFrame(main_card, fg_color="transparent")
         temp_frame.grid(row=6, column=0, columnspan=3, sticky="ew", padx=5, pady=10)
         temp_frame.grid_columnconfigure(1, weight=1)
@@ -1646,6 +1767,14 @@ class CottonToolkitApp(ctk.CTk):
         self.ai_temperature_var.trace_add("write", lambda *args: temp_value_label.configure(
             text=f"{self.ai_temperature_var.get():.2f}"))
         temp_value_label.grid(row=0, column=2)
+
+
+
+        # 初始加载时，根据默认任务类型显示正确的Prompt输入框
+        self._on_ai_task_type_change(self.ai_task_type_var.get())
+        self._load_prompts_to_ai_tab()
+
+
 
     def _on_ai_task_type_change(self, choice):
         """根据AI任务类型切换显示的Prompt输入框。"""
@@ -1699,133 +1828,116 @@ class CottonToolkitApp(ctk.CTk):
             'config': self.current_config,
             'gene_ids': gene_ids,
             'source_genome': assembly_id,
-            'target_genome': assembly_id,
+            'target_genome': assembly_id, # 对于简单注释，源和目标是相同的
             'bridge_species': self.current_config.integration_pipeline.bridge_species_name,
             'annotation_types': anno_types,
             'output_path': output_path,
-            'output_dir': os.path.join(os.getcwd(), "annotation_results")
+            'output_dir': os.path.join(os.getcwd(), "annotation_results") # 提供一个备用目录
         }
 
         self._start_task(
-
             task_name=_("功能注释"),
-
             target_func=run_functional_annotation,
-
             kwargs=task_kwargs
-
         )
 
     def start_ai_task(self):
-        """启动AI任务，并从正确的UI控件获取Prompt。"""
-        if not self.current_config: self.show_error_message(_("错误"), _("请先加载配置文件。")); return
+        """
+        【最终版】启动AI任务。
+        此版本会从AI助手UI上当前选择的服务商和模型来执行任务，
+        并能正确处理配置的深拷贝和代理设置。
+        """
+        # 1. --- 前置检查 ---
+        if not self.current_config:
+            self.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
 
-        input_file = self.ai_input_file_entry.get().strip()
-        source_col = self.ai_source_col_entry.get().strip()
-        new_col = self.ai_new_col_entry.get().strip()
-        task_type_display = self.ai_task_type_var.get()
+        # 2. --- 从UI收集所有输入参数 ---
+        try:
+            input_file = self.ai_input_file_entry.get().strip()
+            source_col = self.ai_source_col_entry.get().strip()
+            new_col = self.ai_new_col_entry.get().strip()
+            task_type_display = self.ai_task_type_var.get()
+            cli_overrides = {"temperature": self.ai_temperature_var.get()}
 
-        cli_overrides = {"temperature": self.ai_temperature_var.get()}
+            # -- 从AI助手页面的专属下拉菜单获取服务商和模型 --
+            selected_provider_name = self.ai_selected_provider_var.get()
+            # 将显示名称 (如 "Google Gemini") 转换回内部关键字 (如 "google")
+            name_to_key_map = {v['name']: k for k, v in self.AI_PROVIDERS.items()}
+            provider_key = name_to_key_map.get(selected_provider_name)
 
+            model_name = self.ai_selected_model_var.get()
+
+            # 根据任务类型从对应的输入框获取Prompt
+            task_type = "analyze" if task_type_display == _("分析") else "translate"
+            if task_type == 'analyze':
+                prompt = self.ai_analyze_prompt_textbox.get("1.0", tk.END).strip()
+            else:  # 翻译任务
+                prompt = self.ai_translate_prompt_textbox.get("1.0", tk.END).strip()
+
+        except AttributeError as e:
+            self.show_error_message(_("UI错误"), f"{_('AI助手UI控件似乎尚未完全加载，无法启动任务。错误:')} {e}")
+            return
+
+        # 3. --- 输入验证 ---
         if not all([input_file, source_col, new_col]):
             self.show_error_message(_("输入缺失"), _("请输入文件路径、源列名和新列名。"))
             return
-
-        # --- 根据任务类型从对应的输入框获取Prompt ---
-        task_type = "analyze" if task_type_display == _("分析") else "translate"
-        if task_type == 'analyze':
-            prompt = self.ai_analyze_prompt_textbox.get("1.0", tk.END).strip()
-        else:
-            prompt = self.ai_translate_prompt_textbox.get("1.0", tk.END).strip()
-
+        if not provider_key or not model_name or model_name == _("点击刷新"):
+            self.show_error_message(_("配置缺失"), _("请选择一个有效的AI服务商和模型。"))
+            return
         if not prompt or "{text}" not in prompt:
             self.show_error_message(_("Prompt格式错误"), _("Prompt指令不能为空，且必须包含占位符 '{text}'。"))
             return
-        # --- 修改结束 ---
 
-        temp_config = self.current_config.copy()
-        proxy_status_msg = "OFF"
-        if self.ai_proxy_var.get():
-            proxies_cfg = self.current_config.get("downloader", {}).get("proxies")
-            if not proxies_cfg or not (proxies_cfg.get('http') or proxies_cfg.get('httpss')):
-                self.show_warning_message(_("代理未配置"), _("您开启了代理开关，但配置文件中未找到有效的代理地址。"))
-                return
-            proxy_status_msg = "ON"
-        else:
-            temp_config['downloader'] = self.current_config.get('downloader', {}).copy()
-            temp_config['downloader']['proxies'] = None
+        # 4. --- 创建并修改临时配置 ---
+        # 使用 deepcopy 创建一个完全独立的配置副本，用于本次任务
+        temp_config = copy.deepcopy(self.current_config)
 
-        output_dir_parent = os.path.dirname(input_file)
-        output_dir = os.path.join(output_dir_parent, "ai_results")
+        # 将当前UI上选择的服务商和模型更新到这个临时配置中
+        temp_config.ai_services.default_provider = provider_key
+        if provider_key in temp_config.ai_services.providers:
+            temp_config.ai_services.providers[provider_key].model = model_name
 
-        self._update_button_states(is_task_running=True)
-        self.active_task_name = _("AI 助手")
-        self._log_to_viewer(
-            f"{self.active_task_name} ({task_type_display}) {_('任务开始...')} ({_('代理')}: {proxy_status_msg})")
-        self.progress_bar.grid(row=0, column=1, padx=10, pady=5, sticky="e")
-        self.progress_bar.set(0)
-        self.progress_bar.start()
+        # 根据代理开关，决定是否在临时配置中包含代理信息
+        if not self.ai_proxy_var.get():
+            if temp_config.downloader:
+                temp_config.downloader.proxies = None  # 如果不用代理，则清空
+
+        # 5. --- 打包参数并启动后台任务 ---
+        task_kwargs = {
+            'config': temp_config,  # 使用修改过的临时配置
+            'input_file': input_file,
+            'source_column': source_col,
+            'new_column': new_col,
+            'task_type': task_type,
+            'custom_prompt_template': prompt,
+            'cli_overrides': cli_overrides,
+        }
 
         self._start_task(
             task_name=_("AI 助手任务"),
             target_func=run_ai_task,
-            kwargs={
-                'config': temp_config,
-                'input_file': input_file,
-                'output_dir': output_dir,
-                'source_column': source_col,
-                'new_column': new_col,
-                'task_type': task_type,
-                'custom_prompt_template': prompt,
-                'status_callback': self.gui_status_callback,
-                'cli_overrides': cli_overrides,
-            }
+            kwargs=task_kwargs
         )
 
     def _update_ai_assistant_tab_info(self):
-        """
-        更新AI助手页面的配置信息显示。
-        在尝试操作控件前先检查它们是否存在，以兼容懒加载。
-        """
-        if not hasattr(self, 'ai_info_provider_label') or not self.ai_info_provider_label.winfo_exists():
-            self._log_to_viewer("DEBUG: AI assistant info labels not yet created, skipping update.", "DEBUG")
-            return
+        """【已升级】更新AI助手页面的下拉菜单，以反映当前配置。"""
+        if not self.current_config: return
 
-        if not self.current_config:
-            provider, model, key_status = "-", "-", _("未加载配置")
-            key_color = self.secondary_text_color
-        else:
-            # 直接通过属性访问dataclass对象
-            ai_cfg = self.current_config.ai_services
-            provider_name = ai_cfg.default_provider
-            provider_cfg = ai_cfg.providers.get(provider_name)  # 获取ProviderConfig对象
+        # 1. 设置服务商下拉菜单
+        ai_cfg = self.current_config.ai_services
+        default_provider_key = ai_cfg.default_provider
+        provider_display_name = self.AI_PROVIDERS.get(default_provider_key, {}).get('name', default_provider_key)
+        self.ai_selected_provider_var.set(provider_display_name)
 
-            # 为了兼容旧的显示逻辑，我们反向查找一下显示名称
-            provider_display_name = provider_name
-            for p_key, p_info in self.AI_PROVIDERS.items():
-                if p_key == provider_name:
-                    provider_display_name = p_info.get('name', provider_name)
-                    break
+        # 2. 设置模型下拉菜单/输入框
+        provider_cfg = ai_cfg.providers.get(default_provider_key)
+        if provider_cfg and provider_cfg.model:
+            self.ai_selected_model_var.set(provider_cfg.model)
 
-            if provider_cfg:
-                model = provider_cfg.model
-                api_key = provider_cfg.api_key
-            else:
-                model = _("未设置")
-                api_key = ""
-
-            if not api_key or "YOUR_" in api_key or not api_key.strip():
-                key_status = _("未配置或无效")
-                key_color = ("#d9534f", "#e57373")  # red
-            else:
-                key_status = f"{api_key[:5]}...{api_key[-4:]} ({_('已配置')})"
-                key_color = ("#28a745", "#73bf69")  # green
-
-            provider = provider_display_name  # 使用显示名称
-
-        self.ai_info_provider_label.configure(text=f"{_('服务商')}: {provider}")
-        self.ai_info_model_label.configure(text=f"{_('模型')}: {model}")
-        self.ai_info_key_label.configure(text=f"{_('API Key')}: {key_status}", text_color=key_color)
+        # 3. 首次加载时，自动刷新一次模型列表
+        self._refresh_ai_models_on_tab()
 
     def _handle_textbox_focus_out(self, event, textbox_widget, placeholder_text_key):
         """当Textbox失去焦点时的处理函数"""
@@ -1987,6 +2099,7 @@ class CottonToolkitApp(ctk.CTk):
 
         self.log_textbox = ctk.CTkTextbox(self.log_viewer_frame, height=140, state="disabled", wrap="word",
                                           font=self.app_font)
+        self._bind_mouse_wheel_to_scrollable(self.log_textbox)
         self.log_textbox.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 10))
         self.log_textbox.tag_config("error_log", foreground="#d9534f")
         self.log_textbox.tag_config("warning_log", foreground="#f0ad4e")
@@ -2034,8 +2147,6 @@ class CottonToolkitApp(ctk.CTk):
 
         self.download_genomes_checkbox_frame = ctk.CTkScrollableFrame(target_card, label_text="")
         self.download_genomes_checkbox_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        self._bind_mouse_wheel_to_scrollable(self.download_genomes_checkbox_frame)
-
         self._bind_mouse_wheel_to_scrollable(self.download_genomes_checkbox_frame)
 
         options_frame = ctk.CTkFrame(page)
@@ -2247,6 +2358,7 @@ class CottonToolkitApp(ctk.CTk):
                                                                                                    sticky="w")
         self.homology_map_genes_textbox = ctk.CTkTextbox(main_input_frame, height=150, font=self.app_font, wrap="word")
         self.homology_map_genes_textbox.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+        self._bind_mouse_wheel_to_scrollable(self.homology_map_genes_textbox)
 
         self._add_placeholder(self.homology_map_genes_textbox, self.placeholder_key_homology)
         self.homology_map_genes_textbox.bind("<FocusIn>",
@@ -2412,6 +2524,7 @@ class CottonToolkitApp(ctk.CTk):
         ctk.CTkLabel(input_frame, text=_("输入基因ID (每行一个或逗号分隔，与区域查询二选一):"),
                      font=self.app_font_bold).grid(row=0, column=0, sticky="w", pady=(0, 5))
         self.gff_query_genes_textbox = ctk.CTkTextbox(input_frame, height=120, font=self.app_font, wrap="word")
+        self._bind_mouse_wheel_to_scrollable(self.gff_query_genes_textbox)
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", rowspan=2, padx=(0, 10))
         self.gff_query_genes_textbox.after(
             100,
@@ -3293,6 +3406,16 @@ class CottonToolkitApp(ctk.CTk):
                 elif message_type == "auto_identify_error":
                     self._log_to_viewer(f"自动识别基因组时发生错误: {data}", "ERROR")
 
+                elif message_type == "ai_test_result":
+                    # 关闭“测试中”弹窗
+                    if self.progress_dialog:
+                        self.progress_dialog.close()
+
+                    success, message = data
+                    if success:
+                        self.show_info_message(_("测试成功"), message)
+                    else:
+                        self.show_error_message(_("测试失败"), message)
 
         except queue.Empty:
             pass
@@ -3321,32 +3444,11 @@ class CottonToolkitApp(ctk.CTk):
 
     def _bind_mouse_wheel_to_scrollable(self, widget):
         """
-        为 CustomTkinter 的可滚动widget（如 CTkScrollableFrame, CTkTextbox）绑定鼠标滚轮事件。
-        直接绑定到 CustomTkinter 控件，因为它会处理底层的 Tkinter 组件。
-        注意：CustomTkinter 在内部已经为 CTkScrollableFrame 和 CTkTextbox 实现了基本的滚轮功能。
-        这个方法主要用于确保自定义的或额外的滚轮绑定能够正常工作，
-        或者在某些情况下增强默认行为（尽管通常不推荐修改CTk的内部实现）。
-
-        对于 CTkScrollableFrame，它内部有一个 canvas，事件需要绑定到 canvas 上。
-        对于 CTkTextbox，它有自己的内部 Text 控件，事件需要绑定到该 Text 控件上。
+        将鼠标进入事件绑定到控件，使其自动获取焦点，从而启用滚轮滚动。
         """
-        # 对于 CTkScrollableFrame
-        if hasattr(widget, "_canvas") and isinstance(widget._canvas, ctk.CTkCanvas):
-            canvas = widget._canvas
-            canvas.bind("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"),
-                        add="+")
-            canvas.bind("<Button-4>", lambda event: canvas.yview_scroll(-1, "units"), add="+")  # Linux scroll up
-            canvas.bind("<Button-5>", lambda event: canvas.yview_scroll(1, "units"), add="+")  # Linux scroll down
-            self._log_to_viewer(f"DEBUG: Bound mouse wheel to CTkScrollableFrame canvas: {widget}", "DEBUG")
+        if widget and hasattr(widget, 'focus_set'):
+            widget.bind("<Enter>", lambda event, w=widget: w.focus_set())
 
-        # 对于 CTkTextbox
-        elif hasattr(widget, "_textbox") and isinstance(widget._textbox, tk.Text):
-            textbox = widget._textbox
-            textbox.bind("<MouseWheel>", lambda event: textbox.yview_scroll(int(-1 * (event.delta / 120)), "units"),
-                         add="+")
-            textbox.bind("<Button-4>", lambda event: textbox.yview_scroll(-1, "units"), add="+")  # Linux scroll up
-            textbox.bind("<Button-5>", lambda event: textbox.yview_scroll(1, "units"), add="+")  # Linux scroll down
-            self._log_to_viewer(f"DEBUG: Bound mouse wheel to CTkTextbox internal Text: {widget}", "DEBUG")
 
     def on_closing(self):
         dialog = MessageDialog(
@@ -4112,6 +4214,7 @@ class CottonToolkitApp(ctk.CTk):
 
         # --- 基因输入文本框 ---
         self.identifier_genes_textbox = ctk.CTkTextbox(parent_frame, height=200)
+        self._bind_mouse_wheel_to_scrollable(self.identifier_genes_textbox)
         self.identifier_genes_textbox.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
 
         # --- 操作区域 ---
@@ -4613,6 +4716,51 @@ class CottonToolkitApp(ctk.CTk):
         else:
             return 'missing'  # 没有任何文件被下载
 
+    def _on_ai_provider_selected(self, selected_display_name: str):
+        """当AI助手页面的服务商下拉菜单变化时触发。"""
+        self._log_to_viewer(f"INFO: AI provider changed to '{selected_display_name}'")
+
+        # 1. 查找内部key
+        name_to_key_map = {v['name']: k for k, v in self.AI_PROVIDERS.items()}
+        provider_key = name_to_key_map.get(selected_display_name)
+
+        if not provider_key: return
+
+        # 2. 更新内存中的配置，并保存到文件
+        if self.current_config:
+            self.current_config.ai_services.default_provider = provider_key
+            self._log_to_viewer(f"DEBUG: Default provider in config updated to '{provider_key}'.")
+            # 异步保存，避免UI卡顿
+            threading.Thread(target=self._save_config_from_ui, daemon=True).start()
+
+        # 3. 自动刷新该服务商的模型列表
+        self._refresh_ai_models_on_tab()
+
+    def _refresh_ai_models_on_tab(self):
+        """刷新AI助手页面上当前选定服务商的模型列表。"""
+        selected_display_name = self.ai_selected_provider_var.get()
+        name_to_key_map = {v['name']: k for k, v in self.AI_PROVIDERS.items()}
+        provider_key = name_to_key_map.get(selected_display_name)
+        if provider_key:
+            # 调用与配置编辑器中相同的后台刷新逻辑
+            self._fetch_ai_models(provider_key)
+
+    def start_ai_test_on_tab(self):
+        """从AI助手页面触发连接测试。"""
+        selected_display_name = self.ai_selected_provider_var.get()
+        name_to_key_map = {v['name']: k for k, v in self.AI_PROVIDERS.items()}
+        provider_key = name_to_key_map.get(selected_display_name)
+        if provider_key:
+            # 调用与配置编辑器中相同的后台测试逻辑
+            self.start_ai_connection_test(provider_key)
+
+    def _save_config_from_ui(self):
+        """一个简单的后台保存配置的方法，用于UI交互。"""
+        if self.current_config and self.config_path:
+            if save_config(self.current_config, self.config_path):
+                self._log_to_viewer(_("配置已自动保存。"), "INFO")
+            else:
+                self._log_to_viewer(_("自动保存配置失败。"), "WARNING")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.ERROR, format='%(levelname)s:%(name)s:%(message)s')

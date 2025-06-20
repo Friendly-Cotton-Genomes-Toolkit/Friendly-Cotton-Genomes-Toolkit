@@ -637,6 +637,7 @@ def run_locus_conversion(
         log(f"位点转换流程出错: {e}", "ERROR")
         log(traceback.format_exc(), "DEBUG")
 
+
 def run_ai_task(
         config: MainConfig,
         input_file: str,
@@ -646,15 +647,19 @@ def run_ai_task(
         custom_prompt_template: Optional[str],
         cli_overrides: Optional[Dict[str, Any]],
         status_callback: Callable,
-        cancel_event: Optional[threading.Event] = None
+        cancel_event: Optional[threading.Event] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None  # --- 核心修改：添加此参数 ---
 ):
-    """【修正】执行AI任务流程，正确创建AI客户端。"""
+    """【已修正】执行AI任务流程，增加对 progress_callback 的支持以兼容GUI。"""
     batch_cfg = config.batch_ai_processor
     _update_config_from_overrides(batch_cfg, cli_overrides)
 
-    status_callback(_("AI任务流程开始..."))
+    # 如果提供了进度回调，就使用它，否则使用一个不做任何事的占位函数
+    progress = progress_callback if progress_callback else lambda p, m: None
 
-    # --- 【核心修正】创建AI客户端实例 ---
+    status_callback(_("AI任务流程开始..."), "INFO")
+    progress(0, _("初始化AI客户端..."))
+
     ai_cfg = config.ai_services
     provider_name = ai_cfg.default_provider
     provider_cfg_obj = ai_cfg.providers.get(provider_name)
@@ -671,17 +676,21 @@ def run_ai_task(
 
     status_callback(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model))
     ai_client = AIWrapper(provider=provider_name, api_key=api_key, model=model, base_url=base_url)
-    # --- 修正结束 ---
 
     project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
-    output_dir = os.path.join(project_root, batch_cfg.output_dir_name)
+    output_dir_name = getattr(batch_cfg, 'output_dir_name', 'ai_results')  # 安全访问
+    output_dir = os.path.join(project_root, output_dir_name)
+    os.makedirs(output_dir, exist_ok=True)  # 确保输出目录存在
 
     prompt_to_use = custom_prompt_template
     if not prompt_to_use:
         prompt_to_use = config.ai_prompts.translation_prompt if task_type == 'translate' else config.ai_prompts.analysis_prompt
 
+    progress(10, _("正在处理CSV文件..."))
+
+    # 将回调函数传递给核心处理模块
     process_single_csv_file(
-        client=ai_client,  # 传递已创建的客户端
+        client=ai_client,
         input_csv_path=input_file,
         output_csv_directory=output_dir,
         source_column_name=source_column,
@@ -689,10 +698,13 @@ def run_ai_task(
         system_prompt=_("你是一个专业的生物信息学分析助手。"),
         user_prompt_template=prompt_to_use,
         task_identifier=f"{os.path.basename(input_file)}_{task_type}",
-        max_row_workers=batch_cfg.max_workers
+        max_row_workers=batch_cfg.max_workers,
+        status_callback=status_callback,  # 传递status_callback
+        progress_callback=progress  # 传递progress_callback
     )
 
-    status_callback(_("AI任务流程成功完成。"))
+    progress(100, _("任务完成。"))
+    status_callback(_("AI任务流程成功完成。"), "SUCCESS")
 
 
 def run_functional_annotation(

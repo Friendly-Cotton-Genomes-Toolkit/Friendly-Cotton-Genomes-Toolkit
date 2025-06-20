@@ -141,82 +141,81 @@ def _perform_hypergeometric_test(
 
 def run_go_enrichment(
         study_gene_ids: List[str],
-        go_annotation_path: str,  # 这是用户传入的原始文件路径 (可以是xlsx, txt, csv)
+        go_annotation_path: str,
         status_callback: Callable,
         output_dir: str,
         gene_id_regex: Optional[str] = None
 ) -> Optional[pd.DataFrame]:
-    # --- 核心修改点 ---
-    # 1. 定义一个用于存放转换后文件的缓存目录
+    """
+    【已修正】执行GO富集分析。
+    """
     cache_dir = os.path.join(output_dir, '.cache')
-
-    # 2. 调用通用的文件准备函数
     prepared_go_path = prepare_input_file(go_annotation_path, status_callback, cache_dir)
 
     if not prepared_go_path:
         status_callback("GO注释文件准备失败，富集分析终止。", "ERROR")
         return None
-    # --- 修改结束 ---
 
-    # 后续代码现在可以安全地假设 prepared_go_path 是一个标准格式的CSV文件
     status_callback("正在加载处理后的GO注释背景数据...", "INFO")
     try:
-        # 直接读取已标准化的CSV文件
         background_df = pd.read_csv(prepared_go_path)
+        if not background_df.empty:
+            rename_map = {}
+            if len(background_df.columns) > 0: rename_map[background_df.columns[0]] = 'GeneID'
+            if len(background_df.columns) > 1: rename_map[background_df.columns[1]] = 'TermID'
+            if len(background_df.columns) > 2: rename_map[background_df.columns[2]] = 'Description'
+            if len(background_df.columns) > 3: rename_map[background_df.columns[3]] = 'Namespace'
+            background_df.rename(columns=rename_map, inplace=True)
+            if 'Namespace' not in background_df.columns:
+                background_df['Namespace'] = 'GO'
     except Exception as e:
-        status_callback(f"读取标准化注释文件失败: {e}", "ERROR")
+        status_callback(f"读取或重命名GO背景文件失败: {e}", "ERROR")
         return None
 
-    # 调用时参数保持不变，因为现在定义和调用已经匹配
     return _perform_hypergeometric_test(study_gene_ids, background_df, status_callback, output_dir, gene_id_regex=gene_id_regex)
 
 
-def run_kegg_enrichment(study_gene_ids: List[str], kegg_pathways_path: str, output_dir: str, status_callback: Optional[Callable] = print, gene_id_regex: Optional[str] = None, **kwargs) -> Optional[pd.DataFrame]:
+def run_kegg_enrichment(
+        study_gene_ids: List[str],
+        kegg_pathways_path: str,
+        output_dir: str,
+        status_callback: Optional[Callable] = print,
+        gene_id_regex: Optional[str] = None,
+        **kwargs
+) -> Optional[pd.DataFrame]:
+    """
+    【已修正】执行KEGG富集分析, 与GO分析流程统一。
+    """
+    log = status_callback
     try:
-        annotation_file_to_load = _prepare_annotation_file(kegg_pathways_path, status_callback)
-        background_df = load_annotation_data(annotation_file_to_load, status_callback)
+        # --- 核心修改：使用与GO相同的、统一的文件准备和加载逻辑 ---
+        cache_dir = os.path.join(output_dir, '.cache')
+        prepared_kegg_path = prepare_input_file(kegg_pathways_path, log, cache_dir)
+
+        if not prepared_kegg_path:
+            raise ValueError("KEGG注释文件准备失败。")
+
+        background_df = pd.read_csv(prepared_kegg_path)
         if background_df is None or background_df.empty:
             raise ValueError("加载的KEGG注释文件为空或格式不正确。")
+
+        # 强制重命名列，确保兼容性
+        rename_map = {}
+        if len(background_df.columns) > 0: rename_map[background_df.columns[0]] = 'GeneID'
+        if len(background_df.columns) > 1: rename_map[background_df.columns[1]] = 'TermID'
+        if len(background_df.columns) > 2: rename_map[background_df.columns[2]] = 'Description'
+        background_df.rename(columns=rename_map, inplace=True)
+
+        # 为KEGG数据添加一个默认的'Namespace'列
+        if 'Namespace' not in background_df.columns:
+            background_df['Namespace'] = 'KEGG'
+        # --- 修改结束 ---
+
     except Exception as e:
-        status_callback(f"ERROR: 准备KEGG背景文件时出错: {e}")
+        log(f"ERROR: 准备KEGG背景文件时出错: {e}")
         return None
-    # 调用时参数保持不变，因为现在定义和调用已经匹配
-    return _perform_hypergeometric_test(study_gene_ids, background_df, status_callback, output_dir, gene_id_regex=gene_id_regex)
-def _prepare_annotation_file(
-        original_path: str,
-        status_callback: Callable
-) -> str:
-    """
-    【智能缓存版】一个通用的注释文件预处理和缓存函数。
-    """
-    if not str(original_path).lower().endswith(('.xlsx', '.xlsx.gz')):
-        return original_path
 
-    source_dir = os.path.dirname(original_path)
-    base_name = os.path.basename(original_path)
-    if base_name.lower().endswith('.xlsx.gz'):
-        cache_base_name = base_name[:-8]
-    else:  # .xlsx
-        cache_base_name = base_name[:-5]
+    return _perform_hypergeometric_test(study_gene_ids, background_df, log, output_dir, gene_id_regex=gene_id_regex)
 
-    cached_csv_path = os.path.join(source_dir, f"{cache_base_name}_standardized.csv")
-
-    try:
-        if os.path.exists(cached_csv_path):
-            original_mtime = os.path.getmtime(original_path)
-            cached_mtime = os.path.getmtime(cached_csv_path)
-            if cached_mtime >= original_mtime:
-                status_callback(f"INFO: 发现有效的缓存文件，将直接使用: {os.path.basename(cached_csv_path)}")
-                return cached_csv_path
-            else:
-                status_callback(f"INFO: 缓存文件已过期，将重新生成...")
-    except OSError as e:
-        status_callback(f"WARNING: 检查缓存时出错: {e}")
-
-    success = convert_excel_to_standard_csv(original_path, cached_csv_path, status_callback)
-    if success:
-        return cached_csv_path
-    else:
-        raise IOError(f"Failed to convert Excel file: {original_path}")
 
 

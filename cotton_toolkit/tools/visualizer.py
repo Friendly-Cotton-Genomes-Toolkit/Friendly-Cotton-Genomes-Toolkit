@@ -15,81 +15,92 @@ import textwrap  # 导入文本换行工具
 def plot_enrichment_bubble(
         enrichment_df: pd.DataFrame,
         output_path: str,
-        top_n: int = 25,  # 默认显示更多条目以匹配参考图
-        sort_by: str = 'p_value',  # 按p_value排序以匹配参考图
+        top_n: int = 20,
+        sort_by: str = 'FDR',
         show_title: bool = True,
-        title: Optional[str] = None,
+        title: Optional[str] = "Enrichment Analysis",
         width: float = 10,
         height: float = 8
 ) -> Optional[str]:
     """
-    【RichFactor专业版】绘制富集分析气泡图，风格与主流工具对齐。
-    - X轴使用 RichFactor。
-    - 气泡大小代表 GeneNumber。
-    - 气泡颜色代表 p_value 或 FDR。
+    【学术增强版】绘制富集分析气泡图。
+    - 解决了文字重叠和超出边界的问题。
+    - 实现了类似参考图的学术风格（颜色渐变、描边、透明度）。
+    - 优化了气泡大小，使其更具区分度。
     """
-    if enrichment_df is None or enrichment_df.empty:
+    if enrichment_df.empty:
         return None
+
+    # 1. 数据准备
+    df = enrichment_df.sort_values(by=sort_by).head(top_n).copy()
+    if df.empty:
+        return None
+
+    # 确保 'GeneNumber' 和 'FDR'/'p_value' 是数值类型
+    df['GeneNumber'] = pd.to_numeric(df['GeneNumber'], errors='coerce')
+    df[sort_by] = pd.to_numeric(df[sort_by], errors='coerce')
+    df.dropna(subset=['GeneNumber', sort_by, 'Description', 'RichFactor'], inplace=True)
+    if df.empty:
+        return None
+
+    # 为了让Y轴倒序显示（通常最重要的在顶部）
+    df = df.iloc[::-1]
+
+    # --- 核心修改开始 ---
+
+    # 2. 风格和画布设置
+    plt.style.use('seaborn-v0_8-paper')  # 使用一个更美观的学术风格
+    fig, ax = plt.subplots(figsize=(width, height))
+
+    # 3. 绘制散点图（气泡图）
+    #    - s: 气泡大小，与基因数相关，并乘以一个缩放因子使其更明显
+    #    - c: 气泡颜色，与FDR或p-value相关
+    #    - cmap: 颜色映射表，_r 表示颜色反转 (值越小颜色越深)
+    #    - alpha: 透明度，便于观察重叠的气泡
+    #    - edgecolors: 气泡描边，使其更清晰
+    scaling_factor = 25  # 可调整此值以缩放整体气泡大小
+    scatter = ax.scatter(
+        x=df['RichFactor'],
+        y=df['Description'],
+        s=df['GeneNumber'] * scaling_factor,
+        c=df[sort_by],
+        cmap='viridis_r',  # viridis, plasma, inferno, magma 都是不错的选择
+        alpha=0.7,
+        edgecolors="black",
+        linewidth=0.5
+    )
+
+    # 4. 添加颜色条 (Colorbar)
+    cbar = plt.colorbar(scatter, ax=ax, pad=0.08)
+    cbar.set_label(sort_by, rotation=270, labelpad=15)
+
+    # 5. 优化坐标轴和标签
+    ax.set_xlabel("Rich Factor")
+    ax.set_ylabel("Term Description")
+    ax.grid(True, linestyle='--', alpha=0.6)
+
+    # --- 解决文字重叠和超出边界的关键步骤 ---
+
+    # 6. 自动换行处理Y轴的长文本
+    #    这将使得长条目自动分为多行，避免重叠
+    y_labels = [textwrap.fill(label, width=50, break_long_words=False) for label in df['Description']]
+    ax.set_yticklabels(y_labels)
+
+    # 7. 设置标题
+    if show_title:
+        plt.title(title, fontsize=16, fontweight='bold')
+
+    # 8. 自动调整布局
+    #    - plt.tight_layout() 会自动调整元素间距，防止重叠
+    #    - bbox_inches='tight' 在保存时会裁剪掉多余的白边，确保所有内容（包括长标签）都被完整保存
     try:
-        # 按p_value或FDR升序排序，p值越小越显著
-        df_plot = enrichment_df.sort_values(by=sort_by, ascending=True).head(top_n).copy()
-
-        if df_plot.empty:
-            return None
-
-        # 为了让Y轴顺序好看（RichFactor大的在上面），我们在这里反转顺序
-        df_plot = df_plot.iloc[::-1]
-
-        # 【修改】对长描述进行自动换行
-        df_plot['Description'] = df_plot['Description'].apply(
-            lambda x: '\n'.join(textwrap.wrap(str(x), width=45, break_long_words=True))
-        )
-
-        plt.style.use('seaborn-v0_8-whitegrid')
-        fig, ax = plt.subplots(figsize=(width, height))
-
-        # 核心绘图逻辑
-        scatter = ax.scatter(
-            x='RichFactor',
-            y='Description',
-            data=df_plot,
-            s='GeneNumber',  # 气泡大小
-            c=sort_by,  # 气泡颜色
-            cmap='coolwarm_r',  # 红->蓝 色带，值越小越红
-            alpha=0.8,
-            edgecolors="black",
-            linewidth=0.5
-        )
-
-        ax.set_xlabel("Rich Factor", fontsize=14, weight='bold')
-        ax.set_ylabel("Pathway", fontsize=14, weight='bold')
-        ax.tick_params(axis='y', labelsize=12)
-
-        if show_title:
-            plot_title = title if title else f"Top {top_n} of KEGG Enrichment"
-            ax.set_title(plot_title, fontsize=16, weight='bold', pad=20)
-
-        # 创建图例
-        # 大小图例
-        size_handles, size_labels = scatter.legend_elements(prop="sizes", alpha=0.6, num=5)
-        size_legend = ax.legend(size_handles, size_labels, title="GeneNumber", loc="center left",
-                                bbox_to_anchor=(1.05, 0.7))
-        ax.add_artist(size_legend)
-
-        # 颜色图例
-        color_legend = fig.colorbar(scatter, ax=ax, pad=0.01, fraction=0.05, location='right')
-        color_legend.set_label(sort_by, size=12, weight='bold')
-
-        # 自动调整布局，防止内容溢出
-        plt.tight_layout(rect=[0, 0, 0.85, 1])  # 为图例留出右侧空间
-
+        fig.tight_layout()
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close(fig)
         return output_path
     except Exception as e:
-        print(f"Error plotting bubble chart: {e}")
-        import traceback
-        traceback.print_exc()
+        plt.close(fig)
+        # 这里可以添加日志记录
         return None
 
 def plot_enrichment_bar(

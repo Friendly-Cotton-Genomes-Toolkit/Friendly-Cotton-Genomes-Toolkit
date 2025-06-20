@@ -3,7 +3,6 @@ import gzip
 import logging
 import os
 import re
-import sqlite3
 from typing import Dict, Any, Optional, Callable, List, Tuple, Iterator, Union
 
 import gffutils

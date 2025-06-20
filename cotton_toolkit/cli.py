@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 import threading
+
+from cotton_toolkit.core.ai_wrapper import AIWrapper
 from .utils.localization import setup_localization
 from .utils.logger import setup_global_logger
 import click
@@ -288,6 +290,46 @@ def preprocess_annos(ctx):
         status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")
     )
 
+
+@cli.command('test-ai')
+@click.option('--provider', help=_("要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"))
+@click.pass_context
+def test_ai(ctx, provider):
+    """测试配置文件中指定的AI服务商连接。"""
+    config = ctx.obj.config
+
+    # 如果未指定，则使用默认服务商
+    provider_key = provider if provider else config.ai_services.default_provider
+    click.echo(_("正在测试服务商: {}...").format(provider_key))
+
+    provider_config = config.ai_services.providers.get(provider_key)
+    if not provider_config:
+        click.secho(_("错误: 在配置文件中未找到服务商 '{}' 的配置。").format(provider_key), fg='red')
+        return
+
+    # 从配置中获取参数
+    api_key = provider_config.api_key
+    model = provider_config.model
+    base_url = provider_config.base_url
+
+    # 假设CLI也可能需要代理
+    proxies = None
+    if config.downloader.proxies and (config.downloader.proxies.http or config.downloader.proxies.https):
+        proxies = config.downloader.proxies.to_dict()
+
+    # 调用后端的测试函数
+    success, message = AIWrapper.test_connection(
+        provider=provider_key,
+        api_key=api_key,
+        model=model,
+        base_url=base_url,
+        proxies=proxies
+    )
+
+    if success:
+        click.secho(f"✅ {message}", fg='green')
+    else:
+        click.secho(f"❌ {message}", fg='red')
 
 if __name__ == '__main__':
     cli()
