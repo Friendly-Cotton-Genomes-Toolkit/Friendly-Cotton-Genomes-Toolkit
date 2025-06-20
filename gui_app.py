@@ -35,7 +35,7 @@ from cotton_toolkit.pipelines import (
     run_functional_annotation,
     run_ai_task, run_gff_lookup,
     run_locus_conversion, run_enrichment_pipeline,
-    run_homology_mapping, run_preprocess_annotation_files
+    run_homology_mapping, run_preprocess_annotation_files,
 )
 from ui import ProgressDialog, MessageDialog,AnnotationTab
 from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
@@ -2045,15 +2045,6 @@ class CottonToolkitApp(ctk.CTk):
                                                                                       padx=10, pady=(10, 15),
                                                                                       sticky="w")
 
-        # --- 新增：预处理按钮 ---
-        preprocess_button = ctk.CTkButton(
-            options_frame,
-            text=_("预处理注释文件 (转为标准CSV)"),
-            font=self.app_font,
-            command=self.start_preprocess_task
-        )
-        preprocess_button.grid(row=3, column=0, columnspan=2, padx=10, pady=(10, 15), sticky="ew")
-
         # --- 代理开关 ---
         proxy_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
         proxy_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=5)
@@ -2063,6 +2054,17 @@ class CottonToolkitApp(ctk.CTk):
 
         force_download_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
         force_download_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 15))
+
+        # --- “预处理”按钮 ---
+        preprocess_button = ctk.CTkButton(
+            options_frame,
+            text=_("预处理注释文件 (转为标准CSV)"),
+            font=self.app_font,
+            command=self.start_preprocess_task
+        )
+        preprocess_button.grid(row=3, column=0, columnspan=2, padx=10, pady=(5, 15), sticky="ew")
+
+
         self.dl_force_switch_label = ctk.CTkLabel(force_download_frame, text=_("强制重新下载:"), font=self.app_font)
         self.dl_force_switch_label.pack(side="left", padx=(0, 10))
         self.dl_force_switch = ctk.CTkSwitch(force_download_frame, text="", variable=self.download_force_checkbox_var)
@@ -2093,62 +2095,64 @@ class CottonToolkitApp(ctk.CTk):
             kwargs={'config': self.current_config}
         )
 
-
     def _update_download_genomes_list(self):
         """
-        【已修改】根据当前配置，动态更新下载页面的基因组版本复选框列表，并根据下载状态高亮显示。
+        【已升级】根据配置动态更新下载列表，并增加“预处理状态”显示。
         """
-        if not hasattr(self,
-                       'download_genomes_checkbox_frame') or not self.download_genomes_checkbox_frame.winfo_exists():
-            self._log_to_viewer("DEBUG: download_genomes_checkbox_frame does not exist yet, skipping update.", "DEBUG")
-            return
+        if not hasattr(self, 'download_genomes_checkbox_frame'): return
 
         for widget in self.download_genomes_checkbox_frame.winfo_children():
             widget.destroy()
         self.download_genome_vars.clear()
 
         # 定义状态颜色 (亮色模式, 暗色模式)
-        complete_color = ("#28a745", "#73bf69")  # 绿色
-        incomplete_color = ("#d9534f", "#e57373")  # 红色
+        processed_color = ("#28a745", "#73bf69")  # 绿色
+        not_processed_color = ("#ff9800", "#ffb74d")  # 橙色
+        not_downloaded_color = ("#d9534f", "#e57373")  # 红色
         default_color = self.default_label_text_color
 
         if not self.current_config or not self.genome_sources_data:
-            ctk.CTkLabel(self.download_genomes_checkbox_frame, text=_("请先加载配置文件"),
-                         text_color=self.secondary_text_color).pack()
+            ctk.CTkLabel(self.download_genomes_checkbox_frame, text=_("请先加载配置文件")).pack()
             return
 
-        if not isinstance(self.genome_sources_data, dict):
-            ctk.CTkLabel(self.download_genomes_checkbox_frame, text=_("配置文件中未找到基因组源"),
-                         text_color=self.secondary_text_color).pack()
-            return
+        # 导入状态检查函数
+        from cotton_toolkit.config.loader import check_annotation_file_status
 
-        self._log_to_viewer(_("正在刷新数据下载状态..."))
-        # 为每个基因组版本创建一个复选框
+        self._log_to_viewer(_("正在刷新数据下载与预处理状态..."))
         for genome_id, details in self.genome_sources_data.items():
+            # --- 创建一个容器Frame来放置复选框和状态标签 ---
+            entry_frame = ctk.CTkFrame(self.download_genomes_checkbox_frame, fg_color="transparent")
+            entry_frame.pack(fill="x", expand=True, padx=5, pady=2)
+            entry_frame.grid_columnconfigure(1, weight=1)
+
+            # 复选框
             var = tk.BooleanVar(value=False)
-            species_name = details.species_name if hasattr(details, 'species_name') else _('未知物种')
-            display_text = f"{genome_id} ({species_name})"
-
-            # --- 核心修改：检查状态并设置颜色 ---
-            status = self._check_genome_download_status(details)
-            if status == 'complete':
-                text_color_to_use = complete_color
-            elif status == 'incomplete':
-                text_color_to_use = incomplete_color
-            else:  # 'missing'
-                text_color_to_use = default_color
-            # --- 修改结束 ---
-
-            cb = ctk.CTkCheckBox(
-                self.download_genomes_checkbox_frame,
-                text=display_text,
-                variable=var,
-                font=self.app_font,
-                text_color=text_color_to_use
-            )
-            cb.pack(anchor="w", padx=10, pady=5)
+            display_text = f"{genome_id} ({details.species_name})"
+            cb = ctk.CTkCheckBox(entry_frame, text=display_text, variable=var, font=self.app_font)
+            cb.grid(row=0, column=0, sticky="w")
             self.download_genome_vars[genome_id] = var
-        self._log_to_viewer(_("下载状态刷新完成。"))
+
+            # --- 计算并显示预处理状态 ---
+            anno_keys = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
+            statuses = [check_annotation_file_status(self.current_config, details, key) for key in anno_keys]
+
+            status_text = ""
+            status_color = default_color
+            if all(s == 'processed' for s in statuses):
+                status_text = "✓ " + _("已处理")
+                status_color = processed_color
+            elif all(s == 'not_downloaded' for s in statuses):
+                status_text = "✗ " + _("未下载")
+                status_color = not_downloaded_color
+            else:
+                status_text = "● " + _("未处理/部分处理")
+                status_color = not_processed_color
+
+            status_label = ctk.CTkLabel(entry_frame, text=status_text, font=self.app_font, text_color=status_color)
+            status_label.grid(row=0, column=1, sticky="e", padx=10)
+
+        self._log_to_viewer(_("状态刷新完成。"))
+
 
     def _toggle_all_download_genomes(self, select: bool):
         """全选或取消全选所有下载基因组的复选框"""

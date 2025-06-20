@@ -220,6 +220,8 @@ def run_integrate_pipeline(
 
     bsa_genome_info: Optional[GenomeSourceItem] = genome_sources.get(bsa_assembly_id)
     hvg_genome_info: Optional[GenomeSourceItem] = genome_sources.get(hvg_assembly_id)
+    bridge_genome_info: Optional[GenomeSourceItem] = genome_sources.get(pipeline_cfg.bridge_species_name)
+
 
     if not bsa_genome_info or not hvg_genome_info:
         log(_("错误: BSA基因组 '{}' 或 HVG基因组 '{}' 未在基因组源列表中找到。").format(bsa_assembly_id, hvg_assembly_id), "ERROR")
@@ -289,16 +291,23 @@ def run_integrate_pipeline(
             sel_criteria_s_to_b = asdict(pipeline_cfg.selection_criteria_source_to_bridge)
             sel_criteria_b_to_t = asdict(pipeline_cfg.selection_criteria_bridge_to_target)
 
-
             mapped_df, _c = map_genes_via_bridge(
-                source_gene_ids=genes_to_map, source_assembly_name=bsa_assembly_id, target_assembly_name=hvg_assembly_id,
-                source_to_bridge_homology_df=s_to_b_homology_df, bridge_to_target_homology_df=b_to_t_homology_df,
-                s_to_b_query_col=homology_cols['query'], s_to_b_match_col=homology_cols['match'],
-                b_to_t_query_col=homology_cols['query'], b_to_t_match_col=homology_cols['match'],
-                selection_criteria_s_to_b=sel_criteria_s_to_b, selection_criteria_b_to_t=sel_criteria_b_to_t,
-                source_id_regex=bsa_genome_info.gene_id_regex, bridge_id_regex=bridge_id_regex, target_id_regex=hvg_genome_info.gene_id_regex,
-                status_callback=lambda msg, level="INFO": log(f"[Homology] {msg}", level), cancel_event=cancel_event
+                source_gene_ids=genes_to_map,
+                source_assembly_name=bsa_assembly_id,
+                target_assembly_name=hvg_assembly_id,
+                bridge_species_name=pipeline_cfg.bridge_species_name,
+                source_genome_info=bsa_genome_info,
+                target_genome_info=hvg_genome_info,
+                bridge_genome_info=bridge_genome_info,
+                source_to_bridge_homology_df=s_to_b_homology_df,
+                bridge_to_target_homology_df=b_to_t_homology_df,
+                selection_criteria_s_to_b=sel_criteria_s_to_b,
+                selection_criteria_b_to_t=sel_criteria_b_to_t,
+                homology_columns=homology_cols,
+                status_callback=lambda msg, level="INFO": log(f"[Homology] {msg}", level),
+                cancel_event=cancel_event
             )
+
             for _b, row in mapped_df.iterrows():
                 mapped_hvg_gene_ids.setdefault(row['Source_Gene_ID'], []).append(row['Target_Gene_ID'])
     else:
@@ -387,12 +396,12 @@ def run_homology_mapping(
                 force_db_creation=config.integration_pipeline.force_gff_db_creation, status_callback=log
             )
             if not genes_in_region_list:
-                log(f"在区域 {region} 中未找到任何基因。", "WARNING");
+                log(f"在区域 {region} 中未找到任何基因。", "WARNING")
                 return None
             source_gene_ids = [gene['gene_id'] for gene in genes_in_region_list]
 
         if not source_gene_ids:
-            log(_("错误: 输入的基因列表为空。"), "ERROR");
+            log(_("错误: 输入的基因列表为空。"), "ERROR")
             return None
 
         s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
@@ -411,8 +420,8 @@ def run_homology_mapping(
                 if value is not None:
                     if key in s2b_dict: s2b_dict[key] = value
                     if key in b2t_dict: b2t_dict[key] = value
-            selection_criteria_s_to_b = type(selection_criteria_s_to_b)(**s2b_dict)
-            selection_criteria_b_to_t = type(selection_criteria_b_to_t)(**b2t_dict)
+            selection_criteria_s_to_b = type(selection_criteria_s_to_b)
+            selection_criteria_b_to_t = type(selection_criteria_b_to_t)
         homology_columns = config.integration_pipeline.homology_columns
 
 
@@ -542,7 +551,7 @@ def run_locus_conversion(
             gene_id_regex=source_genome_info.gene_id_regex
         )
         if not source_gene_list:
-            log(f"在区域 {region} 中未找到任何基因。", "WARNING");
+            log(f"在区域 {region} 中未找到任何基因。", "WARNING")
             return
         source_gene_ids = [gene['gene_id'] for gene in source_gene_list]
 
@@ -561,8 +570,8 @@ def run_locus_conversion(
                 if value is not None:
                     if key in s2b_dict: s2b_dict[key] = value
                     if key in b2t_dict: b2t_dict[key] = value
-            selection_criteria_s_to_b = type(selection_criteria_s_to_b)(**s2b_dict)
-            selection_criteria_b_to_t = type(selection_criteria_b_to_t)(**b2t_dict)
+            selection_criteria_s_to_b = type(selection_criteria_s_to_b)
+            selection_criteria_b_to_t = type(selection_criteria_b_to_t)
         homology_columns = config.integration_pipeline.homology_columns
 
         # 步骤 2: 调用核心映射逻辑
@@ -809,6 +818,7 @@ def run_functional_annotation(
 
     annotator = Annotator(
         main_config=config,
+        genome_id=target_genome,
         genome_info=target_genome_info,
         status_callback=status_callback,
         progress_callback=progress_callback,
@@ -1192,6 +1202,37 @@ def run_enrichment_pipeline(
     return generated_plots
 
 
+def _preprocess_single_annotation_excel(excel_path: str, output_csv_path: str, log: Callable) -> bool:
+    """
+    【新增的专用函数】专门用于读取多Sheet的Excel注释文件，合并并添加标准表头。
+    """
+    try:
+        all_sheets_dict = pd.read_excel(excel_path, sheet_name=None, header=None, engine='openpyxl')
+        all_dfs = [df for df in all_sheets_dict.values() if not df.empty and df.dropna(how='all').shape[0] > 0]
+
+        if not all_dfs:
+            log(f"WARNING: 文件 {os.path.basename(excel_path)} 中没有找到有效数据。", "WARNING")
+            return False
+
+        concatenated_df = pd.concat(all_dfs, ignore_index=True)
+
+        # 强制设置我们需要的标准列名
+        num_cols = len(concatenated_df.columns)
+        new_columns = []
+        if num_cols > 0: new_columns.append('Query')
+        if num_cols > 1: new_columns.append('Match')
+        if num_cols > 2: new_columns.append('Description')
+        if num_cols > 3:
+            for i in range(3, num_cols): new_columns.append(f'Extra_Col_{i + 1}')
+        concatenated_df.columns = new_columns
+
+        concatenated_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
+        return True
+    except Exception as e:
+        log(f"ERROR: 预处理注释文件 {os.path.basename(excel_path)} 时发生错误: {e}", "ERROR")
+        return False
+
+
 def run_preprocess_annotation_files(
         config: MainConfig,
         status_callback: Optional[Callable[[str, str], None]] = None,
@@ -1199,8 +1240,8 @@ def run_preprocess_annotation_files(
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
     """
-    【新增】预处理所有已下载的注释文件，将它们从 .xlsx.gz 转换为标准的 .csv 格式。
-    标准的 .csv 文件将包含正确的表头 ('Query', 'Match', 'Description')。
+    【已恢复】调用公用的 convert_excel_to_standard_csv 函数，
+    预处理所有已下载的Excel注释文件。
     """
     log = status_callback if status_callback else print
     progress = progress_callback if progress_callback else lambda p, m: log(f"[{p}%] {m}")
@@ -1213,41 +1254,39 @@ def run_preprocess_annotation_files(
         log("ERROR: 未能加载基因组源数据。", "ERROR")
         return False
 
-    tasks = []
+    tasks_to_run = []
     ALL_ANNO_KEYS = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
-    for genome_id, genome_info in genome_sources.items():
+    for genome_info in genome_sources.values():
         for key in ALL_ANNO_KEYS:
             source_path = get_local_downloaded_file_path(config, genome_info, key)
-            if source_path and os.path.exists(source_path):
-                # 定义输出的CSV文件路径（在同一目录下，后缀改为.csv）
-                output_path = os.path.splitext(source_path)[0] + '.csv'
-                tasks.append((source_path, output_path))
+            # 只处理存在的、且是Excel格式的文件
+            if source_path and os.path.exists(source_path) and source_path.lower().endswith(('.xlsx', '.xlsx.gz')):
+                # 智能推断输出路径
+                base_path = source_path.replace('.xlsx.gz', '').replace('.xlsx', '')
+                output_path = base_path + '.csv'
+                # 如果CSV文件不存在，或者源文件比它更新，则需要处理
+                if not os.path.exists(output_path) or os.path.getmtime(source_path) > os.path.getmtime(output_path):
+                    tasks_to_run.append((source_path, output_path))
 
-    if not tasks:
-        log("WARNING: 未找到任何需要预处理的已下载注释文件。", "WARNING")
+    if not tasks_to_run:
+        log("INFO: 所有注释文件均已是最新状态，无需预处理。", "INFO")
+        progress(100, "无需处理。")
         return True
 
-    total_tasks = len(tasks)
+    total_tasks = len(tasks_to_run)
     log(f"INFO: 找到 {total_tasks} 个文件需要进行预处理。")
     success_count = 0
 
-    for i, (source, output) in enumerate(tasks):
+    for i, (source, output) in enumerate(tasks_to_run):
         if cancel_event and cancel_event.is_set():
             log("INFO: 任务被用户取消。", "INFO")
             return False
 
         progress((i + 1) * 100 // total_tasks, f"正在转换: {os.path.basename(source)}")
 
-        # 调用核心转换函数
-        # 注意：convert_excel_to_standard_csv 内部应该返回 True/False
-        try:
-            # 我们假设转换函数会处理解压和读取
-            if convert_excel_to_standard_csv(source, output, log):
-                success_count += 1
-            else:
-                log(f"WARNING: 转换文件 {os.path.basename(source)} 失败。", "WARNING")
-        except Exception as e:
-            log(f"ERROR: 转换文件 {os.path.basename(source)} 时发生严重错误: {e}", "ERROR")
+        # 调用您公用的转换函数
+        if convert_excel_to_standard_csv(source, output, log):
+            success_count += 1
 
     log(f"SUCCESS: 预处理完成。成功转换 {success_count}/{total_tasks} 个文件。", "SUCCESS")
     progress(100, "全部完成。")

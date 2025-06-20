@@ -13,10 +13,11 @@ from .pipelines import (
     run_download_pipeline,
     run_integrate_pipeline,
     run_homology_mapping,
-    run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files
-)
-from .config.loader import load_config, generate_default_config_files, MainConfig
+    run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files,
 
+)
+from .config.loader import load_config, generate_default_config_files, MainConfig, get_genome_data_sources, \
+    check_annotation_file_status
 
 cancel_event = threading.Event()
 _ = lambda s: str(s) # 占位符
@@ -248,6 +249,35 @@ def annotate(ctx, genes, assembly_id, types, output_path):
     )
 
 
+@cli.command('status')
+@click.pass_context
+def status(ctx):
+    """显示所有基因组注释文件的下载和预处理状态。"""
+    config = ctx.obj.config
+    genome_sources = get_genome_data_sources(config)
+    if not genome_sources:
+        click.echo(_("错误: 未能加载基因组源数据。"), err=True)
+        return
+
+    click.secho(f"{'Genome':<25} {'File Type':<20} {'Status'}", bold=True)
+    click.echo("-" * 60)
+
+    status_colors = {
+        'processed': 'green',
+        'not_processed': 'yellow',
+        'not_downloaded': 'red'
+    }
+
+    anno_keys = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
+    for genome_id, genome_info in genome_sources.items():
+        for key in anno_keys:
+            # 只显示配置了URL的文件类型
+            if hasattr(genome_info, f"{key}_url") and getattr(genome_info, f"{key}_url"):
+                file_status = check_annotation_file_status(config, genome_info, key)
+                click.echo(f"{genome_id:<25} {key:<20} ", nl=False)
+                click.secho(file_status, fg=status_colors.get(file_status, 'white'))
+
+
 @cli.command('preprocess-annos')
 @click.pass_context
 def preprocess_annos(ctx):
@@ -257,7 +287,6 @@ def preprocess_annos(ctx):
         config=ctx.obj.config,
         status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")
     )
-
 
 
 if __name__ == '__main__':

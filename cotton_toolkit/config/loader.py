@@ -265,3 +265,31 @@ def generate_default_config_files(
             success_gs = False
 
     return success_main and success_gs, main_config_path, genome_sources_path
+
+
+def check_annotation_file_status(config: 'MainConfig', genome_info: 'GenomeSourceItem', file_key: str) -> str:
+    """
+    检查单个注释文件的状态。
+
+    Args:
+        config: 主配置对象。
+        genome_info: 基因组信息对象。
+        file_key (str): 文件类型关键字 (例如 'GO', 'IPR')。
+
+    Returns:
+        str: 'processed', 'not_processed', 或 'not_downloaded'
+    """
+    original_path = get_local_downloaded_file_path(config, genome_info, file_key)
+    if not original_path:
+        return 'not_downloaded' # URL不存在，视为未配置
+
+    # 更可靠地推断CSV路径
+    base_path = original_path.replace('.xlsx.gz', '').replace('.xlsx', '')
+    processed_csv_path = base_path + '.csv'
+
+    if os.path.exists(processed_csv_path):
+        return 'processed'
+    elif os.path.exists(original_path):
+        return 'not_processed'
+    else:
+        return 'not_downloaded'
