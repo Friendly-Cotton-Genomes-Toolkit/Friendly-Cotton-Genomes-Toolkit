@@ -2,6 +2,7 @@
 import builtins
 import logging
 import os
+import signal
 import sys
 import threading
 
@@ -24,6 +25,14 @@ from .config.loader import load_config, generate_default_config_files, MainConfi
 cancel_event = threading.Event()
 _ = lambda s: str(s) # 占位符
 logger = logging.getLogger("cotton_toolkit.gui")
+
+
+def signal_handler(sig, frame):
+    """捕获到 Ctrl+C (SIGINT) 信号时调用的函数。"""
+    click.echo(click.style(_("\n捕获到中断信号！正在尝试优雅地取消任务..."), fg='yellow'), err=True)
+    cancel_event.set()
+
+signal.signal(signal.SIGINT, signal_handler)
 
 class AppContext:
     def __init__(self, config: MainConfig, verbose: bool):
@@ -84,7 +93,7 @@ def download(ctx, versions, force, http_proxy, https_proxy):
         "http_proxy": http_proxy,
         "https_proxy": https_proxy
     }
-    run_download_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info)
+    run_download_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info, cancel_event=cancel_event)
 
 @cli.command()
 @click.option('--excel-path', type=click.Path(exists=True, dir_okay=False), help=_("覆盖配置文件中的输入Excel文件路径。"))
@@ -96,7 +105,7 @@ def integrate(ctx, excel_path, log2fc_threshold):
         "input_excel_path": excel_path,
         "common_hvg_log2fc_threshold": log2fc_threshold
     }
-    run_integrate_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info)
+    run_integrate_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info, cancel_event=cancel_event)
 
 
 @cli.command()
@@ -141,7 +150,9 @@ def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, eval
         config=ctx.obj.config, gene_ids=gene_list, region=region_tuple,
         source_assembly_id=source_asm, target_assembly_id=target_asm,
         output_csv_path=output_csv, criteria_overrides=criteria_overrides,
-        status_callback=ctx.obj.logger.info
+        status_callback=ctx.obj.logger.info,
+        cancel_event=cancel_event
+
     )
 
 
@@ -149,17 +160,20 @@ def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, eval
 @click.option('--input-file', required=True, type=click.Path(exists=True, dir_okay=False), help=_("输入的CSV文件。"))
 @click.option('--source-column', required=True, help=_("要处理的源列名。"))
 @click.option('--new-column', required=True, help=_("要创建的新列名。"))
+@click.option('--output-file', type=click.Path(), help=_("指定输出CSV文件的完整路径。默认为自动生成。"))
 @click.option('--task-type', type=click.Choice(['translate', 'analyze']), default='translate', help=_("AI任务类型。"))
 @click.option('--prompt', help=_("自定义提示词模板。必须包含 {text}。"))
 @click.option('--temperature', type=float, help=_("控制模型输出的随机性。"))
 @click.pass_context
-def ai_task(ctx, input_file, source_column, new_column, task_type, prompt, temperature):
+def ai_task(ctx, input_file, source_column, new_column, output_file, task_type, prompt, temperature): # 添加 output_file 到函数参数
     """在CSV文件上运行批量AI任务。"""
     cli_overrides = {"temperature": temperature}
     run_ai_task(
         config=ctx.obj.config, input_file=input_file, source_column=source_column,
         new_column=new_column, task_type=task_type, custom_prompt_template=prompt,
-        cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info
+        cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info,
+        cancel_event=cancel_event,output_file=output_file
+
     )
 
 
@@ -200,7 +214,8 @@ def gff_query(ctx, assembly_id, genes, region, output_csv):
         gene_ids=gene_list,
         region=region_tuple,
         output_csv_path=output_csv,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")  # CLI日志回调
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
+        cancel_event=cancel_event
     )
 
     if success:
@@ -247,7 +262,9 @@ def annotate(ctx, genes, assembly_id, types, output_path):
         gene_list_path=gene_list_file,
         output_dir=output_dir,
         output_path=output_path,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
+        cancel_event=cancel_event
+
     )
 
 
@@ -287,7 +304,8 @@ def preprocess_annos(ctx):
     click.echo(_("正在启动注释文件预处理流程..."))
     run_preprocess_annotation_files(
         config=ctx.obj.config,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}")
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
+        cancel_event=cancel_event
     )
 
 

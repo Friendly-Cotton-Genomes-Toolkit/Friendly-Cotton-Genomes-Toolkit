@@ -648,7 +648,8 @@ def run_ai_task(
         cli_overrides: Optional[Dict[str, Any]],
         status_callback: Callable,
         cancel_event: Optional[threading.Event] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None  # --- 核心修改：添加此参数 ---
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        output_file: Optional[str] = None
 ):
     """【已修正】执行AI任务流程，增加对 progress_callback 的支持以兼容GUI。"""
     batch_cfg = config.batch_ai_processor
@@ -695,12 +696,13 @@ def run_ai_task(
         output_csv_directory=output_dir,
         source_column_name=source_column,
         new_column_name=new_column,
-        system_prompt=_("你是一个专业的生物信息学分析助手。"),
         user_prompt_template=prompt_to_use,
         task_identifier=f"{os.path.basename(input_file)}_{task_type}",
         max_row_workers=batch_cfg.max_workers,
-        status_callback=status_callback,  # 传递status_callback
-        progress_callback=progress  # 传递progress_callback
+        status_callback=status_callback,
+        progress_callback=progress,
+        cancel_event=cancel_event,
+        output_csv_path=output_file
     )
 
     progress(100, _("任务完成。"))
