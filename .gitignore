@@ -84,3 +84,4 @@ config.yml
 genome_sources_list.yml
 ui_settings.json
 logs/
+tmp/
