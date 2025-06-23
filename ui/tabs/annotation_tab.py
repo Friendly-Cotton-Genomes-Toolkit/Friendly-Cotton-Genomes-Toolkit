@@ -86,14 +86,14 @@ class AnnotationTab(ctk.CTkFrame):
         input_options_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
         input_options_frame.grid(row=2, column=0, sticky="w", padx=0, pady=(10, 0))
 
-        ctk.CTkSwitch(input_options_frame, text=_("输入包含表头 (将跳过首行)"),
+        ctk.CTkSwitch(input_options_frame, text=_("输入包含表头 (将跳过首行)"), font=app_font,
                       variable=self.app.has_header_var).pack(side="left")
 
-        ctk.CTkSwitch(input_options_frame, text=_("包含Log2FC (格式: 基因ID,Log2FC)"),
+        ctk.CTkSwitch(input_options_frame, text=_("包含Log2FC (格式: 基因ID,Log2FC)"), font=app_font,
                       variable=self.app.has_log2fc_var).pack(side="left", padx=15)
 
         # --- 【新增】合并转录本的开关 ---
-        ctk.CTkSwitch(input_options_frame, text=_("将RNA合并到基因"),
+        ctk.CTkSwitch(input_options_frame, text=_("将RNA合并到基因"), font=app_font,
                       variable=self.app.collapse_transcripts_var).pack(side="left", padx=15)
 
         # 基因组版本选择的标签
@@ -109,6 +109,8 @@ class AnnotationTab(ctk.CTkFrame):
         # --- Part 2: 功能区选项卡 ---
         # 创建一个Tabview来区分“仅注释”和“富集分析”两个主要功能
         action_tabview = ctk.CTkTabview(self, corner_radius=8)
+        if hasattr(action_tabview, '_segmented_button'):
+             action_tabview._segmented_button.configure(font=app_font_bold)
         action_tabview.grid(row=1, column=0, sticky="nsew", padx=10, pady=15)
 
         # -- Tab 1: 简单注释 --
@@ -163,10 +165,12 @@ class AnnotationTab(ctk.CTkFrame):
                                                                                pady=10, sticky="w")
 
         # 参数行1: Top N 和 排序依据
-        ctk.CTkLabel(enrich_tab, text=_("Top N 通路:")).grid(row=2, column=0, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(enrich_tab, text=_("Top N 通路:"), font=app_font).grid(row=2, column=0, padx=(10, 5), pady=5,
+                                                                            sticky="w")
         ctk.CTkEntry(enrich_tab, textvariable=self.app.enrich_top_n_var).grid(row=2, column=1, padx=5, pady=5,
                                                                               sticky="ew")
-        ctk.CTkLabel(enrich_tab, text=_("排序/颜色依据:")).grid(row=2, column=2, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(enrich_tab, text=_("排序/颜色依据:"), font=app_font).grid(row=2, column=2, padx=(10, 5), pady=5,
+                                                                               sticky="w")
         ctk.CTkOptionMenu(enrich_tab, variable=self.app.enrich_sort_by_var, values=["FDR", "p_value"]).grid(row=2,
                                                                                                             column=3,
                                                                                                             padx=5,
@@ -174,22 +178,26 @@ class AnnotationTab(ctk.CTkFrame):
                                                                                                             sticky="ew")
 
         # 参数行2: 图片格式 和 是否显示标题
-        ctk.CTkLabel(enrich_tab, text=_("图形格式:")).grid(row=3, column=0, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(enrich_tab, text=_("图形格式:"), font=app_font).grid(row=3, column=0, padx=(10, 5), pady=5,
+                                                                          sticky="w")
         ctk.CTkOptionMenu(enrich_tab, variable=self.app.enrich_format_var, values=["png", "pdf", "svg"]).grid(row=3,
                                                                                                               column=1,
                                                                                                               padx=5,
                                                                                                               pady=5,
                                                                                                               sticky="ew")
-        ctk.CTkSwitch(enrich_tab, text=_("显示标题"), variable=self.app.enrich_show_title_var).grid(row=3, column=2,
-                                                                                                    columnspan=2,
-                                                                                                    padx=10, pady=5,
-                                                                                                    sticky="w")
+        ctk.CTkSwitch(enrich_tab, text=_("显示标题"), variable=self.app.enrich_show_title_var, font=app_font).grid(
+            row=3, column=2,
+            columnspan=2,
+            padx=10, pady=5,
+            sticky="w")
 
         # 参数行3: 图片尺寸
-        ctk.CTkLabel(enrich_tab, text=_("图形宽度 (英寸):")).grid(row=4, column=0, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(enrich_tab, text=_("图形宽度 (英寸):"), font=app_font).grid(row=4, column=0, padx=(10, 5), pady=5,
+                                                                                 sticky="w")
         ctk.CTkEntry(enrich_tab, textvariable=self.app.enrich_width_var).grid(row=4, column=1, padx=5, pady=5,
                                                                               sticky="ew")
-        ctk.CTkLabel(enrich_tab, text=_("图形高度 (英寸):")).grid(row=4, column=2, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(enrich_tab, text=_("图形高度 (英寸):"), font=app_font).grid(row=4, column=2, padx=(10, 5), pady=5,
+                                                                                 sticky="w")
         ctk.CTkEntry(enrich_tab, textvariable=self.app.enrich_height_var).grid(row=4, column=3, padx=5, pady=5,
                                                                                sticky="ew")
 
@@ -199,15 +207,19 @@ class AnnotationTab(ctk.CTkFrame):
         plot_type_frame = ctk.CTkFrame(enrich_tab, fg_color="transparent")
         plot_type_frame.grid(row=6, column=0, columnspan=4, sticky="ew", padx=10, pady=5)
         # 气泡图
-        ctk.CTkCheckBox(plot_type_frame, text=_("气泡图 (Bubble Plot)"), variable=self.app.bubble_plot_var).pack(
+        ctk.CTkCheckBox(plot_type_frame, text=_("气泡图 (Bubble Plot)"), variable=self.app.bubble_plot_var,
+                        font=app_font).pack(
             side="left", padx=5)
         # 柱状图
-        ctk.CTkCheckBox(plot_type_frame, text=_("柱状图 (Bar Plot)"), variable=self.app.bar_plot_var).pack(side="left",
-                                                                                                           padx=5)
+        ctk.CTkCheckBox(plot_type_frame, text=_("柱状图 (Bar Plot)"), variable=self.app.bar_plot_var,
+                        font=app_font).pack(side="left",
+                                            padx=5)
         # Upset图
-        ctk.CTkCheckBox(plot_type_frame, text=_("Upset图"), variable=self.app.upset_plot_var).pack(side="left", padx=5)
+        ctk.CTkCheckBox(plot_type_frame, text=_("Upset图"), variable=self.app.upset_plot_var, font=app_font).pack(
+            side="left", padx=5)
         # 基因-概念网络图
-        ctk.CTkCheckBox(plot_type_frame, text=_("基因-概念网络图 (Cnet)"), variable=self.app.cnet_plot_var).pack(
+        ctk.CTkCheckBox(plot_type_frame, text=_("基因-概念网络图 (Cnet)"), variable=self.app.cnet_plot_var,
+                        font=app_font).pack(
             side="left", padx=5)
 
         # 输出目录和启动按钮

@@ -523,7 +523,7 @@ def run_locus_conversion(
         **kwargs
 ) -> None:
     """
-    【已修正参数错误】通过调用核心同源映射流程，执行带概要位点计算的位点转换。
+    通过调用核心同源映射流程，执行带概要位点计算的位点转换。
     """
     log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
 
@@ -558,6 +558,12 @@ def run_locus_conversion(
         # 步骤1.2: 准备调用 map_genes_via_bridge 所需的所有参数
         s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
         b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+
+        # --- 健壮性检查 ---
+        if not s_to_b_homology_file or not b_to_t_homology_file:
+            log(f"错误: 缺少必要的同源文件。源文件路径: '{s_to_b_homology_file}', 目标文件路径: '{b_to_t_homology_file}'。请先运行下载流程。", "ERROR")
+            return
+
         source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
         bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
 

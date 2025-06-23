@@ -1803,8 +1803,12 @@ class CottonToolkitApp(ctk.CTk):
 
     def _update_ai_model_dropdown_from_config(self):
         """
-        【新方法】根据当前配置，更新AI助手的模型下拉菜单。
+        根据当前配置，更新AI助手的模型下拉菜单。
         """
+
+        if not hasattr(self, 'ai_model_dropdown'):
+            return  # 如果控件还不存在，直接返回，不做任何操作
+
         if not self.current_config:
             self.ai_model_dropdown.configure(values=[_("需先加载配置")])
             self.ai_selected_model_var.set(_("需先加载配置"))
@@ -1992,9 +1996,13 @@ class CottonToolkitApp(ctk.CTk):
 
     def _update_ai_assistant_tab_info(self):
         """
-        【已修改】更新AI助手页面的信息，以反映当前配置。
+        更新AI助手页面的信息，以反映当前配置。
         不再自动刷新模型。
         """
+        # 如果AI助手页面最核心的控件之一都不存在，说明UI未加载，直接返回
+        if not hasattr(self, 'ai_provider_dropdown'):
+            return
+
         if not self.current_config: return
 
         # 1. 设置服务商下拉菜单
@@ -4276,16 +4284,16 @@ class CottonToolkitApp(ctk.CTk):
         info_frame.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
         info_frame.grid_columnconfigure(0, weight=1)
 
-        title_label = ctk.CTkLabel(info_frame, text=_("基因组类别鉴定工具"), font=ctk.CTkFont(size=15, weight="bold"))
+        title_label = ctk.CTkLabel(info_frame, text=_("基因组类别鉴定工具"), font=self.app_title_font)
         title_label.grid(row=0, column=0, padx=10, pady=(5, 2), sticky="w")
 
         desc_label = ctk.CTkLabel(info_frame, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"),
-                                  wraplength=400, justify="left")
+                                  wraplength=400, justify="left",font=self.app_font)
         desc_label.grid(row=1, column=0, padx=10, pady=(2, 5), sticky="w")
 
         warning_label = ctk.CTkLabel(info_frame,
-                                     text=_("注意：以 'scaffold'、'Unknown' 或染色体编号（如 'Chr'）开头的ID无法用于检查。"),
-                                     font=ctk.CTkFont(size=12), text_color="orange", wraplength=400, justify="left")
+                                     text=_("注意：以 'scaffold'、'Unknown' 开头的ID无法用于检查。"),
+                                     font=self.app_comment_font, text_color="orange", wraplength=400, justify="left")
         warning_label.grid(row=2, column=0, padx=10, pady=(0, 5), sticky="w")
 
         # --- 基因输入文本框 ---
@@ -4298,32 +4306,31 @@ class CottonToolkitApp(ctk.CTk):
         action_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         action_frame.grid_columnconfigure(1, weight=1)
 
-        identify_button = ctk.CTkButton(action_frame, text=_("开始鉴定"), command=self._run_genome_identification)
+        identify_button = ctk.CTkButton(action_frame, text=_("开始鉴定"), command=self._run_genome_identification,font=self.app_font)
         identify_button.grid(row=0, column=0, padx=10, pady=5, sticky="w")
 
-        self.identifier_result_label = ctk.CTkLabel(action_frame, text=_("鉴定结果将显示在这里。"),
-                                                    font=ctk.CTkFont(size=13))
+        self.identifier_result_label = ctk.CTkLabel(action_frame, text=_("鉴定结果将显示在这里。"),font=self.app_font)
         self.identifier_result_label.grid(row=0, column=1, padx=10, pady=5, sticky="e")
 
     def _run_genome_identification(self):
         """
         执行基因组类别鉴定。
         """
-        self.identifier_result_label.configure(text=_("正在鉴定中..."))
+        self.identifier_result_label.configure(text=_("正在鉴定中..."),font=self.app_font)
         gene_ids_text = self.identifier_genes_textbox.get("1.0", tk.END).strip()
 
         if not gene_ids_text:
-            self.identifier_result_label.configure(text=_("请输入基因ID。"), text_color="orange")
+            self.identifier_result_label.configure(text=_("请输入基因ID。"), text_color="orange",font=self.app_font)
             return
 
         gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
         if not gene_ids:
-            self.identifier_result_label.configure(text=_("请输入有效的基因ID。"), text_color="orange")
+            self.identifier_result_label.configure(text=_("请输入有效的基因ID。"), text_color="orange",font=self.app_font)
             return
 
         if not self.genome_sources_data:
             self._log_to_viewer(_("警告: 基因组源数据未加载，无法进行鉴定。"), "WARNING")
-            self.identifier_result_label.configure(text=_("错误：基因组源未加载。"), text_color="red")
+            self.identifier_result_label.configure(text=_("错误：基因组源未加载。"), text_color="red",font=self.app_font)
             return
 
         identified_assembly = identify_genome_from_gene_ids(gene_ids, self.genome_sources_data, self._log_to_viewer)
