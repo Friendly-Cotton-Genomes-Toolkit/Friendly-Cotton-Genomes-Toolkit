@@ -31,7 +31,6 @@ from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.ai_wrapper import AIWrapper
 from cotton_toolkit.pipelines import (
     run_download_pipeline,
-    run_integrate_pipeline,
     run_functional_annotation,
     run_ai_task, run_gff_lookup,
     run_locus_conversion, run_enrichment_pipeline,
@@ -106,7 +105,6 @@ class CottonToolkitApp(ctk.CTk):
         self.main_content_frame = None
         self.home_frame = None
         self.editor_frame = None
-        self.integrate_frame = None
         self.tools_frame = None
         self.log_viewer_frame = None
         self.status_bar_frame = None
@@ -125,7 +123,6 @@ class CottonToolkitApp(ctk.CTk):
         # --- 图像资源 ---
         self.logo_image = self._load_image_resource("logo.png", (48, 48))
         self.home_icon = self._load_image_resource("home.png")
-        self.integrate_icon = self._load_image_resource("integrate.png")
         self.tools_icon = self._load_image_resource("tools.png")
         self.settings_icon = self._load_image_resource("settings.png")
         self.folder_icon = self._load_image_resource("folder.png")
@@ -141,12 +138,6 @@ class CottonToolkitApp(ctk.CTk):
         self.download_genome_vars: Dict[str, tk.BooleanVar] = {}
         self.download_force_checkbox_var = tk.BooleanVar(value=False)
         self.download_proxy_var = tk.BooleanVar(value=False)
-        # 联合分析页面
-        self.selected_bsa_assembly = tk.StringVar()
-        self.selected_hvg_assembly = tk.StringVar()
-        self.selected_bsa_sheet = tk.StringVar()
-        self.selected_hvg_sheet = tk.StringVar()
-        self.integrate_log2fc_var = tk.StringVar(value="1.0")
         # AI助手页面
         self.ai_task_type_var = tk.StringVar(value=_("翻译"))
         self.ai_proxy_var = tk.BooleanVar(value=False)
@@ -497,13 +488,12 @@ class CottonToolkitApp(ctk.CTk):
         # 1. 创建所有主内容区域的 Frame 并赋值给 self 属性
         self.home_frame = self._create_home_frame(self.main_content_frame)
         self.editor_frame = self._create_editor_frame(self.main_content_frame)
-        self.integrate_frame = self._create_integrate_frame(self.main_content_frame)
         self.tools_frame = self._create_tools_frame(self.main_content_frame)
 
-        # 2. 同步填充所有工具选项卡的内容 (不再懒加载)
+        # 2. 同步填充所有工具选项卡的内容
         self._populate_tools_notebook()
 
-        # 3. 【修改】调用新的主控方法来处理编辑器UI
+        # 3. 调用新的主控方法来处理编辑器UI
         self._handle_editor_ui_update()
 
         # 4. 设置初始显示的页面 (例如 "home")
@@ -671,7 +661,7 @@ class CottonToolkitApp(ctk.CTk):
     def _create_navigation_frame(self, parent):
         self.navigation_frame = ctk.CTkFrame(parent, corner_radius=0)
         self.navigation_frame.grid(row=0, column=0, sticky="nsew")
-        self.navigation_frame.grid_rowconfigure(5, weight=1)  # 调整权重行
+        self.navigation_frame.grid_rowconfigure(4, weight=1)  # 调整权重行以适应按钮数量
 
         nav_header_frame = ctk.CTkFrame(self.navigation_frame, corner_radius=0, fg_color="transparent")
         nav_header_frame.grid(row=0, column=0, padx=20, pady=20)
@@ -682,14 +672,13 @@ class CottonToolkitApp(ctk.CTk):
         self.nav_title_label = ctk.CTkLabel(nav_header_frame, text=" FCGT", font=ctk.CTkFont(size=20, weight="bold"))
         self.nav_title_label.pack()
 
-        # --- 【顺序和新增按钮修改】 ---
+        # --- 导航按钮 ---
         self.home_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10,
                                          text=_("主页"), fg_color="transparent", text_color=("gray10", "gray90"),
                                          anchor="w", image=self.home_icon, font=self.app_font_bold,
                                          command=lambda: self.select_frame_by_name("home"))
         self.home_button.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
-        # 配置编辑器按钮
         self.editor_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10,
                                            text=_("配置编辑器"), fg_color="transparent",
                                            text_color=("gray10", "gray90"),
@@ -697,19 +686,11 @@ class CottonToolkitApp(ctk.CTk):
                                            command=lambda: self.select_frame_by_name("editor"))
         self.editor_button.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
-        self.integrate_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10,
-                                              text=_("联合分析"), fg_color="transparent",
-                                              text_color=("gray10", "gray90"), anchor="w", image=self.integrate_icon,
-                                              font=self.app_font_bold,
-                                              command=lambda: self.select_frame_by_name("integrate"))
-        self.integrate_button.grid(row=3, column=0, sticky="ew", padx=10, pady=5)  # 行号+1
-
         self.tools_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10,
                                           text=_("数据工具"), fg_color="transparent", text_color=("gray10", "gray90"),
                                           anchor="w", image=self.tools_icon, font=self.app_font_bold,
                                           command=lambda: self.select_frame_by_name("tools"))
-        self.tools_button.grid(row=4, column=0, sticky="ew", padx=10, pady=5)  # 行号+1
-        # --- 修改结束 ---
+        self.tools_button.grid(row=3, column=0, sticky="ew", padx=10, pady=5)  # 行号提前
 
         settings_frame = ctk.CTkFrame(self.navigation_frame, corner_radius=0, fg_color="transparent")
         settings_frame.grid(row=5, column=0, padx=10, pady=10, sticky="s")
@@ -751,15 +732,13 @@ class CottonToolkitApp(ctk.CTk):
         self.home_button.configure(fg_color=self.home_button.cget("hover_color") if name == "home" else "transparent")
         self.editor_button.configure(
             fg_color=self.editor_button.cget("hover_color") if name == "editor" else "transparent")
-        self.integrate_button.configure(
-            fg_color=self.integrate_button.cget("hover_color") if name == "integrate" else "transparent")
         self.tools_button.configure(
             fg_color=self.tools_button.cget("hover_color") if name == "tools" else "transparent")
 
         # 隐藏所有页面
         self.home_frame.grid_forget()
         self.editor_frame.grid_forget()
-        self.integrate_frame.grid_forget()
+        # self.integrate_frame.grid_forget() # 移除此行
         self.tools_frame.grid_forget()
 
         # 根据名称显示对应的页面
@@ -767,10 +746,9 @@ class CottonToolkitApp(ctk.CTk):
             self.home_frame.grid(row=0, column=0, sticky="nsew")
         elif name == "editor":
             self.editor_frame.grid(row=0, column=0, sticky="nsew")
-            # 【修改】调用新的主控方法，它会智能判断是否需要创建UI
             self._handle_editor_ui_update()
-        elif name == "integrate":
-            self.integrate_frame.grid(row=0, column=0, sticky="nsew")
+        # elif name == "integrate": # 移除此分支
+        #     self.integrate_frame.grid(row=0, column=0, sticky="nsew")
         elif name == "tools":
             self.tools_frame.grid(row=0, column=0, sticky="nsew")
 
@@ -1414,92 +1392,6 @@ class CottonToolkitApp(ctk.CTk):
 
         return frame
 
-    def _create_integrate_frame(self, parent):
-        frame = ctk.CTkScrollableFrame(parent, fg_color="transparent")
-        frame.grid_columnconfigure(0, weight=1)
-
-        # 标题和描述
-        title_frame = ctk.CTkFrame(frame, fg_color="transparent")
-        title_frame.pack(pady=(20, 15), padx=30, fill="x")
-        ctk.CTkLabel(title_frame, text=_("联合分析"), font=self.app_title_font).pack()
-        ctk.CTkLabel(title_frame, text=_("结合BSA定位区间与高变异基因(HVG)，筛选候选基因，为精细定位提供依据。"),
-                     font=self.app_font, text_color=self.secondary_text_color, wraplength=600).pack(pady=(5, 0))
-
-        # --- 卡片1: 输入文件 ---
-        input_card = ctk.CTkFrame(frame)
-        input_card.pack(fill="x", padx=30, pady=10)
-        input_card.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkLabel(input_card, text=_("第一步: 选择包含BSA和HVG数据的Excel文件"), font=self.app_font_bold).grid(row=0,
-                                                                                                                  column=0,
-                                                                                                                  columnspan=3,
-                                                                                                                  padx=15,
-                                                                                                                  pady=15,
-                                                                                                                  sticky="w")
-        excel_path_label = ctk.CTkLabel(input_card, text=_("Excel文件路径:"), font=self.app_font)
-        excel_path_label.grid(row=1, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.integrate_excel_entry = ctk.CTkEntry(input_card, font=self.app_font, height=35,
-                                                  placeholder_text=_("点击“浏览”选择文件，或从配置加载"))
-        self.integrate_excel_entry.grid(row=1, column=1, padx=(0, 10), pady=10, sticky="ew")
-        self.int_excel_browse_button = ctk.CTkButton(input_card, text=_("浏览..."), width=100, height=35,
-                                                     command=self.browse_integrate_excel, font=self.app_font)
-        self.int_excel_browse_button.grid(row=1, column=2, padx=(0, 15), pady=10)
-        self.integrate_excel_entry.bind("<FocusOut>", lambda event: self._update_excel_sheet_dropdowns())
-        self.integrate_excel_entry.bind("<Return>", lambda event: self._update_excel_sheet_dropdowns())
-
-        bsa_sheet_label = ctk.CTkLabel(input_card, text=_("BSA数据工作表:"), font=self.app_font)
-        bsa_sheet_label.grid(row=2, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.integrate_bsa_sheet_dropdown = ctk.CTkOptionMenu(input_card, variable=self.selected_bsa_sheet,
-                                                              values=[_("请先指定Excel文件")], font=self.app_font,
-                                                              height=35, dropdown_font=self.app_font)
-        self.integrate_bsa_sheet_dropdown.grid(row=2, column=1, columnspan=2, padx=(0, 15), pady=10, sticky="ew")
-
-        hvg_sheet_label = ctk.CTkLabel(input_card, text=_("HVG数据工作表:"), font=self.app_font)
-        hvg_sheet_label.grid(row=3, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.integrate_hvg_sheet_dropdown = ctk.CTkOptionMenu(input_card, variable=self.selected_hvg_sheet,
-                                                              values=[_("请先指定Excel文件")], font=self.app_font,
-                                                              height=35, dropdown_font=self.app_font)
-        self.integrate_hvg_sheet_dropdown.grid(row=3, column=1, columnspan=2, padx=(0, 15), pady=(10, 15), sticky="ew")
-
-        # --- 卡片2: 基因组版本和分析参数 ---
-        version_card = ctk.CTkFrame(frame)
-        version_card.pack(fill="x", padx=30, pady=10)
-        version_card.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkLabel(version_card, text=_("第二步: 指定版本和参数"), font=self.app_font_bold).grid(row=0,
-                                                                                                   column=0,
-                                                                                                   columnspan=2,
-                                                                                                   padx=15,
-                                                                                                   pady=15,
-                                                                                                   sticky="w")
-        bsa_assembly_label = ctk.CTkLabel(version_card, text=_("BSA基因组版本:"), font=self.app_font)
-        bsa_assembly_label.grid(row=1, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.integrate_bsa_assembly_dropdown = ctk.CTkOptionMenu(version_card, variable=self.selected_bsa_assembly,
-                                                                 values=[_("加载中...")], font=self.app_font, height=35,
-                                                                 dropdown_font=self.app_font)
-        self.integrate_bsa_assembly_dropdown.grid(row=1, column=1, padx=(0, 15), pady=10, sticky="ew")
-
-        hvg_assembly_label = ctk.CTkLabel(version_card, text=_("HVG基因组版本:"), font=self.app_font)
-        hvg_assembly_label.grid(row=2, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.integrate_hvg_assembly_dropdown = ctk.CTkOptionMenu(version_card, variable=self.selected_hvg_assembly,
-                                                                 values=[_("加载中...")], font=self.app_font, height=35,
-                                                                 dropdown_font=self.app_font)
-        self.integrate_hvg_assembly_dropdown.grid(row=2, column=1, padx=(0, 15), pady=(10, 15), sticky="ew")
-
-        # 【新增】Log2FC阈值输入
-        log2fc_label = ctk.CTkLabel(version_card, text=_("HVG Log2FC 阈值:"), font=self.app_font)
-        log2fc_label.grid(row=3, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.integrate_log2fc_entry = ctk.CTkEntry(version_card, textvariable=self.integrate_log2fc_var)
-        self.integrate_log2fc_entry.grid(row=3, column=1, padx=(0, 15), pady=10, sticky="ew")
-
-        # --- 卡片3: 运行 ---
-        run_card = ctk.CTkFrame(frame, fg_color="transparent")
-        run_card.pack(fill="x", padx=30, pady=20)
-        self.integrate_start_button = ctk.CTkButton(run_card, text=_("开始联合分析"), height=50,
-                                                    command=self.start_integrate_task, font=self.app_font_bold)
-        self.integrate_start_button.pack(fill="x", expand=True)
-
-        return frame
 
     def _create_tools_frame(self, parent):
 
@@ -2717,37 +2609,9 @@ class CottonToolkitApp(ctk.CTk):
         if hasattr(self, 'config_path_label') and self.config_path_label.winfo_exists():
             self.config_path_label.configure(text=path_text)
 
-        # 【核心修复】现在调用新的主控方法，它只会更新值，不会重建UI
+        # 现在调用新的主控方法，它只会更新值，不会重建UI
         if hasattr(self, 'editor_frame') and self.editor_frame.winfo_exists():
             self._handle_editor_ui_update()
-
-        # 更新整合分析页面
-        if hasattr(self, 'integrate_frame') and self.integrate_frame.winfo_exists():
-            if self.current_config:
-                pipe_cfg = self.current_config.integration_pipeline
-
-                # 更新输入框
-                # 先清除旧值，再插入新值
-                self.integrate_excel_entry.delete(0, tk.END)
-                if pipe_cfg.input_excel_path:
-                    self.integrate_excel_entry.insert(0, pipe_cfg.input_excel_path)
-
-                # 更新下拉菜单的选中项
-                self.selected_bsa_sheet.set(pipe_cfg.bsa_sheet_name or _("请先指定Excel文件"))
-                self.selected_hvg_sheet.set(pipe_cfg.hvg_sheet_name or _("请先指定Excel文件"))
-                self.selected_bsa_assembly.set(pipe_cfg.bsa_assembly_id or _("无可用版本"))
-                self.selected_hvg_assembly.set(pipe_cfg.hvg_assembly_id or _("无可用版本"))
-
-                # 确保下拉菜单的列表和值都是最新的
-                self._update_assembly_id_dropdowns()
-                self._update_excel_sheet_dropdowns()
-
-            else:
-                self.integrate_excel_entry.delete(0, tk.END)
-                self.selected_bsa_sheet.set(_("请先指定Excel文件"))
-                self.selected_hvg_sheet.set(_("请先指定Excel文件"))
-                self.selected_bsa_assembly.set(_("无可用版本"))
-                self.selected_hvg_assembly.set(_("无可用版本"))
 
         # 更新所有工具页面
         if hasattr(self, 'tools_notebook') and self.tools_notebook.winfo_exists():
@@ -3053,38 +2917,7 @@ class CottonToolkitApp(ctk.CTk):
                     "Excel文件中无工作表"):
                 self.selected_hvg_sheet.set(sheet_names_to_set[0])
 
-    def browse_integrate_excel(self):  #
-        filepath = filedialog.askopenfilename(title=_("选择输入Excel文件"),
-                                              filetypes=(("Excel files", "*.xlsx *.xls"), ("All files", "*.*")))  #
-        if filepath:  #
-            self.integrate_excel_entry.delete(0, tk.END)  #
-            self.integrate_excel_entry.insert(0, filepath)  #
-            self._update_excel_sheet_dropdowns()  #
 
-    def start_integrate_task(self):
-        """【统一调用】启动联合分析任务。"""
-        if not self.current_config: self.show_error_message(_("错误"), _("请先加载配置文件。")); return
-
-        excel_override = self.integrate_excel_entry.get().strip()
-        if not excel_override: self.show_error_message(_("输入缺失"), _("请指定Excel文件。")); return
-        try:
-            log2fc_override = float(self.integrate_log2fc_var.get())
-        except (ValueError, TypeError):
-            self.show_error_message(_("输入错误"), _("Log2FC 阈值必须是有效的数字。"))
-            return
-
-        cli_overrides = {
-            "input_excel_path": excel_override,
-            "common_hvg_log2fc_threshold": log2fc_override
-        }
-
-        self._sync_integrate_tab_to_config()  # 确保其他UI设置也被同步
-
-        self._start_task(
-            task_name=_("联合分析"),
-            target_func=run_integrate_pipeline,
-            kwargs={'config': self.current_config, 'cli_overrides': cli_overrides}
-        )
 
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any]):
         """ 统一的任务启动器，现在使用新的 ProgressDialog。"""
@@ -3937,39 +3770,8 @@ class CottonToolkitApp(ctk.CTk):
                                      font=self.app_font)
         close_button.grid(row=scrollable_frame.grid_size()[1], column=0, pady=30)
 
-    def _sync_integrate_tab_to_config(self):
-        """
-        当联合分析页面的输入控件发生变化时，将其值更新到 self.current_config 中。
-        """
-        if not self.current_config:
-            return
-
-        try:
-            pipe_cfg = self.current_config.integration_pipeline
-
-            # 从UI控件获取值
-            excel_path = self.integrate_excel_entry.get().strip()
-            bsa_sheet = self.selected_bsa_sheet.get()
-            hvg_sheet = self.selected_hvg_sheet.get()
-            bsa_assembly = self.selected_bsa_assembly.get()
-            hvg_assembly = self.selected_hvg_assembly.get()
-
-            # 更新内存中的配置对象
-            pipe_cfg.input_excel_path = excel_path
-            pipe_cfg.bsa_sheet_name = bsa_sheet if bsa_sheet not in [_("请先指定Excel文件"), _("读取中...")] else ""
-            pipe_cfg.hvg_sheet_name = hvg_sheet if hvg_sheet not in [_("请先指定Excel文件"), _("读取中...")] else ""
-            pipe_cfg.bsa_assembly_id = bsa_assembly if bsa_assembly not in [_("加载中..."), _("无可用版本")] else ""
-            pipe_cfg.hvg_assembly_id = hvg_assembly if hvg_assembly not in [_("加载中..."), _("无可用版本")] else ""
-
-            self._log_to_viewer(_("联合分析页面的输入已同步到内存配置。"), "DEBUG")
-
-            # 切换到编辑器时，它会从这个更新过的配置中读取值
-
-        except Exception as e:
-            self._log_to_viewer(f"{_('同步UI到配置时出错')}: {e}", "ERROR")
-
     # ----------------------------------------------------------------------
-    # 新增：创建位点转换选项卡的方法
+    # 创建位点转换选项卡的方法
     # ----------------------------------------------------------------------
     def _populate_locus_conversion_tab_structure(self, parent_frame):
         """

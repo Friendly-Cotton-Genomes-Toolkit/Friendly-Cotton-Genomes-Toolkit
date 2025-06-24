@@ -4,13 +4,11 @@
     友好棉花基因组工具包 (FCGT)
   </h1>
   <p>
-    <strong>作者:</strong> PureAmaya
-  </p>
-  <p>
     <a href="https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit/releases"><img alt="Version" src="https://img.shields.io/github/v/release/PureAmaya/Friendly-Cotton-Genomes-Toolkit?style=for-the-badge&logo=github"></a>
     <a href="https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/PureAmaya/Friendly-Cotton-Genomes-Toolkit?style=for-the-badge"></a>
   </p>
 </div>
+
 
 
 ## 选择你的语言 | Select your language | 言語を選択 | 選擇語言
@@ -21,16 +19,16 @@
 
 ## 🚀 项目简介
 
-**FCGT (Friendly Cotton Genomes Toolkit)** 是一款专为棉花研究者，尤其是**非生物信息专业背景**的科研人员和学生设计的基因组数据分析工具。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可**开箱即用**。
+**FCGT (Friendly Cotton Genomes Toolkit)** 是一款专为棉花研究者，尤其是**非生物信息专业背景**的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可**开箱即用**。
 
-本工具包聚焦于功能缺失基因筛选、多版本间的同源基因映射（Liftover）与多组学数据的整合分析，解决了目前棉花领域工具链不完善、操作门槛高的痛点。
+本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的得力助手。
 
 ---
 
 ## ✨ 核心亮点与功能
 
 ### 1. 极致友好，开箱即用
-* **图形界面优先**: 所有核心功能均可通过直观的图形界面完成，鼠标点击即可运行分析。
+* **图形界面优先**: 所有核心工具均可通过直观的图形界面完成，鼠标点击即可运行分析。
 * **无需复杂配置**: 下载后直接运行，无需安装Python或处理复杂的依赖关系。
 * **多语言支持**: 内置简/繁中文、英文、日文界面，打破语言壁垒。
 * **核心功能离线运行**: 除首次数据下载和AI助手功能外，所有核心分析均可在本地离线完成，确保您的数据安全。
@@ -39,13 +37,13 @@
 * **多线程加速**: 内置多线程支持，无论是下载海量基因组数据，还是使用AI助手批量翻译、分析上千行表格，都能显著缩短等待时间。
 * **命令行支持**: 对于高级用户，我们同样提供功能完善的命令行工具，方便您将FCGT整合到自动化分析流程中。
 
-### 3. 精准的同源映射与整合分析
+### 3. 精准的基因组工具集
 * **棉花版 Liftover**: 解决了棉花领域长期缺乏在不同基因组版本间进行基因列表转换工具的难题。
-* **一站式整合流程**: 可无缝整合BSA定位区间与高变异基因（HVG）数据，自动完成跨版本同源映射，快速筛选与性状关联的候选基因。
+* **一站式数据工具**: 集合了基因注释、GFF查询、富集分析、格式转换等多种常用功能，无需在多个软件间来回切换。
 * **标准化数据下载**: 一键下载来自 [CottonGen](https://www.cottongen.org/) 等权威数据库的主流棉花参考基因组及注释文件。
 
 ### 4. 跨平台，随处可用
-* 我们为 **Windows**, **macOS** 和 **Linux** 用户都提供了预编译的可执行文件。
+* 我们为 **Windows** 用户都提供了预编译的可执行文件（其他系统的用户可以执行Python运行）。
 * 无论您使用何种主流操作系统，都能获得一致、流畅的使用体验。
 
 ---
@@ -72,11 +70,9 @@ python -m cotton_toolkit.cli --help
 
 <img src="assets/主界面.png" style="zoom:50%;" />
 
-<img src="D:\Python\cotton_tool\assets\配置编辑器.png" style="zoom:50%;" />
+<img src="assets\配置编辑器.png" style="zoom:50%;" />
 
-<img src="D:\Python\cotton_tool\assets\联合分析.png" style="zoom:50%;" />
-
-<img src="D:\Python\cotton_tool\assets\数据工具.png" style="zoom:50%;" />
+<img src="assets\数据工具.png" style="zoom:50%;" />
 
 ------
 
@@ -84,23 +80,34 @@ python -m cotton_toolkit.cli --help
 
 ### 开发与致谢
 
-- **作者**: [PureAmaya](https://github.com/PureAmaya)
 - **特别感谢**: 本项目的开发得到了**开源社区**和所有为棉花研究做出贡献的**科研工作者**的支持。
 
 ### 版权与许可
 
 本工具的开发使用了以下优秀的开源软件包，感谢它们的开发者：
 
-- requests (Apache-2.0 License)
-- tqdm (MIT License)
-- gffutils (MIT License)
-- pandas (BSD 3-Clause License)
-- PyYAML (MIT License)
-- numpy (BSD License)
-- pillow (MIT-CMU License)
-- diskcache (Apache 2.0 License)
-- openpyxl (MIT License)
-- customtkinter (MIT License)
+| **库**                  | **主要用途**                                                 | **开源许可证**                                     |
+| ----------------------- | ------------------------------------------------------------ | -------------------------------------------------- |
+| **pydantic**            | 用于数据验证、设置管理和类型提示强制，是项目中配置模型的核心。 | MIT License                                        |
+| **typing-extensions**   | 为标准 `typing` 模块提供新的或实验性的类型提示支持。         | Python Software Foundation License                 |
+| **packaging**           | 用于处理 Python 包的版本、标记和规范。                       | Apache-2.0 / BSD                                   |
+| **requests**            | 一个优雅、简洁的HTTP库，用于执行网络请求，如下载数据。       | Apache-2.0 License                                 |
+| **tqdm**                | 一个快速、可扩展的进度条工具，用于在命令行和循环中显示进度。 | MIT License                                        |
+| **gffutils**            | 用于创建、管理和查询GFF/GTF文件数据库，是基因组注释操作的基础。 | MIT License                                        |
+| **pandas**              | 提供高性能、易于使用的数据结构和数据分析工具，是所有数据处理的核心。 | BSD 3-Clause License                               |
+| **pyyaml**              | 用于解析YAML文件，是加载 `config.yml` 配置文件的关键。       | MIT License                                        |
+| **google-generativeai** | Google 的官方库，用于与 Gemini 等生成式AI模型进行交互。      | Apache-2.0 License                                 |
+| **numpy**               | Python科学计算的基础包，为Pandas等库提供多维数组对象和数学运算支持。 | BSD 3-Clause License                               |
+| **customtkinter**       | 用于构建现代化、美观的图形用户界面（GUI）。                  | MIT License                                        |
+| **pillow**              | Pillow (PIL Fork) 是一个强大的图像处理库，用于在GUI中加载和显示图标等图片。 | Historical Permission Notice and Disclaimer (HPND) |
+| **diskcache**           | 提供基于磁盘的缓存功能，用于存储临时或可重复使用的数据，以提高性能。 | Apache-2.0 License                                 |
+| **click**               | 用于以组合式的方式创建漂亮的命令行界面（CLI）。              | BSD 3-Clause License                               |
+| **matplotlib**          | 一个全面的库，用于在Python中创建静态、动画和交互式的可视化图表。 | matplotlib License (BSD-style)                     |
+| **statsmodels**         | 提供用于估计多种统计模型、进行统计检验和数据探索的类和函数。 | BSD 3-Clause License                               |
+| **protobuf**            | Google 的数据交换格式，通常被其他库（如TensorFlow或某些API客户端）所依赖。 | BSD 3-Clause License                               |
+| **openpyxl**            | 用于读取和写入 Excel 2010 xlsx/xlsm/xltx/xltm 文件的库。     | MIT License                                        |
+| **networkx**            | 用于创建、操作和研究复杂网络的结构、动态和功能的Python包。   | BSD 3-Clause License                               |
+| **upsetplot**           | 用于生成UpSet图，这是一种用于可视化集合交集数据的有效方法。  | BSD 3-Clause License                               |
 
 ### 数据来源与引文
 
@@ -129,7 +136,7 @@ python -m cotton_toolkit.cli --help
 
 
 
-> **免责声明**：上述基因组的数据下载均由用2户执行，本工具仅进行通用的分析操作。
+> **免责声明**：上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。
 
 ------
 

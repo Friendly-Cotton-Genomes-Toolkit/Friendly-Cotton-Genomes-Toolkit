@@ -6,6 +6,7 @@ import signal
 import sys
 import threading
 
+from cotton_toolkit.casestudies.bsa_hvg_integration import run_integrate_pipeline
 from cotton_toolkit.core.ai_wrapper import AIWrapper
 from .utils.localization import setup_localization
 from .utils.logger import setup_global_logger
@@ -14,7 +15,6 @@ import click
 from . import VERSION
 from .pipelines import (
     run_download_pipeline,
-    run_integrate_pipeline,
     run_homology_mapping,
     run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files,
 
@@ -25,6 +25,22 @@ from .config.loader import load_config, generate_default_config_files, MainConfi
 cancel_event = threading.Event()
 _ = lambda s: str(s) # 占位符
 logger = logging.getLogger("cotton_toolkit.gui")
+
+
+def get_config(config_path: str) -> MainConfig:
+    """Helper to load config and handle CLI-specific errors."""
+    try:
+        config_obj = load_config(config_path)
+        if not config_obj:
+            click.echo(f"错误: 无法从 '{config_path}' 加载配置。文件可能为空或格式不正确。", err=True)
+            raise click.Abort()
+        return config_obj
+    except FileNotFoundError:
+        click.echo(f"错误: 配置文件 '{config_path}' 未找到。请检查路径或运行 'init' 命令。", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"错误: 加载配置文件时发生意外错误: {e}", err=True)
+        raise click.Abort()
 
 
 def signal_handler(sig, frame):
@@ -46,25 +62,20 @@ class AppContext:
 @click.option('--lang', default='zh-hans', help="语言设置 (例如: en, zh-hans)。")
 @click.option('-v', '--verbose', is_flag=True, default=False, help=_("启用详细日志输出。"))
 @click.pass_context
-def cli(ctx, config,lang, verbose):
+def cli(ctx, config, lang, verbose):
     """棉花基因组分析工具包 (Cotton Toolkit) - 一个现代化的命令行工具。"""
-
     builtins._ = setup_localization(language_code=lang)
 
-    try:
-        loaded_config = load_config(config)
-        if not loaded_config:
-            if ctx.invoked_subcommand not in ['init']:
-                click.echo(_("错误: 配置文件 '{}' 未找到。请先运行 'init' 命令。").format(config), err=True)
-                sys.exit(1)
-            loaded_config = MainConfig()
-
+    if ctx.invoked_subcommand == 'init':
+        # init 命令不需要预加载配置
+        ctx.obj = AppContext(config=MainConfig(), verbose=verbose)
+        setup_global_logger(log_level_str="DEBUG" if verbose else "INFO")
+    else:
+        loaded_config = get_config(config)
         log_level_to_set = "DEBUG" if verbose else loaded_config.log_level
         setup_global_logger(log_level_str=log_level_to_set)
         ctx.obj = AppContext(config=loaded_config, verbose=verbose)
-    except Exception as e:
-        click.echo(_("加载或解析配置时出错: {}").format(e), err=True)
-        sys.exit(1)
+
 
 @cli.command()
 @click.option('--output-dir', default='.', help=_("生成配置文件的目录。"))
@@ -94,18 +105,6 @@ def download(ctx, versions, force, http_proxy, https_proxy):
         "https_proxy": https_proxy
     }
     run_download_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info, cancel_event=cancel_event)
-
-@cli.command()
-@click.option('--excel-path', type=click.Path(exists=True, dir_okay=False), help=_("覆盖配置文件中的输入Excel文件路径。"))
-@click.option('--log2fc-threshold', type=float, help=_("覆盖配置文件中的 Log2FC 阈值。"))
-@click.pass_context
-def integrate(ctx, excel_path, log2fc_threshold):
-    """联合分析BSA与HVG数据。"""
-    cli_overrides = {
-        "input_excel_path": excel_path,
-        "common_hvg_log2fc_threshold": log2fc_threshold
-    }
-    run_integrate_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info, cancel_event=cancel_event)
 
 
 @cli.command()
@@ -348,6 +347,31 @@ def test_ai(ctx, provider):
         click.secho(f"✅ {message}", fg='green')
     else:
         click.secho(f"❌ {message}", fg='red')
+
+
+@cli.command()
+@click.option('--excel-path', type=click.Path(exists=True, dir_okay=False), help=_("覆盖配置文件中的输入Excel文件路径。"))
+@click.option('--log2fc-threshold', type=float, help=_("覆盖配置文件中的 Log2FC 阈值。"))
+@click.pass_context
+def integrate(ctx, excel_path, log2fc_threshold):
+    """
+    (高级案例) 运行整合分析流程，筛选候选基因。
+    """
+    config_obj = ctx.obj.config
+
+    # 覆盖配置
+    if excel_path:
+        config_obj.integration_pipeline.input_excel_path = excel_path
+    if log2fc_threshold is not None:
+        config_obj.integration_pipeline.common_hvg_log2fc_threshold = log2fc_threshold
+
+    run_integrate_pipeline(
+        config=config_obj,
+        cli_overrides=None,
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
+        progress_callback=lambda p, m: click.echo(f"[{p}%] {m}"),
+        cancel_event=cancel_event
+    )
 
 if __name__ == '__main__':
     cli()
