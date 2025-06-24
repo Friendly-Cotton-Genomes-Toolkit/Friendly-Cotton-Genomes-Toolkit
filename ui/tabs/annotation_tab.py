@@ -240,3 +240,12 @@ class AnnotationTab(ctk.CTkFrame):
         ctk.CTkButton(enrich_tab, text=_("开始富集分析与绘图"), font=app_font_bold,
                       command=self.app.start_enrichment_task).grid(row=9, column=0, columnspan=4, padx=10, pady=15,
                                                                    sticky="e")
+
+    def update_assembly_dropdowns(self, assembly_ids: list):
+        """由主应用调用，用于更新本选项卡内的基因组下拉菜单。"""
+
+        current_assembly = self.app.selected_annotation_assembly.get()
+        if current_assembly not in assembly_ids:
+            self.app.selected_annotation_assembly.set(assembly_ids[0] if "无可用" not in assembly_ids[0] else "")
+
+        self.app.annotation_assembly_dropdown.configure(values=assembly_ids)
