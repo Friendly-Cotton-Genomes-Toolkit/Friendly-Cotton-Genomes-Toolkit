@@ -1,9 +1,10 @@
 ﻿# ui/tabs/locus_conversion_tab.py
-
+import os
 import tkinter as tk
 import customtkinter as ctk
 from typing import TYPE_CHECKING, List
 
+from cotton_toolkit.config.loader import get_local_downloaded_file_path
 # 导入后台任务函数
 from cotton_toolkit.pipelines import run_locus_conversion
 
@@ -28,6 +29,8 @@ class LocusConversionTab(ctk.CTkFrame):
         self.pack(fill="both", expand=True)
 
         # 1. 将所有 locus_conversion 相关的 Tkinter 变量移到这里
+        self.s2b_file_path_var = tk.StringVar(value=_("..."))
+        self.b2t_file_path_var = tk.StringVar(value=_("..."))
         self.selected_locus_source_assembly = tk.StringVar()
         self.selected_locus_target_assembly = tk.StringVar()
         self.locus_strict_priority_var = tk.BooleanVar(value=True)
@@ -40,95 +43,162 @@ class LocusConversionTab(ctk.CTkFrame):
     def _create_widgets(self):
         """创建位点转换选项卡的全部UI控件。"""
         self.grid_columnconfigure(0, weight=1)
+        # 将第1行配置为权重1，允许滚动框架填充空间
+        self.grid_rowconfigure(1, weight=1)
 
-        app_font = self.app.app_font
-        app_font_bold = self.app.app_font_bold
+        # 创建一个可滚动的框架来容纳所有内容
+        scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        scrollable_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        scrollable_frame.grid_columnconfigure(0, weight=1)
 
-        assembly_ids = list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [_("无可用版本")]
+        # --- 卡片1: 输入与选择 ---
+        input_frame = ctk.CTkFrame(scrollable_frame)
+        input_frame.pack(fill="x", expand=True, pady=(5, 10), padx=5)
+        input_frame.grid_columnconfigure(1, weight=1)
 
-        # Part 1: 基因组选择
-        top_frame = ctk.CTkFrame(self)
-        top_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-        top_frame.grid_columnconfigure((1, 3), weight=1)
+        input_label = ctk.CTkLabel(input_frame, text=_("基因组版本与输入"), font=self.app.app_font_bold)
+        input_label.grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 15), sticky="w")
 
-        ctk.CTkLabel(top_frame, text=_("源基因组:"), font=app_font).grid(row=0, column=0, padx=(10, 5), pady=5,
-                                                                         sticky="w")
-        self.locus_source_assembly_dropdown = ctk.CTkOptionMenu(
-            top_frame, variable=self.selected_locus_source_assembly, values=assembly_ids,
-            font=app_font, dropdown_font=app_font
+        # 源基因组版本下拉菜单
+        source_assembly_label = ctk.CTkLabel(input_frame, text=_("源基因组版本:"), font=self.app.app_font)
+        source_assembly_label.grid(row=1, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.source_assembly_dropdown = ctk.CTkOptionMenu(
+            input_frame,
+            variable=self.app.selected_locus_source_assembly,
+            values=[_("加载中...")],
+            font=self.app.app_font,
+            height=35,
+            dropdown_font=self.app.app_font,
+            command=lambda _: self._update_homology_file_display()
         )
-        self.locus_source_assembly_dropdown.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.source_assembly_dropdown.grid(row=1, column=1, padx=(0, 10), pady=10, sticky="ew")
 
-        ctk.CTkLabel(top_frame, text=_("目标基因组:"), font=app_font).grid(row=0, column=2, padx=(10, 5), pady=5,
-                                                                           sticky="w")
-        self.locus_target_assembly_dropdown = ctk.CTkOptionMenu(
-            top_frame, variable=self.selected_locus_target_assembly, values=assembly_ids,
-            font=app_font, dropdown_font=app_font
+        # 目标基因组版本下拉菜单
+        target_assembly_label = ctk.CTkLabel(input_frame, text=_("目标基因组版本:"), font=self.app.app_font)
+        target_assembly_label.grid(row=2, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.target_assembly_dropdown = ctk.CTkOptionMenu(
+            input_frame,
+            variable=self.app.selected_locus_target_assembly,
+            values=[_("加载中...")],
+            font=self.app.app_font,
+            height=35,
+            dropdown_font=self.app.app_font,
+            command=lambda _: self._update_homology_file_display()
         )
-        self.locus_target_assembly_dropdown.grid(row=0, column=3, padx=(5, 10), pady=5, sticky="ew")
+        self.target_assembly_dropdown.grid(row=2, column=1, padx=(0, 10), pady=10, sticky="ew")
 
-        # Part 2: 输入区域
-        input_card = ctk.CTkFrame(self, fg_color="transparent")
-        input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        input_card.grid_columnconfigure(0, weight=1)
+        # 位点输入框
+        locus_input_label = ctk.CTkLabel(input_frame, text=_("输入位点:"), font=self.app.app_font)
+        locus_input_label.grid(row=3, column=0, padx=(10, 5), pady=(10, 15), sticky="nw")
+        self.locus_input_textbox = ctk.CTkTextbox(input_frame, height=120, font=self.app.app_font, wrap="word")
+        self.locus_input_textbox.grid(row=3, column=1, padx=(0, 10), pady=(10, 15), sticky="ew")
+        self.app._bind_mouse_wheel_to_scrollable(self.locus_input_textbox)
 
-        ctk.CTkLabel(input_card, text=_("输入染色体区域:"), font=app_font_bold).grid(row=0, column=0, sticky="w")
-        self.locus_conversion_region_entry = ctk.CTkEntry(
-            input_card,
-            font=app_font,
-            placeholder_text=_("例如: A03:1000-2000")
-        )
-        self.locus_conversion_region_entry.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+        # --- 卡片2: 同源文件状态 ---
+        path_display_frame = ctk.CTkFrame(scrollable_frame)
+        path_display_frame.pack(fill="x", expand=True, pady=10, padx=5)
 
-        # Part 3: 高级选项 (严格模式开关)
-        adv_options_frame = ctk.CTkFrame(self, fg_color="transparent")
-        adv_options_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(10, 0))
+        path_label = ctk.CTkLabel(path_display_frame, text=_("同源文件状态"), font=self.app.app_font_bold)
+        path_label.pack(anchor="w", padx=10, pady=(10, 5))
 
-        switch_frame = ctk.CTkFrame(adv_options_frame, fg_color="transparent")
-        switch_frame.pack(side="left", anchor="w", padx=0)
+        # 源到桥梁文件路径显示
+        s2b_frame = ctk.CTkFrame(path_display_frame, fg_color="transparent")
+        s2b_frame.pack(fill="x", pady=5, padx=5)
+        ctk.CTkLabel(s2b_frame, text=_("源->桥梁 同源文件:"), font=self.app.app_font).pack(side="left")
+        self.s2b_file_label = ctk.CTkLabel(s2b_frame, textvariable=self.s2b_file_path_var, font=self.app.app_font, text_color="gray")
+        self.s2b_file_label.pack(side="left", padx=10)
 
-        self.locus_strict_switch = ctk.CTkSwitch(
-            switch_frame, text=_("仅匹配同亚组、同源染色体上的基因 (严格模式)"),
-            variable=self.locus_strict_priority_var,
-            font=app_font,
-            command=self._toggle_locus_warning_label  # command指向本类的方法
-        )
-        self.locus_strict_switch.pack(side="left")
+        # 桥梁到目标文件路径显示
+        b2t_frame = ctk.CTkFrame(path_display_frame, fg_color="transparent")
+        b2t_frame.pack(fill="x", pady=5, padx=5)
+        ctk.CTkLabel(b2t_frame, text=_("桥梁->目标 同源文件:"), font=self.app.app_font).pack(side="left")
+        self.b2t_file_label = ctk.CTkLabel(b2t_frame, textvariable=self.b2t_file_path_var, font=self.app.app_font, text_color="gray")
+        self.b2t_file_label.pack(side="left", padx=10)
 
-        self.locus_warning_label = ctk.CTkLabel(
-            switch_frame, text=_("关闭后可能导致不同染色体的基因发生错配"),
-            text_color=("#D32F2F", "#E57373"),
-            font=app_font_bold
-        )
-
-        # Part 4: 输出路径选择
-        output_frame = ctk.CTkFrame(self, fg_color="transparent")
-        output_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=(15, 0))
+        # --- 卡片3: 结果输出 ---
+        output_frame = ctk.CTkFrame(scrollable_frame)
+        output_frame.pack(fill="both", expand=True, pady=10, padx=5)
         output_frame.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(output_frame, text=_("选择输出CSV文件路径:"), font=app_font_bold).grid(row=0, column=0, sticky="w")
+        output_frame.grid_rowconfigure(1, weight=1) # 让文本框填充
 
-        output_entry_frame = ctk.CTkFrame(output_frame, fg_color="transparent")
-        output_entry_frame.grid(row=1, column=0, sticky="ew", pady=(5, 0))
-        output_entry_frame.grid_columnconfigure(0, weight=1)
+        output_label = ctk.CTkLabel(output_frame, text=_("转换结果"), font=self.app.app_font_bold)
+        output_label.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="w")
 
-        self.locus_conversion_output_entry = ctk.CTkEntry(output_entry_frame, font=app_font,
-                                                          placeholder_text=_("点击“另存为”选择保存位置"))
-        self.locus_conversion_output_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        self.result_textbox = ctk.CTkTextbox(output_frame, state="disabled", wrap="none", font=self.app.app_font_mono)
+        self.result_textbox.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
+        self.app._bind_mouse_wheel_to_scrollable(self.result_textbox)
 
-        # command 指向主应用的通用文件保存对话框方法
-        ctk.CTkButton(output_entry_frame, text=_("另存为..."), width=100, font=app_font,
-                      command=lambda: self.app._browse_save_file(self.locus_conversion_output_entry,
-                                                                 [("CSV files", "*.csv")])).grid(row=0, column=1)
+        # --- 底部开始按钮 ---
+        self.start_button = ctk.CTkButton(
+            self,
+            text=_("开始转换"),
+            height=40,
+            font=self.app.app_font_bold,
+            command=self.start_locus_conversion_task
+        )
+        self.start_button.grid(row=2, column=0, sticky="ew", padx=15, pady=(5, 15))
 
-        # Part 5: 运行按钮
-        ctk.CTkButton(self, text=_("开始转换"), font=app_font_bold, command=self.start_locus_conversion_task).grid(
-            row=4, column=0, padx=10, pady=(20, 10), sticky="e")
 
     def update_from_config(self):
         """由主应用调用，在配置加载时更新本页面。"""
         self.app._log_to_viewer("DEBUG: LocusConversionTab received update_from_config call.", "DEBUG")
         # 目前此Tab没有需要从配置中直接更新的特殊内容，但保留此方法以符合设计模式。
         pass
+
+    def _update_homology_file_display(self):
+        """
+        根据当前选择的源和目标基因组，更新同源文件路径的显示。
+        这个方法现在是 LocusConversionTab 的一部分，实现了自管理。
+        """
+        source_id = self.app.selected_locus_source_assembly.get()
+        target_id = self.app.selected_locus_target_assembly.get()
+
+        if not self.app.current_config or not self.app.genome_sources_data:
+            self.s2b_file_path_var.set(_("请先加载配置"))
+            self.b2t_file_path_var.set(_("请先加载配置"))
+            return
+
+        ok_color = self.app.default_label_text_color
+        warn_color = ("#D84315", "#FF7043")  # Orange
+        error_color = ("#D32F2F", "#E57373")  # Red
+
+        # --- 处理源到桥梁文件 (Source to Bridge) ---
+        source_info = self.app.genome_sources_data.get(source_id)
+        if source_info and hasattr(source_info, 'homology_ath_url') and source_info.homology_ath_url:
+            s2b_path = get_local_downloaded_file_path(self.app.current_config, source_info, 'homology_ath')
+            if s2b_path and os.path.exists(s2b_path):
+                self.s2b_file_path_var.set(os.path.basename(s2b_path))
+                self.s2b_file_label.configure(text_color=ok_color)
+            else:
+                self.s2b_file_path_var.set(_("文件未找到，请先下载"))
+                self.s2b_file_label.configure(text_color=error_color)
+        else:
+            self.s2b_file_path_var.set(_("源基因组未配置同源文件"))
+            self.s2b_file_label.configure(text_color=warn_color)
+
+        # --- 处理桥梁到目标文件 (Bridge to Target) ---
+        target_info = self.app.genome_sources_data.get(target_id)
+        if target_info and hasattr(target_info, 'homology_ath_url') and target_info.homology_ath_url:
+            b2t_path = get_local_downloaded_file_path(self.app.current_config, target_info, 'homology_ath')
+            if b2t_path and os.path.exists(b2t_path):
+                self.b2t_file_path_var.set(os.path.basename(b2t_path))
+                self.b2t_file_label.configure(text_color=ok_color)
+            else:
+                self.b2t_file_path_var.set(_("文件未找到，请先下载"))
+                self.b2t_file_label.configure(text_color=error_color)
+        else:
+            self.b2t_file_path_var.set(_("目标基因组未配置同源文件"))
+            self.b2t_file_label.configure(text_color=warn_color)
+
+
+    def update_assembly_dropdowns(self, assembly_ids: list):
+        if self.source_assembly_dropdown and self.source_assembly_dropdown.winfo_exists():
+            self.source_assembly_dropdown.configure(values=assembly_ids)
+        if self.target_assembly_dropdown and self.target_assembly_dropdown.winfo_exists():
+            self.target_assembly_dropdown.configure(values=assembly_ids)
+        # 更新后，手动调用一次文件显示更新
+        self._update_homology_file_display()
+
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         """由主应用调用，用于更新本选项卡内的基因组下拉菜单。"""

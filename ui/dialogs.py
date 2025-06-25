@@ -103,11 +103,11 @@ class MessageDialog(BaseDialog):
 # 在 dialogs.py 文件中
 
 class ProgressDialog(BaseDialog):
-    """【修正版】任务进度弹窗，解决了生命周期竞态条件问题。"""
+    """【优化版】任务进度弹窗，解决了生命周期竞态条件问题。"""
 
     def __init__(self, parent, title: str = "任务进行中", on_cancel: Optional[Callable] = None,
                  app_font: ctk.CTkFont = None):
-        super().__init__(parent, title)
+        super().__init__(parent, _(title))
         self.on_cancel_callback = on_cancel
         self.resizable(False, False)
 
@@ -123,16 +123,18 @@ class ProgressDialog(BaseDialog):
         self.progress_bar.pack(pady=10, padx=10, fill="x", expand=True)
 
         if self.on_cancel_callback:
-            # 【修改点】取消按钮现在调用 self.close()
+            # 【修改点 1】“取消”按钮现在调用 self.close()
             cancel_button = ctk.CTkButton(main_frame, text=_("取消"), command=self.close, font=app_font)
             cancel_button.pack(pady=(10, 0), anchor="center")
 
-        # 窗口的 "X" 按钮也应该调用 self.close
+        # 【修改点 2】窗口的 "X" 按钮也应该调用 self.close()
         self.protocol("WM_DELETE_WINDOW", self.close)
 
+
     def update_progress(self, percentage: int, message: str):
+        """更新进度条和消息，增加存在性检查。"""
         if self.winfo_exists():
-            self.message_var.set(message)
+            self.message_var.set(_(message))
             self.progress_bar.set(percentage / 100)
 
     def _safe_destroy(self):
@@ -143,13 +145,13 @@ class ProgressDialog(BaseDialog):
 
     def close(self):
         """
-        【新增】公共的、安全的关闭方法。
+        【新增核心逻辑】公共的、安全的关闭方法。
         它会触发取消回调，并延迟销毁窗口，以避免竞态条件。
         """
+        # 1. 首先，通知后台线程任务被取消了
         if self.on_cancel_callback:
-            # 触发传递进来的取消事件，让后台线程知道任务被取消了
             self.on_cancel_callback()
 
-        # 使用 after() 方法，将销毁操作推迟10毫秒执行
-        # 这给了Tkinter事件循环足够的时间来处理任何待办的UI事件
+        # 2. 【关键优化】使用 after() 方法，将销毁操作推迟到Tkinter事件循环的下一个空闲时刻。
+        # 这给了UI线程足够的时间来处理任何来自后台的、待办的更新事件，从根本上解决了竞态问题。
         self.after(10, self._safe_destroy)

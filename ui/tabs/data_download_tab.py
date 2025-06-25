@@ -70,7 +70,8 @@ class DataDownloadTab(ctk.CTkFrame):
         ctk.CTkButton(selection_buttons_frame, text=_("取消全选"), width=90, height=28, font=app_font,
                       command=lambda: self._toggle_all_download_genomes(False)).pack(side="left")
 
-        ctk.CTkLabel(target_card, text=_("勾选需要下载的基因组版本。若不勾选任何项，将默认下载所有可用版本。"),
+        # 【文本修改】移除“若不勾选任何项，将默认下载所有可用版本”的描述
+        ctk.CTkLabel(target_card, text=_("勾选需要下载的基因组版本。"),
                      text_color=self.app.secondary_text_color, font=app_font, wraplength=500).grid(row=1, column=0,
                                                                                                    padx=10,
                                                                                                    pady=(0, 10),
@@ -103,6 +104,8 @@ class DataDownloadTab(ctk.CTkFrame):
 
         ctk.CTkButton(self, text=_("开始下载"), height=40, command=self.start_download_task, font=app_font_bold).pack(
             fill="x", padx=15, pady=(10, 15), side="bottom")
+
+
 
     def update_from_config(self):
         """由主应用调用，用于在配置加载时更新本页面。"""
@@ -155,14 +158,27 @@ class DataDownloadTab(ctk.CTkFrame):
         for var in self.download_genome_vars.values():
             var.set(select)
 
+
+
+
     def start_download_task(self):
         """启动数据下载任务。"""
         if not self.app.current_config:
             self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        versions_to_download = [gid for gid, var in self.download_genome_vars.items() if var.get()] or None
+        # 1. 获取所有被勾选的版本
+        versions_to_download = [gid for gid, var in self.download_genome_vars.items() if var.get()]
 
+        # 2. 【BUG修复】在这里增加前置检查，确保至少选择了一项
+        if not versions_to_download:
+            self.app.show_warning_message(
+                title=_("未选择版本"),
+                message=_("请至少勾选一个需要下载的基因组版本。")
+            )
+            return  # 如果未选择，则终止函数执行
+
+        # 3. 继续执行后续逻辑
         proxies = None
         if self.download_proxy_var.get():
             http_proxy = self.app.current_config.downloader.proxies.http

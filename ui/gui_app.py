@@ -392,15 +392,15 @@ class CottonToolkitApp(ctk.CTk):
         self.progress_dialog.update_progress(0, message)
         # ProgressDialog 内部会自动居中和显示
 
-    def _hide_progress_dialog(self):
+    def _hide_progress_dialog(self, data=None):  # data 参数是为了兼容旧的调用
         """
-        【统一修正版】安全地隐藏并销毁进度弹窗。
+        【优化版】安全地隐藏并销毁进度弹窗。
         此方法现在委托给 ProgressDialog 自己的 close 方法。
         """
         if self.progress_dialog and self.progress_dialog.winfo_exists():
-            # 调用 ProgressDialog 内部的安全关闭方法，它使用了 after() 来避免竞态条件
             self.progress_dialog.close()
-        self.progress_dialog = None # 立即清空引用
+        self.progress_dialog = None
+
 
 
     def _create_log_viewer_widgets(self):
@@ -485,31 +485,40 @@ class CottonToolkitApp(ctk.CTk):
         # gui_app.py
 
     def _init_pages_and_final_setup(self):
-        # 在日志中输出当前工作目录，以便用户了解相对路径的基准
+        """
+        【优化版】初始化所有页面并进行最终设置，包含预加载编辑器UI。
+        """
         self._log_to_viewer(f"{_('当前工作目录:')} {os.getcwd()}")
 
-        # 1. 创建所有主内容区域的 Frame 并赋值给 self 属性
+        # 1. 创建所有主内容区域的 Frame
         self.home_frame = self._create_home_frame(self.main_content_frame)
         self.editor_frame = self._create_editor_frame(self.main_content_frame)
         self.tools_frame = self._create_tools_frame(self.main_content_frame)
 
-        # 2. 同步填充所有工具选项卡的内容
+        # 2. 预加载所有工具选项卡的内容
         self._populate_tools_notebook()
 
-        # 3. 调用新的主控方法来处理编辑器UI
+        # 3. 【新增优化】预加载配置编辑器的UI内容
+        self._log_to_viewer("INFO: Pre-loading configuration editor UI...", "DEBUG")
+        if not self.editor_ui_built:
+            self._create_editor_widgets(self.editor_scroll_frame)
+            self.editor_ui_built = True
+        self._log_to_viewer("INFO: Configuration editor UI pre-loaded.", "DEBUG")
+
+        # 4. 调用主控方法来用数据填充/更新编辑器UI的初始状态
         self._handle_editor_ui_update()
 
-        # 4. 设置初始显示的页面 (例如 "home")
+        # 5. 设置初始显示的页面 (例如 "home")
         self.select_frame_by_name("home")
 
-        # 5. 更新UI语言和按钮状态 (这些方法现在可以安全地调用，因为所有基础UI元素都已创建)
+        # 6. 更新UI语言和按钮状态
         self.update_language_ui()
         self._update_button_states()
 
-        # 6. 启动消息队列的周期性检查 (确保主线程能够处理来自后台的消息)
+        # 7. 启动消息队列的周期性检查
         self.check_queue_periodic()
 
-        # 7. 设置窗口关闭协议和应用程序图标
+        # 8. 设置窗口关闭协议和应用程序图标
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.set_app_icon()
 
@@ -553,11 +562,11 @@ class CottonToolkitApp(ctk.CTk):
 
     def _create_editor_frame(self, parent):
         """
-        创建配置编辑器的主框架，只包含布局和按钮，不包含具体内容。
+        【优化版】创建配置编辑器的主框架，包含一个可滚动区域和一个提示标签。
         """
         page = ctk.CTkFrame(parent, fg_color="transparent")
         page.grid_columnconfigure(0, weight=1)
-        page.grid_rowconfigure(1, weight=1)  # 第1行用于滚动框架
+        page.grid_rowconfigure(1, weight=1)  # 第1行用于主内容区域
 
         top_frame = ctk.CTkFrame(page, fg_color="transparent")
         top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
@@ -572,24 +581,21 @@ class CottonToolkitApp(ctk.CTk):
                                                 font=self.app_font)
         self.save_editor_button.grid(row=0, column=1, sticky="e", padx=5)
 
+        # 1. 创建包含所有配置项的可滚动框架
         self.editor_scroll_frame = ctk.CTkScrollableFrame(page)
         self.editor_scroll_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         self.editor_scroll_frame.grid_columnconfigure(0, weight=1)
         self._bind_mouse_wheel_to_scrollable(self.editor_scroll_frame)
 
-        # --- 新增：为配置编辑器框架绑定 Ctrl+S 快捷键 ---
-        # '<Control-s>' 或 '<Control-S>' 都是 macOS 和 Windows 上的 Ctrl+S
-        # 使用 lambda 函数来调用 _save_config_from_editor
-        page.bind('<Control-s>', lambda event: self._save_config_from_editor())
-        page.bind('<Control-S>', lambda event: self._save_config_from_editor())  # 兼容大写S，虽然通常小写就够了
+        # 2. 创建一个“未加载配置”的提示标签
+        self.editor_no_config_label = ctk.CTkLabel(page, text=_("请先从“主页”加载或生成一个配置文件。"),
+                                                   font=self.app_subtitle_font,
+                                                   text_color=self.secondary_text_color)
+        self.editor_no_config_label.grid(row=1, column=0, sticky="nsew")
 
-        # 确保滚动框架内的控件也能触发这个绑定，需要将绑定传递到内部控件
-        # 注意：这可能会有点复杂，因为 CustomTkinter 的事件传递有时不完全像标准 Tkinter。
-        # 最稳妥的方式是对所有相关的输入控件（Entry, Textbox）也绑定这个快捷键。
-        # 但我们先从 top-level 的 frame 绑定开始，看效果。
-        # 如果需要更全面的覆盖，可能需要遍历 editor_scroll_frame 的所有子控件并绑定。
-        # 对于可滚动框架内的实际输入控件，通常最好直接绑定到它们上面。
-        # 这里我们先只绑定到 'page' 和 'editor_scroll_frame' 自身。
+        # 绑定快捷键 (此逻辑不变)
+        page.bind('<Control-s>', lambda event: self._save_config_from_editor())
+        page.bind('<Control-S>', lambda event: self._save_config_from_editor())
         self.editor_scroll_frame.bind('<Control-s>', lambda event: self._save_config_from_editor())
         self.editor_scroll_frame.bind('<Control-S>', lambda event: self._save_config_from_editor())
 
@@ -725,10 +731,9 @@ class CottonToolkitApp(ctk.CTk):
         self.main_content_frame.grid_rowconfigure(0, weight=1)
         self.main_content_frame.grid_columnconfigure(0, weight=1)
 
-        # 创建一个笔记本（tabview）用于工具页面
-        # 移除 values 参数，因为 CTkTabview 的构造函数不支持
-        self.tools_notebook = ctk.CTkTabview(self.main_content_frame, command=self._on_tab_change)
+        self.tools_notebook = ctk.CTkTabview(self.main_content_frame)
         self.tools_notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
 
     def select_frame_by_name(self, name):
         # 设置按钮高亮
@@ -1414,77 +1419,43 @@ class CottonToolkitApp(ctk.CTk):
 
     def _populate_tools_notebook(self):
         """
-        使用固定的键和顺序填充所有工具选项卡，并设置按需加载。
+        【优化】一次性预加载所有工具选项卡，以实现即时切换并修复BUG。
         """
         self.tool_tab_frames = {}
         self.tool_tab_ui_loaded = {}
 
+        self._log_to_viewer("INFO: Pre-loading all tool tabs...", "DEBUG")
+
+        # 遍历所有已定义的工具标签页
         for key in self.TOOL_TAB_ORDER:
-            # 使用固定的键从字典获取待翻译文本，然后进行翻译
             tab_name = _(self.TAB_TITLE_KEYS[key])
             tab_frame = self.tools_notebook.add(tab_name)
             self.tool_tab_frames[key] = tab_frame
-            self.tool_tab_ui_loaded[key] = False
 
-        # “数据下载”是第一个，需要预先加载其内容
-        download_key = "download"
-        if download_key in self.tool_tab_frames:
-            DataDownloadTab(parent=self.tool_tab_frames[download_key], app=self)
+            # --- 立即创建该标签页的UI实例 ---
+            frame_to_populate = self.tool_tab_frames[key]
 
-            self.tool_tab_ui_loaded[download_key] = True
-
-        # 设置回调命令，用于实现按需加载
-        self.tools_notebook.configure(command=self._on_tool_tab_selected)
-
-        # 确保启动后默认显示的选项卡是 "数据下载"
-        self.tools_notebook.set(_(self.TAB_TITLE_KEYS["download"]))
-
-    def _on_tool_tab_selected(self, tab_name=None):
-        """
-        【最终完成版】按需加载所选工具选项卡的UI界面。
-        所有Tab都已模块化。
-        """
-        # old_tab_populators 现在为空，因为所有模块都已重构
-        old_tab_populators = {}
-
-        selected_tab_name = self.tools_notebook.get()
-        selected_tab_key = None
-        for key, untranslated_text in self.TAB_TITLE_KEYS.items():
-            if _(untranslated_text) == selected_tab_name:
-                selected_tab_key = key
-                break
-
-        if selected_tab_key and not self.tool_tab_ui_loaded.get(selected_tab_key, False):
-            self._log_to_viewer(f"INFO: Loading UI for tab '{selected_tab_name}'...")  # <-- 去掉 .app 即可
-            frame_to_populate = self.tool_tab_frames[selected_tab_key]
-
-            # --- 最终的、完整的 if/elif 结构 ---
-            if selected_tab_key == "download":
+            if key == "download":
                 DataDownloadTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "annotation":
+            elif key == "annotation":
                 AnnotationTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "homology":
+            elif key == "homology":
                 HomologyTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "ai_assistant":
+            elif key == "ai_assistant":
                 AIAssistantTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "locus_conversion":
+            elif key == "locus_conversion":
                 LocusConversionTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "gff_query":
+            elif key == "gff_query":
                 GFFQueryTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "genome_identifier":
+            elif key == "genome_identifier":
                 GenomeIdentifierTab(parent=frame_to_populate, app=self)
-            elif selected_tab_key == "xlsx_to_csv":  # <-- 最后一个
+            elif key == "xlsx_to_csv":
                 XlsxConverterTab(parent=frame_to_populate, app=self)
 
-            # 这个分支现在永远不会被执行，但保留结构完整性
-            elif selected_tab_key in old_tab_populators:
-                old_tab_populators[selected_tab_key](frame_to_populate)
+            self.tool_tab_ui_loaded[key] = True
 
-            else:
-                self._log_to_viewer(f"WARNING: No UI builder found for tab key '{selected_tab_key}'.", "WARNING")
-                return
-
-            self.tool_tab_ui_loaded[selected_tab_key] = True
+        self._log_to_viewer("INFO: All tool tabs have been pre-loaded.", "DEBUG")
+        self.tools_notebook.set(_(self.TAB_TITLE_KEYS["download"]))
 
 
 
@@ -1911,43 +1882,27 @@ class CottonToolkitApp(ctk.CTk):
 
     def _handle_editor_ui_update(self):
         """
-        【新方法】智能更新或创建配置编辑器UI。
-        这是现在所有需要操作编辑器UI的地方都应该调用的唯一入口。
+        【优化版】仅用数据更新已存在的配置编辑器UI，或切换其可见性。
+        不再负责创建控件，因此执行速度很快。
         """
-        # 1. 检查父容器是否存在
-        if not hasattr(self, 'editor_scroll_frame') or not self.editor_scroll_frame.winfo_exists():
+        if not self.editor_ui_built:
+            self._log_to_viewer("ERROR: _handle_editor_ui_update called before editor UI was built.", "ERROR")
             return
 
-        # 2. 使用一个标志来判断UI是否已创建。如果没有标志，则在 self 上初始化它。
-        if not hasattr(self, 'editor_ui_built'):
-            self.editor_ui_built = False
+        if self.current_config:
+            # 如果有配置，显示滚动框，隐藏提示标签
+            self.editor_scroll_frame.grid()
+            self.editor_no_config_label.grid_remove()
+            # 快速填充数据
+            self._apply_config_values_to_editor()
+            self.save_editor_button.configure(state="normal")
+        else:
+            # 如果没有配置，隐藏滚动框，显示提示标签
+            self.editor_scroll_frame.grid_remove()
+            self.editor_no_config_label.grid()
+            self.save_editor_button.configure(state="disabled")
 
-        # 3. 如果UI还没有被构建
-        if not self.editor_ui_built:
-            self._log_to_viewer("DEBUG: Editor UI not built. Creating for the first time...", "DEBUG")
 
-            # 清理可能存在的占位符文本
-            for widget in self.editor_scroll_frame.winfo_children():
-                widget.destroy()
-
-            # 只有在存在配置时才构建UI
-            if self.current_config:
-                self._create_editor_widgets(self.editor_scroll_frame)  # 创建所有 UI 控件
-                self.editor_ui_built = True  # 设置标志，表示UI已创建
-                self.save_editor_button.configure(state="normal")  # 启用保存按钮
-
-                # **关键修改：在这里立即填充数据**
-                # 确保 UI 控件创建后，立即用 current_config 的值填充它们
-                self._apply_config_values_to_editor()
-            else:
-                # 如果没有配置，显示提示信息
-                ctk.CTkLabel(self.editor_scroll_frame, text=_("请先从“主页”加载或生成一个配置文件。"),
-                             font=self.app_subtitle_font, text_color=self.secondary_text_color).grid(row=0, column=0,
-                                                                                                     pady=50,
-                                                                                                     sticky="nsew")
-                self.editor_scroll_frame.grid_rowconfigure(0, weight=1)
-                if hasattr(self, 'save_editor_button'): self.save_editor_button.configure(state="disabled")
-                return  # 不往下执行数据填充
 
     def _setup_fonts(self):
         """设置全局字体，并实现字体栈回退机制。"""
@@ -2160,22 +2115,24 @@ class CottonToolkitApp(ctk.CTk):
                     "Excel文件中无工作表"):
                 self.selected_hvg_sheet.set(sheet_names_to_set[0])
 
-
-
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any]):
-        """ 统一的任务启动器，现在使用新的 ProgressDialog。"""
+        """ 【优化版】统一的任务启动器，利用健壮的 ProgressDialog。"""
+        if self.active_task_name:
+            self.show_warning_message(_("任务进行中"),
+                                      f"{_('另一个任务')} '{self.active_task_name}' {_('正在运行，请稍候。')}")
+            return
+
         self._update_button_states(is_task_running=True)
         self.active_task_name = task_name
-        self._log_to_viewer(f"{task_name} {_('任务开始...')}")
+        self._log_to_viewer(f"{_(task_name)} {_('任务开始...')}")
 
-        self.cancel_current_task_event.clear()  # 每次任务开始前，重置事件状态
+        self.cancel_current_task_event.clear()
 
-        # 【关键点】这里已经将 on_cancel 回调正确地设置为了事件的 .set() 方法
-        # 当用户点击进度弹窗的“取消”按钮时，就会调用 self.cancel_current_task_event.set()
-        self.progress_dialog = ProgressDialog(self, title=task_name, on_cancel=self.cancel_current_task_event.set,
+        # 【关键点】这里创建了我们优化后的 ProgressDialog。
+        # 当用户点击弹窗的“取消”或“X”按钮时，其内部的 close() 方法会调用 self.cancel_current_task_event.set()
+        self.progress_dialog = ProgressDialog(self, title=_(task_name), on_cancel=self.cancel_current_task_event.set,
                                               app_font=self.app_font)
 
-        # 【关键点】这里已经将事件对象添加到了传递给后台函数的参数字典中
         kwargs['cancel_event'] = self.cancel_current_task_event
         kwargs['status_callback'] = self.gui_status_callback
         kwargs['progress_callback'] = self.gui_progress_callback
@@ -2184,16 +2141,15 @@ class CottonToolkitApp(ctk.CTk):
             success = False
             result_data = None
             try:
-                # target_func (例如 run_ai_task) 在这里被调用，并接收了包含 cancel_event 的 kwargs
                 result_data = target_func(**kwargs)
-                # 在这里检查任务是否是被取消的
                 if self.cancel_current_task_event.is_set():
+                    # 如果任务是被取消的，发送一个特殊标记
                     self.message_queue.put(("task_done", (False, task_name, "CANCELLED")))
-                    return  # 任务被取消，直接返回
+                    return
                 success = True
             except Exception as e:
                 detailed_error = f"{_('一个意外的严重错误发生')}: {e}\n--- TRACEBACK ---\n{traceback.format_exc()}"
-                self.gui_status_callback(detailed_error, "ERROR")
+                self.message_queue.put(("error", detailed_error))  # 发送错误消息
                 success = False
             finally:
                 # 只有在任务不是被取消的情况下，才发送常规的完成消息
@@ -2202,6 +2158,24 @@ class CottonToolkitApp(ctk.CTk):
 
         threading.Thread(target=task_wrapper, daemon=True).start()
 
+    def  _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
+        """【新增】任务结束时统一处理UI更新的辅助函数。"""
+        # 调用新弹窗的 close() 方法，它本身就是安全的
+        if self.progress_dialog and self.progress_dialog.winfo_exists():
+            self.progress_dialog.close()
+        self.progress_dialog = None  # 清空引用
+
+        self._update_button_states(is_task_running=False)
+        self.active_task_name = None
+
+        if result_data == "CANCELLED":
+            status_msg = f"{_(task_display_name)} {_('已被用户取消。')}"
+        else:
+            status_msg = f"{_(task_display_name)} {_('完成。')}" if success else f"{_(task_display_name)} {_('失败。')}"
+
+        # 确保 status_label 存在
+        if hasattr(self, 'status_label') and self.status_label.winfo_exists():
+            self.status_label.configure(text=status_msg)
 
 
     # Helper for Browse files
@@ -2398,12 +2372,20 @@ class CottonToolkitApp(ctk.CTk):
                 self.show_info_message(_("分析完成"), _("富集分析完成，但没有发现任何显著富集的结果，因此未生成图表。"))
 
     def _handle_error(self, data: str):
+        # 弹出错误消息对话框
         self.show_error_message(_("任务执行出错"), data)
-        # 使用新的辅助函数来统一处理UI状态
+        # 调用新的统一处理函数来重置UI
         self._finalize_task_ui(self.active_task_name or _("未知任务"), success=False)
-        self.status_label.configure(text=f"{_('任务终止于')}: {data[:100]}", text_color=("#d9534f", "#e57373"))
+        # 更新状态栏以显示错误
+        if hasattr(self, 'status_label') and self.status_label.winfo_exists():
+            status_text = f"{_('任务终止于')}: {str(data)[:100]}..."
+            self.status_label.configure(text=status_text)
+
+        # 释放错误对话框锁
         if self.error_dialog_lock.locked():
             self.error_dialog_lock.release()
+
+
 
     def _handle_status(self, data: str):
         self.status_label.configure(text=str(data)[:150])
@@ -2881,68 +2863,6 @@ class CottonToolkitApp(ctk.CTk):
 
 
 
-    def _on_tab_change(self, tab_name: str):
-        """
-        当 CustomTkinter Tabview 的选项卡发生变化时触发。
-        tab_name: 当前选中的选项卡名称。
-        """
-        self._log_to_viewer(f"{_('选项卡已切换到:')} {tab_name}", "DEBUG")
-
-        # 当切换到“数据工具”选项卡时，确保基因组下拉菜单是最新的
-        # 因为数据下载、基因组转换、功能注释等工具都在这个 Tabview 内部
-        if tab_name == self.TAB_TITLE_KEYS["homology"] or \
-                tab_name == self.TAB_TITLE_KEYS["locus_conversion"] or \
-                tab_name == self.TAB_TITLE_KEYS["gff_query"] or \
-                tab_name == self.TAB_TITLE_KEYS["annotation"] or \
-                tab_name == self.TAB_TITLE_KEYS["download"]:  # Download tab also uses genome sources
-            self._update_assembly_id_dropdowns()
-
-    def _update_homology_file_display_for_locus_tab(self):
-        """
-        根据位点转换选项卡中选择的源基因组和目标基因组，
-        自动识别并更新同源文件路径的显示。
-        """
-        source_assembly_id = self.selected_locus_source_assembly.get()
-        target_assembly_id = self.selected_locus_target_assembly.get()
-
-        if not self.current_config or not self.genome_sources_data:
-            self.locus_conversion_s2b_file_path_var.set(_("请先加载配置并确保基因组源数据可用"))
-            self.locus_conversion_b2t_file_path_var.set(_("请先加载配置并确保基因组源数据可用"))
-            return
-
-        # 处理源到桥梁文件 (Source to Bridge)
-        source_genome_info = self.genome_sources_data.get(source_assembly_id)
-        if source_genome_info and hasattr(source_genome_info,
-                                          'homology_ath_url') and source_genome_info.homology_ath_url:  # Added hasattr check
-            from cotton_toolkit.config.loader import get_local_downloaded_file_path  # Local import
-
-            s2b_path = get_local_downloaded_file_path(self.current_config, source_genome_info, 'homology_ath')
-            if s2b_path and os.path.exists(s2b_path):
-                self.locus_conversion_s2b_file_path_var.set(os.path.basename(s2b_path))
-                self.locus_conversion_s2b_file_label.configure(fg_color="transparent")
-            else:
-                self.locus_conversion_s2b_file_path_var.set(_("未找到文件，请检查下载或配置。") + f"\n({s2b_path or ''})")
-                self.locus_conversion_s2b_file_label.configure(text_color="red")
-        else:
-            self.locus_conversion_s2b_file_path_var.set(_("源基因组未配置同源文件URL。"))
-            self.locus_conversion_s2b_file_label.configure(text_color="orange")
-
-        # 处理桥梁到目标文件 (Bridge to Target)
-        target_genome_info = self.genome_sources_data.get(target_assembly_id)
-        if target_genome_info and hasattr(target_genome_info,
-                                          'homology_ath_url') and target_genome_info.homology_ath_url:  # Added hasattr check
-            from cotton_toolkit.config.loader import get_local_downloaded_file_path  # Local import
-
-            b2t_path = get_local_downloaded_file_path(self.current_config, target_genome_info, 'homology_ath')
-            if b2t_path and os.path.exists(b2t_path):
-                self.locus_conversion_b2t_file_path_var.set(os.path.basename(b2t_path))
-                self.locus_conversion_b2t_file_label.configure(fg_color="transparent")
-            else:
-                self.locus_conversion_b2t_file_path_var.set(_("未找到文件，请检查下载或配置。") + f"\n({b2t_path or ''})")
-                self.locus_conversion_b2t_file_label.configure(text_color="red")
-        else:
-            self.locus_conversion_b2t_file_path_var.set(_("目标基因组未配置同源文件URL。"))
-            self.locus_conversion_b2t_file_label.configure(text_color="orange")
 
     def _auto_identify_genome_version(self, gene_input_textbox: ctk.CTkTextbox, target_assembly_var: tk.StringVar):
         """
