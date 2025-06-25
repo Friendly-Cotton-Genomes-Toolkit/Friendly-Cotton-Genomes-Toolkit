@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, List
 
 # 导入后台任务函数
 from cotton_toolkit.pipelines import run_functional_annotation, run_enrichment_pipeline
+from ui.tabs.base_tab import BaseTab
 
 if TYPE_CHECKING:
     from ui.gui_app import CottonToolkitApp
@@ -18,56 +19,48 @@ except ImportError:
     _ = lambda s: str(s)
 
 
-class AnnotationTab(ctk.CTkFrame):
-    """
-    “功能注释与富集分析”选项卡。
-    此类现在完全封装了自己的UI控件、状态变量和任务启动逻辑。
-    """
-
+class AnnotationTab(BaseTab): # 继承自 BaseTab
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, fg_color="transparent")
-        self.app = app
-        self.pack(fill="both", expand=True)
-        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        self.scrollable_frame.grid_columnconfigure(0, weight=1)
-        self._create_widgets()
-        self.update_from_config()
+        super().__init__(parent, app)
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
 
-        # 【核心修改】为所有作为卡片的 CTkFrame 添加了 border_width=0
+        # 【核心修改】在顶部添加一个标题
+        ctk.CTkLabel(parent_frame, text=_("功能注释与富集分析"), font=self.app.app_title_font).grid(
+            row=0, column=0, pady=(5, 15), padx=10, sticky="n")
+
+        # 后续卡片的 row 从 1 开始
         input_card = ctk.CTkFrame(parent_frame, border_width=0)
-        input_card.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 10))
+        input_card.grid(row=1, column=0, sticky="ew", padx=5, pady=(5, 10))
         input_card.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(input_card, text=_("输入数据"), font=self.app.app_font_bold).grid(
-            row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 15))
-        ctk.CTkLabel(input_card, text=_("基因组版本:"), font=self.app.app_font).grid(
-            row=1, column=0, sticky="w", padx=(15, 5), pady=10)
+        ctk.CTkLabel(input_card, text=_("输入数据"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=2,
+                                                                                       sticky="w", padx=10,
+                                                                                       pady=(10, 15))
+        ctk.CTkLabel(input_card, text=_("基因组版本:"), font=self.app.app_font).grid(row=1, column=0, sticky="w",
+                                                                                     padx=(15, 5), pady=10)
         self.selected_annotation_assembly = tk.StringVar()
         self.assembly_dropdown = ctk.CTkOptionMenu(
             input_card, variable=self.selected_annotation_assembly, values=[_("加载中...")],
             font=self.app.app_font, dropdown_font=self.app.app_font
         )
         self.assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
-        ctk.CTkLabel(input_card, text=_("基因ID列表:"), font=self.app.app_font).grid(
-            row=2, column=0, sticky="nw", padx=(15, 5), pady=10)
-        self.annotation_genes_textbox = ctk.CTkTextbox(
-            input_card, height=180, font=self.app.app_font_mono, wrap="word")
+        ctk.CTkLabel(input_card, text=_("基因ID列表:"), font=self.app.app_font).grid(row=2, column=0, sticky="nw",
+                                                                                     padx=(15, 5), pady=10)
+        self.annotation_genes_textbox = ctk.CTkTextbox(input_card, height=180, font=self.app.app_font_mono, wrap="word")
         self.annotation_genes_textbox.grid(row=2, column=1, sticky="ew", padx=10, pady=(5, 10))
         self.app._add_placeholder(self.annotation_genes_textbox, "genes_input")
 
         anno_card = ctk.CTkFrame(parent_frame, border_width=0)
-        anno_card.grid(row=1, column=0, sticky="ew", padx=5, pady=10)
+        anno_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
         anno_card.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(anno_card, text=_("功能注释"), font=self.app.app_font_bold).grid(
-            row=0, column=0, sticky="w", padx=10, pady=(10, 15))
+        ctk.CTkLabel(anno_card, text=_("功能注释"), font=self.app.app_font_bold).grid(row=0, column=0, sticky="w",
+                                                                                      padx=10, pady=(10, 15))
         checkbox_frame = ctk.CTkFrame(anno_card, fg_color="transparent")
         checkbox_frame.grid(row=1, column=0, sticky="w", padx=10, pady=5)
-        self.go_anno_var = tk.BooleanVar(value=True)
-        self.ipr_anno_var = tk.BooleanVar(value=True)
-        self.kegg_ortho_anno_var = tk.BooleanVar(value=True)
+        self.go_anno_var = tk.BooleanVar(value=True);
+        self.ipr_anno_var = tk.BooleanVar(value=True);
+        self.kegg_ortho_anno_var = tk.BooleanVar(value=True);
         self.kegg_path_anno_var = tk.BooleanVar(value=True)
         ctk.CTkCheckBox(checkbox_frame, text="GO", variable=self.go_anno_var, font=self.app.app_font).pack(side="left",
                                                                                                            padx=5)
@@ -85,16 +78,17 @@ class AnnotationTab(ctk.CTkFrame):
         self.start_annotation_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 15))
 
         enrich_card = ctk.CTkFrame(parent_frame, border_width=0)
-        enrich_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
-        enrich_card.grid_columnconfigure(1, weight=3)
+        enrich_card.grid(row=3, column=0, sticky="ew", padx=5, pady=10)
+        enrich_card.grid_columnconfigure(1, weight=3);
         enrich_card.grid_columnconfigure(3, weight=1)
-        ctk.CTkLabel(enrich_card, text=_("富集分析与绘图"), font=self.app.app_font_bold).grid(
-            row=0, column=0, columnspan=4, sticky="w", padx=10, pady=(10, 15))
+        ctk.CTkLabel(enrich_card, text=_("富集分析与绘图"), font=self.app.app_font_bold).grid(row=0, column=0,
+                                                                                              columnspan=4, sticky="w",
+                                                                                              padx=10, pady=(10, 15))
         ctk.CTkLabel(enrich_card, text=_("输入格式:"), font=self.app.app_font).grid(row=1, column=0, padx=15, pady=5,
                                                                                     sticky="w")
         input_format_frame = ctk.CTkFrame(enrich_card, fg_color="transparent")
         input_format_frame.grid(row=1, column=1, columnspan=3, padx=10, pady=5, sticky="w")
-        self.has_header_var = tk.BooleanVar(value=False)
+        self.has_header_var = tk.BooleanVar(value=False);
         self.has_log2fc_var = tk.BooleanVar(value=False)
         ctk.CTkCheckBox(input_format_frame, text=_("包含表头"), variable=self.has_header_var,
                         font=self.app.app_font).pack(side="left", padx=(0, 15))
@@ -112,7 +106,7 @@ class AnnotationTab(ctk.CTkFrame):
                                                                                     sticky="w")
         plot_type_frame = ctk.CTkFrame(enrich_card, fg_color="transparent")
         plot_type_frame.grid(row=3, column=1, columnspan=3, padx=10, pady=5, sticky="w")
-        self.bubble_plot_var = tk.BooleanVar(value=True)
+        self.bubble_plot_var = tk.BooleanVar(value=True);
         self.bar_plot_var = tk.BooleanVar(value=True)
         ctk.CTkCheckBox(plot_type_frame, text=_("气泡图"), variable=self.bubble_plot_var, font=self.app.app_font).pack(
             side="left", padx=(0, 15))
@@ -130,7 +124,6 @@ class AnnotationTab(ctk.CTkFrame):
         self.start_enrichment_button = ctk.CTkButton(enrich_card, text=_("开始富集分析"),
                                                      command=self.app.start_enrichment_task)
         self.start_enrichment_button.grid(row=5, column=0, columnspan=4, sticky="ew", padx=10, pady=(15, 15))
-
 
 
     def update_assembly_dropdowns(self, assembly_ids: list):

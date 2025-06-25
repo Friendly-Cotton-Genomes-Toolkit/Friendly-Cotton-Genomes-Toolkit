@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List
 
 # 导入后端处理函数
 from cotton_toolkit.pipelines import run_homology_mapping
+from ui.tabs.base_tab import BaseTab
 
 if TYPE_CHECKING:
     from ui.gui_app import CottonToolkitApp
@@ -17,20 +18,14 @@ except ImportError:
     _ = lambda s: str(s)
 
 
-class HomologyTab(ctk.CTkFrame):
-    """ “基因组转换”选项卡的主界面类 """
-
+class HomologyTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, fg_color="transparent")
-        self.app = app
-        self.pack(fill="both", expand=True)
 
-        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        self.scrollable_frame.grid_columnconfigure(0, weight=1)
+        self.selected_homology_source_assembly = tk.StringVar()
+        self.selected_homology_target_assembly = tk.StringVar()
+        self.homology_strict_priority_var = tk.BooleanVar(value=True)
 
-        self._create_widgets()
-        self.update_from_config()
+        super().__init__(parent, app)
 
     def _create_widgets(self):
         # 所有控件都创建在 self.scrollable_frame 上
@@ -43,9 +38,8 @@ class HomologyTab(ctk.CTkFrame):
         card1.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=(5, 10))
         card1.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(card1, text=_("基因组与基因列表"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=3,
-                                                                                          padx=10, pady=(10, 15),
-                                                                                          sticky="w")
+        ctk.CTkLabel(parent_frame, text=_("基因同源转换"), font=self.app.app_title_font).grid(
+            row=0, column=0, pady=(5, 10), padx=10, sticky="n")
 
         # 源基因组
         ctk.CTkLabel(card1, text=_("源基因组:"), font=self.app.app_font).grid(row=1, column=0, padx=(15, 5), pady=10,

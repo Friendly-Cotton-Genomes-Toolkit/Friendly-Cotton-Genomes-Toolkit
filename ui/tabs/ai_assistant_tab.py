@@ -37,47 +37,46 @@ class AIAssistantTab(ctk.CTkFrame):
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
 
-        # 【核心修改】为所有作为卡片的 CTkFrame 添加了 border_width=0
+        # 【核心修改】在顶部添加一个标题
+        ctk.CTkLabel(parent_frame, text=_("AI 助手"), font=self.app.app_title_font).grid(
+            row=0, column=0, pady=(5, 15), padx=10, sticky="n")
+
+        # 后续卡片的 row 从 1 开始
         model_card = ctk.CTkFrame(parent_frame, border_width=0)
-        model_card.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 10))
+        model_card.grid(row=1, column=0, sticky="ew", padx=5, pady=(5, 10))
         model_card.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(model_card, text=_("AI模型设置"), font=self.app.app_font_bold).grid(
-            row=0, column=0, columnspan=3, padx=10, pady=(10, 15), sticky="w")
-        ctk.CTkLabel(model_card, text=_("AI服务商:"), font=self.app.app_font).grid(
-            row=1, column=0, padx=15, pady=10, sticky="w")
+        ctk.CTkLabel(model_card, text=_("AI模型设置"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=3,
+                                                                                         padx=10, pady=(10, 15),
+                                                                                         sticky="w")
+        ctk.CTkLabel(model_card, text=_("AI服务商:"), font=self.app.app_font).grid(row=1, column=0, padx=15, pady=10,
+                                                                                   sticky="w")
         self.ai_selected_provider_var = tk.StringVar()
-        self.provider_dropdown = ctk.CTkOptionMenu(
-            model_card, variable=self.ai_selected_provider_var,
-            font=self.app.app_font, dropdown_font=self.app.app_font
-        )
+        self.provider_dropdown = ctk.CTkOptionMenu(model_card, variable=self.ai_selected_provider_var,
+                                                   font=self.app.app_font, dropdown_font=self.app.app_font)
         self.provider_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
-        ctk.CTkLabel(model_card, text=_("模型名称:"), font=self.app.app_font).grid(
-            row=2, column=0, padx=15, pady=10, sticky="w")
+        ctk.CTkLabel(model_card, text=_("模型名称:"), font=self.app.app_font).grid(row=2, column=0, padx=15, pady=10,
+                                                                                   sticky="w")
         self.ai_model_name_entry = ctk.CTkEntry(model_card, font=self.app.app_font)
         self.ai_model_name_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
         chat_card = ctk.CTkFrame(parent_frame, border_width=0)
-        chat_card.grid(row=1, column=0, sticky="nsew", padx=5, pady=10)
+        chat_card.grid(row=2, column=0, sticky="nsew", padx=5, pady=10)
         chat_card.grid_columnconfigure(0, weight=1)
         chat_card.grid_rowconfigure(0, weight=1)
-        self.chat_history_textbox = ctk.CTkTextbox(
-            chat_card, state="disabled", wrap="word", font=self.app.app_font)
+        self.chat_history_textbox = ctk.CTkTextbox(chat_card, state="disabled", wrap="word", font=self.app.app_font)
         self.chat_history_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
-        self.chat_input_entry = ctk.CTkEntry(
-            chat_card, placeholder_text=_("在此输入您的问题..."), font=self.app.app_font)
+        self.chat_input_entry = ctk.CTkEntry(chat_card, placeholder_text=_("在此输入您的问题..."),
+                                             font=self.app.app_font)
         self.chat_input_entry.grid(row=1, column=0, sticky="ew", padx=(10, 5), pady=(5, 10))
         self.send_button = ctk.CTkButton(chat_card, text=_("发送"), width=100)
         self.send_button.grid(row=1, column=1, sticky="e", padx=(0, 10), pady=(5, 10))
 
         proxy_card = ctk.CTkFrame(parent_frame, border_width=0)
-        proxy_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
+        proxy_card.grid(row=3, column=0, sticky="ew", padx=5, pady=10)
         self.ai_proxy_var = tk.BooleanVar(value=False)
-        self.proxy_switch = ctk.CTkSwitch(
-            proxy_card, text=_("使用网络代理（需在配置编辑器中设置地址）"),
-            variable=self.ai_proxy_var, font=self.app.app_font
-        )
+        self.proxy_switch = ctk.CTkSwitch(proxy_card, text=_("使用网络代理（需在配置编辑器中设置地址）"),
+                                          variable=self.ai_proxy_var, font=self.app.app_font)
         self.proxy_switch.pack(side="left", padx=15, pady=15)
-
 
 
     def update_from_config(self):

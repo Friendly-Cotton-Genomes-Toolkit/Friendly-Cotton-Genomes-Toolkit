@@ -5,7 +5,7 @@ import customtkinter as ctk
 from typing import TYPE_CHECKING, List
 
 from cotton_toolkit.config.loader import get_local_downloaded_file_path
-from cotton_toolkit.pipelines import run_locus_conversion
+from .base_tab import BaseTab
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -16,65 +16,58 @@ except ImportError:
     _ = lambda s: str(s)
 
 
-class LocusConversionTab(ctk.CTkFrame):
-    """【重构版】 “位点转换”选项卡 """
-
+class LocusConversionTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, fg_color="transparent")
-        self.app = app
-        self.pack(fill="both", expand=True)
-
-        # 【核心修正】将 scrollable_frame 定义为实例属性 self.scrollable_frame
-        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent", border_width=0)
-        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        self.scrollable_frame.grid_columnconfigure(0, weight=1)
-        self.scrollable_frame.grid_rowconfigure(2, weight=1)  # 为结果框分配权重
 
         self.selected_source_assembly = tk.StringVar()
         self.selected_target_assembly = tk.StringVar()
 
-        self._create_widgets()
-        self.update_from_config()
-
+        super().__init__(parent, app)
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
+        parent_frame.grid_rowconfigure(2, weight=1)
+
         ctk.CTkLabel(parent_frame, text=_("位点坐标转换"), font=self.app.app_title_font).grid(
             row=0, column=0, pady=(5, 10), padx=10, sticky="n")
 
-        # 【核心修改】为卡片Frame添加 border_width=0
         main_card = ctk.CTkFrame(parent_frame, border_width=0)
-        main_card.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        main_card.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
         main_card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(main_card, text=_("源基因组:"), font=self.app.app_font).grid(row=0, column=0, padx=15, pady=10, sticky="w")
-        self.source_assembly_dropdown = ctk.CTkOptionMenu(main_card, variable=self.selected_source_assembly, values=[_("加载中...")], font=self.app.app_font, dropdown_font=self.app.app_font)
+        self.source_assembly_dropdown = ctk.CTkOptionMenu(
+            main_card, variable=self.selected_source_assembly, values=[_("加载中...")],
+            font=self.app.app_font, dropdown_font=self.app.app_font
+        )
         self.source_assembly_dropdown.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
         ctk.CTkLabel(main_card, text=_("目标基因组:"), font=self.app.app_font).grid(row=1, column=0, padx=15, pady=10, sticky="w")
-        self.target_assembly_dropdown = ctk.CTkOptionMenu(main_card, variable=self.selected_target_assembly, values=[_("加载中...")], font=self.app.app_font, dropdown_font=self.app.app_font)
+        self.target_assembly_dropdown = ctk.CTkOptionMenu(
+            main_card, variable=self.selected_target_assembly, values=[_("加载中...")],
+            font=self.app.app_font, dropdown_font=self.app.app_font
+        )
         self.target_assembly_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
         ctk.CTkLabel(main_card, text=_("输入区域 (Chr:Start-End):"), font=self.app.app_font).grid(row=2, column=0, padx=15, pady=10, sticky="w")
         self.region_entry = ctk.CTkEntry(main_card, font=self.app.app_font)
         self.region_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
-        # 【核心修正】按钮的 command 改为 self.start_locus_conversion_task
         self.start_button = ctk.CTkButton(
             main_card, text=_("开始转换"),
             command=self.start_locus_conversion_task, font=self.app.app_font_bold
         )
         self.start_button.grid(row=3, column=0, columnspan=2, padx=10, pady=(15, 20), sticky="ew")
 
-
         result_card = ctk.CTkFrame(parent_frame, border_width=0)
-        result_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
+        result_card.grid(row=2, column=0, sticky="nsew", padx=5, pady=10)
         result_card.grid_columnconfigure(0, weight=1)
         result_card.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(result_card, text=_("转换结果"), font=self.app.app_font_bold).grid(row=0, column=0, padx=10, pady=(10,5), sticky="w")
-        self.result_textbox = ctk.CTkTextbox(result_card, state="disabled", wrap="word", height=100)
+        self.result_textbox = ctk.CTkTextbox(result_card, state="disabled", wrap="none", font=self.app.app_font_mono)
         self.result_textbox.grid(row=1, column=0, padx=10, pady=(5,10), sticky="nsew")
+
 
 
     def update_from_config(self):
@@ -122,13 +115,19 @@ class LocusConversionTab(ctk.CTkFrame):
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         if not assembly_ids: assembly_ids = [_("加载中...")]
+
+        # 配置源下拉菜单
         self.source_assembly_dropdown.configure(values=assembly_ids)
-        self.target_assembly_dropdown.configure(values=assembly_ids)
         if assembly_ids and "加载中" not in assembly_ids[0]:
             if self.selected_source_assembly.get() not in assembly_ids:
                 self.selected_source_assembly.set(assembly_ids[0])
+
+        # 配置目标下拉菜单
+        self.target_assembly_dropdown.configure(values=assembly_ids)
+        if assembly_ids and "加载中" not in assembly_ids[0]:
             if self.selected_target_assembly.get() not in assembly_ids:
                 self.selected_target_assembly.set(assembly_ids[0])
+
 
 
     def update_button_state(self, is_running, has_config):

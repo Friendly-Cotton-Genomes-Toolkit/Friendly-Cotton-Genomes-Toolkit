@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Dict
 from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files
 # 导入状态检查函数
 from cotton_toolkit.config.loader import check_annotation_file_status
+from .base_tab import BaseTab
 
 # 避免循环导入
 if TYPE_CHECKING:
@@ -22,21 +23,24 @@ except ImportError:
         return s
 
 
-class DataDownloadTab(ctk.CTkFrame):
+class DataDownloadTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, fg_color="transparent")
-        self.app = app
-        self.pack(fill="both", expand=True)
-        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        self.scrollable_frame.grid_columnconfigure(0, weight=1)
+        super().__init__(parent, app)
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
         self._create_widgets()
         self.update_from_config()
 
     def _create_widgets(self):
-        # 【核心修改】为所有作为卡片的 CTkFrame 添加了 border_width=0
-        selection_card = ctk.CTkFrame(self.scrollable_frame, border_width=0)
-        selection_card.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 10))
+        parent_frame = self.scrollable_frame
+
+        # 【核心修改】在顶部添加一个标题
+        ctk.CTkLabel(parent_frame, text=_("数据下载"), font=self.app.app_title_font).grid(
+            row=0, column=0, pady=(5, 15), padx=10, sticky="n")
+
+        # 后续卡片的 row 从 1 开始
+        selection_card = ctk.CTkFrame(parent_frame, border_width=0)
+        selection_card.grid(row=1, column=0, sticky="ew", padx=5, pady=(5, 10))
         selection_card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(selection_card, text=_("版本选择与操作"), font=self.app.app_font_bold).grid(
@@ -44,29 +48,30 @@ class DataDownloadTab(ctk.CTkFrame):
 
         ctk.CTkLabel(selection_card, text=_("选择基因组:"), font=self.app.app_font).grid(
             row=1, column=0, sticky="w", padx=(15, 5), pady=10)
-        self.assembly_dropdown_var = tk.StringVar(value=_("无可用版本"))
+
+        self.assembly_dropdown_var = tk.StringVar()
+
         self.assembly_dropdown = ctk.CTkOptionMenu(
             selection_card, variable=self.assembly_dropdown_var, values=[_("无可用版本")],
             font=self.app.app_font, dropdown_font=self.app.app_font, command=self._on_assembly_selected
         )
         self.assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
-        self.download_button = ctk.CTkButton(
+        self.start_button = ctk.CTkButton(
             selection_card, text=_("下载选中版本的所有文件"), command=self._start_download,
             font=self.app.app_font_bold
         )
-        self.download_button.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=(10, 15))
+        self.start_button.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=(10, 15))
 
-        files_card = ctk.CTkFrame(self.scrollable_frame, border_width=0)
-        files_card.grid(row=1, column=0, sticky="ew", padx=5, pady=10)
+        files_card = ctk.CTkFrame(parent_frame, border_width=0)
+        files_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
         files_card.grid_columnconfigure(0, weight=1)
-
         ctk.CTkLabel(files_card, text=_("下载文件列表"), font=self.app.app_font_bold).grid(
             row=0, column=0, sticky="w", padx=10, pady=(10, 5))
-
         self.files_frame = ctk.CTkFrame(files_card, fg_color="transparent")
         self.files_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 10))
         self.files_frame.grid_columnconfigure(0, weight=1)
+
 
     def update_assembly_dropdowns(self, assembly_ids: list):
         if not assembly_ids: assembly_ids = [_("无可用版本")]
@@ -75,8 +80,6 @@ class DataDownloadTab(ctk.CTkFrame):
         if current_selection not in assembly_ids:
             self.assembly_dropdown_var.set(assembly_ids[0])
         self._on_assembly_selected(self.assembly_dropdown_var.get())
-
-
 
     def _on_assembly_selected(self, selected_assembly: str):
         for widget in self.files_frame.winfo_children():
@@ -95,6 +98,7 @@ class DataDownloadTab(ctk.CTkFrame):
                 self._add_file_status_row(file_type, status)
         if not found_any_file:
             ctk.CTkLabel(self.files_frame, text=_("该基因组版本没有配置任何可下载的文件。")).pack(pady=10)
+
 
 
     def _add_file_status_row(self, file_type: str, status: str):
@@ -129,7 +133,8 @@ class DataDownloadTab(ctk.CTkFrame):
 
     def update_button_state(self, is_running, has_config):
         state = "disabled" if is_running or not has_config else "normal"
-        self.download_button.configure(state=state)
+        if hasattr(self, 'start_button'):
+            self.start_button.configure(state=state)
 
 
     def _update_download_genomes_list(self):
