@@ -23,93 +23,114 @@ except ImportError:
 
 
 class DataDownloadTab(ctk.CTkFrame):
-    """ “数据下载”选项卡的主界面类 """
-
     def __init__(self, parent, app: "CottonToolkitApp"):
         super().__init__(parent, fg_color="transparent")
         self.app = app
         self.pack(fill="both", expand=True)
-
-        # 1. 将所有 download 相关的 Tkinter 变量移到这里
-        self.download_genome_vars: Dict[str, tk.BooleanVar] = {}
-        self.download_force_checkbox_var = tk.BooleanVar(value=False)
-        self.download_proxy_var = tk.BooleanVar(value=False)
-
-        # 2. 调用UI创建和初始化方法
+        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        self.scrollable_frame.grid_columnconfigure(0, weight=1)
         self._create_widgets()
         self.update_from_config()
 
     def _create_widgets(self):
-        """创建数据下载选项卡的全部UI控件。"""
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        # 【核心修改】为所有作为卡片的 CTkFrame 添加了 border_width=0
+        selection_card = ctk.CTkFrame(self.scrollable_frame, border_width=0)
+        selection_card.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 10))
+        selection_card.grid_columnconfigure(1, weight=1)
 
-        app_font = self.app.app_font
-        app_font_bold = self.app.app_font_bold
+        ctk.CTkLabel(selection_card, text=_("版本选择与操作"), font=self.app.app_font_bold).grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 15))
 
-        target_card = ctk.CTkFrame(self)
-        target_card.pack(fill="both", expand=True, pady=(15, 10), padx=15)
-        target_card.grid_columnconfigure(0, weight=1)
-        target_card.grid_rowconfigure(2, weight=1)
+        ctk.CTkLabel(selection_card, text=_("选择基因组:"), font=self.app.app_font).grid(
+            row=1, column=0, sticky="w", padx=(15, 5), pady=10)
+        self.assembly_dropdown_var = tk.StringVar(value=_("无可用版本"))
+        self.assembly_dropdown = ctk.CTkOptionMenu(
+            selection_card, variable=self.assembly_dropdown_var, values=[_("无可用版本")],
+            font=self.app.app_font, dropdown_font=self.app.app_font, command=self._on_assembly_selected
+        )
+        self.assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
-        target_header_frame = ctk.CTkFrame(target_card, fg_color="transparent")
-        target_header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        target_header_frame.grid_columnconfigure(0, weight=1)
+        self.download_button = ctk.CTkButton(
+            selection_card, text=_("下载选中版本的所有文件"), command=self._start_download,
+            font=self.app.app_font_bold
+        )
+        self.download_button.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=(10, 15))
 
-        ctk.CTkLabel(target_header_frame, text=_("下载目标: 选择基因组版本"), font=app_font_bold).grid(row=0, column=0,
-                                                                                                       sticky="w")
+        files_card = ctk.CTkFrame(self.scrollable_frame, border_width=0)
+        files_card.grid(row=1, column=0, sticky="ew", padx=5, pady=10)
+        files_card.grid_columnconfigure(0, weight=1)
 
-        selection_buttons_frame = ctk.CTkFrame(target_header_frame, fg_color="transparent")
-        selection_buttons_frame.grid(row=0, column=1, sticky="e")
+        ctk.CTkLabel(files_card, text=_("下载文件列表"), font=self.app.app_font_bold).grid(
+            row=0, column=0, sticky="w", padx=10, pady=(10, 5))
 
-        # 注意 command 指向本类的方法
-        ctk.CTkButton(selection_buttons_frame, text=_("刷新状态"), width=90, height=28, font=app_font,
-                      command=self._update_download_genomes_list).pack(side="left", padx=(0, 10))
-        ctk.CTkButton(selection_buttons_frame, text=_("全选"), width=80, height=28, font=app_font,
-                      command=lambda: self._toggle_all_download_genomes(True)).pack(side="left", padx=(0, 10))
-        ctk.CTkButton(selection_buttons_frame, text=_("取消全选"), width=90, height=28, font=app_font,
-                      command=lambda: self._toggle_all_download_genomes(False)).pack(side="left")
+        self.files_frame = ctk.CTkFrame(files_card, fg_color="transparent")
+        self.files_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 10))
+        self.files_frame.grid_columnconfigure(0, weight=1)
 
-        # 【文本修改】移除“若不勾选任何项，将默认下载所有可用版本”的描述
-        ctk.CTkLabel(target_card, text=_("勾选需要下载的基因组版本。"),
-                     text_color=self.app.secondary_text_color, font=app_font, wraplength=500).grid(row=1, column=0,
-                                                                                                   padx=10,
-                                                                                                   pady=(0, 10),
-                                                                                                   sticky="w")
+    def update_assembly_dropdowns(self, assembly_ids: list):
+        if not assembly_ids: assembly_ids = [_("无可用版本")]
+        self.assembly_dropdown.configure(values=assembly_ids)
+        current_selection = self.assembly_dropdown_var.get()
+        if current_selection not in assembly_ids:
+            self.assembly_dropdown_var.set(assembly_ids[0])
+        self._on_assembly_selected(self.assembly_dropdown_var.get())
 
-        self.download_genomes_checkbox_frame = ctk.CTkScrollableFrame(target_card, label_text="")
-        self.download_genomes_checkbox_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        self.app._bind_mouse_wheel_to_scrollable(self.download_genomes_checkbox_frame)
 
-        options_frame = ctk.CTkFrame(self)
-        options_frame.pack(fill="x", expand=False, pady=10, padx=15)
-        options_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(options_frame, text=_("下载选项"), font=app_font_bold).grid(row=0, column=0, columnspan=2, padx=10,
-                                                                                 pady=(10, 15), sticky="w")
 
-        proxy_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        proxy_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=5)
-        ctk.CTkSwitch(proxy_frame, text=_("使用网络代理 (需在配置中设置)"), variable=self.download_proxy_var,
-                      font=app_font).pack(side="left")
+    def _on_assembly_selected(self, selected_assembly: str):
+        for widget in self.files_frame.winfo_children():
+            widget.destroy()
+        if not self.app.genome_sources_data or selected_assembly == _("无可用版本"):
+            ctk.CTkLabel(self.files_frame, text=_("请先加载配置并选择一个有效的基因组版本。")).pack(pady=10)
+            return
+        genome_info = self.app.genome_sources_data.get(selected_assembly)
+        if not genome_info: return
+        file_types_to_check = ['gff3', 'GO', 'IPR', 'KEGG_orthologs', 'KEGG_pathways', 'homology_ath']
+        found_any_file = False
+        for file_type in file_types_to_check:
+            if hasattr(genome_info, f"{file_type}_url") and getattr(genome_info, f"{file_type}_url"):
+                found_any_file = True
+                status = self.app._check_genome_download_status(genome_info, file_type)
+                self._add_file_status_row(file_type, status)
+        if not found_any_file:
+            ctk.CTkLabel(self.files_frame, text=_("该基因组版本没有配置任何可下载的文件。")).pack(pady=10)
 
-        force_download_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        force_download_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 15))
 
-        ctk.CTkLabel(force_download_frame, text=_("强制重新下载:"), font=app_font).pack(side="left", padx=(0, 10))
-        ctk.CTkSwitch(force_download_frame, text="", variable=self.download_force_checkbox_var).pack(side="left")
+    def _add_file_status_row(self, file_type: str, status: str):
+        status_map = {"complete": {"text": _("已下载"), "color": ("#2E7D32", "#A5D6A7")},
+                      "incomplete": {"text": _("不完整"), "color": ("#D84315", "#FF7043")},
+                      "missing": {"text": _("未下载"), "color": ("#495057", "#adb5bd")}}
+        info = status_map.get(status, {"text": _("未知"), "color": "gray"})
+        row_frame = ctk.CTkFrame(self.files_frame, fg_color="transparent")
+        row_frame.pack(fill="x", expand=True, pady=2)
+        ctk.CTkLabel(row_frame, text=f"• {file_type.replace('_', ' ').title()}:", anchor="w").pack(side="left", padx=5)
+        ctk.CTkLabel(row_frame, text=info["text"], text_color=info["color"], anchor="e").pack(side="right", padx=5)
 
-        ctk.CTkButton(options_frame, text=_("预处理注释文件 (转为标准CSV)"), font=app_font,
-                      command=self.start_preprocess_task).grid(row=3, column=0, columnspan=2, padx=10, pady=(5, 15),
-                                                               sticky="ew")
 
-        ctk.CTkButton(self, text=_("开始下载"), height=40, command=self.start_download_task, font=app_font_bold).pack(
-            fill="x", padx=15, pady=(10, 15), side="bottom")
+
+    def _start_download(self):
+        if not self.app.current_config:
+            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+        selected_assembly = self.assembly_dropdown_var.get()
+        if not selected_assembly or selected_assembly == _("无可用版本"):
+            self.app.show_error_message(_("错误"), _("请选择一个要下载的基因组版本。"))
+            return
+        if hasattr(self.app, 'start_download_task'):
+            self.app.start_download_task([selected_assembly])
 
 
 
     def update_from_config(self):
-        """由主应用调用，用于在配置加载时更新本页面。"""
-        self._update_download_genomes_list()
+        if self.app.genome_sources_data:
+            self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
+        else: self.update_assembly_dropdowns([])
+
+    def update_button_state(self, is_running, has_config):
+        state = "disabled" if is_running or not has_config else "normal"
+        self.download_button.configure(state=state)
+
 
     def _update_download_genomes_list(self):
         """根据配置动态更新下载列表，并增加“预处理状态”显示。"""

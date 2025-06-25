@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" alt="logo" width="128" height="128" />
+  <img src="ui/assets/logo.png" alt="logo" width="128" height="128" />
   <h1 style="font-weight:700; letter-spacing:1px; margin-bottom:0;">
     友好棉花基因组工具包 (FCGT)
   </h1>
@@ -68,7 +68,7 @@ python -m cotton_toolkit.cli --help
 
 ## 截图预览
 
-<img src="assets/主界面.png" style="zoom:50%;" />
+<img src="ui/assets/主界面.png" style="zoom:50%;" />
 
 <img src="assets\配置编辑器.png" style="zoom:50%;" />
 

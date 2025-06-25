@@ -32,42 +32,36 @@ class GenomeIdentifierTab(ctk.CTkFrame):
         self._create_widgets()
 
     def _create_widgets(self):
-        """创建基因组类别鉴定选项卡的全部UI控件。"""
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        app_font = self.app.app_font
-        app_font_bold = self.app.app_font_bold
-        app_title_font = self.app.app_title_font
-        app_comment_font = self.app.app_comment_font
+        # --- 统一使用 self.app 来访问字体 ---
+        ctk.CTkLabel(self, text=_("基因组类别鉴定工具"), font=self.app.app_title_font).grid(
+            row=0, column=0, padx=20, pady=(10, 5), sticky="n")
 
-        # --- 标题和描述 ---
-        info_frame = ctk.CTkFrame(self)
-        info_frame.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
-        info_frame.grid_columnconfigure(0, weight=1)
+        main_card = ctk.CTkFrame(self)
+        main_card.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        main_card.grid_columnconfigure(0, weight=1)
+        main_card.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(info_frame, text=_("基因组类别鉴定工具"), font=app_title_font).grid(row=0, column=0, padx=10,
-                                                                                         pady=(5, 2), sticky="w")
-        ctk.CTkLabel(info_frame, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"), wraplength=400,
-                     justify="left", font=app_font).grid(row=1, column=0, padx=10, pady=(2, 5), sticky="w")
-        ctk.CTkLabel(info_frame, text=_("注意：以 'scaffold'、'Unknown' 开头的ID无法用于检查。"), font=app_comment_font,
-                     text_color="orange", wraplength=400, justify="left").grid(row=2, column=0, padx=10, pady=(0, 5),
-                                                                               sticky="w")
+        ctk.CTkLabel(main_card, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"), wraplength=500,
+                     justify="left", font=self.app.app_font).grid(
+            row=0, column=0, padx=15, pady=(15, 5), sticky="w")
 
-        # --- 基因输入文本框 ---
-        self.identifier_genes_textbox = ctk.CTkTextbox(self, height=200, font=app_font)
-        self.app._bind_mouse_wheel_to_scrollable(self.identifier_genes_textbox)
-        self.identifier_genes_textbox.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+        self.identifier_genes_textbox = ctk.CTkTextbox(main_card, font=self.app.app_font)
+        self.identifier_genes_textbox.grid(row=1, column=0, padx=15, pady=5, sticky="nsew")
 
-        # --- 操作区域 ---
-        action_frame = ctk.CTkFrame(self)
-        action_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        action_frame = ctk.CTkFrame(main_card)
+        action_frame.grid(row=2, column=0, padx=15, pady=10, sticky="ew")
         action_frame.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkButton(action_frame, text=_("开始鉴定"), command=self._run_genome_identification, font=app_font).grid(
-            row=0, column=0, padx=10, pady=5, sticky="w")
-        self.identifier_result_label = ctk.CTkLabel(action_frame, text=_("鉴定结果将显示在这里。"), font=app_font)
-        self.identifier_result_label.grid(row=0, column=1, padx=10, pady=5, sticky="e")
+        self.start_button = ctk.CTkButton(action_frame, text=_("开始鉴定"), command=self._run_genome_identification,
+                                          font=self.app.app_font)
+        self.start_button.grid(row=0, column=0, sticky="w")
+        self.identifier_result_label = ctk.CTkLabel(action_frame, text=_("鉴定结果将显示在这里。"),
+                                                    font=self.app.app_font)
+        self.identifier_result_label.grid(row=0, column=1, padx=10, sticky="e")
+
 
     def _run_genome_identification(self):
         """执行基因组类别鉴定。"""
@@ -90,8 +84,13 @@ class GenomeIdentifierTab(ctk.CTkFrame):
                                                    font=self.app.app_font)
             return
 
-        identified_assembly = identify_genome_from_gene_ids(gene_ids, self.app.genome_sources_data,
-                                                            self.app._log_to_viewer)
+        # 直接调用导入的辅助函数，而不是一个不存在的app方法
+        identified_assembly = identify_genome_from_gene_ids(
+            gene_ids,
+            self.app.genome_sources_data,
+            self.app.gui_status_callback
+        )
+
 
         if identified_assembly:
             result_text = f"{_('鉴定结果')}: {identified_assembly}"

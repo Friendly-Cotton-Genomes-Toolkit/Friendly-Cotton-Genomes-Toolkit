@@ -2,7 +2,7 @@
 <table>
   <tr>
     <td width="120" align="center" valign="middle">
-     <img src="../assets/logo.png" alt="logo" width="128" height="128" style="object-fit:cover;" />
+     <img src="../ui/assets/logo.png" alt="logo" width="128" height="128" style="object-fit:cover;" />
     </td>
     <td valign="middle">
       <h1 style="font-weight:700; letter-spacing:2px; margin-bottom:0;">

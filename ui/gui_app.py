@@ -3,6 +3,7 @@
 import copy
 import json
 import logging
+from logging import handlers
 import os
 import queue
 import re
@@ -21,23 +22,18 @@ import pandas as pd
 import yaml
 from PIL import Image
 
-from cotton_toolkit.core.convertXlsx2csv import convert_excel_to_standard_csv
-from cotton_toolkit.utils.localization import setup_localization
-
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.ai_wrapper import AIWrapper
 from cotton_toolkit.pipelines import (
-    run_download_pipeline,
     run_functional_annotation,
-    run_ai_task, run_gff_lookup,
-    run_locus_conversion, run_enrichment_pipeline,
-    run_homology_mapping, run_preprocess_annotation_files,
+    run_enrichment_pipeline,
 )
-from ui import ProgressDialog, MessageDialog,AnnotationTab
+from cotton_toolkit.utils.localization import setup_localization
 from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
+from ui import ProgressDialog, MessageDialog, AnnotationTab
 from ui.tabs.ai_assistant_tab import AIAssistantTab
 from ui.tabs.data_download_tab import DataDownloadTab
 from ui.tabs.genome_identifier_tab import GenomeIdentifierTab
@@ -59,14 +55,13 @@ class CottonToolkitApp(ctk.CTk):
     LANG_CODE_TO_NAME = {"zh-hans": "简体中文", "zh-hant": "繁體中文", "en": "English", "ja": "日本語"}
     LANG_NAME_TO_CODE = {v: k for k, v in LANG_CODE_TO_NAME.items()}
 
-    # --- AI服务商及其元数据 ---
     AI_PROVIDERS = {
         "google": {"name": "Google Gemini"},
         "openai": {"name": "OpenAI"},
         "deepseek": {"name": "DeepSeek (深度求索)"},
         "qwen": {"name": "Qwen (通义千问)"},
         "siliconflow": {"name": "SiliconFlow (硅基流动)"},
-        "grok": {"name": "Grok (xAI)"},  # <--- 在此添加
+        "grok": {"name": "Grok (xAI)"},
         "openai_compatible": {"name": _("通用OpenAI兼容接口")}
     }
 
@@ -74,23 +69,16 @@ class CottonToolkitApp(ctk.CTk):
 
     def __init__(self):
         super().__init__()
-
-        self.title_text_key = _("友好棉花基因组工具包 - FCGT")
+        self.title_text_key = "友好棉花基因组工具包 - FCGT"
         self.title(_(self.title_text_key))
-        self.geometry("1000x700")  # 建议稍微调大初始尺寸
+        self.geometry("1100x750")
         self.minsize(800, 600)
 
-        # ======================================================================
-        # --- 步骤 1: 声明并初始化所有实例属性 ---
-        # ======================================================================
-
-        # --- 核心数据 ---
         self.current_config: Optional[MainConfig] = None
         self.config_path: Optional[str] = None
         self.genome_sources_data: Optional[Dict[str, Any]] = None
         self.excel_sheet_cache: Dict[str, List[str]] = {}
 
-        # --- 任务与消息队列 ---
         self.log_queue: Queue = Queue()
         self.message_queue: Queue = Queue()
         self.message_handlers = self._initialize_message_handlers()
@@ -100,34 +88,52 @@ class CottonToolkitApp(ctk.CTk):
         self.cancel_model_fetch_event = threading.Event()
         self.error_dialog_lock = threading.Lock()
 
-        # --- UI状态与设置 ---
         self.ui_settings: Dict[str, Any] = {}
         self.about_window: Optional[ctk.CTkToplevel] = None
         self.translatable_widgets: Dict[ctk.CTkBaseClass, Any] = {}
         self.log_viewer_visible: bool = False
 
-        # --- 主框架 ---
-        self.top_frame = None
-        self.navigation_frame = None
-        self.main_content_frame = None
-        self.home_frame = None
-        self.editor_frame = None
-        self.tools_frame = None
-        self.log_viewer_frame = None
-        self.status_bar_frame = None
-        self.tools_notebook = None
-
-        # --- 字体和颜色 ---
         self._setup_fonts()
         self.secondary_text_color = ("#495057", "#999999")
         self.placeholder_color = ("#868e96", "#5c5c5c")
         self.default_text_color = ctk.ThemeManager.theme["CTkTextbox"]["text_color"]
-        try:
-            self.default_label_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-        except Exception:
-            self.default_label_text_color = ("#000000", "#FFFFFF")
+        self.default_label_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
 
-        # --- 图像资源 ---
+        self._create_image_assets()
+
+        self.selected_language_var = tk.StringVar()
+        self.selected_appearance_var = tk.StringVar()
+
+        self.placeholders = {
+            "genes_input": _(
+                "输入基因ID (每行一个或用逗号/Tab分隔)。\n若进行富集分析且包含Log2FC，格式为 '基因,Log2FC'。"),
+            "homology_genes": _("输入要转换的基因ID，每行一个或用逗号/Tab分隔。"),
+            "gff_genes": _("输入或粘贴基因ID，每行一个或用逗号分隔。"),
+            "gff_region": _("例如: A03:1000-2000")
+        }
+
+        self.TAB_TITLE_KEYS = {
+            "download": "数据下载", "homology": "基因组转换", "locus_conversion": "位点转换",
+            "gff_query": "基因位点查询", "annotation": "功能注释", "ai_assistant": "AI 助手",
+            "genome_identifier": "基因组类别鉴定", "xlsx_to_csv": "XLSX转CSV"
+        }
+        self.TOOL_TAB_ORDER = ["download", "homology", "locus_conversion", "gff_query", "annotation", "ai_assistant",
+                               "genome_identifier", "xlsx_to_csv"]
+
+        self.tool_tab_instances: Dict[str, ctk.CTkFrame] = {}
+        self.editor_ui_built: bool = False
+
+        # --- 在初始化时就设置好控制台日志 ---
+        setup_global_logger(log_level_str="INFO", log_queue=self.log_queue)
+
+        self._load_ui_settings()
+        self._create_layout()
+        self._init_pages_and_final_setup()
+        self._start_app_async_startup()
+
+
+    def _create_image_assets(self):
+        """加载所有图片资源"""
         self.logo_image = self._load_image_resource("logo.png", (48, 48))
         self.home_icon = self._load_image_resource("home.png")
         self.tools_icon = self._load_image_resource("tools.png")
@@ -136,104 +142,6 @@ class CottonToolkitApp(ctk.CTk):
         self.new_file_icon = self._load_image_resource("new-file.png")
         self.help_icon = self._load_image_resource("help.png")
         self.info_icon = self._load_image_resource("info.png")
-
-        # --- Tkinter变量 ---
-        # 通用
-        self.selected_language_var = tk.StringVar()
-        self.selected_appearance_var = tk.StringVar()
-        # 下载页面
-        self.download_genome_vars: Dict[str, tk.BooleanVar] = {}
-        self.download_force_checkbox_var = tk.BooleanVar(value=False)
-        self.download_proxy_var = tk.BooleanVar(value=False)
-        # AI助手页面
-        self.ai_task_type_var = tk.StringVar(value=_("翻译"))
-        self.ai_proxy_var = tk.BooleanVar(value=False)
-        self.ai_temperature_var = tk.DoubleVar(value=0.7)
-        self.ai_selected_provider_var = tk.StringVar()
-        self.ai_selected_model_var = tk.StringVar()
-        # 工具 - 基因组转换
-        self.selected_homology_source_assembly = tk.StringVar()
-        self.selected_homology_target_assembly = tk.StringVar()
-        self.homology_top_n_var = tk.StringVar(value="1")
-        self.homology_evalue_var = tk.StringVar(value="1e-10")
-        self.homology_pid_var = tk.StringVar(value="30.0")
-        self.homology_score_var = tk.StringVar(value="50.0")
-        self.homology_strict_priority_var = tk.BooleanVar(value=True)
-        # 工具 - GFF查询
-        self.selected_gff_query_assembly = tk.StringVar()
-        # 工具 - 功能注释与富集分析
-        self.selected_annotation_assembly = tk.StringVar()
-        self.go_anno_var = tk.BooleanVar(value=True)
-        self.ipr_anno_var = tk.BooleanVar(value=True)
-        self.kegg_ortho_anno_var = tk.BooleanVar(value=False)
-        self.kegg_path_anno_var = tk.BooleanVar(value=False)
-        self.analysis_type_var = tk.StringVar(value="GO")
-        self.has_header_var = tk.BooleanVar(value=False)
-        self.has_log2fc_var = tk.BooleanVar(value=False)
-        self.collapse_transcripts_var = tk.BooleanVar(value=True)
-        self.enrich_top_n_var = tk.StringVar(value="20")
-        self.enrich_sort_by_var = tk.StringVar(value="FDR")
-        self.enrich_format_var = tk.StringVar(value="png")
-        self.enrich_show_title_var = tk.BooleanVar(value=True)
-        self.enrich_width_var = tk.StringVar(value="10")
-        self.enrich_height_var = tk.StringVar(value="8")
-        self.bubble_plot_var = tk.BooleanVar(value=True)
-        self.bar_plot_var = tk.BooleanVar(value=True)
-        self.upset_plot_var = tk.BooleanVar(value=False)
-        self.cnet_plot_var = tk.BooleanVar(value=False)
-
-        # --- 占位符 ---
-        self.placeholder_key_homology = "placeholder_genes_homology"
-        self.placeholder_key_gff_genes = "placeholder_genes_gff"
-        self.placeholder_key_gff_region = "placeholder_gff_region"
-        self.placeholders = {
-            self.placeholder_key_homology: _(
-                "输入基因ID (每行一个或用逗号/Tab分隔)。\n"
-                "若进行富集分析且包含Log2FC，格式为 '基因,Log2FC'。\n\n"
-                "例如 (仅基因ID):\n"
-                "Gh_A01G0001\n"
-                "Gh_A01G0002,Gh_A01G0003\n\n"
-                "例如 (包含Log2FC):\n"
-                "Gh_D01G0004,1.5\n"
-                "Gh_D01G0005\t-2.1"
-            ),
-
-            self.placeholder_key_gff_genes: "输入或粘贴基因ID，每行一个或用逗号分隔。\n例如:\nGh_D05G1268\nCOTTON_D_gene_10014361",
-            self.placeholder_key_gff_region: "例如: A03:1000-2000",
-        }
-
-        # --- 选项卡和编辑器状态 ---
-        self.TAB_TITLE_KEYS = {
-            "download": "数据下载",
-            "homology": "基因组转换",
-            "locus_conversion": "位点转换",
-            "gff_query": "基因位点查询",
-            "annotation": "功能注释",
-            "ai_assistant": "AI 助手",
-            "genome_identifier": "基因组类别鉴定",
-            "xlsx_to_csv": "XLSX转CSV"
-        }
-
-        self.TOOL_TAB_ORDER = ["download", "homology", "locus_conversion", "gff_query", "annotation", "ai_assistant",
-                               "genome_identifier", "xlsx_to_csv"]
-        self.tool_tab_frames: Dict[str, ctk.CTkFrame] = {}
-        self.tool_tab_ui_loaded: Dict[str, bool] = {}
-        self.editor_ui_built: bool = False
-
-        # ======================================================================
-        # --- 步骤 2: 初始化日志、加载设置并创建UI布局 ---
-        # ======================================================================
-
-        setup_global_logger(log_level_str="INFO", log_queue=self.log_queue)
-
-        self._load_ui_settings()
-        self._create_layout()
-        self._init_pages_and_final_setup()
-
-        # ======================================================================
-        # --- 步骤 3: 启动后台加载任务 ---
-        # ======================================================================
-        self._start_app_async_startup()
 
 
     def toggle_log_viewer(self):
@@ -319,8 +227,8 @@ class CottonToolkitApp(ctk.CTk):
         # --- 统一代理逻辑 ---
         proxies_to_use = None
         # 检查AI助手的代理开关是否打开
-        if hasattr(self, 'ai_proxy_var') and self.ai_proxy_var.get():
-            # 仅在开关打开时才读取代理地址
+        ai_tab = self.tool_tab_instances.get('ai_assistant')
+        if ai_tab and hasattr(ai_tab, 'ai_proxy_var') and ai_tab.ai_proxy_var.get():  # 仅在开关打开时才读取代理地址
             # 代理地址本身还是从配置编辑器的输入框读取，这是统一的配置源
             http_proxy = self.downloader_proxy_http_entry.get().strip()
             https_proxy = self.downloader_proxy_https_entry.get().strip()
@@ -472,55 +380,45 @@ class CottonToolkitApp(ctk.CTk):
         self.status_bar_frame = ctk.CTkFrame(self, height=35, corner_radius=0)
         self.status_bar_frame.pack(side="bottom", fill="x", padx=0, pady=0)
         self._create_status_bar_widgets()
+
         self.log_viewer_frame = ctk.CTkFrame(self)
         self.log_viewer_frame.pack(side="bottom", fill="x", padx=10, pady=5)
         self._create_log_viewer_widgets()
-        self.top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.top_frame.pack(side="top", fill="both", expand=True)
-        self.top_frame.grid_columnconfigure(1, weight=1)
-        self.top_frame.grid_rowconfigure(0, weight=1)
-        self._create_navigation_frame(parent=self.top_frame)
-        self._create_main_content_area(parent=self.top_frame)
 
-        # gui_app.py
+        top_frame = ctk.CTkFrame(self, fg_color="transparent")
+        top_frame.pack(side="top", fill="both", expand=True)
+        top_frame.grid_columnconfigure(1, weight=1)
+        top_frame.grid_rowconfigure(0, weight=1)
+
+        self._create_navigation_frame(parent=top_frame)
+
+        self.main_content_frame = ctk.CTkFrame(top_frame, corner_radius=0, fg_color="transparent")
+        self.main_content_frame.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+        self.main_content_frame.grid_rowconfigure(0, weight=1)
+        self.main_content_frame.grid_columnconfigure(0, weight=1)
+
 
     def _init_pages_and_final_setup(self):
-        """
-        【优化版】初始化所有页面并进行最终设置，包含预加载编辑器UI。
-        """
         self._log_to_viewer(f"{_('当前工作目录:')} {os.getcwd()}")
 
-        # 1. 创建所有主内容区域的 Frame
         self.home_frame = self._create_home_frame(self.main_content_frame)
         self.editor_frame = self._create_editor_frame(self.main_content_frame)
         self.tools_frame = self._create_tools_frame(self.main_content_frame)
 
-        # 2. 预加载所有工具选项卡的内容
         self._populate_tools_notebook()
 
-        # 3. 【新增优化】预加载配置编辑器的UI内容
-        self._log_to_viewer("INFO: Pre-loading configuration editor UI...", "DEBUG")
         if not self.editor_ui_built:
             self._create_editor_widgets(self.editor_scroll_frame)
             self.editor_ui_built = True
-        self._log_to_viewer("INFO: Configuration editor UI pre-loaded.", "DEBUG")
-
-        # 4. 调用主控方法来用数据填充/更新编辑器UI的初始状态
         self._handle_editor_ui_update()
 
-        # 5. 设置初始显示的页面 (例如 "home")
         self.select_frame_by_name("home")
-
-        # 6. 更新UI语言和按钮状态
         self.update_language_ui()
         self._update_button_states()
-
-        # 7. 启动消息队列的周期性检查
         self.check_queue_periodic()
-
-        # 8. 设置窗口关闭协议和应用程序图标
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.set_app_icon()
+
 
     def _start_app_async_startup(self):
         """
@@ -659,13 +557,35 @@ class CottonToolkitApp(ctk.CTk):
 
     def _load_image_resource(self, file_name, size=(24, 24)):
         try:
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath("../assets")
+            if hasattr(sys, '_MEIPASS'):
+                base_path = os.path.join(sys._MEIPASS, "assets")
+            else:
+                base_path = os.path.join(os.path.dirname(__file__), "assets")
             image_path = os.path.join(base_path, file_name)
             if os.path.exists(image_path):
                 return ctk.CTkImage(Image.open(image_path), size=size)
+            else:
+                print(f"警告: 图片资源未找到，检查路径: '{image_path}'")
+                raise FileNotFoundError
         except Exception as e:
-            print(f"警告: 无法加载图片资源 '{file_name}': {e}")
-        return None
+            if not isinstance(e, FileNotFoundError):
+                 print(f"警告: 加载图片资源 '{file_name}' 时发生错误: {e}")
+            placeholder = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
+            return ctk.CTkImage(placeholder, size=size)
+
+
+
+        except Exception as e:
+            # 捕获所有异常（包括上面主动抛出的 FileNotFoundError）
+            # 打印原始警告（如果是文件不存在的话）
+            if not isinstance(e, FileNotFoundError):
+                print(f"警告: 加载图片资源 '{file_name}' 时发生错误: {e}")
+
+            # --- 核心修改：创建并返回一个透明的占位图 ---
+            placeholder = Image.new('RGBA', (1, 1), (0, 0, 0, 0))  # 创建一个1x1的完全透明的图像
+            return ctk.CTkImage(placeholder, size=size)
+
+
 
     def _create_navigation_frame(self, parent):
         self.navigation_frame = ctk.CTkFrame(parent, corner_radius=0)
@@ -1037,7 +957,8 @@ class CottonToolkitApp(ctk.CTk):
 
         # 2. 检查代理设置
         proxies = None
-        if self.ai_proxy_var.get():
+        ai_tab = self.tool_tab_instances.get('ai_assistant')
+        if ai_tab and ai_tab.ai_proxy_var.get():
             http_proxy = self.downloader_proxy_http_entry.get().strip()
             https_proxy = self.downloader_proxy_https_entry.get().strip()
             if http_proxy or https_proxy:
@@ -1400,61 +1321,37 @@ class CottonToolkitApp(ctk.CTk):
 
         return frame
 
-
     def _create_tools_frame(self, parent):
-
-        frame = ctk.CTkScrollableFrame(parent, fg_color="transparent")
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(frame, text=_("数据工具"), font=self.app_title_font).grid(row=0, column=0, padx=30, pady=(20, 25),
                                                                                sticky="w")
 
-        self.tools_notebook = ctk.CTkTabview(frame, corner_radius=8, command=self._on_tab_change)
+        # 【修复】移除了 command=self._on_tab_change
+        self.tools_notebook = ctk.CTkTabview(frame, corner_radius=8)
+
         if hasattr(self.tools_notebook, '_segmented_button'):
             self.tools_notebook._segmented_button.configure(font=self.app_font)
         self.tools_notebook.grid(row=1, column=0, padx=30, pady=10, sticky="nsew")
-
         return frame
 
+
     def _populate_tools_notebook(self):
-        """
-        【优化】一次性预加载所有工具选项卡，以实现即时切换并修复BUG。
-        """
-        self.tool_tab_frames = {}
-        self.tool_tab_ui_loaded = {}
-
-        self._log_to_viewer("INFO: Pre-loading all tool tabs...", "DEBUG")
-
-        # 遍历所有已定义的工具标签页
+        self.tool_tab_instances = {}
+        tab_class_map = {
+            "download": DataDownloadTab, "homology": HomologyTab, "locus_conversion": LocusConversionTab,
+            "gff_query": GFFQueryTab, "annotation": AnnotationTab, "ai_assistant": AIAssistantTab,
+            "genome_identifier": GenomeIdentifierTab, "xlsx_to_csv": XlsxConverterTab
+        }
         for key in self.TOOL_TAB_ORDER:
             tab_name = _(self.TAB_TITLE_KEYS[key])
             tab_frame = self.tools_notebook.add(tab_name)
-            self.tool_tab_frames[key] = tab_frame
-
-            # --- 立即创建该标签页的UI实例 ---
-            frame_to_populate = self.tool_tab_frames[key]
-
-            if key == "download":
-                DataDownloadTab(parent=frame_to_populate, app=self)
-            elif key == "annotation":
-                AnnotationTab(parent=frame_to_populate, app=self)
-            elif key == "homology":
-                HomologyTab(parent=frame_to_populate, app=self)
-            elif key == "ai_assistant":
-                AIAssistantTab(parent=frame_to_populate, app=self)
-            elif key == "locus_conversion":
-                LocusConversionTab(parent=frame_to_populate, app=self)
-            elif key == "gff_query":
-                GFFQueryTab(parent=frame_to_populate, app=self)
-            elif key == "genome_identifier":
-                GenomeIdentifierTab(parent=frame_to_populate, app=self)
-            elif key == "xlsx_to_csv":
-                XlsxConverterTab(parent=frame_to_populate, app=self)
-
-            self.tool_tab_ui_loaded[key] = True
-
-        self._log_to_viewer("INFO: All tool tabs have been pre-loaded.", "DEBUG")
+            if TabClass := tab_class_map.get(key):
+                self.tool_tab_instances[key] = TabClass(parent=tab_frame, app=self)
+            else:
+                self._log_to_viewer(f"WARNING: No Tab class found for key '{key}'.", "WARNING")
         self.tools_notebook.set(_(self.TAB_TITLE_KEYS["download"]))
 
 
@@ -1558,8 +1455,14 @@ class CottonToolkitApp(ctk.CTk):
 
     def set_app_icon(self):
         try:
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath("..")
+            if hasattr(sys, '_MEIPASS'):
+                # 打包环境
+                base_path = sys._MEIPASS
+            else:
+                # 源码环境：获取项目根目录 (ui文件夹的上一级)
+                base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
             icon_path = os.path.join(base_path, "icon.ico")
+
             if os.path.exists(icon_path):
                 self.iconbitmap(icon_path)
         except Exception as e:
@@ -1838,47 +1741,44 @@ class CottonToolkitApp(ctk.CTk):
 
     def _apply_config_to_ui(self):
         """
-        【最终修正版】根据 self.current_config 的状态，更新整个应用程序的UI。
-        此版本使用通用方法更新所有已加载的工具选项卡，而不是单独调用每个选项卡的更新函数。
+        【完整版】将 self.current_config 的所有设置应用到整个用户界面。
+        这是在加载或保存配置后，刷新UI的中央枢纽。
         """
-        self._log_to_viewer(_("正在应用配置到整个UI..."))
+        self._log_to_viewer(_("正在应用配置到整个UI..."), "DEBUG")
 
-        # 1. 更新主页的配置路径显示
-        if self.config_path:
-            path_text = _("当前配置: {}").format(os.path.basename(self.config_path))
-        else:
-            path_text = _("未加载配置")
-
+        # 1. 更新主页上的当前配置文件路径显示
+        path_text = _("当前配置: {}").format(os.path.basename(self.config_path)) if self.config_path else _(
+            "未加载配置")
         if hasattr(self, 'config_path_label') and self.config_path_label.winfo_exists():
             self.config_path_label.configure(text=path_text)
 
-        # 2. 更新配置编辑器页面 (如果它已被打开)
-        if hasattr(self, 'editor_frame') and self.editor_frame.winfo_exists():
-            # 这个方法会智能地创建或更新编辑器UI
-            self._handle_editor_ui_update()
+        # 2. 更新配置编辑器页面
+        # 这个方法会判断是否需要创建UI，并使用新配置填充所有输入框
+        self._handle_editor_ui_update()
 
-        # 3. 【核心优化】通用地更新所有已加载的工具选项卡
-        if hasattr(self, 'tools_notebook') and self.tools_notebook.winfo_exists():
+        # 3. 更新所有工具选项卡中需要显示基因组版本(Assembly ID)的下拉菜单
+        self._update_assembly_id_dropdowns()
 
-            # 更新所有下拉菜单的基因组版本列表
-            self._update_assembly_id_dropdowns()
+        # 4. 调用每个选项卡自己的更新方法（如果存在）
+        # 这使得每个选项卡可以根据新配置独立更新其内部状态
+        for tab_instance in self.tool_tab_instances.values():
+            if hasattr(tab_instance, 'update_from_config'):
+                try:
+                    tab_instance.update_from_config()
+                except Exception as e:
+                    self._log_to_viewer(f"Error updating tab {tab_instance.__class__.__name__}: {e}", "ERROR")
 
-            for key, frame in self.tool_tab_frames.items():
-                # 检查这个Tab是否已经被用户点击加载过，并且其Frame中确实有子控件
-                if self.tool_tab_ui_loaded.get(key) and frame.winfo_children():
-                    # 获取Tab类的实例 (它通常是Frame的第一个子控件)
-                    tab_instance = frame.winfo_children()[0]
-                    # 检查这个实例是否有自己的更新方法，有就调用
-                    if hasattr(tab_instance, 'update_from_config'):
-                        tab_instance.update_from_config()
-
-        # 4. 根据新配置更新日志级别
+        # 5. 【核心】智能地更新全局日志级别
+        # 这个方法会检查级别是否真的改变，避免重复操作
         if self.current_config and hasattr(self.current_config, 'log_level'):
             self.reconfigure_logging(self.current_config.log_level)
 
-        # 5. 更新所有按钮的状态（例如，如果没加载配置，则禁用任务按钮）
+        # 6. 根据当前状态（是否有任务在运行、是否加载了配置）更新所有按钮的可点击状态
         self._update_button_states()
+
         self._log_to_viewer(_("UI已根据当前配置刷新。"))
+
+
 
     def _handle_editor_ui_update(self):
         """
@@ -2015,25 +1915,17 @@ class CottonToolkitApp(ctk.CTk):
         self._log_to_viewer(_("界面语言已更新。"), "INFO")
 
     def _update_assembly_id_dropdowns(self):
-        """
-        【V3 重构版】获取基因组ID列表，并通知所有已加载的Tab进行更新。
-        这个方法不再直接访问任何Tab的内部变量或控件。
-        """
         if not self.genome_sources_data:
             assembly_ids = [_("无可用基因组")]
         else:
-            # 如果key是空的，也返回一个提示
             assembly_ids = list(self.genome_sources_data.keys()) or [_("无可用基因组")]
 
-        # 遍历所有已加载的Tab实例
-        for key, frame in self.tool_tab_frames.items():
-            if self.tool_tab_ui_loaded.get(key) and frame.winfo_children():
-                tab_instance = frame.winfo_children()[0]
-
-                # 如果这个Tab实例有自己的更新方法，就把新的ID列表传递给它
-                if hasattr(tab_instance, 'update_assembly_dropdowns'):
+        for tab_instance in self.tool_tab_instances.values():
+            if hasattr(tab_instance, 'update_assembly_dropdowns'):
+                try:
                     tab_instance.update_assembly_dropdowns(assembly_ids)
-
+                except Exception as e:
+                    self._log_to_viewer(f"Error updating assembly dropdowns for {tab_instance.__class__.__name__}: {e}", "ERROR")
 
 
     def _update_excel_sheet_dropdowns(self):
@@ -2116,10 +2008,8 @@ class CottonToolkitApp(ctk.CTk):
                 self.selected_hvg_sheet.set(sheet_names_to_set[0])
 
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any]):
-        """ 【优化版】统一的任务启动器，利用健壮的 ProgressDialog。"""
         if self.active_task_name:
-            self.show_warning_message(_("任务进行中"),
-                                      f"{_('另一个任务')} '{self.active_task_name}' {_('正在运行，请稍候。')}")
+            self.show_warning_message(_("任务进行中"), f"{_('另一个任务')} '{self.active_task_name}' {_('正在运行，请稍候。')}")
             return
 
         self._update_button_states(is_task_running=True)
@@ -2128,35 +2018,26 @@ class CottonToolkitApp(ctk.CTk):
 
         self.cancel_current_task_event.clear()
 
-        # 【关键点】这里创建了我们优化后的 ProgressDialog。
-        # 当用户点击弹窗的“取消”或“X”按钮时，其内部的 close() 方法会调用 self.cancel_current_task_event.set()
-        self.progress_dialog = ProgressDialog(self, title=_(task_name), on_cancel=self.cancel_current_task_event.set,
-                                              app_font=self.app_font)
+        self.progress_dialog = ProgressDialog(self, title=_(task_name), on_cancel=self.cancel_current_task_event.set, app_font=self.app_font)
 
         kwargs['cancel_event'] = self.cancel_current_task_event
         kwargs['status_callback'] = self.gui_status_callback
         kwargs['progress_callback'] = self.gui_progress_callback
 
         def task_wrapper():
-            success = False
-            result_data = None
             try:
                 result_data = target_func(**kwargs)
                 if self.cancel_current_task_event.is_set():
-                    # 如果任务是被取消的，发送一个特殊标记
                     self.message_queue.put(("task_done", (False, task_name, "CANCELLED")))
-                    return
-                success = True
+                else:
+                    self.message_queue.put(("task_done", (True, task_name, result_data)))
             except Exception as e:
                 detailed_error = f"{_('一个意外的严重错误发生')}: {e}\n--- TRACEBACK ---\n{traceback.format_exc()}"
-                self.message_queue.put(("error", detailed_error))  # 发送错误消息
-                success = False
-            finally:
-                # 只有在任务不是被取消的情况下，才发送常规的完成消息
-                if not self.cancel_current_task_event.is_set():
-                    self.message_queue.put(("task_done", (success, task_name, result_data)))
+                self.message_queue.put(("error", detailed_error))
 
         threading.Thread(target=task_wrapper, daemon=True).start()
+
+
 
     def  _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
         """【新增】任务结束时统一处理UI更新的辅助函数。"""
@@ -2200,8 +2081,25 @@ class CottonToolkitApp(ctk.CTk):
         self._log_to_viewer(_("日志已清除。"))
 
     def _log_to_viewer(self, message, level="INFO"):
-        # 将日志消息放入队列，由主线程处理
-        self.log_queue.put((message, level))
+        """
+        向UI日志框发送日志，但会遵循全局日志级别。
+        """
+        try:
+            # 获取根日志记录器，它的级别是我们统一配置的
+            root_logger = logging.getLogger()
+
+            # 获取当前消息的数字级别，例如 "DEBUG" -> 10, "INFO" -> 20
+            message_level_num = logging.getLevelName(level.upper())
+
+            # 【关键】只有当消息的级别 >= 根记录器的级别时，才将其放入队列
+            if isinstance(message_level_num, int) and message_level_num >= root_logger.getEffectiveLevel():
+                # 将日志消息放入队列，由主线程处理
+                self.log_queue.put((message, level))
+
+        except Exception as e:
+            # 增加一个保险的异常处理，防止此方法自身出错
+            print(f"FATAL ERROR in _log_to_viewer: {e}")
+
 
     def gui_status_callback(self, message: str, level: str = "INFO"):
         """
@@ -2263,40 +2161,25 @@ class CottonToolkitApp(ctk.CTk):
 
     # 在 CottonToolkitApp class 内部，替换此方法
     def check_queue_periodic(self):
-        """
-        【重构版】周期性检查消息队列，并将消息分发给对应的处理函数。
-        """
         try:
-            # --- 处理日志队列 (这部分逻辑不变) ---
             while not self.log_queue.empty():
                 log_message, log_level = self.log_queue.get_nowait()
                 self._display_log_message_in_ui(log_message, log_level)
 
-            # --- 处理主消息队列 ---
             while not self.message_queue.empty():
                 message_type, data = self.message_queue.get_nowait()
-
-                # 从字典中查找对应的处理函数
                 handler = self.message_handlers.get(message_type)
-
                 if handler:
-                    # 如果找到，则调用它
-                    # 使用 if/else 避免了对 hide_progress_dialog 的特殊处理
-                    if data is not None:
-                        handler(data)
-                    else:
-                        handler()
+                    handler(data) if data is not None else handler()
                 else:
-                    # 如果没找到，记录一个警告
                     self._log_to_viewer(f"未知的消息类型: '{message_type}'", "WARNING")
-
         except queue.Empty:
             pass
         except Exception as e:
             logging.critical(f"在 check_queue_periodic 中发生未处理的异常: {e}", exc_info=True)
-
-        # 保持周期性调用
         self.after(100, self.check_queue_periodic)
+
+
 
     def _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
         """【新增】任务结束时统一处理UI更新的辅助函数。"""
@@ -2431,10 +2314,10 @@ class CottonToolkitApp(ctk.CTk):
     def _handle_auto_identify_success(self, data: tuple):
         target_var, assembly_id = data
         if self.genome_sources_data and assembly_id in self.genome_sources_data.keys():
-            target_var.set(assembly_id)
-            self._log_to_viewer(f"UI已自动更新基因为: {assembly_id}", "DEBUG")
-            self._on_homology_assembly_selection(None)
-            self._on_locus_assembly_selection(None)
+            if isinstance(target_var, tk.StringVar):
+                target_var.set(assembly_id)
+                self._log_to_viewer(f"UI已自动更新基因为: {assembly_id}", "DEBUG")
+
 
     def _handle_auto_identify_fail(self, data=None):
         pass  # 识别失败，静默处理
@@ -2662,37 +2545,21 @@ class CottonToolkitApp(ctk.CTk):
                 f"ERROR: {_('保存基因组源文件时发生错误:')} {e}", level="ERROR")
 
     def _update_button_states(self, is_task_running=False):
+        # 这个方法现在是安全的，因为它不再引用任何已经被删除的按钮
         action_state = "disabled" if is_task_running else "normal"
-        task_button_state = "normal" if self.current_config and not is_task_running else "disabled"
-
-        # 所有任务按钮
-        if hasattr(self, 'download_start_button') and self.download_start_button.winfo_exists():
-            self.download_start_button.configure(state=task_button_state)
-        if hasattr(self, 'integrate_start_button') and self.integrate_start_button.winfo_exists():
-            self.integrate_start_button.configure(state=task_button_state)
-        if hasattr(self, 'homology_map_start_button') and self.homology_map_start_button.winfo_exists():
-            self.homology_map_start_button.configure(state=task_button_state)
-        if hasattr(self, 'gff_query_start_button') and self.gff_query_start_button.winfo_exists():
-            self.gff_query_start_button.configure(state=task_button_state)
-        if hasattr(self, 'anno_start_button') and self.anno_start_button.winfo_exists():  # For annotation tab
-            self.anno_start_button.configure(state=task_button_state)
-        if hasattr(self, 'ai_start_button') and self.ai_start_button.winfo_exists():  # For AI assistant tab
-            self.ai_start_button.configure(state=task_button_state)
-        if hasattr(self, 'convert_start_button') and self.convert_start_button.winfo_exists():  # For XLSX to CSV tab
-            self.convert_start_button.configure(state=task_button_state)
-        if hasattr(self, 'locus_convert_start_button') and self.locus_convert_start_button.winfo_exists():
-            self.locus_convert_start_button.configure(state=task_button_state)
 
         # 侧边栏和配置按钮
-        if hasattr(self, 'navigation_frame'):  # 确保导航框架已经创建
-            # 遍历这些按钮，并检查它们是否存在
-            for btn_name in ['home_button', 'editor_button', 'integrate_button', 'tools_button',
-                             'load_config_button', 'gen_config_button']:  #
+        if hasattr(self, 'navigation_frame'):
+            for btn_name in ['home_button', 'editor_button', 'tools_button', 'load_config_button', 'gen_config_button']:
                 if hasattr(self, btn_name):
                     btn = getattr(self, btn_name)
-                    if btn.winfo_exists():  # 确保控件在Tkinter中仍存在
+                    if btn.winfo_exists():
                         btn.configure(state=action_state)
 
+        # 通过Tab实例来更新按钮状态
+        for tab_key, tab_instance in self.tool_tab_instances.items():
+            if hasattr(tab_instance, 'update_button_state'):
+                tab_instance.update_button_state(is_task_running, bool(self.current_config))
 
 
     def _show_about_window(self):
@@ -2861,15 +2728,16 @@ class CottonToolkitApp(ctk.CTk):
             target_entry_widget.delete(0, tk.END)
             target_entry_widget.insert(0, new_path)
 
-
-
-
     def _auto_identify_genome_version(self, gene_input_textbox: ctk.CTkTextbox, target_assembly_var: tk.StringVar):
-        """
-        从文本框中读取基因ID，尝试自动识别基因组版本，并更新下拉菜单。
-        """
         current_text = gene_input_textbox.get("1.0", tk.END).strip()
-        if not current_text or current_text == self.placeholder_genes_homology_key or current_text == self.placeholder_genes_gff_key:
+        # 检查是否为占位符
+        is_placeholder = False
+        for key, value in self.placeholders.items():
+            if current_text == _(value):
+                is_placeholder = True
+                break
+
+        if not current_text or is_placeholder:
             return
 
         gene_ids = [gene.strip() for gene in current_text.replace(",", "\n").splitlines() if gene.strip()]
@@ -2897,7 +2765,6 @@ class CottonToolkitApp(ctk.CTk):
                 self.message_queue.put(("auto_identify_error", str(e)))
 
         threading.Thread(target=_identify_in_thread, daemon=True).start()
-
 
 
     def _update_language_ui(self):
@@ -3044,9 +2911,39 @@ class CottonToolkitApp(ctk.CTk):
             textbox_widget.delete("1.0", tk.END)
             textbox_widget.configure(font=self.app_font, text_color=self.default_text_color)
 
-
     def reconfigure_logging(self, log_level_str: str):
-        set_log_level(log_level_str)
+        """
+        【最终修正版】智能地、强制地重新配置全局日志级别，包括所有处理器。
+        """
+        try:
+            # 获取根日志记录器
+            root_logger = logging.getLogger()
+
+            # 获取将要设置的数字级别，例如 "INFO" -> 20
+            new_level = logging.getLevelName(log_level_str.upper())
+
+            # 必须确保 new_level 是一个有效的数字级别
+            if not isinstance(new_level, int):
+                self._log_to_viewer(f"警告: 无效的日志级别 '{log_level_str}'", "WARNING")
+                return
+
+            # 获取根记录器当前的级别
+            current_level = root_logger.getEffectiveLevel()
+
+            # 只有在需要改变级别时才执行操作
+            if current_level != new_level:
+                # 1. 设置根记录器的级别，这是最高阀门
+                root_logger.setLevel(new_level)
+
+                # 2. 【关键】遍历所有现有的处理器，强制将它们的级别也一同更新
+                for handler in root_logger.handlers:
+                    handler.setLevel(new_level)
+
+                # 在UI日志框中记录这次成功的操作
+                self._log_to_viewer(f"全局日志级别已更新为: {log_level_str}", "INFO")
+
+        except Exception as e:
+            self._log_to_viewer(f"配置日志级别时出错: {e}", "ERROR")
 
 
     def _browse_directory(self, entry_widget: ctk.CTkEntry):
@@ -3055,6 +2952,7 @@ class CottonToolkitApp(ctk.CTk):
         if directory and entry_widget:
             entry_widget.delete(0, tk.END)
             entry_widget.insert(0, directory)
+
 
     def _show_plot_results(self, image_paths: List[str]):
         """在一个新窗口中显示生成的图表。"""
@@ -3088,105 +2986,71 @@ class CottonToolkitApp(ctk.CTk):
 
     def start_enrichment_task(self):
         """
-        启动富集分析与绘图任务。
-        - 收集所有UI参数，包括新增的Log2FC和表头选项。
-        - 根据输入模式解析基因列表。
-        - 调用后台管线函数。
+        【新增】启动富集分析与绘图任务。
         """
-
-        # 1. --- 前置检查 ---
         if not self.current_config:
             self.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        # 2. --- 从UI收集所有参数 ---
-        # 基础输入
-        gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
-        assembly_id = self.selected_annotation_assembly.get()
-        output_dir = self.enrichment_output_dir_entry.get().strip()
-
-        # 分析与绘图选项
-        analysis_type = self.analysis_type_var.get().lower()
-        has_header = self.has_header_var.get()
-        has_log2fc = self.has_log2fc_var.get()
-        collapse_transcripts = self.collapse_transcripts_var.get()
-
-        plot_types = []
-        if self.bubble_plot_var.get(): plot_types.append('bubble')
-        if self.bar_plot_var.get(): plot_types.append('bar')
-        if self.upset_plot_var.get(): plot_types.append('upset')
-        if self.cnet_plot_var.get(): plot_types.append('cnet')
-
-        # 绘图参数（带类型转换和错误处理）
-        try:
-            top_n = int(self.enrich_top_n_var.get())
-            width = float(self.enrich_width_var.get())
-            height = float(self.enrich_height_var.get())
-        except (ValueError, TypeError):
-            self.show_error_message(_("输入错误"), _("Top N、宽度和高度必须是有效的数字。"))
+        # 从 AnnotationTab 实例获取UI控件
+        anno_tab = self.tool_tab_instances.get('annotation')
+        if not anno_tab:
+            self.show_error_message(_("UI错误"), _("无法找到功能注释选项卡实例。"))
             return
 
-        sort_by = self.enrich_sort_by_var.get()
-        show_title = self.enrich_show_title_var.get()
-        file_format = self.enrich_format_var.get()
+        try:
+            gene_ids_text = anno_tab.annotation_genes_textbox.get("1.0", tk.END).strip()
+            assembly_id = anno_tab.selected_annotation_assembly.get()
+            output_dir = anno_tab.enrichment_output_dir_entry.get().strip()
+            analysis_type = anno_tab.analysis_type_var.get().lower()
+            has_header = anno_tab.has_header_var.get()
+            has_log2fc = anno_tab.has_log2fc_var.get()
 
-        # 3. --- 解析基因输入文本框 ---
+            plot_types = []
+            if anno_tab.bubble_plot_var.get(): plot_types.append('bubble')
+            if anno_tab.bar_plot_var.get(): plot_types.append('bar')
+
+        except AttributeError as e:
+            self.show_error_message(_("UI错误"), f"{_('功能注释选项卡似乎缺少必要的UI控件。')}\n{e}")
+            return
+
+        # 解析基因列表
         lines = gene_ids_text.splitlines()
-
-        if has_header:
-            if len(lines) > 1:
-                lines = lines[1:]  # 如果勾选了“包含表头”，则跳过第一行
-            else:
-                lines = []  # 如果只有一行（即只有表头），则视为空输入
+        if has_header and len(lines) > 1:
+            lines = lines[1:]
 
         study_gene_ids = []
         gene_log2fc_map = {} if has_log2fc else None
 
-        if has_log2fc:
-            # --- 按 "基因, Log2FC" 格式解析 ---
-            for i, line in enumerate(lines):
-                if not line.strip(): continue
-                # 使用正则表达式匹配一个或多个空格、Tab、逗号或分号作为分隔符
-                parts = re.split(r'[\s,;]+', line.strip())
-                if len(parts) == 2:
-                    gene_id, log2fc_str = parts[0], parts[1]
-                    try:
-                        log2fc = float(log2fc_str)
+        try:
+            if has_log2fc:
+                for i, line in enumerate(lines):
+                    if not line.strip(): continue
+                    parts = re.split(r'[\s,;]+', line.strip())
+                    if len(parts) >= 2:
+                        gene_id, log2fc_str = parts[0], parts[1]
+                        gene_log2fc_map[gene_id] = float(log2fc_str)
                         study_gene_ids.append(gene_id)
-                        gene_log2fc_map[gene_id] = log2fc
-                    except ValueError:
-                        self.show_error_message(_("输入格式错误"),
-                                                f"{_('第 {i + 1} 行的Log2FC值不是有效数字:')} '{log2fc_str}'")
-                        return
-                elif parts and parts[0]:
-                    self.show_error_message(_("输入格式错误"),
-                                            f"{_('第 {i + 1} 行格式错误，当勾选“包含Log2FC”时，需要两列 (基因, Log2FC):')} '{line}'")
-                    return
-        else:
-            # --- 按普通基因列表格式解析 ---
-            for line in lines:
-                if not line.strip(): continue
-                parts = re.split(r'[\s,;]+', line.strip())
-                study_gene_ids.extend([p for p in parts if p])
+                    else:  # 格式错误
+                        raise ValueError(f"{_('第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):')} '{line}'")
+            else:
+                for line in lines:
+                    if not line.strip(): continue
+                    parts = re.split(r'[\s,;]+', line.strip())
+                    study_gene_ids.extend([p for p in parts if p])
+        except ValueError as e:
+            self.show_error_message(_("输入格式错误"), str(e))
+            return
 
-        # 去除重复的基因ID
         study_gene_ids = sorted(list(set(study_gene_ids)))
 
-        # 4. --- 输入验证 ---
-        if not study_gene_ids:
-            self.show_error_message(_("输入缺失"), _("请输入或粘贴要分析的基因ID。"))
-            return
-        if not assembly_id or assembly_id == _("无可用版本"):
-            self.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
-            return
-        if not plot_types:
-            self.show_error_message(_("输入缺失"), _("请至少选择一种图表类型进行绘制。"))
-            return
-        if not output_dir:
-            self.show_error_message(_("输入缺失"), _("请选择图表的输出目录。"))
-            return
+        # 输入验证
+        if not study_gene_ids: self.show_error_message(_("输入缺失"), _("请输入或粘贴要分析的基因ID。")); return
+        if not assembly_id or assembly_id == _("加载中..."): self.show_error_message(_("输入缺失"),
+                                                                                     _("请选择一个基因组版本。")); return
+        if not plot_types: self.show_error_message(_("输入缺失"), _("请至少选择一种图表类型进行绘制。")); return
+        if not output_dir: self.show_error_message(_("输入缺失"), _("请选择图表的输出目录。")); return
 
-        # 5. --- 打包所有参数并启动后台任务 ---
         task_kwargs = {
             'config': self.current_config,
             'assembly_id': assembly_id,
@@ -3195,13 +3059,14 @@ class CottonToolkitApp(ctk.CTk):
             'plot_types': plot_types,
             'output_dir': output_dir,
             'gene_log2fc_map': gene_log2fc_map,
-            'top_n': top_n,
-            'sort_by': sort_by,
-            'show_title': show_title,
-            'width': width,
-            'height': height,
-            'file_format': file_format,
-            'collapse_transcripts': collapse_transcripts,
+            # 从配置文件获取默认绘图参数，这里简化为固定值，后续可改为从UI获取
+            'top_n': 20,
+            'sort_by': 'p.adjust',
+            'show_title': True,
+            'width': 8.0,
+            'height': 6.0,
+            'file_format': 'png',
+            'collapse_transcripts': True
         }
 
         self._start_task(
@@ -3210,38 +3075,27 @@ class CottonToolkitApp(ctk.CTk):
             kwargs=task_kwargs
         )
 
-    def _check_genome_download_status(self, genome_info: dict) -> str:
+    def _check_genome_download_status(self, genome_info: dict, file_key: str) -> str:
         """
-        检查单个基因组版本的所有文件是否已完整下载。
+        【已修正】检查单个基因组的单个文件类型是否已完整下载。
         返回 'complete', 'incomplete', 'missing' 三种状态之一。
         """
         if not self.current_config or not genome_info:
             return 'missing'
 
-        # 定义需要检查的所有文件类型
-        ALL_FILE_KEYS = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+        # 使用 get_local_downloaded_file_path 检查文件是否存在
+        local_path = get_local_downloaded_file_path(self.current_config, genome_info, file_key)
 
-        total_files = 0
-        downloaded_files = 0
-
-        for key in ALL_FILE_KEYS:
-            # 检查配置中是否有该文件的URL
-            url_attr = f"{key}_url"
-            if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                total_files += 1
-                # 使用 get_local_downloaded_file_path 检查文件是否存在
-                local_path = get_local_downloaded_file_path(self.current_config, genome_info, key)
-                if local_path and os.path.exists(local_path):
-                    downloaded_files += 1
-
-        if total_files == 0:
-            return 'missing'  # 如果该版本没有任何配置的URL，则视为缺失
-        elif downloaded_files == total_files:
-            return 'complete'  # 所有文件都已下载
-        elif downloaded_files > 0:
-            return 'incomplete'  # 部分文件已下载
+        url_attr = f"{file_key}_url"
+        if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
+            # 如果配置了URL
+            if local_path and os.path.exists(local_path):
+                return 'complete'  # 文件已下载
+            else:
+                return 'missing'  # 文件未下载
         else:
-            return 'missing'  # 没有任何文件被下载
+            # 如果未配置URL，则认为此文件类型不适用
+            return 'not_applicable'  # 或者可以返回一个新状态
 
 
     def _refresh_ai_models_on_tab(self):

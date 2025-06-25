@@ -1,250 +1,272 @@
 ﻿# cotton_tool/ui/tabs/annotation_tab.py
 
+import os
+import re
 import tkinter as tk
 import customtkinter as ctk
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
-# 使用 TYPE_CHECKING 可以在不引起循环导入的情况下，为IDE提供类型提示，
-# 这对于代码补全和静态分析非常有帮助。
+# 导入后台任务函数
+from cotton_toolkit.pipelines import run_functional_annotation, run_enrichment_pipeline
+
 if TYPE_CHECKING:
     from ui.gui_app import CottonToolkitApp
 
-# 尝试从Python的内建模块导入全局翻译函数 `_`。
-# 如果失败（例如在非GUI环境或测试中），则定义一个不做任何操作的占位函数。
 try:
     from builtins import _
 except ImportError:
-    def _(s):
-        return s
+    _ = lambda s: str(s)
 
 
 class AnnotationTab(ctk.CTkFrame):
     """
-    功能注释与富集分析”选项卡的主界面类。
-    这个类负责创建该选项卡内的所有UI控件，并将其逻辑连接到主App实例。
+    “功能注释与富集分析”选项卡。
+    此类现在完全封装了自己的UI控件、状态变量和任务启动逻辑。
     """
 
     def __init__(self, parent, app: "CottonToolkitApp"):
-        """
-        AnnotationTab的构造函数。
-
-        Args:
-            parent: 父级控件，即放置此选项卡的 CTkTabview。
-            app (CottonToolkitApp): 主应用程序的实例，用于访问共享变量、方法和配置。
-        """
-        # 调用父类的构造函数，设置此Frame为透明背景
         super().__init__(parent, fg_color="transparent")
-        # 保存主应用实例的引用，以便后续调用
         self.app = app
-        # 让此Frame填充整个父容器
         self.pack(fill="both", expand=True)
-        # 调用方法来创建所有UI控件
+        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        self.scrollable_frame.grid_columnconfigure(0, weight=1)
         self._create_widgets()
+        self.update_from_config()
 
     def _create_widgets(self):
-        """
-        【全功能版】创建“功能注释与富集分析”选项卡的完整UI。
-        此方法负责布局和初始化此选项卡内的所有控件。
-        """
-        # 配置网格布局，使第一列（也是唯一一列）可以随窗口大小缩放
-        self.grid_columnconfigure(0, weight=1)
+        parent_frame = self.scrollable_frame
 
-        # --- 从主App实例获取共享资源 ---
-        # 获取已加载的基因组版本列表，如果未加载则显示提示信息
-        assembly_ids = list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [_("无可用版本")]
-        # 获取在主App中定义的全局字体
-        app_font = self.app.app_font
-        app_font_bold = self.app.app_font_bold
-
-        # --- Part 1: 公共输入区 (基因ID和基因组选择) ---
-        # 创建一个Frame来容纳顶部的所有输入控件
-        top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        top_frame.grid_columnconfigure(0, weight=1)  # 让输入框可以横向填充
-
-        # 基因ID输入的标签
-        ctk.CTkLabel(top_frame, text=_("输入基因ID (每行一个或逗号分隔):"), font=app_font_bold).grid(row=0, column=0,
-                                                                                                     sticky="w",
-                                                                                                     pady=(0, 5))
-
-        # 基因ID输入文本框，这是所有注释和富集功能的数据源头
-        genes_textbox = ctk.CTkTextbox(top_frame, height=180, font=app_font, wrap="word")
-        genes_textbox.grid(row=1, column=0, sticky="nsew")
-        # 将此文本框的引用保存到主App实例的属性中，以便其他方法（如任务启动函数）可以访问它
-        self.app.annotation_genes_textbox = genes_textbox
-
-        # 为输入框添加占位符和事件绑定
-        self.app._add_placeholder(genes_textbox, self.app.placeholder_key_homology)
-        genes_textbox.bind("<FocusIn>",
-                           lambda e: self.app._clear_placeholder(genes_textbox, self.app.placeholder_key_homology))
-        genes_textbox.bind("<FocusOut>",
-                           lambda e: self.app._add_placeholder(genes_textbox, self.app.placeholder_key_homology))
-        genes_textbox.bind("<KeyRelease>", self.app._on_annotation_gene_input_change)  # 每次键盘输入后尝试自动识别基因组版本
-
-        # 创建一个Frame来容纳输入框下方的两个开关选项
-        input_options_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
-        input_options_frame.grid(row=2, column=0, sticky="w", padx=0, pady=(10, 0))
-
-        ctk.CTkSwitch(input_options_frame, text=_("输入包含表头 (将跳过首行)"), font=app_font,
-                      variable=self.app.has_header_var).pack(side="left")
-
-        ctk.CTkSwitch(input_options_frame, text=_("包含Log2FC (格式: 基因ID,Log2FC)"), font=app_font,
-                      variable=self.app.has_log2fc_var).pack(side="left", padx=15)
-
-        # --- 【新增】合并转录本的开关 ---
-        ctk.CTkSwitch(input_options_frame, text=_("将RNA合并到基因"), font=app_font,
-                      variable=self.app.collapse_transcripts_var).pack(side="left", padx=15)
-
-        # 基因组版本选择的标签
-        ctk.CTkLabel(top_frame, text=_("选择基因组版本:"), font=app_font_bold).grid(row=3, column=0, sticky="w",
-                                                                                    pady=(10, 5))
-        # 基因组版本下拉菜单
-        self.app.annotation_assembly_dropdown = ctk.CTkOptionMenu(
-            top_frame, variable=self.app.selected_annotation_assembly, values=assembly_ids,
-            font=app_font, dropdown_font=app_font
+        # 【核心修改】为所有作为卡片的 CTkFrame 添加了 border_width=0
+        input_card = ctk.CTkFrame(parent_frame, border_width=0)
+        input_card.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 10))
+        input_card.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(input_card, text=_("输入数据"), font=self.app.app_font_bold).grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 15))
+        ctk.CTkLabel(input_card, text=_("基因组版本:"), font=self.app.app_font).grid(
+            row=1, column=0, sticky="w", padx=(15, 5), pady=10)
+        self.selected_annotation_assembly = tk.StringVar()
+        self.assembly_dropdown = ctk.CTkOptionMenu(
+            input_card, variable=self.selected_annotation_assembly, values=[_("加载中...")],
+            font=self.app.app_font, dropdown_font=self.app.app_font
         )
-        self.app.annotation_assembly_dropdown.grid(row=4, column=0, sticky="ew", pady=(0, 10))
+        self.assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
+        ctk.CTkLabel(input_card, text=_("基因ID列表:"), font=self.app.app_font).grid(
+            row=2, column=0, sticky="nw", padx=(15, 5), pady=10)
+        self.annotation_genes_textbox = ctk.CTkTextbox(
+            input_card, height=180, font=self.app.app_font_mono, wrap="word")
+        self.annotation_genes_textbox.grid(row=2, column=1, sticky="ew", padx=10, pady=(5, 10))
+        self.app._add_placeholder(self.annotation_genes_textbox, "genes_input")
 
-        # --- Part 2: 功能区选项卡 ---
-        # 创建一个Tabview来区分“仅注释”和“富集分析”两个主要功能
-        action_tabview = ctk.CTkTabview(self, corner_radius=8)
-        if hasattr(action_tabview, '_segmented_button'):
-             action_tabview._segmented_button.configure(font=app_font_bold)
-        action_tabview.grid(row=1, column=0, sticky="nsew", padx=10, pady=15)
-
-        # -- Tab 1: 简单注释 --
-        anno_tab = action_tabview.add(_("仅注释"))
-        anno_tab.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(anno_tab, text=_("选择要查询的注释类型:"), font=app_font_bold).grid(row=0, column=0, padx=10,
-                                                                                         pady=10, sticky="w")
-        # GO注释复选框
-        self.app.go_anno_checkbox = ctk.CTkCheckBox(anno_tab, text=_("GO 功能注释"), variable=self.app.go_anno_var,
-                                                    font=app_font)
-        self.app.go_anno_checkbox.grid(row=1, column=0, padx=10, pady=5, sticky="w")
-        # InterPro注释复选框
-        self.app.ipr_anno_checkbox = ctk.CTkCheckBox(anno_tab, text=_("InterPro Domain 注释"),
-                                                     variable=self.app.ipr_anno_var, font=app_font)
-        self.app.ipr_anno_checkbox.grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        # KEGG Orthologs注释复选框
-        self.app.kegg_ortho_checkbox = ctk.CTkCheckBox(anno_tab, text=_("KEGG Orthologs 注释"),
-                                                       variable=self.app.kegg_ortho_anno_var, font=app_font)
-        self.app.kegg_ortho_checkbox.grid(row=3, column=0, padx=10, pady=5, sticky="w")
-        # KEGG Pathways注释复选框
-        self.app.kegg_path_checkbox = ctk.CTkCheckBox(anno_tab, text=_("KEGG Pathways 注释"),
-                                                      variable=self.app.kegg_path_anno_var, font=app_font)
-        self.app.kegg_path_checkbox.grid(row=4, column=0, padx=10, pady=5, sticky="w")
-
-        # 输出文件路径设置
-        ctk.CTkLabel(anno_tab, text=_("结果输出CSV文件:"), font=app_font_bold).grid(row=5, column=0, padx=10,
-                                                                                    pady=(15, 5), sticky="w")
-        self.app.annotation_output_csv_entry = ctk.CTkEntry(anno_tab, font=app_font,
-                                                            placeholder_text=_("不填则自动命名并保存"))
-        self.app.annotation_output_csv_entry.grid(row=6, column=0, sticky="ew", padx=10)
-        # 任务启动按钮
-        ctk.CTkButton(anno_tab, text=_("开始注释"), font=app_font_bold, command=self.app.start_annotation_task).grid(
-            row=7, column=0, padx=10, pady=15, sticky="e")
-
-        # -- Tab 2: 富集分析与绘图 --
-        enrich_tab = action_tabview.add(_("富集与绘图"))
-        enrich_tab.grid_columnconfigure((1, 3), weight=1)  # 让第2和第4列可以缩放
-
-        # 分析类型选择器 (GO 或 KEGG)
-        ctk.CTkLabel(enrich_tab, text=_("分析类型:"), font=app_font_bold).grid(row=0, column=0, columnspan=1, padx=10,
-                                                                               pady=10, sticky="w")
-        self.app.analysis_type_var = tk.StringVar(value="GO")
-        ctk.CTkSegmentedButton(enrich_tab, variable=self.app.analysis_type_var, values=["GO", "KEGG"]).grid(row=0,
-                                                                                                            column=1,
-                                                                                                            columnspan=3,
-                                                                                                            padx=10,
-                                                                                                            pady=10,
-                                                                                                            sticky="ew")
-
-        # 绘图参数区域的标题
-        ctk.CTkLabel(enrich_tab, text=_("绘图参数:"), font=app_font_bold).grid(row=1, column=0, columnspan=4, padx=10,
-                                                                               pady=10, sticky="w")
-
-        # 参数行1: Top N 和 排序依据
-        ctk.CTkLabel(enrich_tab, text=_("Top N 通路:"), font=app_font).grid(row=2, column=0, padx=(10, 5), pady=5,
-                                                                            sticky="w")
-        ctk.CTkEntry(enrich_tab, textvariable=self.app.enrich_top_n_var).grid(row=2, column=1, padx=5, pady=5,
-                                                                              sticky="ew")
-        ctk.CTkLabel(enrich_tab, text=_("排序/颜色依据:"), font=app_font).grid(row=2, column=2, padx=(10, 5), pady=5,
-                                                                               sticky="w")
-        ctk.CTkOptionMenu(enrich_tab, variable=self.app.enrich_sort_by_var, values=["FDR", "p_value"]).grid(row=2,
-                                                                                                            column=3,
-                                                                                                            padx=5,
-                                                                                                            pady=5,
-                                                                                                            sticky="ew")
-
-        # 参数行2: 图片格式 和 是否显示标题
-        ctk.CTkLabel(enrich_tab, text=_("图形格式:"), font=app_font).grid(row=3, column=0, padx=(10, 5), pady=5,
-                                                                          sticky="w")
-        ctk.CTkOptionMenu(enrich_tab, variable=self.app.enrich_format_var, values=["png", "pdf", "svg"]).grid(row=3,
-                                                                                                              column=1,
-                                                                                                              padx=5,
-                                                                                                              pady=5,
-                                                                                                              sticky="ew")
-        ctk.CTkSwitch(enrich_tab, text=_("显示标题"), variable=self.app.enrich_show_title_var, font=app_font).grid(
-            row=3, column=2,
-            columnspan=2,
-            padx=10, pady=5,
-            sticky="w")
-
-        # 参数行3: 图片尺寸
-        ctk.CTkLabel(enrich_tab, text=_("图形宽度 (英寸):"), font=app_font).grid(row=4, column=0, padx=(10, 5), pady=5,
-                                                                                 sticky="w")
-        ctk.CTkEntry(enrich_tab, textvariable=self.app.enrich_width_var).grid(row=4, column=1, padx=5, pady=5,
-                                                                              sticky="ew")
-        ctk.CTkLabel(enrich_tab, text=_("图形高度 (英寸):"), font=app_font).grid(row=4, column=2, padx=(10, 5), pady=5,
-                                                                                 sticky="w")
-        ctk.CTkEntry(enrich_tab, textvariable=self.app.enrich_height_var).grid(row=4, column=3, padx=5, pady=5,
-                                                                               sticky="ew")
-
-        # 参数行4: 选择要生成的图表类型
-        ctk.CTkLabel(enrich_tab, text=_("选择图表类型:"), font=app_font_bold).grid(row=5, column=0, columnspan=4,
-                                                                                   padx=10, pady=(15, 5), sticky="w")
-        plot_type_frame = ctk.CTkFrame(enrich_tab, fg_color="transparent")
-        plot_type_frame.grid(row=6, column=0, columnspan=4, sticky="ew", padx=10, pady=5)
-        # 气泡图
-        ctk.CTkCheckBox(plot_type_frame, text=_("气泡图 (Bubble Plot)"), variable=self.app.bubble_plot_var,
-                        font=app_font).pack(
+        anno_card = ctk.CTkFrame(parent_frame, border_width=0)
+        anno_card.grid(row=1, column=0, sticky="ew", padx=5, pady=10)
+        anno_card.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(anno_card, text=_("功能注释"), font=self.app.app_font_bold).grid(
+            row=0, column=0, sticky="w", padx=10, pady=(10, 15))
+        checkbox_frame = ctk.CTkFrame(anno_card, fg_color="transparent")
+        checkbox_frame.grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        self.go_anno_var = tk.BooleanVar(value=True)
+        self.ipr_anno_var = tk.BooleanVar(value=True)
+        self.kegg_ortho_anno_var = tk.BooleanVar(value=True)
+        self.kegg_path_anno_var = tk.BooleanVar(value=True)
+        ctk.CTkCheckBox(checkbox_frame, text="GO", variable=self.go_anno_var, font=self.app.app_font).pack(side="left",
+                                                                                                           padx=5)
+        ctk.CTkCheckBox(checkbox_frame, text="InterPro", variable=self.ipr_anno_var, font=self.app.app_font).pack(
             side="left", padx=5)
-        # 柱状图
-        ctk.CTkCheckBox(plot_type_frame, text=_("柱状图 (Bar Plot)"), variable=self.app.bar_plot_var,
-                        font=app_font).pack(side="left",
-                                            padx=5)
-        # Upset图
-        ctk.CTkCheckBox(plot_type_frame, text=_("Upset图"), variable=self.app.upset_plot_var, font=app_font).pack(
-            side="left", padx=5)
-        # 基因-概念网络图
-        ctk.CTkCheckBox(plot_type_frame, text=_("基因-概念网络图 (Cnet)"), variable=self.app.cnet_plot_var,
-                        font=app_font).pack(
-            side="left", padx=5)
+        ctk.CTkCheckBox(checkbox_frame, text="KEGG Orthologs", variable=self.kegg_ortho_anno_var,
+                        font=self.app.app_font).pack(side="left", padx=5)
+        ctk.CTkCheckBox(checkbox_frame, text="KEGG Pathways", variable=self.kegg_path_anno_var,
+                        font=self.app.app_font).pack(side="left", padx=5)
+        self.annotation_output_csv_entry = ctk.CTkEntry(anno_card,
+                                                        placeholder_text=_("输出注释结果路径 (可选, .csv/.xlsx)"))
+        self.annotation_output_csv_entry.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+        self.start_annotation_button = ctk.CTkButton(anno_card, text=_("开始功能注释"),
+                                                     command=self.app.start_annotation_task)
+        self.start_annotation_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 15))
 
-        # 输出目录和启动按钮
-        ctk.CTkLabel(enrich_tab, text=_("图表输出目录:"), font=app_font_bold).grid(row=7, column=0, columnspan=4,
-                                                                                   padx=10, pady=(15, 5), sticky="w")
-        output_dir_frame = ctk.CTkFrame(enrich_tab, fg_color="transparent")
-        output_dir_frame.grid(row=8, column=0, columnspan=4, sticky="ew", padx=10)
-        output_dir_frame.grid_columnconfigure(0, weight=1)
-        # 输出目录输入框
-        self.app.enrichment_output_dir_entry = ctk.CTkEntry(output_dir_frame,
-                                                            placeholder_text=_("选择一个目录保存图片"), font=app_font)
-        self.app.enrichment_output_dir_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
-        # 浏览目录按钮
-        ctk.CTkButton(output_dir_frame, text=_("浏览..."), width=100, font=app_font,
-                      command=lambda: self.app._browse_directory(self.app.enrichment_output_dir_entry)).grid(row=0,
-                                                                                                             column=1)
-        # 富集分析启动按钮
-        ctk.CTkButton(enrich_tab, text=_("开始富集分析与绘图"), font=app_font_bold,
-                      command=self.app.start_enrichment_task).grid(row=9, column=0, columnspan=4, padx=10, pady=15,
-                                                                   sticky="e")
+        enrich_card = ctk.CTkFrame(parent_frame, border_width=0)
+        enrich_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
+        enrich_card.grid_columnconfigure(1, weight=3)
+        enrich_card.grid_columnconfigure(3, weight=1)
+        ctk.CTkLabel(enrich_card, text=_("富集分析与绘图"), font=self.app.app_font_bold).grid(
+            row=0, column=0, columnspan=4, sticky="w", padx=10, pady=(10, 15))
+        ctk.CTkLabel(enrich_card, text=_("输入格式:"), font=self.app.app_font).grid(row=1, column=0, padx=15, pady=5,
+                                                                                    sticky="w")
+        input_format_frame = ctk.CTkFrame(enrich_card, fg_color="transparent")
+        input_format_frame.grid(row=1, column=1, columnspan=3, padx=10, pady=5, sticky="w")
+        self.has_header_var = tk.BooleanVar(value=False)
+        self.has_log2fc_var = tk.BooleanVar(value=False)
+        ctk.CTkCheckBox(input_format_frame, text=_("包含表头"), variable=self.has_header_var,
+                        font=self.app.app_font).pack(side="left", padx=(0, 15))
+        ctk.CTkCheckBox(input_format_frame, text=_("包含Log2FC"), variable=self.has_log2fc_var,
+                        font=self.app.app_font).pack(side="left")
+        ctk.CTkLabel(enrich_card, text=_("分析类型:"), font=self.app.app_font).grid(row=2, column=0, padx=15, pady=5,
+                                                                                    sticky="w")
+        self.analysis_type_var = tk.StringVar(value="GO")
+        ctk.CTkSegmentedButton(enrich_card, values=["GO", "KEGG"], variable=self.analysis_type_var).grid(row=2,
+                                                                                                         column=1,
+                                                                                                         padx=10,
+                                                                                                         pady=5,
+                                                                                                         sticky="w")
+        ctk.CTkLabel(enrich_card, text=_("绘图类型:"), font=self.app.app_font).grid(row=3, column=0, padx=15, pady=5,
+                                                                                    sticky="w")
+        plot_type_frame = ctk.CTkFrame(enrich_card, fg_color="transparent")
+        plot_type_frame.grid(row=3, column=1, columnspan=3, padx=10, pady=5, sticky="w")
+        self.bubble_plot_var = tk.BooleanVar(value=True)
+        self.bar_plot_var = tk.BooleanVar(value=True)
+        ctk.CTkCheckBox(plot_type_frame, text=_("气泡图"), variable=self.bubble_plot_var, font=self.app.app_font).pack(
+            side="left", padx=(0, 15))
+        ctk.CTkCheckBox(plot_type_frame, text=_("条形图"), variable=self.bar_plot_var, font=self.app.app_font).pack(
+            side="left")
+        ctk.CTkLabel(enrich_card, text=_("输出目录:"), font=self.app.app_font).grid(row=4, column=0, padx=15, pady=5,
+                                                                                    sticky="w")
+        self.enrichment_output_dir_entry = ctk.CTkEntry(enrich_card)
+        self.enrichment_output_dir_entry.grid(row=4, column=1, columnspan=2, sticky="ew", padx=(10, 5), pady=5)
+        ctk.CTkButton(enrich_card, text=_("浏览..."), width=100,
+                      command=lambda: self.app._browse_directory(self.enrichment_output_dir_entry)).grid(row=4,
+                                                                                                         column=3,
+                                                                                                         padx=(0, 10),
+                                                                                                         pady=5)
+        self.start_enrichment_button = ctk.CTkButton(enrich_card, text=_("开始富集分析"),
+                                                     command=self.app.start_enrichment_task)
+        self.start_enrichment_button.grid(row=5, column=0, columnspan=4, sticky="ew", padx=10, pady=(15, 15))
+
+
 
     def update_assembly_dropdowns(self, assembly_ids: list):
-        """由主应用调用，用于更新本选项卡内的基因组下拉菜单。"""
+        if not assembly_ids: assembly_ids = [_("加载中...")]
+        self.assembly_dropdown.configure(values=assembly_ids)
+        if assembly_ids: self.selected_annotation_assembly.set(assembly_ids[0])
 
-        current_assembly = self.app.selected_annotation_assembly.get()
-        if current_assembly not in assembly_ids:
-            self.app.selected_annotation_assembly.set(assembly_ids[0] if "无可用" not in assembly_ids[0] else "")
 
-        self.app.annotation_assembly_dropdown.configure(values=assembly_ids)
+    def update_from_config(self):
+        if self.app.genome_sources_data:
+            self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
+        if self.app.current_config:
+            default_dir = os.path.join(os.getcwd(), "enrichment_results")
+            self.enrichment_output_dir_entry.insert(0, default_dir)
+
+
+    def _on_gene_input_change(self, event=None):
+        """【新增】基因输入框内容变化时，调用主App的自动识别功能。"""
+        self.app._auto_identify_genome_version(self.genes_textbox, self.selected_annotation_assembly)
+
+
+
+    def update_button_state(self, is_running, has_config):
+        state = "disabled" if is_running or not has_config else "normal"
+        self.start_annotation_button.configure(state=state)
+        self.start_enrichment_button.configure(state=state)
+
+    def start_annotation_task(self):
+        """【新增】启动功能注释任务。此逻辑从gui_app.py移入。"""
+        if not self.app.current_config:
+            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+
+        gene_ids_text = self.genes_textbox.get("1.0", tk.END).strip()
+        gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
+        assembly_id = self.selected_annotation_assembly.get()
+
+        anno_types = []
+        if self.go_anno_var.get(): anno_types.append('go')
+        if self.ipr_anno_var.get(): anno_types.append('ipr')
+        if self.kegg_ortho_anno_var.get(): anno_types.append('kegg_orthologs')
+        if self.kegg_path_anno_var.get(): anno_types.append('kegg_pathways')
+
+        output_path = self.annotation_output_csv_entry.get().strip() or None
+
+        if not gene_ids: self.app.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。")); return
+        if not assembly_id or assembly_id == _("加载中..."): self.app.show_error_message(_("输入缺失"),
+                                                                                         _("请选择一个基因组版本。")); return
+        if not anno_types: self.app.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。")); return
+
+        task_kwargs = {
+            'config': self.app.current_config, 'gene_ids': gene_ids, 'source_genome': assembly_id,
+            'target_genome': assembly_id,
+            'bridge_species': self.app.current_config.integration_pipeline.bridge_species_name,
+            'annotation_types': anno_types, 'output_path': output_path,
+            'output_dir': os.path.join(os.getcwd(), "annotation_results")
+        }
+
+        self.app._start_task(
+            task_name=_("功能注释"),
+            target_func=run_functional_annotation,
+            kwargs=task_kwargs
+        )
+
+    def start_enrichment_task(self):
+        """【新增】启动富集分析与绘图任务。此逻辑从gui_app.py移入。"""
+        if not self.app.current_config:
+            self.app.show_error_message(_("错误"), _("请先加载配置文件。"));
+            return
+
+        gene_ids_text = self.genes_textbox.get("1.0", tk.END).strip()
+        assembly_id = self.selected_annotation_assembly.get()
+        output_dir = self.enrichment_output_dir_entry.get().strip()
+        analysis_type = self.analysis_type_var.get().lower()
+        has_header = self.has_header_var.get()
+        has_log2fc = self.has_log2fc_var.get()
+        collapse_transcripts = self.collapse_transcripts_var.get()
+
+        plot_types = []
+        if self.bubble_plot_var.get(): plot_types.append('bubble')
+        if self.bar_plot_var.get(): plot_types.append('bar')
+        if self.upset_plot_var.get(): plot_types.append('upset')
+        if self.cnet_plot_var.get(): plot_types.append('cnet')
+
+        try:
+            top_n = int(self.enrich_top_n_var.get())
+            width = float(self.enrich_width_var.get())
+            height = float(self.enrich_height_var.get())
+        except (ValueError, TypeError):
+            self.app.show_error_message(_("输入错误"), _("Top N、宽度和高度必须是有效的数字。"));
+            return
+
+        sort_by = self.enrich_sort_by_var.get()
+        show_title = self.enrich_show_title_var.get()
+        file_format = self.enrich_format_var.get()
+
+        lines = gene_ids_text.splitlines()
+        if has_header:
+            lines = lines[1:] if len(lines) > 1 else []
+
+        study_gene_ids, gene_log2fc_map = [], {} if has_log2fc else None
+        if has_log2fc:
+            for i, line in enumerate(lines):
+                parts = re.split(r'[\s,;]+', line.strip())
+                if len(parts) == 2:
+                    gene_id, log2fc_str = parts[0], parts[1]
+                    try:
+                        gene_log2fc_map[gene_id] = float(log2fc_str)
+                        study_gene_ids.append(gene_id)
+                    except ValueError:
+                        self.app.show_error_message(_("输入格式错误"),
+                                                    f"{_('第 {i + 1} 行的Log2FC值不是有效数字。')} '");
+                        return
+                elif parts and parts[0]:
+                    self.app.show_error_message(_("输入格式错误"), f"{_('第 {i + 1} 行格式错误，需要两列。')} ");
+                    return
+        else:
+            for line in lines:
+                study_gene_ids.extend([p for p in re.split(r'[\s,;]+', line.strip()) if p])
+        study_gene_ids = sorted(list(set(study_gene_ids)))
+
+        if not study_gene_ids: self.app.show_error_message(_("输入缺失"), _("请输入要分析的基因ID。")); return
+        if not assembly_id or assembly_id == _("加载中..."): self.app.show_error_message(_("输入缺失"),
+                                                                                         _("请选择一个基因组版本。")); return
+        if not plot_types: self.app.show_error_message(_("输入缺失"), _("请至少选择一种图表类型。")); return
+        if not output_dir: self.app.show_error_message(_("输入缺失"), _("请选择图表的输出目录。")); return
+
+        task_kwargs = {
+            'config': self.app.current_config, 'assembly_id': assembly_id, 'study_gene_ids': study_gene_ids,
+            'analysis_type': analysis_type, 'plot_types': plot_types, 'output_dir': output_dir,
+            'gene_log2fc_map': gene_log2fc_map, 'top_n': top_n, 'sort_by': sort_by, 'show_title': show_title,
+            'width': width, 'height': height, 'file_format': file_format, 'collapse_transcripts': collapse_transcripts,
+        }
+
+        self.app._start_task(
+            task_name=f"{analysis_type.upper()} {_('富集分析')}",
+            target_func=run_enrichment_pipeline,
+            kwargs=task_kwargs
+        )
