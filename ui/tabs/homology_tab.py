@@ -1,16 +1,14 @@
 ﻿# ui/tabs/homology_tab.py
 
-import os
 import tkinter as tk
 import customtkinter as ctk
 from typing import TYPE_CHECKING
 
 # 导入后端处理函数
 from cotton_toolkit.pipelines import run_homology_mapping
-from cotton_toolkit.config.loader import get_local_downloaded_file_path
 
 if TYPE_CHECKING:
-    from gui_app import CottonToolkitApp
+    from ui.gui_app import CottonToolkitApp
 
 # 设置一个全局翻译函数占位符
 try:

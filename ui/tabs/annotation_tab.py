@@ -3,12 +3,11 @@
 import tkinter as tk
 import customtkinter as ctk
 from typing import TYPE_CHECKING
-import os
 
 # 使用 TYPE_CHECKING 可以在不引起循环导入的情况下，为IDE提供类型提示，
 # 这对于代码补全和静态分析非常有帮助。
 if TYPE_CHECKING:
-    from gui_app import CottonToolkitApp
+    from ui.gui_app import CottonToolkitApp
 
 # 尝试从Python的内建模块导入全局翻译函数 `_`。
 # 如果失败（例如在非GUI环境或测试中），则定义一个不做任何操作的占位函数。

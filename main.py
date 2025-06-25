@@ -2,7 +2,7 @@
 # 这是应用程序的主入口文件
 
 # 确保从 gui_app 文件中导入主应用类
-from gui_app import CottonToolkitApp
+from ui.gui_app import CottonToolkitApp
 
 def main():
     """

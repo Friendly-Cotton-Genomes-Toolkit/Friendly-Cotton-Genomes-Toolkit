@@ -11,7 +11,7 @@ from cotton_toolkit.pipelines import run_ai_task
 
 # 避免循环导入，同时为IDE提供类型提示
 if TYPE_CHECKING:
-    from gui_app import CottonToolkitApp
+    from ui.gui_app import CottonToolkitApp
 
 # 全局翻译函数
 try:

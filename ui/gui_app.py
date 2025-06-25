@@ -39,7 +39,12 @@ from cotton_toolkit.pipelines import (
 from ui import ProgressDialog, MessageDialog,AnnotationTab
 from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
 from ui.tabs.ai_assistant_tab import AIAssistantTab
+from ui.tabs.data_download_tab import DataDownloadTab
+from ui.tabs.genome_identifier_tab import GenomeIdentifierTab
+from ui.tabs.gff_query_tab import GFFQueryTab
 from ui.tabs.homology_tab import HomologyTab
+from ui.tabs.locus_conversion_tab import LocusConversionTab
+from ui.tabs.xlsx_converter_tab import XlsxConverterTab
 from ui.utils.gui_helpers import identify_genome_from_gene_ids
 
 print("INFO: gui_app.py - All modules imported.")
@@ -154,10 +159,6 @@ class CottonToolkitApp(ctk.CTk):
         self.homology_pid_var = tk.StringVar(value="30.0")
         self.homology_score_var = tk.StringVar(value="50.0")
         self.homology_strict_priority_var = tk.BooleanVar(value=True)
-        # 工具 - 位点转换
-        self.selected_locus_source_assembly = tk.StringVar()
-        self.selected_locus_target_assembly = tk.StringVar()
-        self.locus_strict_priority_var = tk.BooleanVar(value=True)
         # 工具 - GFF查询
         self.selected_gff_query_assembly = tk.StringVar()
         # 工具 - 功能注释与富集分析
@@ -273,7 +274,7 @@ class CottonToolkitApp(ctk.CTk):
     def _fetch_ai_models(self, provider_key: str):
         """
         直接从静态UI输入框获取API Key和URL来刷新模型列表。
-        【已修复】现在会检查AI助手的代理开关。
+        现在会检查AI助手的代理开关。
         """
         self._log_to_viewer(
             f"{_('正在获取')} '{self.AI_PROVIDERS.get(provider_key, {}).get('name', provider_key)}' {_('的模型列表...')} ")
@@ -652,7 +653,7 @@ class CottonToolkitApp(ctk.CTk):
 
     def _load_image_resource(self, file_name, size=(24, 24)):
         try:
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath("./assets")
+            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath("../assets")
             image_path = os.path.join(base_path, file_name)
             if os.path.exists(image_path):
                 return ctk.CTkImage(Image.open(image_path), size=size)
@@ -1428,7 +1429,8 @@ class CottonToolkitApp(ctk.CTk):
         # “数据下载”是第一个，需要预先加载其内容
         download_key = "download"
         if download_key in self.tool_tab_frames:
-            self._populate_download_tab_structure(self.tool_tab_frames[download_key])
+            DataDownloadTab(parent=self.tool_tab_frames[download_key], app=self)
+
             self.tool_tab_ui_loaded[download_key] = True
 
         # 设置回调命令，用于实现按需加载
@@ -1439,90 +1441,50 @@ class CottonToolkitApp(ctk.CTk):
 
     def _on_tool_tab_selected(self, tab_name=None):
         """
-        【混合重构版】按需加载所选工具选项卡的UI界面。
-        能够处理已拆分到独立文件中的Tab（如AnnotationTab），
-        也能处理仍在主窗口类中的旧populate方法。
+        【最终完成版】按需加载所选工具选项卡的UI界面。
+        所有Tab都已模块化。
         """
-        # 定义尚未拆分的旧UI构建方法的映射
-        # 注意：我们已从中移除了 "annotation"
-        old_tab_populators = {
-            "download": self._populate_download_tab_structure,
-            "locus_conversion": self._populate_locus_conversion_tab_structure,
-            "gff_query": self._populate_gff_query_tab_structure,
-            "genome_identifier": self._populate_genome_identifier_tab_structure,
-            "xlsx_to_csv": self._populate_xlsx_to_csv_tab_structure,
-        }
+        # old_tab_populators 现在为空，因为所有模块都已重构
+        old_tab_populators = {}
 
         selected_tab_name = self.tools_notebook.get()
-
-        # 通过遍历固定的键值对来找到对应的程序化键
         selected_tab_key = None
         for key, untranslated_text in self.TAB_TITLE_KEYS.items():
             if _(untranslated_text) == selected_tab_name:
                 selected_tab_key = key
                 break
 
-        # 如果找到了key，并且这个选项卡的UI尚未加载
         if selected_tab_key and not self.tool_tab_ui_loaded.get(selected_tab_key, False):
-            self._log_to_viewer(f"INFO: Loading UI for tab '{selected_tab_name}'...")
+            self._log_to_viewer(f"INFO: Loading UI for tab '{selected_tab_name}'...")  # <-- 去掉 .app 即可
             frame_to_populate = self.tool_tab_frames[selected_tab_key]
 
-            if selected_tab_key == "annotation":
-                # 如果是 "annotation"，实例化新的外部类
+            # --- 最终的、完整的 if/elif 结构 ---
+            if selected_tab_key == "download":
+                DataDownloadTab(parent=frame_to_populate, app=self)
+            elif selected_tab_key == "annotation":
                 AnnotationTab(parent=frame_to_populate, app=self)
-                self._log_to_viewer("DEBUG: Instantiated AnnotationTab class for UI.", "DEBUG")
-
             elif selected_tab_key == "homology":
                 HomologyTab(parent=frame_to_populate, app=self)
-
-            elif selected_tab_key == "ai_assistant":  # <-- 新增
+            elif selected_tab_key == "ai_assistant":
                 AIAssistantTab(parent=frame_to_populate, app=self)
+            elif selected_tab_key == "locus_conversion":
+                LocusConversionTab(parent=frame_to_populate, app=self)
+            elif selected_tab_key == "gff_query":
+                GFFQueryTab(parent=frame_to_populate, app=self)
+            elif selected_tab_key == "genome_identifier":
+                GenomeIdentifierTab(parent=frame_to_populate, app=self)
+            elif selected_tab_key == "xlsx_to_csv":  # <-- 最后一个
+                XlsxConverterTab(parent=frame_to_populate, app=self)
 
-
+            # 这个分支现在永远不会被执行，但保留结构完整性
             elif selected_tab_key in old_tab_populators:
-                # 如果是其他未拆分的，调用旧的内部方法
                 old_tab_populators[selected_tab_key](frame_to_populate)
-                self._log_to_viewer(
-                    f"DEBUG: Called internal method '{old_tab_populators[selected_tab_key].__name__}' for UI.", "DEBUG")
 
             else:
                 self._log_to_viewer(f"WARNING: No UI builder found for tab key '{selected_tab_key}'.", "WARNING")
                 return
-            # --- 修改结束 ---
 
-            # 标记为已加载
             self.tool_tab_ui_loaded[selected_tab_key] = True
-
-    def start_xlsx_to_csv_conversion(self):
-        """启动XLSX到CSV的转换任务"""
-
-        input_path = self.xlsx_input_entry.get().strip()
-        output_path = self.csv_output_entry.get().strip()
-
-        if not input_path or not os.path.exists(input_path):
-            self.show_error_message(_("输入错误"), _("请输入一个有效的Excel文件路径。"))
-            return
-
-        # 如果输出路径为空，则自动生成一个
-        if not output_path:
-            base_name = os.path.splitext(os.path.basename(input_path))[0]
-            output_path = os.path.join(os.path.dirname(input_path), f"{base_name}_merged.csv")
-            self.csv_output_entry.insert(0, output_path)
-
-        self.active_task_name = _("XLSX转CSV")
-        self._log_to_viewer(f"{self.active_task_name} {_('任务开始...')}")
-        self._update_button_states(is_task_running=True)
-        self.progress_bar.grid(row=0, column=1, padx=10, pady=5, sticky="e")
-        self.progress_bar.start()
-
-        # 在后台线程中运行转换，防止UI卡顿
-        threading.Thread(
-            target=lambda: (
-                result := convert_excel_to_standard_csv(input_path, output_path),
-                self.task_done_callback(result, self.active_task_name)
-            ),
-            daemon=True
-        ).start()
 
 
 
@@ -1625,7 +1587,7 @@ class CottonToolkitApp(ctk.CTk):
 
     def set_app_icon(self):
         try:
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath(".")
+            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.abspath("..")
             icon_path = os.path.join(base_path, "icon.ico")
             if os.path.exists(icon_path):
                 self.iconbitmap(icon_path)
@@ -1749,86 +1711,6 @@ class CottonToolkitApp(ctk.CTk):
         self.log_textbox.tag_config("error_log", foreground="#d9534f")
         self.log_textbox.tag_config("warning_log", foreground="#f0ad4e")
 
-    def _populate_download_tab_structure(self, page):
-        page.grid_columnconfigure(0, weight=1)
-        page.grid_rowconfigure(0, weight=1)
-
-        target_card = ctk.CTkFrame(page)
-        target_card.pack(fill="both", expand=True, pady=(15, 10), padx=15)
-        target_card.grid_columnconfigure(0, weight=1)
-        target_card.grid_rowconfigure(2, weight=1)
-
-        target_header_frame = ctk.CTkFrame(target_card, fg_color="transparent")
-        target_header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        target_header_frame.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(target_header_frame, text=_("下载目标: 选择基因组版本"), font=self.app_font_bold).grid(row=0,
-                                                                                                            column=0,
-                                                                                                            sticky="w")
-
-        selection_buttons_frame = ctk.CTkFrame(target_header_frame, fg_color="transparent")
-        selection_buttons_frame.grid(row=0, column=1, sticky="e")
-
-        self.dl_refresh_button = ctk.CTkButton(selection_buttons_frame, text=_("刷新状态"), width=90, height=28,
-                                               font=self.app_font,
-                                               command=self._update_download_genomes_list)
-        self.dl_refresh_button.pack(side="left", padx=(0, 10))
-
-        self.dl_select_all_button = ctk.CTkButton(selection_buttons_frame, text=_("全选"), width=80, height=28,
-                                                  font=self.app_font,
-                                                  command=lambda: self._toggle_all_download_genomes(True))
-        self.dl_deselect_all_button = ctk.CTkButton(selection_buttons_frame, text=_("取消全选"), width=90, height=28,
-                                                    font=self.app_font,
-                                                    command=lambda: self._toggle_all_download_genomes(False))
-        self.dl_select_all_button.pack(side="left", padx=(0, 10))
-        self.dl_deselect_all_button.pack(side="left")
-
-
-        ctk.CTkLabel(target_card, text=_("勾选需要下载的基因组版本。若不勾选任何项，将默认下载所有可用版本。"),
-                     text_color=self.secondary_text_color, font=self.app_font, wraplength=500).grid(row=1, column=0,
-                                                                                                    padx=10,
-                                                                                                    pady=(0, 10),
-                                                                                                    sticky="w")
-
-        self.download_genomes_checkbox_frame = ctk.CTkScrollableFrame(target_card, label_text="")
-        self.download_genomes_checkbox_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        self._bind_mouse_wheel_to_scrollable(self.download_genomes_checkbox_frame)
-
-        options_frame = ctk.CTkFrame(page)
-        options_frame.pack(fill="x", expand=False, pady=10, padx=15)
-        options_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(options_frame, text=_("下载选项"), font=self.app_font_bold).grid(row=0, column=0, columnspan=2,
-                                                                                      padx=10, pady=(10, 15),
-                                                                                      sticky="w")
-
-        # --- 代理开关 ---
-        proxy_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        proxy_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=5)
-        self.dl_proxy_switch = ctk.CTkSwitch(proxy_frame, text=_("使用网络代理 (需在配置中设置)"),
-                                             variable=self.download_proxy_var, font=self.app_font)
-        self.dl_proxy_switch.pack(side="left")
-
-        force_download_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        force_download_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 15))
-
-        # --- “预处理”按钮 ---
-        preprocess_button = ctk.CTkButton(
-            options_frame,
-            text=_("预处理注释文件 (转为标准CSV)"),
-            font=self.app_font,
-            command=self.start_preprocess_task
-        )
-        preprocess_button.grid(row=3, column=0, columnspan=2, padx=10, pady=(5, 15), sticky="ew")
-
-
-        self.dl_force_switch_label = ctk.CTkLabel(force_download_frame, text=_("强制重新下载:"), font=self.app_font)
-        self.dl_force_switch_label.pack(side="left", padx=(0, 10))
-        self.dl_force_switch = ctk.CTkSwitch(force_download_frame, text="", variable=self.download_force_checkbox_var)
-        self.dl_force_switch.pack(side="left")
-
-        self.download_start_button = ctk.CTkButton(page, text=_("开始下载"), height=40,
-                                                   command=self.start_download_task, font=self.app_font_bold)
-        self.download_start_button.pack(fill="x", padx=15, pady=(10, 15), side="bottom")
 
     def browse_download_output_dir(self):
         """
@@ -1839,81 +1721,8 @@ class CottonToolkitApp(ctk.CTk):
             self.download_output_dir_entry.delete(0, tk.END)
             self.download_output_dir_entry.insert(0, directory)
 
-    def start_preprocess_task(self):
-        """启动注释文件预处理任务。"""
-        if not self.current_config:
-            self.show_error_message(_("错误"), _("请先加载配置文件。"))
-            return
-
-        self._start_task(
-            task_name=_("预处理注释文件"),
-            target_func=run_preprocess_annotation_files,
-            kwargs={'config': self.current_config}
-        )
-
-    def _update_download_genomes_list(self):
-        """
-        【已升级】根据配置动态更新下载列表，并增加“预处理状态”显示。
-        """
-        if not hasattr(self, 'download_genomes_checkbox_frame'): return
-
-        for widget in self.download_genomes_checkbox_frame.winfo_children():
-            widget.destroy()
-        self.download_genome_vars.clear()
-
-        # 定义状态颜色 (亮色模式, 暗色模式)
-        processed_color = ("#28a745", "#73bf69")  # 绿色
-        not_processed_color = ("#ff9800", "#ffb74d")  # 橙色
-        not_downloaded_color = ("#d9534f", "#e57373")  # 红色
-        default_color = self.default_label_text_color
-
-        if not self.current_config or not self.genome_sources_data:
-            ctk.CTkLabel(self.download_genomes_checkbox_frame, text=_("请先加载配置文件")).pack()
-            return
-
-        # 导入状态检查函数
-        from cotton_toolkit.config.loader import check_annotation_file_status
-
-        self._log_to_viewer(_("正在刷新数据下载与预处理状态..."))
-        for genome_id, details in self.genome_sources_data.items():
-            # --- 创建一个容器Frame来放置复选框和状态标签 ---
-            entry_frame = ctk.CTkFrame(self.download_genomes_checkbox_frame, fg_color="transparent")
-            entry_frame.pack(fill="x", expand=True, padx=5, pady=2)
-            entry_frame.grid_columnconfigure(1, weight=1)
-
-            # 复选框
-            var = tk.BooleanVar(value=False)
-            display_text = f"{genome_id} ({details.species_name})"
-            cb = ctk.CTkCheckBox(entry_frame, text=display_text, variable=var, font=self.app_font)
-            cb.grid(row=0, column=0, sticky="w")
-            self.download_genome_vars[genome_id] = var
-
-            # --- 计算并显示预处理状态 ---
-            anno_keys = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
-            statuses = [check_annotation_file_status(self.current_config, details, key) for key in anno_keys]
-
-            status_text = ""
-            status_color = default_color
-            if all(s == 'processed' for s in statuses):
-                status_text = "✓ " + _("已处理")
-                status_color = processed_color
-            elif all(s == 'not_downloaded' for s in statuses):
-                status_text = "✗ " + _("未下载")
-                status_color = not_downloaded_color
-            else:
-                status_text = "● " + _("未处理/部分处理")
-                status_color = not_processed_color
-
-            status_label = ctk.CTkLabel(entry_frame, text=status_text, font=self.app_font, text_color=status_color)
-            status_label.grid(row=0, column=1, sticky="e", padx=10)
-
-        self._log_to_viewer(_("状态刷新完成。"))
 
 
-    def _toggle_all_download_genomes(self, select: bool):
-        """全选或取消全选所有下载基因组的复选框"""
-        for var in self.download_genome_vars.values():
-            var.set(select)
 
     def _populate_integrate_tab_structure(self):
         page = self.tab_view.tab(self.integrate_tab_internal_key)
@@ -2002,87 +1811,7 @@ class CottonToolkitApp(ctk.CTk):
             # 开关关闭，显示警告
             self.homology_warning_label.pack(side="left", padx=15, pady=0)
 
-    def _toggle_locus_warning_label(self):
-        """根据“位点转换”的严格模式开关，显示或隐藏警告标签。"""
-        if not hasattr(self, 'locus_warning_label'):
-            return
 
-        if self.locus_strict_priority_var.get():
-            self.locus_warning_label.pack_forget()
-        else:
-            self.locus_warning_label.pack(side="left", padx=15, pady=0)
-
-    def _populate_gff_query_tab_structure(self, parent_frame):
-        """
-        填充GFF基因查询选项卡内容。
-        创建时直接加载基因组版本列表。
-        """
-        parent_frame.grid_columnconfigure(0, weight=1)
-        parent_frame.grid_columnconfigure(1, weight=1)
-
-        # 获取当前可用的基因组版本列表
-        assembly_ids = [_("无可用版本")]
-        if self.genome_sources_data:
-            ids = list(self.genome_sources_data.keys())
-            if ids:
-                assembly_ids = ids
-
-        input_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        input_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-        input_frame.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(input_frame, text=_("输入基因ID (每行一个或逗号分隔，与区域查询二选一):"),
-                     font=self.app_font_bold).grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.gff_query_genes_textbox = ctk.CTkTextbox(input_frame, height=120, font=self.app_font, wrap="word")
-        self._bind_mouse_wheel_to_scrollable(self.gff_query_genes_textbox)
-        self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", rowspan=2, padx=(0, 10))
-        self.gff_query_genes_textbox.after(
-            100,
-            lambda: self._add_placeholder(self.gff_query_genes_textbox, self.placeholder_key_gff_genes)
-        )
-
-        self.gff_query_genes_textbox.bind("<FocusIn>",
-                                          lambda event: self._clear_placeholder(self.gff_query_genes_textbox,
-                                                                                self.placeholder_key_gff_genes))
-        self.gff_query_genes_textbox.bind("<FocusOut>",
-                                          lambda event: self._add_placeholder(self.gff_query_genes_textbox,
-                                                                              self.placeholder_key_gff_genes))
-
-
-        self.gff_query_genes_textbox.bind("<KeyRelease>", self._on_gff_query_gene_input_change)
-        self.gff_query_gene_input_widget = self.gff_query_genes_textbox
-
-        ctk.CTkLabel(input_frame, text=_("输入染色体区域 (例如: Chr01:1000-2000，与基因ID查询二选一):"),
-                     font=self.app_font_bold).grid(row=3, column=0, sticky="w", pady=(10, 5))
-        self.gff_query_region_entry = ctk.CTkEntry(input_frame, font=self.app_font)
-        self.gff_query_region_entry.grid(row=4, column=0, sticky="ew", padx=(0, 10))
-
-        ctk.CTkLabel(input_frame, text=_("选择基因组版本:"), font=self.app_font_bold).grid(row=0, column=1, sticky="w",
-                                                                                           pady=(0, 5), padx=(10, 0))
-        self.gff_query_assembly_dropdown = ctk.CTkOptionMenu(
-            input_frame, variable=self.selected_gff_query_assembly, values=assembly_ids,  # <-- 修复点
-            command=self._on_gff_query_assembly_selection, font=self.app_font, dropdown_font=self.app_font
-        )
-        self.gff_query_assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=(10, 10))
-
-        output_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        output_frame.grid(row=5, column=0, columnspan=2, sticky="ew", padx=10, pady=(10, 0))
-        output_frame.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(output_frame, text=_("结果输出CSV文件:"), font=self.app_font_bold).grid(row=0, column=0,
-                                                                                             sticky="w", pady=(0, 5))
-        self.gff_query_output_csv_entry = ctk.CTkEntry(output_frame, font=self.app_font)
-        self.gff_query_output_csv_entry.grid(row=1, column=0, sticky="ew", padx=(0, 10))
-        ctk.CTkButton(output_frame, text=_("选择目录"), font=self.app_font,
-                      command=lambda: self._select_output_directory(self.gff_query_output_csv_entry)).grid(row=1,
-                                                                                                           column=1,
-                                                                                                           sticky="e")
-
-        start_button_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        start_button_frame.grid(row=6, column=0, columnspan=2, sticky="e", padx=10, pady=10)
-        self.start_gff_query_button = ctk.CTkButton(start_button_frame, text=_("开始基因查询"), font=self.app_font_bold,
-                                                    command=self.start_gff_query_task)
-        self.start_gff_query_button.pack(side="right")
 
     def _load_initial_config(self):
         """
@@ -2474,83 +2203,6 @@ class CottonToolkitApp(ctk.CTk):
         threading.Thread(target=task_wrapper, daemon=True).start()
 
 
-
-    def start_gff_query_task(self):
-        """
-        启动GFF基因查询任务。
-        此函数从GUI收集所有必要信息，并统一调用后端的 run_gff_lookup 函数。
-        """
-        # 1. 配置检查
-        if not self.current_config:
-            self.show_error_message(_("错误"), _("请先加载配置文件。"))
-            return
-
-        # 2. 收集输入
-
-        # 从下拉菜单获取基因组版本
-        assembly_id = self.selected_gff_query_assembly.get()
-        if not assembly_id or assembly_id == _("无可用版本"):
-            self.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
-            return
-
-        # 从文本框获取基因ID列表或区域字符串
-        gene_ids_text = self.gff_query_genes_textbox.get("1.0", tk.END).strip()
-        region_str = self.gff_query_region_entry.get().strip()
-
-        # 初始化参数
-        gene_ids_list = None
-        region_tuple = None
-
-        # 3. 输入验证和处理 (确保基因列表和区域二选一)
-        placeholder_text = _(self.placeholders.get(self.placeholder_key_gff_genes, ""))
-        # 判断条件：文本框内容不为空，并且内容不等于占位符文本
-        has_genes = bool(gene_ids_text and gene_ids_text != placeholder_text)
-        has_region = bool(region_str)
-
-        if not has_genes and not has_region:
-            self.show_error_message(_("输入缺失"), _("必须输入基因ID列表或染色体区域之一。"))
-            return
-
-        if has_genes and has_region:
-            self.show_warning_message(_("输入冲突"), _("请只使用基因ID列表或区域查询之一，将优先使用基因ID列表。"))
-            # 优先使用基因ID，因此清空区域
-            region_str = ""
-            has_region = False
-
-        if has_genes:
-            gene_ids_list = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
-            if not gene_ids_list:
-                self.show_error_message(_("输入无效"), _("您输入的基因ID为空。"))
-                return
-
-        elif has_region:
-            try:
-                chrom, pos_range = region_str.split(':')
-                start, end = map(int, pos_range.split('-'))
-                region_tuple = (chrom.strip(), start, end)
-            except ValueError:
-                self.show_error_message(_("输入错误"),
-                                        _("区域格式不正确。请使用 'Chr:Start-End' 格式，例如 'A01:10000-20000'。"))
-                return
-
-        # 获取可选的输出路径
-        output_path = self.gff_query_output_csv_entry.get().strip() or None
-
-        # 4. 打包任务参数
-        task_kwargs = {
-            'config': self.current_config,
-            'assembly_id': assembly_id,
-            'gene_ids': gene_ids_list,
-            'region': region_tuple,
-            'output_csv_path': output_path,
-        }
-
-        # 5. 派发任务
-        self._start_task(
-            task_name=_("GFF基因查询"),
-            target_func=run_gff_lookup,  # 调用重构后的后端函数
-            kwargs=task_kwargs
-        )
 
     # Helper for Browse files
     def _browse_file(self, entry_widget, filetypes_list):
@@ -2945,7 +2597,7 @@ class CottonToolkitApp(ctk.CTk):
             return
 
         self._log_to_viewer(f"{_('用户选择的配置目录:')} {output_dir}")
-        main_config_filename = "config.yml"
+        main_config_filename = "config.yml" # 配置文件的默认路径
         main_config_path = os.path.join(output_dir, main_config_filename)
 
         should_overwrite = False
@@ -2961,7 +2613,7 @@ class CottonToolkitApp(ctk.CTk):
                 app_font=self.app_font
             )
 
-            # 2. 【核心修正】调用 wait_window() 使程序暂停，直到对话框关闭
+            # 2. 调用 wait_window() 使程序暂停，直到对话框关闭
             dialog.wait_window()
 
             # 3. 在对话框关闭后，从其 .result 属性获取用户的选择
@@ -3059,50 +2711,7 @@ class CottonToolkitApp(ctk.CTk):
                     if btn.winfo_exists():  # 确保控件在Tkinter中仍存在
                         btn.configure(state=action_state)
 
-    def start_download_task(self):
-        """
-        【修正版】启动数据下载任务。
-        使用通用的 _start_task 辅助函数，将下载任务放到后台线程执行，避免GUI卡死。
-        """
 
-        # 1. 前置检查
-        if not self.current_config:
-            self.show_error_message(_("错误"), _("请先加载配置文件。"))
-            return
-
-        # 2. 从UI收集要下载的版本列表
-        # 如果用户一个都没勾选，则versions_to_download为None，后端会默认下载全部
-        versions_to_download = [gid for gid, var in self.download_genome_vars.items() if var.get()] or None
-
-        # 3. 收集其他UI选项，并打包成后端函数所需的参数格式
-        # 注意：代理设置现在由 downloader 的代理开关统一控制，不再需要单独的cli_overrides
-        # 我们需要检查代理开关是否打开，并从配置中读取代理地址
-        proxies = None
-        if self.download_proxy_var.get():
-            http_proxy = self.current_config.downloader.proxies.http
-            https_proxy = self.current_config.downloader.proxies.https
-            if http_proxy or https_proxy:
-                proxies = {'http': http_proxy, 'https': https_proxy}
-            else:
-                self.show_warning_message(_("代理未配置"), _("您开启了代理开关，但配置文件中未找到有效的代理地址。"))
-                return
-
-        # 将所有参数打包到 cli_overrides 字典中
-        cli_overrides = {
-            "versions": versions_to_download,
-            "force": self.download_force_checkbox_var.get(),
-            "proxies": proxies
-        }
-
-        # 4. 【核心】调用通用的后台任务启动器
-        self._start_task(
-            task_name=_("数据下载"),
-            target_func=run_download_pipeline,  # 告诉启动器要运行哪个后台函数
-            kwargs={
-                'config': self.current_config,
-                'cli_overrides': cli_overrides
-            }
-        )
 
     def _show_about_window(self):
         """
@@ -3246,142 +2855,9 @@ class CottonToolkitApp(ctk.CTk):
                                      font=self.app_font)
         close_button.grid(row=scrollable_frame.grid_size()[1], column=0, pady=30)
 
-    # ----------------------------------------------------------------------
-    # 创建位点转换选项卡的方法
-    # ----------------------------------------------------------------------
-    def _populate_locus_conversion_tab_structure(self, parent_frame):
-        """
-        【最终版】填充位点转换工具的UI界面。
-        增加严格模式开关和警告标签。
-        """
-        parent_frame.grid_columnconfigure(0, weight=1)
-
-        assembly_ids = [_("无可用版本")]
-        if self.genome_sources_data:
-            ids = list(self.genome_sources_data.keys())
-            if ids:
-                assembly_ids = ids
-
-        # Part 1: 基因组选择
-        top_frame = ctk.CTkFrame(parent_frame)
-        top_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-        top_frame.grid_columnconfigure(1, weight=1)
-        top_frame.grid_columnconfigure(3, weight=1)
-
-        ctk.CTkLabel(top_frame, text=_("源基因组:"), font=self.app_font).grid(row=0, column=0, padx=(10, 5), pady=5,
-                                                                              sticky="w")
-        self.locus_source_assembly_dropdown = ctk.CTkOptionMenu(
-            top_frame, variable=self.selected_locus_source_assembly, values=assembly_ids,
-            font=self.app_font, dropdown_font=self.app_font, command=self._on_locus_assembly_selection
-        )
-        self.locus_source_assembly_dropdown.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ctk.CTkLabel(top_frame, text=_("目标基因组:"), font=self.app_font).grid(row=0, column=2, padx=(10, 5), pady=5,
-                                                                                sticky="w")
-        self.locus_target_assembly_dropdown = ctk.CTkOptionMenu(
-            top_frame, variable=self.selected_locus_target_assembly, values=assembly_ids,
-            font=self.app_font, dropdown_font=self.app_font, command=self._on_locus_assembly_selection
-        )
-        self.locus_target_assembly_dropdown.grid(row=0, column=3, padx=(5, 10), pady=5, sticky="ew")
-
-        # Part 2: 输入区域
-        input_card = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        input_card.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(input_card, text=_("输入染色体区域:"), font=self.app_font_bold).grid(row=0, column=0, sticky="w")
-        self.locus_conversion_region_entry = ctk.CTkEntry(
-            input_card,
-            font=self.app_font,
-            placeholder_text=_("例如: A03:1000-2000")
-        )
-        self.locus_conversion_region_entry.grid(row=1, column=0, sticky="ew", pady=(5, 0))
-
-        # Part 3: 高级选项 (严格模式开关)
-        adv_options_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        adv_options_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(10, 0))
-
-        switch_frame = ctk.CTkFrame(adv_options_frame, fg_color="transparent")
-        switch_frame.pack(side="left", anchor="w", padx=0)
-
-        self.locus_strict_switch = ctk.CTkSwitch(
-            switch_frame, text=_("仅匹配同亚组、同源染色体上的基因 (严格模式)"),
-            variable=self.locus_strict_priority_var,
-            font=self.app_font,
-            command=self._toggle_locus_warning_label
-        )
-        self.locus_strict_switch.pack(side="left")
-
-        self.locus_warning_label = ctk.CTkLabel(
-            switch_frame, text=_("关闭后可能导致不同染色体的基因发生错配"),
-            text_color=("#D32F2F", "#E57373"),
-            font=self.app_font_bold
-        )
-        # 初始不显示，因为开关默认开启
-
-        # Part 4: 输出路径选择
-        output_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        output_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=(15, 0))
-        output_frame.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(output_frame, text=_("选择输出CSV文件路径:"), font=self.app_font_bold).grid(row=0, column=0,
-                                                                                                 sticky="w")
-
-        output_entry_frame = ctk.CTkFrame(output_frame, fg_color="transparent")
-        output_entry_frame.grid(row=1, column=0, sticky="ew", pady=(5, 0))
-        output_entry_frame.grid_columnconfigure(0, weight=1)
-
-        self.locus_conversion_output_entry = ctk.CTkEntry(output_entry_frame, font=self.app_font,
-                                                          placeholder_text=_("点击“另存为”选择保存位置"))
-        self.locus_conversion_output_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
-
-        ctk.CTkButton(output_entry_frame, text=_("另存为..."), width=100, font=self.app_font,
-                      command=lambda: self._browse_save_file(self.locus_conversion_output_entry,
-                                                             [("CSV files", "*.csv")])).grid(row=0, column=1)
-
-        # Part 5: 运行按钮
-        run_button = ctk.CTkButton(parent_frame, text=_("开始转换"), font=self.app_font_bold,
-                                   command=self.start_locus_conversion_task)
-        run_button.grid(row=4, column=0, padx=10, pady=(20, 10), sticky="e")
-
-        # 首次加载时，根据默认开关状态设置警告标签
-        self._toggle_locus_warning_label()
 
 
 
-    def start_locus_conversion_task(self):
-        """【已修改】启动位点转换任务 (基于区域)，现在传递输出路径。"""
-        if not self.current_config: self.show_error_message(_("错误"), _("请先加载配置文件。")); return
-
-        source_assembly = self.selected_locus_source_assembly.get()
-        target_assembly = self.selected_locus_target_assembly.get()
-        region_str = self.locus_conversion_region_entry.get().strip()
-
-        # <<<--- 新增：获取输出路径 ---
-        output_path = self.locus_conversion_output_entry.get().strip()
-
-        if not all([source_assembly, target_assembly, region_str, output_path]):
-            self.show_error_message(_("输入缺失"), _("请选择基因组、输入区域并指定输出文件路径。"))
-            return
-
-        try:
-            chrom, pos_range = region_str.split(':')
-            start, end = map(int, pos_range.split('-'))
-            region_tuple = (chrom.strip(), start, end)
-        except ValueError:
-            self.show_error_message(_("输入错误"), _("区域格式不正确，请使用 'Chr:Start-End' 格式。"))
-            return
-
-        self._start_task(
-            task_name=_("位点转换"),
-            target_func=run_locus_conversion,
-            kwargs={
-                'config': self.current_config,
-                'source_assembly_id': source_assembly,
-                'target_assembly_id': target_assembly,
-                'region': region_tuple,
-                'output_path': output_path,
-            }
-        )
 
     def _select_output_directory(self, target_entry_widget: ctk.CTkEntry):
         """
@@ -3403,54 +2879,7 @@ class CottonToolkitApp(ctk.CTk):
             target_entry_widget.delete(0, tk.END)
             target_entry_widget.insert(0, new_path)
 
-    def _populate_xlsx_to_csv_tab_structure(self, page):
-        """创建“XLSX转CSV”页面的UI"""
-        page.grid_columnconfigure(0, weight=1)
-        page.grid_rowconfigure(2, weight=1)  # Allow card to expand
 
-        ctk.CTkLabel(page, text=_("Excel (.xlsx) 转 CSV 工具"), font=self.app_font_bold, wraplength=500).grid(
-            row=0, column=0, pady=(20, 10), padx=20, sticky="n")  # Use grid
-
-        # 添加功能说明标签
-        info_label = ctk.CTkLabel(page, text=_(
-            "此工具会将一个Excel文件中的所有工作表(Sheet)内容合并到一个CSV文件中。\n适用于所有Sheet表头格式一致的情况。"),
-                                  font=self.app_font, wraplength=600, justify="center",
-                                  text_color=self.secondary_text_color)
-        info_label.grid(row=1, column=0, pady=(0, 20), padx=30, sticky="ew")  # Use grid
-
-        # 创建一个卡片容纳主要控件
-        card = ctk.CTkFrame(page)
-        card.grid(row=2, column=0, sticky="nsew", padx=20, pady=10)  # Use grid, make it expandable
-        card.grid_columnconfigure(1, weight=1)
-
-        # 输入文件选择
-        ctk.CTkLabel(card, text=_("输入Excel文件:"), font=self.app_font).grid(row=0, column=0, padx=10, pady=(20, 10),
-                                                                              sticky="w")
-        self.xlsx_input_entry = ctk.CTkEntry(card, placeholder_text=_("选择要转换的 .xlsx 文件"), height=35,
-                                             font=self.app_font)
-        self.xlsx_input_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=(20, 10))
-        ctk.CTkButton(card, text=_("浏览..."), width=100, height=35, font=self.app_font,
-                      command=lambda: self._browse_file(self.xlsx_input_entry, [("Excel files", "*.xlsx")])).grid(row=0,
-                                                                                                                  column=2,
-                                                                                                                  padx=10,
-                                                                                                                  pady=(
-                                                                                                                      20,
-                                                                                                                      10))
-
-        # 输出文件选择
-        ctk.CTkLabel(card, text=_("输出CSV文件:"), font=self.app_font).grid(row=1, column=0, padx=10, pady=10,
-                                                                            sticky="w")
-        self.csv_output_entry = ctk.CTkEntry(card, placeholder_text=_("选择保存位置和文件名 (不填则自动命名)"),
-                                             height=35, font=self.app_font)
-        self.csv_output_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=10)
-        ctk.CTkButton(card, text=_("另存为..."), width=100, height=35, font=self.app_font,
-                      command=lambda: self._browse_save_file(self.csv_output_entry, [("CSV files", "*.csv")])).grid(
-            row=1, column=2, padx=10, pady=10)
-
-        # 开始转换按钮
-        self.convert_start_button = ctk.CTkButton(page, text=_("开始转换"), height=40,
-                                                  command=self.start_xlsx_to_csv_conversion, font=self.app_font_bold)
-        self.convert_start_button.grid(row=3, column=0, sticky="ew", padx=20, pady=(20, 20))  # Use grid
 
     def _on_tab_change(self, tab_name: str):
         """
@@ -3550,75 +2979,6 @@ class CottonToolkitApp(ctk.CTk):
         threading.Thread(target=_identify_in_thread, daemon=True).start()
 
 
-    def _populate_genome_identifier_tab_structure(self, parent_frame):
-        """
-        填充“基因组类别鉴定”工具的UI界面。
-        """
-        parent_frame.grid_columnconfigure(0, weight=1)
-        parent_frame.grid_rowconfigure(1, weight=1)
-
-        # --- 标题和描述 ---
-        info_frame = ctk.CTkFrame(parent_frame)
-        info_frame.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
-        info_frame.grid_columnconfigure(0, weight=1)
-
-        title_label = ctk.CTkLabel(info_frame, text=_("基因组类别鉴定工具"), font=self.app_title_font)
-        title_label.grid(row=0, column=0, padx=10, pady=(5, 2), sticky="w")
-
-        desc_label = ctk.CTkLabel(info_frame, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"),
-                                  wraplength=400, justify="left",font=self.app_font)
-        desc_label.grid(row=1, column=0, padx=10, pady=(2, 5), sticky="w")
-
-        warning_label = ctk.CTkLabel(info_frame,
-                                     text=_("注意：以 'scaffold'、'Unknown' 开头的ID无法用于检查。"),
-                                     font=self.app_comment_font, text_color="orange", wraplength=400, justify="left")
-        warning_label.grid(row=2, column=0, padx=10, pady=(0, 5), sticky="w")
-
-        # --- 基因输入文本框 ---
-        self.identifier_genes_textbox = ctk.CTkTextbox(parent_frame, height=200)
-        self._bind_mouse_wheel_to_scrollable(self.identifier_genes_textbox)
-        self.identifier_genes_textbox.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
-
-        # --- 操作区域 ---
-        action_frame = ctk.CTkFrame(parent_frame)
-        action_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
-        action_frame.grid_columnconfigure(1, weight=1)
-
-        identify_button = ctk.CTkButton(action_frame, text=_("开始鉴定"), command=self._run_genome_identification,font=self.app_font)
-        identify_button.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-
-        self.identifier_result_label = ctk.CTkLabel(action_frame, text=_("鉴定结果将显示在这里。"),font=self.app_font)
-        self.identifier_result_label.grid(row=0, column=1, padx=10, pady=5, sticky="e")
-
-    def _run_genome_identification(self):
-        """
-        执行基因组类别鉴定。
-        """
-        self.identifier_result_label.configure(text=_("正在鉴定中..."),font=self.app_font)
-        gene_ids_text = self.identifier_genes_textbox.get("1.0", tk.END).strip()
-
-        if not gene_ids_text:
-            self.identifier_result_label.configure(text=_("请输入基因ID。"), text_color="orange",font=self.app_font)
-            return
-
-        gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
-        if not gene_ids:
-            self.identifier_result_label.configure(text=_("请输入有效的基因ID。"), text_color="orange",font=self.app_font)
-            return
-
-        if not self.genome_sources_data:
-            self._log_to_viewer(_("警告: 基因组源数据未加载，无法进行鉴定。"), "WARNING")
-            self.identifier_result_label.configure(text=_("错误：基因组源未加载。"), text_color="red",font=self.app_font)
-            return
-
-        identified_assembly = identify_genome_from_gene_ids(gene_ids, self.genome_sources_data, self._log_to_viewer)
-
-        if identified_assembly:
-            result_text = f"{_('鉴定结果')}: {identified_assembly}"
-            self.identifier_result_label.configure(text=_(result_text), text_color=self.default_label_text_color)
-        else:
-            self.identifier_result_label.configure(text=_("未能识别到匹配的基因组。"), text_color="orange")
-
 
     def _update_language_ui(self):
         """
@@ -3681,11 +3041,6 @@ class CottonToolkitApp(ctk.CTk):
         self._log_to_viewer(_("界面语言已更新。"), "INFO")
 
 
-    def _on_gff_query_gene_input_change(self, event=None):
-        """
-        GFF查询输入框基因ID变化时触发基因组自动识别。
-        """
-        self._auto_identify_genome_version(self.gff_query_genes_textbox, self.selected_gff_query_assembly)
 
     def _on_annotation_gene_input_change(self, event=None):
         """
@@ -3737,54 +3092,6 @@ class CottonToolkitApp(ctk.CTk):
             else:
                 self.homology_target_version_warning_label.configure(text="")
 
-    def _on_locus_assembly_selection(self, event=None):
-        """
-        当位点转换工具中的源或目标基因组被选择时，更新UI。
-        【已修复】使用 get_local_downloaded_file_path 自动、准确地确定路径。
-        """
-        if not self.current_config or not self.genome_sources_data:
-            self.locus_conversion_s2b_file_path_var.set(_("配置或基因组数据未加载"))
-            self.locus_conversion_b2t_file_path_var.set(_("配置或基因组数据未加载"))
-            return
-
-        source_assembly_id = self.selected_locus_source_assembly.get()
-        target_assembly_id = self.selected_locus_target_assembly.get()
-        default_color = self.default_label_text_color
-        warning_color = ("#D32F2F", "#E57373")  # 用于未找到文件的红色警告
-
-        # 更新 源 -> 桥梁 的文件路径
-        s2b_path_display = _("请先选择源基因组")
-        if source_assembly_id:
-            source_info = self.genome_sources_data.get(source_assembly_id)
-            if source_info:
-                s2b_path = get_local_downloaded_file_path(self.current_config, source_info, 'homology_ath')
-                if s2b_path and os.path.exists(s2b_path):
-                    s2b_path_display = s2b_path
-                    if hasattr(self, 'locus_conversion_s2b_file_label'):
-                        self.locus_conversion_s2b_file_label.configure(text_color=default_color)
-                else:
-                    s2b_path_display = _("文件未找到: {}").format(os.path.basename(s2b_path) if s2b_path else 'N/A')
-                    if hasattr(self, 'locus_conversion_s2b_file_label'):
-                        self.locus_conversion_s2b_file_label.configure(text_color=warning_color)
-        if hasattr(self, 'locus_conversion_s2b_file_path_var'):
-            self.locus_conversion_s2b_file_path_var.set(s2b_path_display)
-
-        # 更新 桥梁 -> 目标 的文件路径
-        b2t_path_display = _("请先选择目标基因组")
-        if target_assembly_id:
-            target_info = self.genome_sources_data.get(target_assembly_id)
-            if target_info:
-                b2t_path = get_local_downloaded_file_path(self.current_config, target_info, 'homology_ath')
-                if b2t_path and os.path.exists(b2t_path):
-                    b2t_path_display = b2t_path
-                    if hasattr(self, 'locus_conversion_b2t_file_label'):
-                        self.locus_conversion_b2t_file_label.configure(text_color=default_color)
-                else:
-                    b2t_path_display = _("文件未找到: {}").format(os.path.basename(b2t_path) if b2t_path else 'N/A')
-                    if hasattr(self, 'locus_conversion_b2t_file_label'):
-                        self.locus_conversion_b2t_file_label.configure(text_color=warning_color)
-        if hasattr(self, 'locus_conversion_b2t_file_path_var'):
-            self.locus_conversion_b2t_file_path_var.set(b2t_path_display)
 
     def _add_placeholder(self, textbox_widget, placeholder_key, force=False):
         """如果文本框为空，则向其添加占位符文本和样式。"""
@@ -3817,11 +3124,6 @@ class CottonToolkitApp(ctk.CTk):
             textbox_widget.delete("1.0", tk.END)
             textbox_widget.configure(font=self.app_font, text_color=self.default_text_color)
 
-    def _on_gff_query_assembly_selection(self, choice):
-        """处理GFF基因查询页面基因组选择事件。"""
-        self._log_to_viewer(f"{_('GFF基因查询 - 基因组选择')}: {self.selected_gff_query_assembly.get()}")
-        # 此处通常不需要更新文件显示，因为GFF文件路径是在任务启动时确定的
-        # 但如果未来有类似同源文件的自动识别需求，可以在这里添加。
 
     def reconfigure_logging(self, log_level_str: str):
         set_log_level(log_level_str)
