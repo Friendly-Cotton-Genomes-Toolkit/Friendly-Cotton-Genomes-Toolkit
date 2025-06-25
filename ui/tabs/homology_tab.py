@@ -30,16 +30,15 @@ class HomologyTab(BaseTab):
     def _create_widgets(self):
         # 所有控件都创建在 self.scrollable_frame 上
         parent_frame = self.scrollable_frame
-        parent_frame.grid_columnconfigure(0, weight=1)
         parent_frame.grid_columnconfigure(1, weight=1)  # 为两列布局
 
         # --- 卡片1: 基因组与基因列表 ---
         card1 = ctk.CTkFrame(parent_frame, border_width=0)
-        card1.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=(5, 10))
+        card1.grid(row=0, column=0, columnspan=2, sticky="ew", padx=0, pady=(0, 10))
         card1.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(parent_frame, text=_("基因同源转换"), font=self.app.app_title_font).grid(
-            row=0, column=0, pady=(5, 10), padx=10, sticky="n")
+        ctk.CTkLabel(card1, text=_("基因同源转换"), font=self.app.app_title_font).grid(
+            row=0, column=0, columnspan=2, pady=(5, 10), padx=10, sticky="n")
 
         # 源基因组
         ctk.CTkLabel(card1, text=_("源基因组:"), font=self.app.app_font).grid(row=1, column=0, padx=(15, 5), pady=10,
@@ -63,14 +62,22 @@ class HomologyTab(BaseTab):
         ctk.CTkLabel(card1, text=_("基因ID列表:"), font=self.app.app_font).grid(row=3, column=0, padx=(15, 5), pady=10,
                                                                                 sticky="nw")
         self.homology_map_genes_textbox = ctk.CTkTextbox(card1, height=150, font=self.app.app_font_mono, wrap="word")
-        self.homology_map_genes_textbox.grid(row=3, column=1, padx=(0, 10), pady=10, sticky="ew")
+        self.homology_map_genes_textbox.grid(row=3, column=1, padx=(0, 10), pady=10, sticky="nsew")
+        # 为文本框添加占位符
+        self.app._add_placeholder(self.homology_map_genes_textbox, "homology_genes")
+        self.homology_map_genes_textbox.bind("<FocusIn>",
+                                             lambda e: self.app._clear_placeholder(self.homology_map_genes_textbox,
+                                                                                   "homology_genes"))
+        self.homology_map_genes_textbox.bind("<FocusOut>",
+                                             lambda e: self.app._add_placeholder(self.homology_map_genes_textbox,
+                                                                                 "homology_genes"))
 
         # --- 卡片2: 参数设置 ---
         card2 = ctk.CTkFrame(parent_frame, border_width=0)
-        card2.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=10)
-        card2.grid_columnconfigure(1, weight=1)
+        card2.grid(row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=10)
+        card2.grid_columnconfigure((1, 3), weight=1)  # 设置列权重
 
-        ctk.CTkLabel(card2, text=_("参数设置"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=2,
+        ctk.CTkLabel(card2, text=_("参数设置"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=4,
                                                                                   padx=10, pady=(10, 15), sticky="w")
 
         self.homology_strict_priority_var = tk.BooleanVar(value=True)
@@ -78,9 +85,33 @@ class HomologyTab(BaseTab):
                                            font=self.app.app_font)
         self.strict_switch.grid(row=1, column=0, columnspan=2, padx=15, pady=10, sticky="w")
 
+        ctk.CTkLabel(card2, text=_("Top N:"), font=self.app.app_font).grid(row=2, column=0, padx=(15, 5), pady=5,
+                                                                           sticky="w")
+        self.homology_top_n_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        self.homology_top_n_entry.insert(0, "1")
+        self.homology_top_n_entry.grid(row=2, column=1, padx=(0, 10), pady=5, sticky="ew")
+
+        ctk.CTkLabel(card2, text=_("E-value:"), font=self.app.app_font).grid(row=2, column=2, padx=(15, 5), pady=5,
+                                                                             sticky="w")
+        self.homology_evalue_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        self.homology_evalue_entry.insert(0, "1e-10")
+        self.homology_evalue_entry.grid(row=2, column=3, padx=(0, 10), pady=5, sticky="ew")
+
+        ctk.CTkLabel(card2, text=_("PID (%):"), font=self.app.app_font).grid(row=3, column=0, padx=(15, 5), pady=5,
+                                                                             sticky="w")
+        self.homology_pid_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        self.homology_pid_entry.insert(0, "30.0")
+        self.homology_pid_entry.grid(row=3, column=1, padx=(0, 10), pady=5, sticky="ew")
+
+        ctk.CTkLabel(card2, text=_("Score:"), font=self.app.app_font).grid(row=3, column=2, padx=(15, 5), pady=5,
+                                                                           sticky="w")
+        self.homology_score_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        self.homology_score_entry.insert(0, "50.0")
+        self.homology_score_entry.grid(row=3, column=3, padx=(0, 10), pady=5, sticky="ew")
+
         # --- 卡片3: 输出文件 ---
         card3 = ctk.CTkFrame(parent_frame, border_width=0)
-        card3.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=10)
+        card3.grid(row=2, column=0, columnspan=2, sticky="ew", padx=0, pady=10)
         card3.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(card3, text=_("输出文件"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=3,
@@ -96,7 +127,8 @@ class HomologyTab(BaseTab):
         # 开始按钮
         self.start_button = ctk.CTkButton(parent_frame, text=_("开始转换"), height=40, font=self.app.app_font_bold,
                                           command=self._start_homology_task)
-        self.start_button.grid(row=3, column=0, columnspan=2, sticky="ew", padx=5, pady=(10, 15))
+        self.start_button.grid(row=3, column=0, columnspan=2, sticky="ew", padx=0, pady=(10, 5))
+
 
 
     def _browse_output_file(self):
@@ -106,8 +138,53 @@ class HomologyTab(BaseTab):
         )
 
     def _start_homology_task(self):
-        # 具体逻辑在主程序中实现，以保持UI和核心逻辑分离
-        self.app.start_homology_task()
+        """ 启动基因组转换任务 """
+        if not self.app.current_config:
+            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+
+        gene_ids_text = self.homology_map_genes_textbox.get("1.0", tk.END).strip()
+        source_gene_ids_list = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
+        if not source_gene_ids_list:
+            self.app.show_error_message(_("输入缺失"), _("请输入要映射的源基因ID。"))
+            return
+
+        source_assembly = self.selected_homology_source_assembly.get()
+        target_assembly = self.selected_homology_target_assembly.get()
+        if not all([source_assembly, target_assembly]) or _("加载中...") in [source_assembly, target_assembly]:
+            self.app.show_error_message(_("输入缺失"), _("请选择有效的源和目标基因组。"))
+            return
+
+        try:
+            # 从UI控件中获取值并构建参数字典
+            criteria_overrides = {
+                "top_n": int(self.homology_top_n_entry.get()),
+                "evalue_threshold": float(self.homology_evalue_entry.get()),
+                "pid_threshold": float(self.homology_pid_entry.get()),
+                "score_threshold": float(self.homology_score_entry.get()),
+                "strict_subgenome_priority": self.homology_strict_priority_var.get()
+            }
+        except (ValueError, TypeError):
+            self.app.show_error_message(_("输入错误"), _("高级筛选选项中的阈值必须是有效的数字。"))
+            return
+
+        output_csv = self.homology_output_file_entry.get().strip() or None
+
+        # 使用 _start_task 启动后台任务，并传入所有参数
+        self.app._start_task(
+            task_name=_("基因组转换"),
+            target_func=run_homology_mapping,
+            kwargs={
+                'config': self.app.current_config,
+                'source_assembly_id': source_assembly,
+                'target_assembly_id': target_assembly,
+                'gene_ids': source_gene_ids_list,
+                'region': None,
+                'output_csv_path': output_csv,
+                'criteria_overrides': criteria_overrides  # 传递包含所有参数的字典
+            }
+        )
+
 
     def update_from_config(self):
         if self.app.current_config:

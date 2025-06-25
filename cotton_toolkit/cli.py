@@ -6,6 +6,8 @@ import signal
 import sys
 import threading
 
+import pandas as pd
+
 from cotton_toolkit.casestudies.bsa_hvg_integration import run_integrate_pipeline
 from cotton_toolkit.core.ai_wrapper import AIWrapper
 from .utils.localization import setup_localization
@@ -16,7 +18,7 @@ from . import VERSION
 from .pipelines import (
     run_download_pipeline,
     run_homology_mapping,
-    run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files,
+    run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files, run_enrichment_pipeline,
 
 )
 from .config.loader import load_config, generate_default_config_files, MainConfig, get_genome_data_sources, \
@@ -265,6 +267,66 @@ def annotate(ctx, genes, assembly_id, types, output_path):
         cancel_event=cancel_event
 
     )
+
+
+@cli.command('enrich')
+@click.option('--genes', required=True, help=_("要进行富集分析的基因ID列表 (逗号分隔), 或包含基因列表的文件路径。"))
+@click.option('--assembly-id', required=True, help=_("基因ID所属的基因组版本。"))
+@click.option('--analysis-type', type=click.Choice(['go', 'kegg'], case_sensitive=False), default='go',
+              show_default=True, help=_("富集分析的类型。"))
+@click.option('--output-dir', required=True, type=click.Path(file_okay=False), help=_("富集结果和图表的输出目录。"))
+@click.option('--plot-types', default='bubble,bar', show_default=True,
+              help=_("要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"))
+@click.option('--top-n', type=int, default=20, show_default=True, help=_("在图表中显示的前N个富集条目。"))
+@click.option('--collapse-transcripts', is_flag=True, default=False, show_default=True,
+              help=_("将转录本ID合并为其父基因ID进行分析。"))
+@click.pass_context
+def enrich(ctx, genes, assembly_id, analysis_type, output_dir, plot_types, top_n, collapse_transcripts):
+    """对基因列表进行GO或KEGG富集分析并生成图表。"""
+    config = ctx.obj.config
+    cancel_event = ctx.obj.cancel_event
+
+    # 解析基因列表输入 (可以是字符串或文件路径)
+    gene_ids_list = []
+    if os.path.exists(genes):
+        click.echo(_("从文件读取基因列表: {}").format(genes))
+        try:
+            gene_ids_list = pd.read_csv(genes, header=None).iloc[:, 0].dropna().unique().tolist()
+        except Exception as e:
+            raise click.UsageError(_("读取基因文件失败: {}").format(e))
+    else:
+        gene_ids_list = [g.strip() for g in genes.split(',') if g.strip()]
+
+    if not gene_ids_list:
+        raise click.UsageError(_("错误: 未提供任何有效的基因ID。"))
+
+    click.echo(_("共找到 {} 个唯一基因ID用于分析。").format(len(gene_ids_list)))
+
+    # 解析图表类型
+    plot_types_list = [p.strip().lower() for p in plot_types.split(',') if p.strip()]
+
+    click.echo(_("启动 {} 富集分析...").format(analysis_type.upper()))
+
+    # 调用后端的富集分析流程
+    try:
+        run_enrichment_pipeline(
+            config=config,
+            assembly_id=assembly_id,
+            study_gene_ids=gene_ids_list,
+            analysis_type=analysis_type,
+            plot_types=plot_types_list,
+            output_dir=output_dir,
+            top_n=top_n,
+            collapse_transcripts=collapse_transcripts,
+            status_callback=lambda msg, level: click.echo(f"[{level.upper()}] {msg}"),
+            cancel_event=cancel_event
+        )
+        click.secho(_("富集分析流程执行完毕。结果已保存至: {}").format(output_dir), fg='green')
+    except Exception as e:
+        click.secho(_("富集分析过程中发生错误: {}").format(e), fg='red')
+        # 如果需要更详细的错误调试信息，可以取消下面这行的注释
+        # traceback.print_exc()
+        raise click.Abort()
 
 
 @cli.command('status')

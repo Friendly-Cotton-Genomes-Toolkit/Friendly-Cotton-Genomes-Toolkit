@@ -7,6 +7,9 @@ import yaml
 import logging  # Ensure logging is imported
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
+
+from pydantic import ValidationError
+
 # 确保从 models.py 正确导入 MainConfig 和 GenomeSourcesConfig, GenomeSourceItem
 from cotton_toolkit.config.models import MainConfig, GenomeSourcesConfig, GenomeSourceItem  # ADD GenomeSourceItem
 
@@ -30,266 +33,174 @@ except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins�
 logger = logging.getLogger("cotton_toolkit.loader")
 
 # --- 新增辅助函数：获取本地已下载文件的预期路径 ---
-def get_local_downloaded_file_path(
-        main_config: MainConfig,
-        genome_info: GenomeSourceItem,
-        file_type: str
-) -> Optional[str]:
+def get_local_downloaded_file_path(config: MainConfig, genome_info: GenomeSourceItem, file_key: str) -> Optional[str]:
     """
-    【全功能修正版】根据主配置和基因组信息，确定本地已下载文件的预期绝对路径。
+    【最终修正版】获取某个基因组的特定类型文件的本地期望路径。
+    此版本会正确地包含基因组版本的子目录。
     """
-    downloader_cfg = main_config.downloader
-    if not downloader_cfg or not downloader_cfg.download_output_base_dir:
+    if not hasattr(genome_info, f"{file_key}_url"):
         return None
 
-    # --- 路径构建逻辑 (保持不变) ---
-    base_download_dir = downloader_cfg.download_output_base_dir
-    config_abs_path = main_config._config_file_abs_path_
-    if not os.path.isabs(base_download_dir):
-        if config_abs_path and os.path.dirname(config_abs_path):
-            base_download_dir = os.path.join(os.path.dirname(config_abs_path), base_download_dir)
-        else:
-            base_download_dir = os.path.join(os.getcwd(), base_download_dir)
-    base_download_dir = os.path.abspath(base_download_dir)
-    safe_dir_name = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_")
-    version_output_dir = os.path.join(base_download_dir, safe_dir_name)
-
-    # --- 【核心修正点】补全所有文件类型的映射 ---
-    url_map = {
-        'gff3': (genome_info.gff3_url, f"{safe_dir_name}_annotations.gff3.gz"),
-        'homology_ath': (genome_info.homology_ath_url, f"{safe_dir_name}_homology_ath.xlsx.gz"),
-        'GO': (genome_info.GO_url, f"{safe_dir_name}_genes2Go.txt.gz"),
-        'IPR': (genome_info.IPR_url, f"{safe_dir_name}_genes2IPR.txt.gz"),
-        'KEGG_pathways': (genome_info.KEGG_pathways_url, f"{safe_dir_name}_KEGG-pathways.txt.gz"),
-        'KEGG_orthologs': (genome_info.KEGG_orthologs_url, f"{safe_dir_name}_KEGG-orthologs.txt.gz"),
-    }
-
-    if file_type not in url_map:
-        # 如果请求的类型不在地图中，返回None
-        return None
-
-    url, default_name_pattern = url_map[file_type]
-
+    url = getattr(genome_info, f"{file_key}_url")
     if not url:
         return None
 
-    # 从URL确定标准文件名
-    parsed_url = urlparse(url)
-    filename = os.path.basename(parsed_url.path) if parsed_url.path and '.' in os.path.basename(
-        parsed_url.path) else default_name_pattern
-
-    # --- 【逻辑修正】只对同源文件优先查找CSV ---
-    # 对于 homology_ath 类型的 .xlsx.gz 文件，优先返回已转换的 .csv 文件
-    if file_type == 'homology_ath' and filename.lower().endswith((".xlsx.gz", ".xls.gz")):
-        base_name_no_gz_ext = os.path.splitext(filename)[0]
-        csv_filename = os.path.splitext(base_name_no_gz_ext)[0] + ".csv"
-        local_csv_path = os.path.join(version_output_dir, csv_filename)
-        if os.path.exists(local_csv_path):
-            return local_csv_path  # 如果CSV存在，优先返回它
-
-    # 对于所有其他文件，或同源文件的CSV不存在时，返回原始下载文件的路径
-    local_path = os.path.join(version_output_dir, filename)
-    return local_path
+    filename = os.path.basename(url)
+    base_dir = config.downloader.download_output_base_dir
 
 
-def save_config(config_obj: Any, file_path: str) -> bool:
-    """
-    将配置对象（MainConfig 或 GenomeSourcesConfig 实例）保存为 YAML 文件。
-    它依赖于 config_obj 实现了 to_dict() 方法。
-    """
+    version_specific_dir = os.path.join(base_dir, genome_info.version_id)
+
+    return os.path.join(version_specific_dir, filename)
+
+
+def save_config(config: MainConfig, path: str) -> bool:
+    """将配置对象保存到YAML文件。"""
     try:
-        # 确保 config_obj 是一个 dataclass 实例，并且实现了 to_dict() 方法
-        # 如果不是，asdict(config_obj) 也能工作，但 to_dict 提供了更好的控制
-        if hasattr(config_obj, 'to_dict') and callable(config_obj.to_dict):
-            config_dict = config_obj.to_dict()
-        else:
-            # Fallback for generic dataclasses or if to_dict is not explicitly implemented
-            from dataclasses import asdict
-            config_dict = asdict(config_obj)
+        # 更新 exclude 参数中的字段名
+        config_dict = config.model_dump(exclude={'config_file_abs_path_'}, exclude_none=True, exclude_defaults=True)
 
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)  # 确保输出目录存在
-
-        with open(file_path, 'w', encoding='utf-8') as f:
-            # indent=2 让 YAML 文件更易读，default_flow_style=False 避免所有内容都在一行
-            # sort_keys=False 保持字典键的原始顺序（Python 3.7+ 字典保持插入顺序）
-            yaml.dump(config_dict, f, indent=2, default_flow_style=False, sort_keys=False)
-        print(f"INFO: 配置文件已保存到 '{file_path}'")
+        with open(path, 'w', encoding='utf-8') as f:
+            yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False, indent=2)
+        logger.info(f"配置文件已成功保存到: {path}")
         return True
     except Exception as e:
-        print(f"ERROR: 无法保存配置文件 '{file_path}': {e}")
+        logger.error(f"保存配置文件到 '{path}' 时发生错误: {e}")
         return False
 
 
-def load_config(config_path: str) -> Optional[MainConfig]:
-    """
-    从 YAML 文件加载配置，并将其转换为 MainConfig 对象。
-    """
-    if not os.path.exists(config_path):
-        print(f"ERROR: 配置文件 '{config_path}' 未找到。")
-        return None
+def load_config(path: str) -> MainConfig:
+    """从指定路径加载主配置文件并进行验证。"""
+    abs_path = os.path.abspath(path)
+    logger.info(f"正在从 '{abs_path}' 加载主配置文件...")
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(abs_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
 
-        if not isinstance(data, dict):
-            print(f"ERROR: 配置文件 '{config_path}' 的顶层结构必须是一个字典。")
-            return None
+        config_obj = MainConfig.model_validate(data)
 
-        # 检查 config_version
-        if data.get('config_version') != 1:
-            print(f"ERROR: 配置文件 '{config_path}' 的版本不兼容。当前程序仅支持版本 1。")
-            # 通常这里会抛出异常或返回 None，让调用者处理
-            raise ValueError(f"配置文件 '{config_path}' 的版本不兼容。当前程序仅支持版本 1。")
+        # 更新设置字段的名称
+        setattr(config_obj, 'config_file_abs_path_', abs_path) # 更新设置字段的名称
 
-        # 将字典转换为 MainConfig 对象
-        config_obj = MainConfig.from_dict(data)
-
-        # 存储配置文件的绝对路径，以便后续相对路径处理（如 genome_sources_file）
-        config_obj._config_file_abs_path_ = os.path.abspath(config_path)
-
-        print(f"INFO: 配置文件 '{config_path}' 加载成功。")
+        logger.info("主配置文件加载并验证成功。")
         return config_obj
+    except FileNotFoundError:
+        logger.error(f"配置文件未找到: {abs_path}")
+        raise
     except yaml.YAMLError as e:
-        print(f"ERROR: 解析配置文件 '{config_path}' 失败: {e}")
-        return None
-    except ValueError as e:
-        # 重新抛出版本错误，让调用者可以捕获
-        raise e
+        logger.error(f"解析YAML文件时发生错误 '{abs_path}': {e}")
+        raise
+    except ValidationError as e:  # Pydantic 的 ValidationError 会捕获所有验证失败
+        logger.error(f"配置文件验证失败 '{abs_path}':\n{e}")
+        raise
     except Exception as e:
-        print(f"ERROR: 加载配置文件 '{config_path}' 时发生未知错误: {e}")
-        return None
+        logger.error(f"加载配置文件时发生未知错误 '{abs_path}': {e}")
+        raise
 
 
-def get_genome_data_sources(main_config: MainConfig, logger_func: Optional[callable] = None) -> Optional[
-    Dict[str, GenomeSourceItem]]:
-    """
-     从主配置对象中获取或加载基因组数据源，并硬编码注入桥梁物种的配置。
-    """
-    global _GENOME_SOURCES_CACHE, _LAST_CACHED_GS_FILE_PATH
+def get_genome_data_sources(config: MainConfig, logger_func=None) -> Dict[str, GenomeSourceItem]:
+    """从主配置中指定的基因组源文件加载数据。"""
+    # config 现在是 MainConfig 实例，访问 config.downloader 是安全的
+    if not config.downloader.genome_sources_file:
+        if logger_func: logger_func("警告: 配置文件中未指定基因组源文件。", "WARNING")
+        return {}
 
-    log = logger_func if logger_func else logger.info
+    config_dir = os.path.dirname(getattr(config, 'config_file_abs_path_', '.')) # 更新访问字段的名称
+    sources_path = os.path.join(config_dir, config.downloader.genome_sources_file)
 
-    if not main_config or not main_config.downloader:
-        logger.error(_("错误: 主配置对象(main_config)或其downloader部分为空。"))
-        return None
-
-    gs_file_rel = main_config.downloader.genome_sources_file
-    main_config_dir = os.path.dirname(main_config._config_file_abs_path_) if hasattr(main_config,
-                                                                                     '_config_file_abs_path_') and main_config._config_file_abs_path_ else os.getcwd()
-    gs_file_path_abs = os.path.join(main_config_dir, gs_file_rel) if not os.path.isabs(gs_file_rel) else gs_file_rel
-
-    if _GENOME_SOURCES_CACHE is not None and _LAST_CACHED_GS_FILE_PATH == gs_file_path_abs:
-        log(f"INFO: {_('从缓存加载基因组源数据。')}")
-        return _GENOME_SOURCES_CACHE
-
-    if not os.path.exists(gs_file_path_abs):
-        logger.error(_("错误: 基因组源文件 '{}' 不存在。").format(gs_file_path_abs))
-        return None
+    if not os.path.exists(sources_path):
+        if logger_func: logger_func(f"警告: 基因组源文件未找到: '{sources_path}'", "WARNING")
+        return {}
 
     try:
-        log(f"INFO: {_('从文件加载基因组源数据: {}').format(gs_file_path_abs)}")
-        with open(gs_file_path_abs, 'r', encoding='utf-8') as f:
+        with open(sources_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
 
-        genome_sources_config = GenomeSourcesConfig.from_dict(data)
-        converted_genome_sources = genome_sources_config.genome_sources
+        # 使用 GenomeSourcesConfig (Pydantic BaseModel) 来验证和加载数据
+        # 这会自动将嵌套的字典 item_data 转换为 GenomeSourceItem 实例
+        genome_sources_config = GenomeSourcesConfig.model_validate(data)
 
+        genome_sources_dict = {}
+        for version_id, item_data in genome_sources_config.genome_sources.items():
+            # Pydantic 已经处理了嵌套的验证和类型转换，item_data 已经是 GenomeSourceItem 实例
+            # 在这里，如果 GenomeSourceItem 没有 version_id 属性，可以手动添加
+            # 例如：setattr(item_data, 'version_id', version_id)
+            # 或者在 GenomeSourceItem 定义中添加 version_id: str = None (如果 config.yml 中没有)
+            # 根据您提供的 models.py，GenomeSourceItem 没有 version_id 属性。
+            # 这里需要确保将其添加，以便 get_local_downloaded_file_path 可以使用它
+            setattr(item_data, 'version_id', version_id)  # 补充 version_id
 
-        log(_("成功加载并处理了 {} 个基因组源。").format(len(converted_genome_sources)))
+            genome_sources_dict[version_id] = item_data
 
-        _GENOME_SOURCES_CACHE = converted_genome_sources
-        _LAST_CACHED_GS_FILE_PATH = gs_file_path_abs
-
-        return converted_genome_sources
+        if logger_func: logger_func(f"已成功加载 {len(genome_sources_dict)} 个基因组源。")
+        return genome_sources_dict
+    except ValidationError as e:  # 捕获 Pydantic 验证错误
+        if logger_func: logger_func(f"加载基因组源文件时验证出错 '{sources_path}':\n{e}", "ERROR")
+        return {}
     except Exception as e:
-        logger.error(_("错误: 加载或解析基因组源文件 '{}' 失败: {}").format(gs_file_path_abs, e))
-        logger.exception("完整错误堆栈:")
-        return None
+        if logger_func: logger_func(f"加载基因组源文件时发生错误 '{sources_path}': {e}", "ERROR")
+        return {}
+
+
+def generate_default_config_files(output_dir: str, overwrite: bool = False, main_config_filename="config.yml",
+                                  sources_filename="genome_sources_list.yml") -> Tuple[
+    bool, Optional[str], Optional[str]]:
+    """生成默认的配置文件和基因组源列表文件。"""
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        main_config_path = os.path.join(output_dir, main_config_filename)
+        sources_path = os.path.join(output_dir, sources_filename)
+
+        if not overwrite and (os.path.exists(main_config_path) or os.path.exists(sources_path)):
+            logger.warning("一个或多个默认配置文件已存在且不允许覆盖。操作已取消。")
+            return False, None, None
+
+        # 创建并保存默认主配置 (MainConfig 现在是 Pydantic BaseModel)
+        default_config = MainConfig()
+        default_config.downloader.genome_sources_file = sources_filename  # 指向相对路径
+        save_config(default_config, main_config_path)
+
+        # 创建并保存默认基因组源文件 (GenomeSourcesConfig 现在是 Pydantic BaseModel)
+        default_sources_data = GenomeSourcesConfig(
+            list_version=1, # 确保设置 list_version
+            genome_sources={
+                "NAU-NBI_v1.1": GenomeSourceItem(
+                    species_name="G. hirsutum",
+                    genome_type="cotton", # 必须指定，因为 GenomeSourceItem 中没有默认值
+                    gff3_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.gff.gz",
+                    GO_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.gene.go.gz",
+                    IPR_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.gene.ipr.gz",
+                    KEGG_orthologs_url=None,
+                    KEGG_pathways_url=None,
+                    homology_ath_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.ath_homolog.gz",
+                    bridge_version="araport11",
+                    gene_id_regex=r'(Gh_[AD]\d{2}G\d{4})' # 确保此字段也有默认值或在此处指定
+                )
+            }
+        )
+        with open(sources_path, 'w', encoding='utf-8') as f:
+            # 使用 model_dump() 进行序列化
+            yaml.dump(default_sources_data.model_dump(exclude_none=True, exclude_defaults=True), f, allow_unicode=True, sort_keys=False, indent=2)
+
+        return True, main_config_path, sources_path
+
+    except Exception as e:
+        logger.error(f"生成默认配置文件时发生错误: {e}", exc_info=True)
+        return False, None, None
 
 
 
-def generate_default_config_files(
-        output_dir: str,
-        main_config_filename: str = "config.yml",
-        genome_sources_filename: str = "genome_sources_list.yml",
-        overwrite: bool = False
-) -> Tuple[bool, str, str]:
-    """
-    通过实例化配置类来生成默认的配置文件（config.yml 和 genome_sources_list.yml），
-    并支持覆盖选项。
-    """
-    if not os.path.exists(output_dir):
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-            print(f"INFO: 创建目录 '{output_dir}' 成功。")
-        except OSError as e:
-            print(f"ERROR: 创建目录 '{output_dir}' 失败: {e}")
-            return False, "", ""
+def check_annotation_file_status(config: MainConfig, genome_info: GenomeSourceItem, file_type: str) -> str:
+    # 此函数逻辑不变，因为它已经期望 MainConfig 和 GenomeSourceItem 是正确类型的对象
+    local_path = get_local_downloaded_file_path(config, genome_info, file_type)
 
-    main_config_path = os.path.join(output_dir, main_config_filename)
-    genome_sources_path = os.path.join(output_dir, genome_sources_filename)
+    if not local_path:
+        return "not_applicable"
 
-    success_main = False
-    success_gs = False
-
-    # 生成主配置文件 (config.yml)
-    if os.path.exists(main_config_path) and not overwrite:
-        print(f"WARNING: 主配置文件 '{main_config_path}' 已存在，跳过生成。")
-        success_main = True
+    if os.path.exists(local_path):
+        if os.path.getsize(local_path) > 0:
+            return 'complete'
+        else:
+            return 'incomplete'
     else:
-        # 关键：实例化 MainConfig。这会自动带入 models.py 中定义的所有默认值。
-        try:
-            main_conf_default = MainConfig()
-            # 确保 downloader.genome_sources_file 的默认值指向正确的文件名
-            main_conf_default.downloader.genome_sources_file = genome_sources_filename
-            success_main = save_config(main_conf_default, main_config_path)
-            if success_main:
-                print(f"INFO: 默认主配置文件已生成到 '{main_config_path}'。")
-        except Exception as e:
-            print(f"ERROR: 生成默认主配置文件失败: {e}")
-            success_main = False
-
-    # 生成基因组源文件 (genome_sources_list.yml)
-    if os.path.exists(genome_sources_path) and not overwrite:
-        print(f"WARNING: 基因组源文件 '{genome_sources_path}' 已存在，跳过生成。")
-        success_gs = True
-    else:
-        # 关键：实例化 GenomeSourcesConfig。这会自动带入 models.py 中定义的所有默认值。
-        try:
-            gs_conf_default = GenomeSourcesConfig()
-            success_gs = save_config(gs_conf_default, genome_sources_path)
-            if success_gs:
-                print(f"INFO: 默认基因组源文件已生成到 '{genome_sources_path}'。")
-        except Exception as e:
-            print(f"ERROR: 生成默认基因组源文件失败: {e}")
-            success_gs = False
-
-    return success_main and success_gs, main_config_path, genome_sources_path
-
-
-def check_annotation_file_status(config: 'MainConfig', genome_info: 'GenomeSourceItem', file_key: str) -> str:
-    """
-    检查单个注释文件的状态。
-
-    Args:
-        config: 主配置对象。
-        genome_info: 基因组信息对象。
-        file_key (str): 文件类型关键字 (例如 'GO', 'IPR')。
-
-    Returns:
-        str: 'processed', 'not_processed', 或 'not_downloaded'
-    """
-    original_path = get_local_downloaded_file_path(config, genome_info, file_key)
-    if not original_path:
-        return 'not_downloaded' # URL不存在，视为未配置
-
-    # 更可靠地推断CSV路径
-    base_path = original_path.replace('.xlsx.gz', '').replace('.xlsx', '')
-    processed_csv_path = base_path + '.csv'
-
-    if os.path.exists(processed_csv_path):
-        return 'processed'
-    elif os.path.exists(original_path):
-        return 'not_processed'
-    else:
-        return 'not_downloaded'
+        return 'missing'

@@ -419,32 +419,44 @@ class CottonToolkitApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.set_app_icon()
 
-
     def _start_app_async_startup(self):
         """
         启动应用的异步加载流程。
         """
+        # 立即显示启动进度对话框
+        self._show_progress_dialog(
+            title=_("图形界面启动中..."),
+            message=_("正在初始化应用程序和加载配置，请稍候..."),
+            on_cancel=None  # 启动阶段不允许取消
+        )
 
         # 启动一个专门用于加载的后台线程
         threading.Thread(target=self._initial_load_thread, daemon=True).start()
+
 
     def _initial_load_thread(self):
         """
         在后台执行所有耗时的加载操作，完成后将结果放入消息队列。
         """
+        loaded_config: Optional[MainConfig] = None
+        genome_sources = None
 
         try:
-            # 1. 加载主配置文件
             default_config_path = "config.yml"
-            loaded_config = None
             if os.path.exists(default_config_path):
-                # load_config 内部会处理版本不兼容等错误并抛出异常
+                # 1. 加载主配置文件，load_config 应该返回 MainConfig 实例
+                self.message_queue.put(("progress", (10, _("加载配置文件..."))))
                 loaded_config = load_config(os.path.abspath(default_config_path))
+                # 确保 config_path 也被设置，这里直接从 loaded_config 获取更新后的字段名
+                self.config_path = getattr(loaded_config, 'config_file_abs_path_', None)  # 更新字段名称
+
 
             # 2. 如果主配置加载成功，则加载基因组源数据
-            genome_sources = None
-            if loaded_config:
-                genome_sources = get_genome_data_sources(loaded_config)
+            if loaded_config: # 确保 loaded_config 确实是 MainConfig 实例
+                self.message_queue.put(("progress", (30, _("加载基因组源数据..."))))
+                # 传递 loaded_config (MainConfig 实例) 给 get_genome_data_sources
+                # 这里使用 self._log_to_viewer 作为 logger_func
+                genome_sources = get_genome_data_sources(loaded_config, logger_func=self._log_to_viewer)
 
             # 3. 将所有加载结果打包，发送“启动完成”消息
             startup_data = {
@@ -457,6 +469,10 @@ class CottonToolkitApp(ctk.CTk):
             # 如果加载过程中任何一步出错，发送“启动失败”消息
             error_message = f"{_('应用启动失败')}: {e}\n--- TRACEBACK ---\n{traceback.format_exc()}"
             self.message_queue.put(("startup_failed", error_message))
+        finally:
+            # 无论成功失败，都发送消息让主线程处理关闭弹窗
+            self.message_queue.put(("hide_progress_dialog", None))
+
 
     def _create_editor_frame(self, parent):
         """
