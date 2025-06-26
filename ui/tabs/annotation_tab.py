@@ -74,7 +74,7 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
                                                         placeholder_text=_("输出注释结果路径 (可选, .csv/.xlsx)"))
         self.annotation_output_csv_entry.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         self.start_annotation_button = ctk.CTkButton(anno_card, text=_("开始功能注释"),
-                                                     command=self.app.start_annotation_task)
+                                                     command=self.start_annotation_task)
         self.start_annotation_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 15))
 
         enrich_card = ctk.CTkFrame(parent_frame, border_width=0)
@@ -135,7 +135,7 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
                                                                                                          padx=(0, 10),
                                                                                                          pady=5)
         self.start_enrichment_button = ctk.CTkButton(enrich_card, text=_("开始富集分析"),
-                                                     command=self.app.start_enrichment_task)
+                                                     command=self.start_enrichment_task)
         self.start_enrichment_button.grid(row=5, column=0, columnspan=4, sticky="ew", padx=10, pady=(15, 15))
 
 
@@ -202,7 +202,7 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
         )
 
     def start_enrichment_task(self):
-        """【新增】启动富集分析与绘图任务。此逻辑从gui_app.py移入。"""
+        """启动富集分析与绘图任务。此逻辑从gui_app.py移入，实现内聚。"""
         if not self.app.current_config:
             self.app.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
@@ -213,7 +213,10 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
         analysis_type = self.analysis_type_var.get().lower()
         has_header = self.has_header_var.get()
         has_log2fc = self.has_log2fc_var.get()
-        collapse_transcripts = self.collapse_transcripts_var.get()
+
+        # 假设配置文件中有这些参数，或者在这里使用固定值/从UI获取
+        # 为了简化，我们使用一些合理的默认值
+        plot_config = self.app.current_config.enrichment_plot
 
         plot_types = []
         if self.bubble_plot_var.get(): plot_types.append('bubble')
@@ -221,41 +224,34 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
         if self.upset_plot_var.get(): plot_types.append('upset')
         if self.cnet_plot_var.get(): plot_types.append('cnet')
 
-        try:
-            top_n = int(self.enrich_top_n_var.get())
-            width = float(self.enrich_width_var.get())
-            height = float(self.enrich_height_var.get())
-        except (ValueError, TypeError):
-            self.app.show_error_message(_("输入错误"), _("Top N、宽度和高度必须是有效的数字。"));
-            return
-
-        sort_by = self.enrich_sort_by_var.get()
-        show_title = self.enrich_show_title_var.get()
-        file_format = self.enrich_format_var.get()
-
+        # 解析基因列表
         lines = gene_ids_text.splitlines()
-        if has_header:
-            lines = lines[1:] if len(lines) > 1 else []
+        if has_header and len(lines) > 1:
+            lines = lines[1:]
 
-        study_gene_ids, gene_log2fc_map = [], {} if has_log2fc else None
-        if has_log2fc:
-            for i, line in enumerate(lines):
-                parts = re.split(r'[\s,;]+', line.strip())
-                if len(parts) == 2:
-                    gene_id, log2fc_str = parts[0], parts[1]
-                    try:
+        study_gene_ids = []
+        gene_log2fc_map = {} if has_log2fc else None
+
+        try:
+            if has_log2fc:
+                for i, line in enumerate(lines):
+                    if not line.strip(): continue
+                    parts = re.split(r'[\s,;]+', line.strip())
+                    if len(parts) >= 2:
+                        gene_id, log2fc_str = parts[0], parts[1]
                         gene_log2fc_map[gene_id] = float(log2fc_str)
                         study_gene_ids.append(gene_id)
-                    except ValueError:
-                        self.app.show_error_message(_("输入格式错误"),
-                                                    f"{_('第 {i + 1} 行的Log2FC值不是有效数字。')} '");
-                        return
-                elif parts and parts[0]:
-                    self.app.show_error_message(_("输入格式错误"), f"{_('第 {i + 1} 行格式错误，需要两列。')} ");
-                    return
-        else:
-            for line in lines:
-                study_gene_ids.extend([p for p in re.split(r'[\s,;]+', line.strip()) if p])
+                    else:
+                        raise ValueError(f"{_('第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):')} '{line}'")
+            else:
+                for line in lines:
+                    if not line.strip(): continue
+                    parts = re.split(r'[\s,;]+', line.strip())
+                    study_gene_ids.extend([p for p in parts if p])
+        except ValueError as e:
+            self.app.show_error_message(_("输入格式错误"), str(e));
+            return
+
         study_gene_ids = sorted(list(set(study_gene_ids)))
 
         if not study_gene_ids: self.app.show_error_message(_("输入缺失"), _("请输入要分析的基因ID。")); return
@@ -265,10 +261,20 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
         if not output_dir: self.app.show_error_message(_("输入缺失"), _("请选择图表的输出目录。")); return
 
         task_kwargs = {
-            'config': self.app.current_config, 'assembly_id': assembly_id, 'study_gene_ids': study_gene_ids,
-            'analysis_type': analysis_type, 'plot_types': plot_types, 'output_dir': output_dir,
-            'gene_log2fc_map': gene_log2fc_map, 'top_n': top_n, 'sort_by': sort_by, 'show_title': show_title,
-            'width': width, 'height': height, 'file_format': file_format, 'collapse_transcripts': collapse_transcripts,
+            'config': self.app.current_config,
+            'assembly_id': assembly_id,
+            'study_gene_ids': study_gene_ids,
+            'analysis_type': analysis_type,
+            'plot_types': plot_types,
+            'output_dir': output_dir,
+            'gene_log2fc_map': gene_log2fc_map,
+            'top_n': plot_config.top_n,
+            'sort_by': plot_config.sort_by,
+            'show_title': plot_config.show_title,
+            'width': plot_config.width,
+            'height': plot_config.height,
+            'file_format': plot_config.file_format,
+            'collapse_transcripts': plot_config.collapse_transcripts,
         }
 
         self.app._start_task(

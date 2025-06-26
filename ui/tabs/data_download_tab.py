@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Dict
 # 导入后台任务函数
 from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files
 # 导入状态检查函数
-from cotton_toolkit.config.loader import check_annotation_file_status
+from cotton_toolkit.config.loader import check_annotation_file_status, get_local_downloaded_file_path
 from .base_tab import BaseTab
 
 # 避免循环导入
@@ -27,76 +27,116 @@ except ImportError:
 
 class DataDownloadTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
+        self.selected_genome_var = tk.StringVar()
+        self.use_proxy_var = tk.BooleanVar(value=False)
+        self.force_download_var = tk.BooleanVar(value=False)
+        self.fasta_var = tk.BooleanVar(value=True)
+        self.gff_var = tk.BooleanVar(value=True)
+        self.cds_var = tk.BooleanVar(value=True)
+        self.pep_var = tk.BooleanVar(value=True)
+        self.homology_var = tk.BooleanVar(value=True)
+
         super().__init__(parent, app)
+        self.update_from_config()
 
     def _create_widgets(self):
-        """创建并布局此选项卡中的所有UI控件。"""
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
 
-        # --- 卡片1: 版本选择与操作 ---
-        selection_card = ctk.CTkFrame(parent_frame, border_width=0)
-        selection_card.grid(row=0, column=0, padx=0, pady=(0, 10), sticky="ew")
-        selection_card.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(parent_frame, text=_("1. 选择要下载的基因组"), font=self.app.app_font_bold).grid(row=0, column=0,
+                                                                                                      padx=10,
+                                                                                                      pady=(10, 5),
+                                                                                                      sticky="w")
 
-        ctk.CTkLabel(selection_card, text=_("选择要下载的基因组版本"), font=self.app.app_font_bold).grid(row=0,
-                                                                                                         column=0,
-                                                                                                         padx=10,
-                                                                                                         pady=10,
-                                                                                                         sticky="w")
+        # --- 核心修改 3a: 下拉菜单变化时，调用状态更新方法 ---
+        self.genome_option_menu = ctk.CTkOptionMenu(parent_frame, variable=self.selected_genome_var,
+                                                    values=[_("配置未加载")], command=self._on_genome_selection_change)
+        self.genome_option_menu.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 15))
 
-        dropdown_frame = ctk.CTkFrame(selection_card, fg_color="transparent")
-        dropdown_frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-        dropdown_frame.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(parent_frame, text=_("2. 选择要下载的文件类型"), font=self.app.app_font_bold).grid(row=2, column=0,
+                                                                                                        padx=10,
+                                                                                                        pady=(10, 5),
+                                                                                                        sticky="w")
+        checkbox_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        checkbox_frame.grid(row=3, column=0, sticky="w", padx=10, pady=(0, 10))
+        ctk.CTkCheckBox(checkbox_frame, text="Genome (fasta)", variable=self.fasta_var).pack(side="left", padx=10)
+        ctk.CTkCheckBox(checkbox_frame, text="Annotation (gff3)", variable=self.gff_var).pack(side="left", padx=10)
+        ctk.CTkCheckBox(checkbox_frame, text="CDS", variable=self.cds_var).pack(side="left", padx=10)
+        ctk.CTkCheckBox(checkbox_frame, text="Protein (pep)", variable=self.pep_var).pack(side="left", padx=10)
+        ctk.CTkCheckBox(checkbox_frame, text=_("同源关系 (homology)"), variable=self.homology_var).pack(side="left",
+                                                                                                        padx=10)
 
-        self.assembly_dropdown_var = ctk.StringVar(value=_("加载中..."))
-        self.assembly_dropdown = ctk.CTkOptionMenu(
-            dropdown_frame,
-            variable=self.assembly_dropdown_var,
-            command=self._on_assembly_selected,
-            font=self.app.app_font,
-            values=[_("加载中...")]
-        )
-        self.assembly_dropdown.grid(row=0, column=0, sticky="ew")
+        ### --- 核心修改 3b: 创建用于显示状态的框架 --- ###
+        ctk.CTkLabel(parent_frame, text=_("文件状态"), font=self.app.app_font_bold).grid(row=4, column=0, padx=10,
+                                                                                         pady=(10, 5), sticky="w")
+        self.status_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        self.status_frame.grid(row=5, column=0, sticky="ew", padx=15, pady=0)
 
-        self.refresh_button = ctk.CTkButton(
-            dropdown_frame,
-            text="🔄 " + _("刷新"),
-            width=100,
-            font=self.app.app_font,
-            command=self._refresh_status
-        )
-        self.refresh_button.grid(row=0, column=1, padx=(10, 0))
+        ctk.CTkLabel(parent_frame, text=_("3. 下载选项"), font=self.app.app_font_bold).grid(row=6, column=0, padx=10,
+                                                                                            pady=(15, 5), sticky="w")
+        options_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        options_frame.grid(row=7, column=0, sticky="w", padx=5, pady=0)
+        ctk.CTkCheckBox(options_frame, text=_("强制重新下载 (覆盖本地已存在文件)"), variable=self.force_download_var,
+                        font=self.app.app_font).pack(anchor="w", padx=10, pady=5)
+        ctk.CTkCheckBox(options_frame, text=_("为数据下载使用网络代理 (请在配置编辑器中设置)"),
+                        variable=self.use_proxy_var, font=self.app.app_font).pack(anchor="w", padx=10, pady=5)
 
-        self.force_download_var = tk.BooleanVar(value=False)
-        self.force_download_checkbox = ctk.CTkCheckBox(
-            selection_card,
-            text=_("强制重新下载 (覆盖本地已存在的文件)"),
-            variable=self.force_download_var,
-            font=self.app.app_font
-        )
-        self.force_download_checkbox.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=10)
+        self.start_button = ctk.CTkButton(parent_frame, text=_("开始下载"), command=self.start_download_task, height=40)
+        self.start_button.grid(row=8, column=0, sticky="ew", padx=10, pady=(25, 10))
 
-        self.start_button = ctk.CTkButton(
-            selection_card,
-            text=_("下载选中版本的所有文件"),
-            command=self._start_download,
-            font=self.app.app_font_bold
-        )
-        self.start_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 15))
+    def _update_file_status_display(self):
+        # 清空旧的状态
+        for widget in self.status_frame.winfo_children():
+            widget.destroy()
 
-        # --- 卡片2: 文件状态显示 ---
-        files_card = ctk.CTkFrame(parent_frame, border_width=0)
-        files_card.grid(row=1, column=0, sticky="nsew", padx=0, pady=10)
-        parent_frame.grid_rowconfigure(1, weight=1)
-        files_card.grid_columnconfigure(0, weight=1)
+        genome_id = self.selected_genome_var.get()
+        if not genome_id or not self.app.current_config or not self.app.genome_sources_data:
+            return
 
-        ctk.CTkLabel(files_card, text=_("文件下载状态"), font=self.app.app_font_bold).grid(
-            row=0, column=0, sticky="w", padx=10, pady=(10, 5))
+        genome_info = self.app.genome_sources_data.get(genome_id)
+        if not genome_info:
+            return
 
-        self.files_frame = ctk.CTkFrame(files_card, fg_color="transparent")
-        self.files_frame.grid(row=1, column=0, sticky="new", padx=10, pady=(5, 10))
-        self.files_frame.grid_columnconfigure(1, weight=1)
+        # 定义状态和颜色
+        status_map = {
+            'not_downloaded': {"text": _("未下载"), "color": ("#D32F2F", "#E57373")},  # Red
+            'not_processed': {"text": _("已下载"), "color": ("#F57C00", "#FFB74D")},  # Orange
+            'processed': {"text": _("已处理"), "color": ("#388E3C", "#A5D6A7")}  # Green
+        }
+
+        # 文件类型和它们的检查方式
+        files_to_check = {
+            'fasta': 'simple', 'gff': 'simple', 'cds': 'simple', 'pep': 'simple', 'homology': 'simple',
+            'GO': 'annotation', 'IPR': 'annotation', 'KEGG_pathways': 'annotation', 'KEGG_orthologs': 'annotation'
+        }
+
+        status_labels = []
+        for file_type, check_type in files_to_check.items():
+            if not (hasattr(genome_info, f"{file_type}_url") and getattr(genome_info, f"{file_type}_url")):
+                continue
+
+            status_key = 'not_downloaded'
+            if check_type == 'simple':
+                # 简单检查文件是否存在
+                file_path = get_local_downloaded_file_path(self.app.current_config, genome_info, file_type)
+                if file_path and os.path.exists(file_path):
+                    status_key = 'not_processed'  # 简单文件只有下载/未下载，这里用“已下载”橙色表示
+            else:  # annotation
+                status_key = check_annotation_file_status(self.app.current_config, genome_info, file_type)
+
+            status_info = status_map.get(status_key, {"text": _("未知"), "color": "gray"})
+            status_labels.append((f"{file_type.title()}:", status_info["text"], status_info["color"]))
+
+        # 在UI上创建标签
+        for i, (label_text, status_text, color) in enumerate(status_labels):
+            ctk.CTkLabel(self.status_frame, text=label_text, anchor="w").grid(row=i, column=0, sticky="w", padx=(0, 10))
+            ctk.CTkLabel(self.status_frame, text=status_text, text_color=color, anchor="w").grid(row=i, column=1, sticky="w")
+
+
+    def _on_genome_selection_change(self, selection):
+        """当用户在下拉菜单中选择一个新的基因组时调用。"""
+        self._update_file_status_display()
+
 
     def _refresh_status(self):
         """手动刷新当前选中基因组版本的文件状态。"""
@@ -105,25 +145,16 @@ class DataDownloadTab(BaseTab):
         self._on_assembly_selected(selected_assembly)
 
     def update_assembly_dropdowns(self, assembly_ids: list):
-        """更新下拉菜单中的基因组版本列表。"""
-        if not assembly_ids:
-            assembly_ids = [_("无可用版本")]
+        ### --- 核心修改 1: 过滤掉拟南芥 --- ###
+        filtered_ids = [gid for gid in assembly_ids if "arabidopsis" not in gid.lower()]
 
-        try:
-            current_selection = self.assembly_dropdown_var.get()
-            self.assembly_dropdown.configure(values=assembly_ids)
+        values = filtered_ids if filtered_ids else [_("无可用基因组")]
+        self.genome_option_menu.configure(values=values)
+        if self.selected_genome_var.get() not in values:
+            self.selected_genome_var.set(values[0])
 
-            # 如果当前选择不在新列表中，或仍是“加载中”，则自动选择第一个
-            if current_selection not in assembly_ids or current_selection == _("加载中..."):
-                self.assembly_dropdown_var.set(assembly_ids[0])
-
-            # 无论如何，都根据下拉菜单的当前值更新一次状态
-            # 这是确保首次加载时也能更新的关键
-            self._on_assembly_selected(self.assembly_dropdown_var.get())
-
-        except (tk.TclError, RuntimeError) as e:
-            self.app._log_to_viewer(f"Ignoring UI update error, likely during shutdown: {e}", level="debug")
-
+        # 初始加载时也更新一次状态
+        self._update_file_status_display()
 
 
     def _on_assembly_selected(self, selected_assembly: str):
@@ -195,26 +226,17 @@ class DataDownloadTab(BaseTab):
                 kwargs={'config': self.app.current_config, 'cli_overrides': cli_overrides}
             )
 
-
     def update_from_config(self):
-        """由主程序调用，以根据新加载的配置更新本选项卡。"""
-        if self.app.genome_sources_data:
-            self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
-        else:
-            self.update_assembly_dropdowns([])
+        if self.app.current_config:
+            self.force_download_var.set(self.app.current_config.downloader.force_download)
+        self.update_assembly_dropdowns(
+            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
+
 
 
     def update_button_state(self, is_running, has_config):
-        """根据程序状态更新按钮的可点击性。"""
         state = "disabled" if is_running or not has_config else "normal"
-        try:
-            if hasattr(self, 'start_button'):
-                self.start_button.configure(state=state)
-            if hasattr(self, 'refresh_button'):
-                self.refresh_button.configure(state=state)
-        except (tk.TclError, RuntimeError):
-            pass
-
+        if hasattr(self, 'start_button'): self.start_button.configure(state=state)
 
 
     def _update_download_genomes_list(self):
@@ -264,44 +286,42 @@ class DataDownloadTab(BaseTab):
         for var in self.download_genome_vars.values():
             var.set(select)
 
-
-
-
     def start_download_task(self):
-        """启动数据下载任务。"""
+        # 后台逻辑保持不变
         if not self.app.current_config:
-            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
 
-        # 1. 获取所有被勾选的版本
-        versions_to_download = [gid for gid, var in self.download_genome_vars.items() if var.get()]
+        selected_genome_id = self.selected_genome_var.get()
+        if not selected_genome_id or selected_genome_id in [_("配置未加载"), _("无可用基因组")]:
+            self.app.ui_manager.show_error_message(_("选择错误"), _("请选择一个有效的基因组进行下载。"));
+            return
 
-        # 2. 【BUG修复】在这里增加前置检查，确保至少选择了一项
-        if not versions_to_download:
-            self.app.show_warning_message(
-                title=_("未选择版本"),
-                message=_("请至少勾选一个需要下载的基因组版本。")
-            )
-            return  # 如果未选择，则终止函数执行
+        file_types = [ft for ft, var in
+                      [("fasta", self.fasta_var), ("gff", self.gff_var), ("cds", self.cds_var), ("pep", self.pep_var),
+                       ("homology", self.homology_var)] if var.get()]
+        if not file_types:
+            self.app.ui_manager.show_error_message(_("选择错误"), _("请至少选择一种要下载的文件类型。"));
+            return
 
-        # 3. 继续执行后续逻辑
-        proxies = None
-        if self.download_proxy_var.get():
-            http_proxy = self.app.current_config.downloader.proxies.http
-            https_proxy = self.app.current_config.downloader.proxies.https
-            if http_proxy or https_proxy:
-                proxies = {'http': http_proxy, 'https': https_proxy}
+        proxies_to_use = None
+        if self.use_proxy_var.get():
+            cfg_proxies = self.app.current_config.downloader.proxies
+            if cfg_proxies.http or cfg_proxies.https:
+                proxies_to_use = {'http': cfg_proxies.http, 'https': cfg_proxies.https}
             else:
-                self.app.show_warning_message(_("代理未配置"), _("您开启了代理开关，但配置文件中未找到有效的代理地址。"))
-                return
+                self.app._log_to_viewer("DEBUG: 代理开关已打开，但配置中未设置代理地址。", "DEBUG")
 
-        cli_overrides = {"versions": versions_to_download, "force": self.download_force_checkbox_var.get(),
-                         "proxies": proxies}
+        task_kwargs = {
+            'config': self.app.current_config, 'genome_ids': [selected_genome_id],
+            'file_types': file_types, 'force': self.force_download_var.get(),
+            'proxies': proxies_to_use
+        }
 
         self.app._start_task(
             task_name=_("数据下载"),
             target_func=run_download_pipeline,
-            kwargs={'config': self.app.current_config, 'cli_overrides': cli_overrides}
+            kwargs=task_kwargs
         )
 
     def start_preprocess_task(self):

@@ -1,6 +1,7 @@
 ﻿# ui/tabs/ai_assistant_tab.py
 import os
 import tkinter as tk
+import traceback
 from tkinter import filedialog
 
 import customtkinter as ctk
@@ -10,8 +11,10 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from cotton_toolkit.core.ai_wrapper import AIWrapper
 # 导入后台任务函数
 from cotton_toolkit.pipelines import run_ai_task
+from cotton_toolkit.tools.batch_ai_processor import process_single_csv_file
 from ui.tabs.base_tab import BaseTab
 
 # 避免循环导入，同时为IDE提供类型提示
@@ -107,7 +110,7 @@ class AIAssistantTab(BaseTab):
 
         # --- 执行按钮 ---
         self.start_button = ctk.CTkButton(parent_frame, text=_("开始处理CSV文件"),
-                                          command=self.app.start_ai_csv_processing_task, height=40)  # 父容器是 parent_frame
+                                          command=self.start_ai_csv_processing_task, height=40)  # 父容器是 parent_frame
         self.start_button.grid(row=3, column=0, sticky="ew", padx=0, pady=10)
 
 
@@ -125,25 +128,30 @@ class AIAssistantTab(BaseTab):
             self._update_column_dropdown()
 
     def _update_column_dropdown(self):
-        filepath = self.csv_path_entry.get()
+        """### --- 核心修改: 异步读取CSV列名 --- ###"""
+        filepath = self.csv_path_entry.get().strip()
         if not filepath or not os.path.exists(filepath):
             self.source_column_dropdown.configure(values=[_("请先选择有效的CSV文件")])
             self.source_column_var.set("")
             return
 
-        try:
-            df = pd.read_csv(filepath, nrows=0)  # 只读取表头
-            columns = df.columns.tolist()
-            if columns:
-                self.source_column_dropdown.configure(values=columns)
-                self.source_column_var.set(columns[0])
-            else:
-                self.source_column_dropdown.configure(values=[_("文件中无列名")])
-                self.source_column_var.set("")
-        except Exception as e:
-            self.app.show_error_message(_("读取错误"), f"{_('无法读取CSV文件列名:')}\n{e}")
-            self.source_column_dropdown.configure(values=[_("读取失败")])
-            self.source_column_var.set("")
+        # 立即更新UI，显示加载状态
+        self.source_column_dropdown.configure(values=[_("读取中...")])
+        self.source_column_var.set(_("读取中..."))
+
+        def load_columns_thread():
+            try:
+                # 只读取文件的前几行来推断列名，性能更高
+                df = pd.read_csv(filepath, nrows=0)
+                columns = df.columns.tolist()
+                # 将结果放入主消息队列，由主线程安全地更新UI
+                self.app.message_queue.put(("csv_columns_fetched", (columns, None)))
+            except Exception as e:
+                error_msg = f"{_('无法读取CSV列名')}:\n{e}"
+                self.app.message_queue.put(("csv_columns_fetched", ([], error_msg)))
+
+        threading.Thread(target=load_columns_thread, daemon=True).start()
+
 
     def update_model_dropdown(self):
         if not self.app.current_config:
@@ -274,61 +282,68 @@ class AIAssistantTab(BaseTab):
         if provider_key:
             self.app.start_ai_connection_test(provider_key)
 
-    def start_ai_task(self):
-        """启动AI任务。"""
+    def start_ai_csv_processing_task(self):
+        """启动一个后台任务来使用AI处理指定的CSV文件列。"""
         if not self.app.current_config:
             self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        input_file = self.ai_input_file_entry.get().strip()
-        source_col = self.ai_source_col_entry.get().strip()
-        new_col = self.ai_new_col_entry.get().strip()
-        task_type_display = self.ai_task_type_var.get()
-        cli_overrides = {"temperature": self.ai_temperature_var.get()}
-        output_file = self.ai_output_file_entry.get().strip() or None
+        try:
+            provider_name = self.ai_selected_provider_var.get()
+            model = self.ai_selected_model_var.get()
+            prompt_type = self.prompt_type_var.get()
+            csv_path = self.csv_path_entry.get().strip()
+            source_column = self.source_column_var.get()
+            new_column_name = self.new_column_entry.get().strip()
+            save_as_new = self.save_as_new_var.get()
+            use_proxy = self.ai_proxy_var.get()
 
-        selected_provider_name = self.ai_selected_provider_var.get()
-        name_to_key_map = {v['name']: k for k, v in self.app.AI_PROVIDERS.items()}
-        provider_key = name_to_key_map.get(selected_provider_name)
-        model_name = self.ai_selected_model_var.get()
+            if not all([provider_name, model, csv_path, source_column, new_column_name]):
+                self.app.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"));
+                return
+            if not os.path.exists(csv_path):
+                self.app.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"));
+                return
 
-        task_type = "analyze" if task_type_display == _("分析") else "translate"
-        prompt = self.ai_analyze_prompt_textbox.get("1.0",
-                                                    tk.END).strip() if task_type == 'analyze' else self.ai_translate_prompt_textbox.get(
-            "1.0", tk.END).strip()
+            provider_key = ""
+            for key, info in self.app.AI_PROVIDERS.items():
+                if info['name'] == provider_name: provider_key = key; break
 
-        if not all([input_file, source_col, new_col]):
-            self.app.show_error_message(_("输入缺失"), _("请输入文件路径、源列名和新列名。"))
-            return
-        if not provider_key or not model_name or "需先" in model_name or "未在" in model_name:
-            self.app.show_error_message(_("配置缺失"), _("请选择一个有效的AI服务商和模型。"))
-            return
-        if not prompt or "{text}" not in prompt:
-            self.app.show_error_message(_("Prompt格式错误"), _("Prompt指令不能为空，且必须包含占位符 '{text}'。"))
-            return
+            provider_config = self.app.current_config.ai_services.providers.get(provider_key)
+            if not provider_config:
+                self.app.show_error_message(_("配置错误"), f"{_('找不到服务商')} '{provider_key}' {_('的配置。')}");
+                return
 
-        temp_config = copy.deepcopy(self.app.current_config)
-        temp_config.ai_services.default_provider = provider_key
-        if provider_key in temp_config.ai_services.providers:
-            temp_config.ai_services.providers[provider_key].model = model_name
+            prompt_template = self.app.current_config.ai_prompts.translation_prompt if prompt_type == _(
+                "翻译") else self.app.current_config.ai_prompts.analysis_prompt
 
-        if not self.ai_proxy_var.get():
-            if temp_config.downloader:
-                temp_config.downloader.proxies = None
+            proxies = None
+            if use_proxy:
+                proxies = {'http': self.app.current_config.downloader.proxies.http,
+                           'https': self.app.current_config.downloader.proxies.https}
 
-        task_kwargs = {
-            'config': temp_config,
-            'input_file': input_file,
-            'source_column': source_col,
-            'new_column': new_col,
-            'task_type': task_type,
-            'custom_prompt_template': prompt,
-            'cli_overrides': cli_overrides,
-            'output_file': output_file
-        }
+            output_path_for_task = None if save_as_new else csv_path
 
-        self.app._start_task(
-            task_name=_("AI 助手任务"),
-            target_func=run_ai_task,
-            kwargs=task_kwargs
-        )
+            ai_client = AIWrapper(
+                provider=provider_key, api_key=provider_config.api_key, model=model,
+                base_url=provider_config.base_url, proxies=proxies
+            )
+
+            task_kwargs = {
+                'client': ai_client, 'input_csv_path': csv_path,
+                'output_csv_directory': os.path.dirname(csv_path),
+                'source_column_name': source_column, 'new_column_name': new_column_name,
+                'user_prompt_template': prompt_template,
+                'task_identifier': f"{os.path.basename(csv_path)}_{prompt_type}",
+                'max_row_workers': self.app.current_config.batch_ai_processor.max_workers,
+                'output_csv_path': output_path_for_task
+            }
+
+            self.app._start_task(
+                task_name=_("AI批量处理CSV"),
+                target_func=process_single_csv_file,
+                kwargs=task_kwargs
+            )
+        except Exception as e:
+            self.app.show_error_message(_("任务启动失败"),
+                                        f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
