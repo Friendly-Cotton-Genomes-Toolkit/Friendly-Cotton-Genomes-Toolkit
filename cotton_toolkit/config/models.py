@@ -19,7 +19,7 @@ class DownloaderConfig(BaseModel):
     genome_sources_file: str = "genome_sources_list.yml"
     download_output_base_dir: str = "genomes"
     force_download: bool = False
-    proxies: ProxyConfig = Field(default_factory=ProxyConfig)
+    use_proxy_for_download: bool = False
 
 class LocusConversionConfig(BaseModel):
     output_dir_name: str = "locus_conversion_results"
@@ -28,7 +28,7 @@ class LocusConversionConfig(BaseModel):
 
 class AIServicesConfig(BaseModel):
     default_provider: str = "google"
-    # 修改此处：将 lambda 替换为静态方法
+    use_proxy_for_ai: bool = False
     providers: Dict[str, ProviderConfig] = Field(default_factory=lambda: AIServicesConfig._default_providers())
 
     @staticmethod
@@ -166,8 +166,10 @@ class MainConfig(BaseModel):
     config_version: int = 1
     log_level: str = "INFO"
     i18n_language: str = "zh-hans"
+    proxies: ProxyConfig = Field(default_factory=ProxyConfig)
+
     downloader: DownloaderConfig = Field(default_factory=DownloaderConfig)
-    ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig._default_providers)
+    ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig)
     ai_prompts: AIPromptsConfig = Field(default_factory=AIPromptsConfig)
     annotation_tool: AnnotationToolConfig = Field(default_factory=AnnotationToolConfig)
     bsa_analyzer: BSAAnalyzerConfig = Field(default_factory=BSAAnalyzerConfig)

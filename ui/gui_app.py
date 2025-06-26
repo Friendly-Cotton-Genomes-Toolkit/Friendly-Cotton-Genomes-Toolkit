@@ -3,10 +3,8 @@
 import copy
 import json
 import logging
-from logging import handlers
 import os
 import queue
-import re
 import sys
 import threading
 import time
@@ -21,18 +19,13 @@ import customtkinter as ctk
 import pandas as pd
 import yaml
 from PIL import Image
-from cotton_toolkit.tools.batch_ai_processor import process_single_csv_file
+
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.ai_wrapper import AIWrapper
-from cotton_toolkit.pipelines import (
-    run_functional_annotation,
-    run_enrichment_pipeline,
-)
-from cotton_toolkit.utils.localization import setup_localization
-from cotton_toolkit.utils.logger import setup_global_logger, set_log_level
+from cotton_toolkit.utils.logger import setup_global_logger
 from ui import ProgressDialog, MessageDialog, AnnotationTab
 from ui.event_handler import EventHandler
 from ui.tabs.ai_assistant_tab import AIAssistantTab
@@ -133,6 +126,51 @@ class CottonToolkitApp(ctk.CTk):
         self.selected_language_var = tk.StringVar()
         self.selected_appearance_var = tk.StringVar()
         self.editor_ui_built: bool = False
+
+        # --- 初始化所有UI属性 ---
+        self.home_frame = None
+        self.editor_frame = None
+        self.tools_frame = None
+        self.navigation_frame = None
+        self.main_content_frame = None
+        self.status_bar_frame = None
+        self.log_viewer_frame = None
+        self.editor_scroll_frame = None
+        self.editor_no_config_label = None
+        self.save_editor_button = None
+        self.tools_notebook = None
+        self.tool_tab_instances = {}
+
+        self.logo_image, self.home_icon, self.tools_icon, self.settings_icon = None, None, None, None
+        self.folder_icon, self.new_file_icon, self.help_icon, self.info_icon = None, None, None, None
+
+        self.home_button, self.editor_button, self.tools_button = None, None, None
+        self.status_label, self.progress_bar = None, None
+        self.log_viewer_label_widget, self.toggle_log_button, self.clear_log_button, self.log_textbox = None, None, None, None
+        self.language_label, self.language_optionmenu = None, None
+        self.appearance_mode_label, self.appearance_mode_optionemenu = None, None
+
+        # 编辑器控件
+        self.general_log_level_menu, self.general_log_level_var = None, None
+        self.general_i18n_lang_menu, self.general_i18n_lang_var = None, None
+        self.proxy_http_entry, self.proxy_https_entry = None, None
+        self.downloader_sources_file_entry, self.downloader_output_dir_entry = None, None
+        self.downloader_force_download_switch, self.downloader_force_download_var = None, None
+        self.downloader_max_workers_entry = None
+        self.downloader_use_proxy_switch, self.downloader_use_proxy_var = None, None
+        self.ai_default_provider_menu, self.ai_default_provider_var = None, None
+        self.ai_use_proxy_switch, self.ai_use_proxy_var = None, None
+        self.ai_translation_prompt_textbox, self.ai_analysis_prompt_textbox = None, None
+        self.anno_db_root_dir_entry = None
+        self.pipeline_input_excel_entry, self.pipeline_bsa_sheet_entry, self.pipeline_hvg_sheet_entry = None, None, None
+        self.pipeline_output_sheet_entry, self.pipeline_bsa_assembly_entry, self.pipeline_hvg_assembly_entry = None, None, None
+        self.pipeline_bridge_species_entry, self.pipeline_gff_db_dir_entry = None, None
+        self.pipeline_force_gff_db_switch, self.pipeline_force_gff_db_var = None, None
+        self.pipeline_common_hvg_log2fc_entry = None
+        self.s2b_sort_by_entry, self.s2b_ascending_entry, self.s2b_top_n_entry = None, None, None
+        self.s2b_evalue_entry, self.s2b_pid_entry, self.s2b_score_entry = None, None, None
+        self.b2t_sort_by_entry, self.b2t_ascending_entry, self.b2t_top_n_entry = None, None, None
+        self.b2t_evalue_entry, self.b2t_pid_entry, self.b2t_score_entry = None, None, None
 
         # --- 初始化管理器 ---
         self.ui_manager = UIManager(self)
@@ -826,6 +864,10 @@ class CottonToolkitApp(ctk.CTk):
             list(self.LANG_CODE_TO_NAME.values())  # 使用“简体中文”等友好名称
         )
 
+        self.proxy_http_entry = create_entry_row(parent, _("HTTP代理"), _("HTTP代理地址，例如 'http://your-proxy:port'。不使用则留空。"))
+        self.proxy_https_entry = create_entry_row(parent, _("HTTPS代理"), _("HTTPS代理地址，例如 'https://your-proxy:port'。不使用则留空。"))
+
+
         # --- Downloader Configuration ---
         create_section_title(parent, _("数据下载器配置"))
         self.downloader_sources_file_entry = create_entry_row(parent, _("基因组源文件"),
@@ -837,10 +879,7 @@ class CottonToolkitApp(ctk.CTk):
                                                                                                       _("如果文件已存在，是否强制重新下载。"))
         self.downloader_max_workers_entry = create_entry_row(parent, _("最大下载线程数"),
                                                              _("多线程下载时使用的最大线程数。"))
-        self.downloader_proxy_http_entry = create_entry_row(parent, _("HTTP代理"),
-                                                            _("HTTP代理地址，例如 'http://your-proxy:port'。不使用则留空。"))
-        self.downloader_proxy_https_entry = create_entry_row(parent, _("HTTPS代理"),
-                                                             _("HTTPS代理地址，例如 'https://your-proxy:port'。不使用则留空。"))
+        self.downloader_use_proxy_switch, self.downloader_use_proxy_var = create_switch_row(parent, _("为数据下载使用网络代理"), _("是否为基因组数据和注释文件下载启用代理。"))
 
         # --- AI Services Configuration ---
         create_section_title(parent, _("AI 服务配置"))
@@ -848,6 +887,8 @@ class CottonToolkitApp(ctk.CTk):
         self.ai_default_provider_menu, self.ai_default_provider_var = create_option_menu_row(parent, _("默认AI服务商"),
                                                                                              _("选择默认使用的AI模型提供商。"),
                                                                                              provider_display_names)
+        self.ai_use_proxy_switch, self.ai_use_proxy_var = create_switch_row(parent, _("为AI服务使用网络代理"), _("是否为连接AI模型API启用代理。"))
+
 
         providers_container_frame = ctk.CTkFrame(parent, fg_color="transparent")
         providers_container_frame.grid(row=current_row, column=0, sticky='ew', padx=0, pady=0)
@@ -1001,6 +1042,7 @@ class CottonToolkitApp(ctk.CTk):
 
         cfg = self.current_config
 
+
         # --- 定义一个辅助函数，用于安全地更新输入框/文本框 ---
         def update_widget(widget, value, is_textbox=False):
             if widget and widget.winfo_exists():
@@ -1014,24 +1056,29 @@ class CottonToolkitApp(ctk.CTk):
         # --- 通用设置 ---
         if hasattr(cfg, 'log_level'):
             self.general_log_level_var.set(cfg.log_level)
-
         if hasattr(cfg, 'i18n_language'):
-            lang_code_from_config = cfg.i18n_language
-            display_name = self.LANG_CODE_TO_NAME.get(lang_code_from_config, "简体中文")
+            display_name = self.LANG_CODE_TO_NAME.get(cfg.i18n_language, "简体中文")
             self.general_i18n_lang_var.set(display_name)
+        if hasattr(cfg, 'proxies'):
+            update_widget(self.proxy_http_entry, cfg.proxies.http)
+            update_widget(self.proxy_https_entry, cfg.proxies.https)
+
 
         # --- Downloader Configuration ---
+        dl_cfg = cfg.downloader
         update_widget(self.downloader_sources_file_entry, cfg.downloader.genome_sources_file)
         update_widget(self.downloader_output_dir_entry, cfg.downloader.download_output_base_dir)
         self.downloader_force_download_var.set(bool(cfg.downloader.force_download))
         update_widget(self.downloader_max_workers_entry, cfg.downloader.max_workers)
-        update_widget(self.downloader_proxy_http_entry, cfg.downloader.proxies.http)
-        update_widget(self.downloader_proxy_https_entry, cfg.downloader.proxies.https)
+        self.downloader_use_proxy_var.set(bool(dl_cfg.use_proxy_for_download))
 
         # --- AI Services Configuration ---
+        ai_cfg = cfg.ai_services
         default_display_name = self.AI_PROVIDERS.get(cfg.ai_services.default_provider, {}).get('name',
                                                                                                cfg.ai_services.default_provider)
         self.ai_default_provider_var.set(default_display_name)
+        self.ai_use_proxy_var.set(bool(ai_cfg.use_proxy_for_ai))
+
         for p_key, p_cfg in cfg.ai_services.providers.items():
             safe_key = p_key.replace('-', '_')
             if hasattr(self, f"ai_{safe_key}_apikey_entry"):
@@ -1089,7 +1136,6 @@ class CottonToolkitApp(ctk.CTk):
 
     def _save_config_from_editor(self):
         """
-        (这是完整的版本)
         从静态UI控件中收集数据并保存配置。
         """
         if not self.current_config or not self.config_path:
@@ -1130,11 +1176,14 @@ class CottonToolkitApp(ctk.CTk):
 
             if hasattr(updated_config, 'log_level'):
                 updated_config.log_level = self.general_log_level_var.get()
+
             if hasattr(updated_config, 'i18n_language'):
-                display_name_from_ui = self.general_i18n_lang_var.get()
-                # 从显示名称找到对应的代码，如果找不到，默认保存 'zh-hans'
-                code_to_save = self.LANG_NAME_TO_CODE.get(display_name_from_ui, "zh-hans")
+                code_to_save = self.LANG_NAME_TO_CODE.get(self.general_i18n_lang_var.get(), "zh-hans")
                 updated_config.i18n_language = code_to_save
+
+            if hasattr(updated_config, 'proxies'):
+                updated_config.proxies.http = self.proxy_http_entry.get() or None
+                updated_config.proxies.https = self.proxy_https_entry.get() or None
 
             # --- Update Downloader Config ---
             dl_cfg = updated_config.downloader
@@ -1142,8 +1191,8 @@ class CottonToolkitApp(ctk.CTk):
             dl_cfg.download_output_base_dir = self.downloader_output_dir_entry.get()
             dl_cfg.force_download = self.downloader_force_download_var.get()
             dl_cfg.max_workers = to_int(self.downloader_max_workers_entry.get(), 3)
-            dl_cfg.proxies.http = self.downloader_proxy_http_entry.get() or None
-            dl_cfg.proxies.https = self.downloader_proxy_https_entry.get() or None
+            dl_cfg.use_proxy_for_download = self.downloader_use_proxy_var.get()
+
 
             # --- Update AI Services Config ---
             ai_cfg = updated_config.ai_services
@@ -1151,6 +1200,7 @@ class CottonToolkitApp(ctk.CTk):
             # 将用户选择的显示名称转换回程序的内部键再保存
             selected_display_name = self.ai_default_provider_var.get()
             provider_key_to_save = ai_cfg.default_provider  # 默认为旧值
+            ai_cfg.use_proxy_for_ai = self.ai_use_proxy_var.get()
 
             # 创建一个从显示名称到内部键的反向映射
             name_to_key_map = {v['name']: k for k, v in self.AI_PROVIDERS.items()}
@@ -1205,7 +1255,7 @@ class CottonToolkitApp(ctk.CTk):
             if save_config(updated_config, self.config_path):
                 self.current_config = updated_config
                 self.show_info_message(_("保存成功"), _("配置文件已更新。"))
-                self._apply_config_to_ui()
+                self.ui_manager.update_ui_from_config()
             else:
                 self.show_error_message(_("保存失败"), _("写入文件时发生未知错误。"))
 

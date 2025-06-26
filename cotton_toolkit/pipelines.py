@@ -499,8 +499,24 @@ def run_ai_task(
         status_callback(f"错误: 请在配置文件中为服务商 '{provider_name}' 设置一个有效的API Key。", "ERROR")
         return
 
+
+    # --- 细化AI代理逻辑 ---
+    proxies_to_use = None
+    if ai_cfg.use_proxy_for_ai:
+        if config.downloader.proxies and (config.downloader.proxies.http or config.downloader.proxies.https):
+            proxies_to_use = config.proxies.to_dict()
+            status_callback(f"INFO: AI服务将使用代理: {proxies_to_use}")
+        else:
+            status_callback("WARNING: AI代理开关已打开，但配置文件中未设置代理地址。")
+
     status_callback(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model))
-    ai_client = AIWrapper(provider=provider_name, api_key=api_key, model=model, base_url=base_url)
+    ai_client = AIWrapper(
+        provider=provider_name,
+        api_key=api_key,
+        model=model,
+        base_url=base_url,
+        proxies=proxies_to_use
+    )
 
     project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
     output_dir_name = getattr(batch_cfg, 'output_dir_name', 'ai_results')  # 安全访问
@@ -808,20 +824,33 @@ def run_download_pipeline(
     """
     执行数据下载流程。
     """
-    # ... (函数前半部分，包括日志设置、参数解析、构建all_download_tasks列表的代码都保持不变) ...
     log = status_callback if status_callback else print
     progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
     log("INFO: 下载流程开始...")
     downloader_cfg = config.downloader
     genome_sources = get_genome_data_sources(config, logger_func=log)
     if cli_overrides is None: cli_overrides = {}
-    versions_to_download = cli_overrides.get("versions")
-    if versions_to_download is None:
-        versions_to_download = list(genome_sources.keys())
+
+    # --- 细化代理逻辑 ---
+    versions_to_download = cli_overrides.get("versions") or list(genome_sources.keys())
     force_download = cli_overrides.get("force", downloader_cfg.force_download)
-    proxies = cli_overrides.get("proxies")
     max_workers = downloader_cfg.max_workers
+
+    # 检查CLI是否覆盖了代理设置
+    use_proxy_for_this_run = cli_overrides.get("use_proxy_for_download", downloader_cfg.use_proxy_for_download)
+
+    proxies_to_use = None
+    if use_proxy_for_this_run:
+        # 只有在开关为True时才尝试获取代理地址
+        if downloader_cfg.proxies and (downloader_cfg.proxies.http or downloader_cfg.proxies.https):
+            proxies_to_use = config.proxies.to_dict()
+            log(f"INFO: 本次下载将使用代理: {proxies_to_use}")
+        else:
+            log("WARNING: 下载代理开关已打开，但配置文件中未设置代理地址。")
+
+
     log(f"INFO: 将尝试下载的基因组版本: {', '.join(versions_to_download)}")
+
 
     all_download_tasks = []
     ALL_FILE_KEYS = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
@@ -860,7 +889,7 @@ def run_download_pipeline(
                 file_key=task["file_key"],
                 url=task["url"],
                 force=force_download,
-                proxies=proxies,
+                proxies=proxies_to_use,
                 status_callback=log
             ): task for task in all_download_tasks
         }

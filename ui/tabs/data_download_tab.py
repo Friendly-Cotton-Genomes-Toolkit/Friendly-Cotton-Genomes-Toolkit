@@ -28,7 +28,7 @@ except ImportError:
 class DataDownloadTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
         self.selected_genome_var = tk.StringVar()
-        self.use_proxy_var = tk.BooleanVar(value=False)
+        self.use_proxy_for_download_var = tk.BooleanVar(value=False)
         self.force_download_var = tk.BooleanVar(value=False)
         self.fasta_var = tk.BooleanVar(value=True)
         self.gff_var = tk.BooleanVar(value=True)
@@ -86,9 +86,8 @@ class DataDownloadTab(BaseTab):
         options_frame.grid(row=7, column=0, sticky="w", padx=5, pady=0)
         ctk.CTkCheckBox(options_frame, text=_("强制重新下载 (覆盖本地已存在文件)"), variable=self.force_download_var,
                         font=self.app.app_font).pack(anchor="w", padx=10, pady=5)
-        ctk.CTkCheckBox(options_frame, text=_("为数据下载使用网络代理 (请在配置编辑器中设置)"),
-                        variable=self.use_proxy_var, font=self.app.app_font).pack(anchor="w", padx=10, pady=5)
-
+        ctk.CTkCheckBox(options_frame, text=_("对数据下载使用网络代理 (请在配置编辑器中设置)"),
+                        variable=self.use_proxy_for_download_var, font=self.app.app_font).pack(anchor="w", padx=10, pady=5)
         self.start_button = ctk.CTkButton(parent_frame, text=_("开始下载"), command=self.start_download_task, height=40)
         self.start_button.grid(row=8, column=0, sticky="ew", padx=10, pady=(25, 10))
 
@@ -204,9 +203,9 @@ class DataDownloadTab(BaseTab):
     def update_from_config(self):
         if self.app.current_config:
             self.force_download_var.set(self.app.current_config.downloader.force_download)
+            self.use_proxy_for_download_var.set(self.app.current_config.downloader.use_proxy_for_download)
         self.update_assembly_dropdowns(
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-
 
 
     def update_button_state(self, is_running, has_config):
@@ -262,7 +261,6 @@ class DataDownloadTab(BaseTab):
             var.set(select)
 
     def start_download_task(self):
-        # 后台逻辑保持不变
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
@@ -279,18 +277,14 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_error_message(_("选择错误"), _("请至少选择一种要下载的文件类型。"));
             return
 
-        proxies_to_use = None
-        if self.use_proxy_var.get():
-            cfg_proxies = self.app.current_config.downloader.proxies
-            if cfg_proxies.http or cfg_proxies.https:
-                proxies_to_use = {'http': cfg_proxies.http, 'https': cfg_proxies.https}
-            else:
-                self.app._log_to_viewer("DEBUG: 代理开关已打开，但配置中未设置代理地址。", "DEBUG")
+        self.app.current_config.downloader.force_download = self.force_download_var.get()
+        self.app.current_config.downloader.use_proxy_for_download = self.use_proxy_for_download_var.get()
+
 
         task_kwargs = {
             'config': self.app.current_config, 'genome_ids': [selected_genome_id],
             'file_types': file_types, 'force': self.force_download_var.get(),
-            'proxies': proxies_to_use
+
         }
 
         self.app._start_task(

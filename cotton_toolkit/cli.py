@@ -95,19 +95,16 @@ def init(ctx, output_dir, overwrite):
 @cli.command()
 @click.option('--versions', help=_("要下载的基因组版本列表，以逗号分隔。默认为全部。"))
 @click.option('--force', is_flag=True, help=_("即使文件已存在也强制重新下载。"))
-@click.option('--http-proxy', help=_("用于HTTP请求的代理。"))
-@click.option('--https-proxy', help=_("用于HTTPS请求的代理。"))
+@click.option('--use-download-proxy', is_flag=True, help=_("为本次下载强制使用代理（覆盖配置）。"))
 @click.pass_context
-def download(ctx, versions, force, http_proxy, https_proxy):
+def download(ctx, versions, force, use_download_proxy):
     """下载基因组注释和同源数据。"""
     cli_overrides = {
         "versions": versions.split(',') if versions else None,
         "force": force,
-        "http_proxy": http_proxy,
-        "https_proxy": https_proxy
+        "use_proxy_for_download": use_download_proxy
     }
     run_download_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info, cancel_event=cancel_event)
-
 
 @cli.command()
 @click.option('--genes', help=_("源基因ID列表，以逗号分隔。"))
@@ -165,16 +162,21 @@ def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, eval
 @click.option('--task-type', type=click.Choice(['translate', 'analyze']), default='translate', help=_("AI任务类型。"))
 @click.option('--prompt', help=_("自定义提示词模板。必须包含 {text}。"))
 @click.option('--temperature', type=float, help=_("控制模型输出的随机性。"))
+@click.option('--use-ai-proxy', is_flag=True, help=_("为本次AI任务强制使用代理（覆盖配置）。"))
 @click.pass_context
-def ai_task(ctx, input_file, source_column, new_column, output_file, task_type, prompt, temperature): # 添加 output_file 到函数参数
+def ai_task(ctx, input_file, source_column, new_column, output_file, task_type, prompt, temperature, use_ai_proxy):
     """在CSV文件上运行批量AI任务。"""
-    cli_overrides = {"temperature": temperature}
+    # --- 修改点: 传递新的代理标志 ---
+    cli_overrides = {
+        "temperature": temperature,
+        "use_proxy_for_ai": use_ai_proxy
+    }
+    # --- 修改结束 ---
     run_ai_task(
         config=ctx.obj.config, input_file=input_file, source_column=source_column,
         new_column=new_column, task_type=task_type, custom_prompt_template=prompt,
         cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info,
-        cancel_event=cancel_event,output_file=output_file
-
+        cancel_event=cancel_event, output_file=output_file
     )
 
 
@@ -393,8 +395,10 @@ def test_ai(ctx, provider):
 
     # 假设CLI也可能需要代理
     proxies = None
-    if config.downloader.proxies and (config.downloader.proxies.http or config.downloader.proxies.https):
-        proxies = config.downloader.proxies.to_dict()
+    if config.ai_services.use_proxy_for_ai:
+        if config.proxies and (config.proxies.http or config.proxies.https):
+            proxies = config.proxies.to_dict()
+            click.echo(f"INFO: 将使用代理进行连接测试: {proxies}")
 
     # 调用后端的测试函数
     success, message = AIWrapper.test_connection(

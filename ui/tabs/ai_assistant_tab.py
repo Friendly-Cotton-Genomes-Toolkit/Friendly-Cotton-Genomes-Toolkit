@@ -32,6 +32,8 @@ except ImportError:
 class AIAssistantTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
         super().__init__(parent, app)
+        self.ai_proxy_var = tk.BooleanVar(value=False)
+
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
@@ -62,7 +64,7 @@ class AIAssistantTab(BaseTab):
         )
         self.model_dropdown.grid(row=0, column=3, padx=5, pady=10, sticky="ew")
 
-        # --- 提示词选择 ---
+                                                                            # --- 提示词选择 ---
         prompt_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
         prompt_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=5)
         ctk.CTkLabel(prompt_frame, text=_("处理任务:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
@@ -182,6 +184,8 @@ class AIAssistantTab(BaseTab):
     def update_from_config(self):
         if not self.app.current_config:
             return
+        if self.app.current_config:
+            self.ai_proxy_var.set(self.app.current_config.ai_services.use_proxy_for_ai)
 
         default_provider_key = self.app.current_config.ai_services.default_provider
         default_provider_name = self.app.AI_PROVIDERS.get(default_provider_key, {}).get('name', '')
@@ -297,6 +301,7 @@ class AIAssistantTab(BaseTab):
             new_column_name = self.new_column_entry.get().strip()
             save_as_new = self.save_as_new_var.get()
             use_proxy = self.ai_proxy_var.get()
+            self.app.current_config.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
 
             if not all([provider_name, model, csv_path, source_column, new_column_name]):
                 self.app.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"));
@@ -317,10 +322,17 @@ class AIAssistantTab(BaseTab):
             prompt_template = self.app.current_config.ai_prompts.translation_prompt if prompt_type == _(
                 "翻译") else self.app.current_config.ai_prompts.analysis_prompt
 
+            self.app.current_config.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
+
             proxies = None
-            if use_proxy:
-                proxies = {'http': self.app.current_config.downloader.proxies.http,
-                           'https': self.app.current_config.downloader.proxies.https}
+            if self.ai_proxy_var.get():
+                # 从顶层配置获取代理地址
+                if self.app.current_config.proxies and (
+                        self.app.current_config.proxies.http or self.app.current_config.proxies.https):
+                    proxies = self.app.current_config.proxies.to_dict()
+                else:
+                    self.app.show_warning_message(_("代理警告"), _("AI代理开关已打开，但未在配置编辑器中设置代理地址。"))
+
 
             output_path_for_task = None if save_as_new else csv_path
 
@@ -329,21 +341,23 @@ class AIAssistantTab(BaseTab):
                 base_url=provider_config.base_url, proxies=proxies
             )
 
-            task_kwargs = {
-                'client': ai_client, 'input_csv_path': csv_path,
-                'output_csv_directory': os.path.dirname(csv_path),
-                'source_column_name': source_column, 'new_column_name': new_column_name,
-                'user_prompt_template': prompt_template,
-                'task_identifier': f"{os.path.basename(csv_path)}_{prompt_type}",
-                'max_row_workers': self.app.current_config.batch_ai_processor.max_workers,
-                'output_csv_path': output_path_for_task
-            }
+
 
             self.app._start_task(
                 task_name=_("AI批量处理CSV"),
-                target_func=process_single_csv_file,
-                kwargs=task_kwargs
+                target_func=run_ai_task,
+                kwargs={
+                    'config': self.app.current_config,
+                    'input_file': csv_path,
+                    'source_column': source_column,
+                    'new_column': new_column_name,
+                    'task_type': prompt_type,
+                    'custom_prompt_template': prompt_template,
+                    'cli_overrides': None,
+                    'output_file': output_path_for_task
+                }
             )
+
         except Exception as e:
             self.app.show_error_message(_("任务启动失败"),
                                         f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
