@@ -21,7 +21,7 @@ import customtkinter as ctk
 import pandas as pd
 import yaml
 from PIL import Image
-
+from cotton_toolkit.tools.batch_ai_processor import process_single_csv_file
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources, get_local_downloaded_file_path
@@ -78,6 +78,7 @@ class CottonToolkitApp(ctk.CTk):
         self.config_path: Optional[str] = None
         self.genome_sources_data: Optional[Dict[str, Any]] = None
         self.excel_sheet_cache: Dict[str, List[str]] = {}
+        self.config_path_display_var = tk.StringVar(value=_("未加载配置"))
 
         self.log_queue: Queue = Queue()
         self.message_queue: Queue = Queue()
@@ -1272,70 +1273,81 @@ class CottonToolkitApp(ctk.CTk):
             self.show_error_message(_("保存错误"), detailed_error)
 
     def _create_home_frame(self, parent):
-        # 使用可滚动的框架，并让其内容居中
+        """
+        【最终布局优化版】创建并返回主页框架。
+        采用两列等宽的网格布局，使卡片能随窗口宽度动态调整，更美观。
+        """
+        # 使用可滚动的框架，并让其内容在垂直方向上居中
         frame = ctk.CTkScrollableFrame(parent, fg_color="transparent")
-        # 配置列以允许内容水平居中
-        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)  # 允许内容水平居中
 
-        # --- 顶部信息区 ---
+        # --- 顶部信息区 (保持不变) ---
         top_info_frame = ctk.CTkFrame(frame, fg_color="transparent")
         top_info_frame.grid(row=0, column=0, pady=(40, 20), padx=40, sticky="ew")
-        top_info_frame.grid_columnconfigure(0, weight=1)  # 允许标签内容居中
+        top_info_frame.grid_columnconfigure(0, weight=1)
 
-        # --- 先将文本赋值给变量，再传递给控件 ---
-        title_text = _(self.title_text_key)
-        ctk.CTkLabel(top_info_frame, text=title_text, font=self.app_title_font).pack(pady=(0, 10))
+        title_label = ctk.CTkLabel(top_info_frame, text="", font=self.app_title_font)
+        title_label.pack(pady=(0, 10))
+        self.translatable_widgets[title_label] = self.title_text_key
 
-        self.config_path_label = ctk.CTkLabel(top_info_frame, text=_("未加载配置"), wraplength=500,
-                                              font=self.app_font, text_color=self.secondary_text_color)
-        self.translatable_widgets[self.config_path_label] = ("config_path_display", _("当前配置: {}"), _("未加载配置"))
+        self.config_path_label = ctk.CTkLabel(top_info_frame,
+                                              textvariable=self.config_path_display_var,
+                                              wraplength=800,
+                                              font=self.app_font,
+                                              text_color=self.secondary_text_color)
         self.config_path_label.pack(pady=(10, 0))
 
-        # --- 卡片式布局 ---
+        ### --- 核心修改：全新、更具扩展性的卡片布局 --- ###
+
+        # 1. 创建一个容器，这个容器会水平填满整个区域
+        #    并直接使用它的网格系统来放置两个卡片
         cards_frame = ctk.CTkFrame(frame, fg_color="transparent")
-        cards_frame.grid(row=1, column=0, pady=10, padx=20, sticky="ew")
+        cards_frame.grid(row=1, column=0, pady=20, padx=20, sticky="ew")
+
+        # 2. 将容器的网格配置为两列，并且两列的权重都为1
+        #    这意味着它们会平分所有可用的水平空间，从而将卡片推向两侧
         cards_frame.grid_columnconfigure((0, 1), weight=1)
-        cards_frame.grid_rowconfigure(0, weight=1)
 
-        # --- 卡片1: 配置文件操作 ---
+        # --- 配置卡片 ---
+        # 3. 将第一个卡片直接放入容器的第 0 列
         config_card = ctk.CTkFrame(cards_frame)
-        config_card.grid(row=0, column=0, padx=20, pady=10, sticky="nsew")
-        config_card.grid_columnconfigure(0, weight=1)
-        config_card.grid_rowconfigure(2, weight=1)
+        # 使用 sticky="nsew" 让卡片填满其所在的网格单元
+        config_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        config_card.grid_columnconfigure(0, weight=1)  # 让卡片内部的按钮可以水平扩展
 
-        ctk.CTkLabel(config_card, text=_("配置文件"), font=self.app_font_bold).grid(
-            row=0, column=0, pady=(15, 20), padx=20, sticky="w")
-        self.load_config_button = ctk.CTkButton(config_card, text=_("加载配置文件..."), image=self.folder_icon,
-                                                command=self.load_config_file, height=40, font=self.app_font)
-        self.translatable_widgets[self.load_config_button] = "加载配置文件..."
-        self.load_config_button.grid(row=1, column=0, pady=10, padx=20, sticky="ew")
-        self.gen_config_button = ctk.CTkButton(config_card, text=_("生成默认配置..."), image=self.new_file_icon,
-                                               command=self._generate_default_configs_gui, height=40,
-                                               font=self.app_font,
-                                               fg_color="transparent", border_width=1)
-        self.translatable_widgets[self.gen_config_button] = "生成默认配置..."
-        self.gen_config_button.grid(row=3, column=0, pady=(10, 15), padx=20, sticky="ew")
+        config_title = ctk.CTkLabel(config_card, text="", font=self.card_title_font)
+        config_title.grid(row=0, column=0, padx=20, pady=(20, 10))
+        self.translatable_widgets[config_title] = "配置文件"
 
-        # --- 卡片2: 帮助与支持 ---
+        load_button = ctk.CTkButton(config_card, text="", command=self.load_config_file, height=40)
+        load_button.grid(row=1, column=0, sticky="ew", padx=20, pady=5)
+        self.translatable_widgets[load_button] = "加载配置文件..."
+
+        gen_button = ctk.CTkButton(config_card, text="", command=self._generate_default_configs_gui, height=40)
+        gen_button.grid(row=2, column=0, sticky="ew", padx=20, pady=(5, 20))
+        self.translatable_widgets[gen_button] = "生成默认配置..."
+
+        # --- 帮助与支持卡片 ---
+        # 4. 将第二个卡片直接放入容器的第 1 列
         help_card = ctk.CTkFrame(cards_frame)
-        help_card.grid(row=0, column=1, padx=20, pady=10, sticky="nsew")
-        help_card.grid_columnconfigure(0, weight=1)
-        help_card.grid_rowconfigure(2, weight=1)
+        help_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        help_card.grid_columnconfigure(0, weight=1)  # 让卡片内部的按钮可以水平扩展
 
-        ctk.CTkLabel(help_card, text=_("帮助与支持"), font=self.app_font_bold).grid(
-            row=0, column=0, pady=(15, 20), padx=20, sticky="w")
-        self.help_button = ctk.CTkButton(help_card, text=_("在线帮助文档"), image=self.help_icon,
-                                         command=self._open_online_help, height=40, font=self.app_font)
-        self.translatable_widgets[self.help_button] = "在线帮助文档"
-        self.help_button.grid(row=1, column=0, pady=10, padx=20, sticky="ew")
-        self.about_button = ctk.CTkButton(help_card, text=_("关于本软件"), image=self.info_icon,
-                                          command=self._show_about_window,
-                                          height=40, font=self.app_font,
-                                          fg_color="transparent", border_width=1)
-        self.translatable_widgets[self.about_button] = "关于本软件"
-        self.about_button.grid(row=3, column=0, pady=(10, 15), padx=20, sticky="ew")
+        help_title = ctk.CTkLabel(help_card, text="", font=self.card_title_font)
+        help_title.grid(row=0, column=0, padx=20, pady=(20, 10))
+        self.translatable_widgets[help_title] = "帮助与支持"
+
+        docs_button = ctk.CTkButton(help_card, text="", command=self._open_online_help, height=40)
+        docs_button.grid(row=1, column=0, sticky="ew", padx=20, pady=5)
+        self.translatable_widgets[docs_button] = "在线帮助文档"
+
+        about_button = ctk.CTkButton(help_card, text="", command=self._show_about_window, height=40)
+        about_button.grid(row=2, column=0, sticky="ew", padx=20, pady=(5, 20))
+        self.translatable_widgets[about_button] = "关于本软件"
 
         return frame
+
+
 
     def _create_tools_frame(self, parent):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -1757,26 +1769,24 @@ class CottonToolkitApp(ctk.CTk):
 
     def _apply_config_to_ui(self):
         """
-        【完整版】将 self.current_config 的所有设置应用到整个用户界面。
-        这是在加载或保存配置后，刷新UI的中央枢纽。
+        【最终稳定版】将 self.current_config 的所有设置应用到整个用户界面。
         """
         self._log_to_viewer(_("正在应用配置到整个UI..."), "DEBUG")
 
-        # 1. 更新主页上的当前配置文件路径显示
-        path_text = _("当前配置: {}").format(os.path.basename(self.config_path)) if self.config_path else _(
-            "未加载配置")
-        if hasattr(self, 'config_path_label') and self.config_path_label.winfo_exists():
-            self.config_path_label.configure(text=path_text)
+        # 1. 仅通过更新StringVar来更新主页标签，移除了导致错误的冗余代码
+        if self.config_path:
+            path_text = _("当前配置: {}").format(os.path.basename(self.config_path))
+            self.config_path_display_var.set(path_text)
+        else:
+            self.config_path_display_var.set(_("未加载配置"))
 
         # 2. 更新配置编辑器页面
-        # 这个方法会判断是否需要创建UI，并使用新配置填充所有输入框
         self._handle_editor_ui_update()
 
-        # 3. 更新所有工具选项卡中需要显示基因组版本(Assembly ID)的下拉菜单
+        # 3. 更新所有工具选项卡中的基因组版本下拉菜单
         self._update_assembly_id_dropdowns()
 
-        # 4. 调用每个选项卡自己的更新方法（如果存在）
-        # 这使得每个选项卡可以根据新配置独立更新其内部状态
+        # 4. 调用每个选项卡自己的更新方法
         for tab_instance in self.tool_tab_instances.values():
             if hasattr(tab_instance, 'update_from_config'):
                 try:
@@ -1784,16 +1794,13 @@ class CottonToolkitApp(ctk.CTk):
                 except Exception as e:
                     self._log_to_viewer(f"Error updating tab {tab_instance.__class__.__name__}: {e}", "ERROR")
 
-        # 5. 【核心】智能地更新全局日志级别
-        # 这个方法会检查级别是否真的改变，避免重复操作
+        # 5. 智能地更新全局日志级别
         if self.current_config and hasattr(self.current_config, 'log_level'):
             self.reconfigure_logging(self.current_config.log_level)
 
-        # 6. 根据当前状态（是否有任务在运行、是否加载了配置）更新所有按钮的可点击状态
+        # 6. 根据当前状态更新所有按钮的可点击状态
         self._update_button_states()
-
         self._log_to_viewer(_("UI已根据当前配置刷新。"))
-
 
 
     def _handle_editor_ui_update(self):
@@ -1848,101 +1855,94 @@ class CottonToolkitApp(ctk.CTk):
         self.app_title_font = ctk.CTkFont(family=selected_font, size=24, weight="bold")
         self.app_comment_font = ctk.CTkFont(family=selected_font, size=12)
         self.app_font_mono = ctk.CTkFont(family=selected_mono_font, size=12)  # NEW: 等宽字体定义
+        self.card_title_font = ctk.CTkFont(family=selected_font, size=18, weight="bold")
 
     def update_language_ui(self, lang_code_to_set: Optional[str] = None):
         """
-        【最终版】动态更新整个UI的语言，处理所有控件类型。
+        【最终稳定版】动态更新整个UI的语言，处理所有控件类型。
         """
         global _
 
-        # 1. 确定要设置的语言代码
         if not lang_code_to_set:
-            # 如果未指定语言，则从主配置中读取
             if self.current_config and hasattr(self.current_config, 'i18n_language'):
                 lang_code_to_set = self.current_config.i18n_language
             else:
-                # 如果没有配置文件，则使用默认语言
                 lang_code_to_set = 'zh-hans'
 
-        # 2. 设置全局翻译函数
         _ = setup_localization(language_code=lang_code_to_set)
 
-        # 3. 更新所有需要翻译的UI控件
+        self.title(_(self.title_text_key))
+        display_lang_name = self.LANG_CODE_TO_NAME.get(lang_code_to_set, "简体中文")
+        self.selected_language_var.set(display_lang_name)
 
-        # 更新窗口标题
-        if hasattr(self, 'title_text_key'):
-            self.title(_(self.title_text_key))
-
-        # 更新语言下拉菜单自身的显示值
-        display_name_to_set = self.LANG_CODE_TO_NAME.get(lang_code_to_set, "简体中文")
-        if hasattr(self, 'selected_language_var'):
-            self.selected_language_var.set(display_name_to_set)
-
-        # 更新外观模式下拉菜单的文本和值
-        if hasattr(self, 'appearance_mode_optionemenu'):
-            current_mode_key = self.ui_settings.get("appearance_mode", "System")
-            mode_map_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("系统")}
-
-            self.appearance_mode_optionemenu.configure(values=list(mode_map_to_display.values()))
-            self.selected_appearance_var.set(mode_map_to_display.get(current_mode_key, _("系统")))
-
-        # 更新工具栏的选项卡标题 (如果存在)
         if hasattr(self, 'tools_notebook') and hasattr(self, 'TOOL_TAB_ORDER'):
             try:
                 new_tab_titles = [_(self.TAB_TITLE_KEYS[key]) for key in self.TOOL_TAB_ORDER]
-                # CTkTabView 的标题是通过其内部的 _segmented_button 设置的
                 if hasattr(self.tools_notebook, '_segmented_button'):
                     self.tools_notebook._segmented_button.configure(values=new_tab_titles)
             except Exception as e:
                 logger.warning(f"动态更新TabView标题时出错: {e}")
 
-        # 遍历所有已注册的简单控件进行翻译
         if hasattr(self, 'translatable_widgets'):
             for widget, key_or_options in self.translatable_widgets.items():
                 if not (widget and widget.winfo_exists()):
                     continue
-
-                # 对不同注册方式进行处理
                 try:
                     if isinstance(key_or_options, str):
-                        # 最简单的情况：key直接是待翻译文本
-                        widget.configure(text=_(key_or_options))
+                        if isinstance(widget, (ctk.CTkLabel, ctk.CTkButton, ctk.CTkSwitch)):
+                            widget.configure(text=_(key_or_options))
                     elif isinstance(key_or_options, tuple):
-                        # 处理特殊元组格式，例如 ("config_path_display", "当前配置: {}", "未加载配置")
                         widget_type = key_or_options[0]
-                        if widget_type == "config_path_display":
-                            if self.config_path:
-                                widget.configure(text=_(key_or_options[1]).format(os.path.basename(self.config_path)))
-                            else:
-                                widget.configure(text=_(key_or_options[2]))
+                        if widget_type == "values" and isinstance(widget, ctk.CTkOptionMenu):
+                            original_values = key_or_options[1]
+                            translated_values = [_(v) for v in original_values]
+                            widget.configure(values=translated_values)
+                            if widget is self.appearance_mode_optionemenu:
+                                current_mode_key = self.ui_settings.get("appearance_mode", "System")
+                                mode_map_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("系统")}
+                                self.selected_appearance_var.set(mode_map_to_display.get(current_mode_key, _("系统")))
+                        elif widget_type == "toggle_button":
+                            current_state_text = key_or_options[2] if self.log_viewer_visible else key_or_options[1]
+                            widget.configure(text=_(current_state_text))
                 except Exception as e:
-                    logger.warning(f"更新控件 {widget} 文本时出错: {e}")
+                    logger.warning(f"更新控件 {widget} 文本时出错: {e} (控件类型: {type(widget).__name__})")
 
-        # 刷新所有文本框的占位符
-        if hasattr(self, 'homology_map_genes_textbox'):
-            self._add_placeholder(self.homology_map_genes_textbox, self.placeholder_key_homology, force=True)
-        if hasattr(self, 'gff_query_genes_textbox'):
-            self._add_placeholder(self.gff_query_genes_textbox, self.placeholder_key_gff_genes, force=True)
-        if hasattr(self, 'gff_query_region_entry'):
-            self.gff_query_region_entry.configure(
-                placeholder_text=_(self.placeholders[self.placeholder_key_gff_region]))
-
-        # 记录日志
         self._log_to_viewer(_("界面语言已更新。"), "INFO")
 
+
     def _update_assembly_id_dropdowns(self):
+        """
+        【健壮版】更新所有工具选项卡中的基因组版本下拉菜单。
+
+        该方法的核心职责是：
+        1. 从 self.genome_sources_data 中获取一份最新的、可用的基因组版本ID列表。
+        2. 遍历所有已经实例化的工具选项卡 (例如 HomologyTab, AnnotationTab 等)。
+        3. 如果某个选项卡实例拥有一个名为 `update_assembly_dropdowns` 的方法，
+           就把最新的基因组ID列表传递给它，由它自己去更新内部的下拉菜单。
+
+        这种设计模式（称为“委托”或“依赖注入”）极大地降低了主程序（gui_app）与各个
+        子模块（各选项卡）之间的耦合度，使得添加或修改工具选项卡时，无需改动
+        gui_app.py 中的这个核心更新逻辑。
+        """
         if not self.genome_sources_data:
+            # 如果基因组源数据尚未加载，准备一个表示“无数据”的列表
             assembly_ids = [_("无可用基因组")]
         else:
+            # 如果数据已加载，则提取所有基因组版本的ID作为列表
+            # 如果列表为空，也提供一个友好的提示
             assembly_ids = list(self.genome_sources_data.keys()) or [_("无可用基因组")]
 
+        # 遍历所有已创建的工具选项卡实例
         for tab_instance in self.tool_tab_instances.values():
+            # 检查当前遍历到的选项卡实例是否有关心基因组列表更新的方法
             if hasattr(tab_instance, 'update_assembly_dropdowns'):
                 try:
+                    # 如果有，就调用它，并将最新的基因组ID列表作为参数传入
                     tab_instance.update_assembly_dropdowns(assembly_ids)
                 except Exception as e:
-                    self._log_to_viewer(f"Error updating assembly dropdowns for {tab_instance.__class__.__name__}: {e}", "ERROR")
-
+                    # 捕获并记录在更新特定选项卡时可能发生的任何意外错误，以防止整个程序崩溃
+                    self._log_to_viewer(f"Error updating assembly dropdowns for {tab_instance.__class__.__name__}: {e}",
+                                        "ERROR")
 
     def _update_excel_sheet_dropdowns(self):
         excel_path = self.integrate_excel_entry.get().strip()
@@ -2217,18 +2217,38 @@ class CottonToolkitApp(ctk.CTk):
         self.status_label.configure(text=status_msg)
 
     def _handle_startup_complete(self, data: dict):
+        """
+        【最终稳定版】处理后台启动任务完成的消息。
+        这是修复启动时UI状态不更新问题的关键。
+        """
+        # 1. 首先，安全地隐藏启动时显示的进度对话框
         self._hide_progress_dialog()
+
+        # 2. 从后台线程传递过来的数据中，提取基因组源和配置信息
         self.genome_sources_data = data.get("genome_sources")
         config_data = data.get("config")
+
+        # 3. 如果成功加载了配置数据
         if config_data:
             self.current_config = config_data
-            self.config_path = getattr(config_data, '_config_file_abs_path_', None)
+            # 从加载的对象中获取文件的绝对路径
+            self.config_path = getattr(config_data, 'config_file_abs_path_', None)
             self._log_to_viewer(_("默认配置文件加载成功。"))
-            self._apply_config_to_ui()
         else:
+            # 如果没有找到或加载失败
             self._log_to_viewer(_("未找到或无法加载默认配置文件。"), "WARNING")
+
+        # 4. --- 核心修复：在这里执行一次完整的UI刷新 ---
+        #    首先，调用 _apply_config_to_ui 来更新所有依赖配置数据的UI元素
+        #    （包括我们最关心的主页配置路径标签）。
+        self._apply_config_to_ui()
+
+        #    然后，调用 update_language_ui 来确保所有控件的语言都是最新的。
         self.update_language_ui()
+
+        # 5. 最后，根据当前状态（是否有任务、是否有配置）更新所有按钮的可点击状态
         self._update_button_states()
+
 
     def _handle_startup_failed(self, data: str):
         self._hide_progress_dialog()
@@ -3002,13 +3022,13 @@ class CottonToolkitApp(ctk.CTk):
 
     def start_enrichment_task(self):
         """
-        【新增】启动富集分析与绘图任务。
+        启动富集分析与绘图任务。
+        此版本已更新，可以读取所有4个绘图类型的复选框。
         """
         if not self.current_config:
             self.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        # 从 AnnotationTab 实例获取UI控件
         anno_tab = self.tool_tab_instances.get('annotation')
         if not anno_tab:
             self.show_error_message(_("UI错误"), _("无法找到功能注释选项卡实例。"))
@@ -3022,9 +3042,14 @@ class CottonToolkitApp(ctk.CTk):
             has_header = anno_tab.has_header_var.get()
             has_log2fc = anno_tab.has_log2fc_var.get()
 
+            ### --- 核心修改开始 --- ###
             plot_types = []
             if anno_tab.bubble_plot_var.get(): plot_types.append('bubble')
             if anno_tab.bar_plot_var.get(): plot_types.append('bar')
+            # 读取新增的复选框状态
+            if anno_tab.upset_plot_var.get(): plot_types.append('upset')
+            if anno_tab.cnet_plot_var.get(): plot_types.append('cnet')
+            ### --- 核心修改结束 --- ###
 
         except AttributeError as e:
             self.show_error_message(_("UI错误"), f"{_('功能注释选项卡似乎缺少必要的UI控件。')}\n{e}")
@@ -3090,6 +3115,108 @@ class CottonToolkitApp(ctk.CTk):
             target_func=run_enrichment_pipeline,
             kwargs=task_kwargs
         )
+
+    def start_ai_csv_processing_task(self):
+        """
+        【最终修正版】启动一个后台任务来使用AI处理指定的CSV文件列。
+        此版本调用了正确的后端函数并传递了所有必需的参数。
+        """
+        if not self.current_config:
+            self.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+
+        ai_tab = self.tool_tab_instances.get('ai_assistant')
+        if not ai_tab:
+            self.show_error_message(_("UI错误"), _("无法找到AI助手选项卡实例。"))
+            return
+
+        try:
+            # 1. 从UI收集所有参数
+            provider_name = ai_tab.ai_selected_provider_var.get()
+            model = ai_tab.ai_selected_model_var.get()
+            prompt_type = ai_tab.prompt_type_var.get()
+            csv_path = ai_tab.csv_path_entry.get().strip()
+            source_column = ai_tab.source_column_var.get()
+            new_column_name = ai_tab.new_column_entry.get().strip()
+            save_as_new = ai_tab.save_as_new_var.get()
+            use_proxy = ai_tab.ai_proxy_var.get()
+
+            # 2. 输入验证
+            if not all([provider_name, model, csv_path, source_column, new_column_name]):
+                self.show_error_message(_("输入缺失"),
+                                        _("请确保所有必填项（服务商、模型、CSV路径、待处理列、新列名）都已填写。"))
+                return
+            if not os.path.exists(csv_path):
+                self.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"))
+                return
+
+            # 3. 准备后台任务参数
+
+            # 将服务商的显示名称转换回程序内部使用的key
+            provider_key = ""
+            for key, info in self.app.AI_PROVIDERS.items():
+                if info['name'] == provider_name:
+                    provider_key = key
+                    break
+
+            provider_config = self.current_config.ai_services.providers.get(provider_key)
+            if not provider_config:
+                self.show_error_message(_("配置错误"),
+                                        f"{_('在配置文件中找不到服务商')} '{provider_key}' {_('的设置。')}")
+                return
+
+            # 根据选择获取对应的Prompt模板
+            prompt_template = ""
+            if prompt_type == _("翻译"):
+                prompt_template = self.current_config.ai_prompts.translation_prompt
+            elif prompt_type == _("分析"):
+                prompt_template = self.current_config.ai_prompts.analysis_prompt
+
+            # 准备代理设置
+            proxies = None
+            if use_proxy:
+                http_proxy = self.current_config.downloader.proxies.http
+                https_proxy = self.current_config.downloader.proxies.https
+                if http_proxy or https_proxy:
+                    proxies = {'http': http_proxy, 'https': https_proxy}
+
+            # 决定输出路径
+            # 如果不另存为，则输出路径就是输入路径，覆盖原文件
+            # 如果要另存为，则将输出路径设为None，让后端自动生成一个新文件名
+            output_path_for_task = csv_path if not save_as_new else None
+
+            # 创建AI客户端实例
+            ai_client = AIWrapper(
+                provider=provider_key,
+                api_key=provider_config.api_key,
+                model=model,
+                base_url=provider_config.base_url,
+                proxies=proxies
+            )
+
+            # 构建传递给后台函数的完整参数字典
+            task_kwargs = {
+                'client': ai_client,
+                'input_csv_path': csv_path,
+                'output_csv_directory': os.path.dirname(csv_path),  # 默认输出到同目录
+                'source_column_name': source_column,
+                'new_column_name': new_column_name,
+                'user_prompt_template': prompt_template,
+                'task_identifier': f"{os.path.basename(csv_path)}_{prompt_type}",
+                'max_row_workers': self.current_config.batch_ai_processor.max_workers,
+                'output_csv_path': output_path_for_task
+            }
+
+            self._start_task(
+                task_name=_("AI批量处理CSV"),
+                target_func=process_single_csv_file,
+                kwargs=task_kwargs
+            )
+
+        except Exception as e:
+            self.show_error_message(_("任务启动失败"), f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
+
+
 
     def _check_genome_download_status(self, genome_info: dict, file_key: str) -> str:
         """

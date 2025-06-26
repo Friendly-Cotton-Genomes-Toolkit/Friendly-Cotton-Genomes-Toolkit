@@ -1,13 +1,18 @@
 ﻿# ui/tabs/ai_assistant_tab.py
-
+import os
 import tkinter as tk
+from tkinter import filedialog
+
 import customtkinter as ctk
 import copy
 import threading
 from typing import TYPE_CHECKING
 
+import pandas as pd
+
 # 导入后台任务函数
 from cotton_toolkit.pipelines import run_ai_task
+from ui.tabs.base_tab import BaseTab
 
 # 避免循环导入，同时为IDE提供类型提示
 if TYPE_CHECKING:
@@ -21,77 +26,167 @@ except ImportError:
         return s
 
 
-class AIAssistantTab(ctk.CTkFrame):
-    """ “AI 助手”选项卡的主界面类 """
-
+class AIAssistantTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, fg_color="transparent")
-        self.app = app
-        self.pack(fill="both", expand=True)
-        self.scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        self.scrollable_frame.grid_columnconfigure(0, weight=1)
-        self.scrollable_frame.grid_rowconfigure(1, weight=1)
-        self._create_widgets()
+        super().__init__(parent, app)
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
+        parent_frame.grid_columnconfigure(0, weight=1)
 
-        # 【核心修改】在顶部添加一个标题
-        ctk.CTkLabel(parent_frame, text=_("AI 助手"), font=self.app.app_title_font).grid(
-            row=0, column=0, pady=(5, 15), padx=10, sticky="n")
+        # --- 服务商与模型选择 ---
+        provider_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
+        provider_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=(10, 5))
+        provider_frame.grid_columnconfigure((1, 3), weight=1)
 
-        # 后续卡片的 row 从 1 开始
-        model_card = ctk.CTkFrame(parent_frame, border_width=0)
-        model_card.grid(row=1, column=0, sticky="ew", padx=5, pady=(5, 10))
-        model_card.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(model_card, text=_("AI模型设置"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=3,
-                                                                                         padx=10, pady=(10, 15),
-                                                                                         sticky="w")
-        ctk.CTkLabel(model_card, text=_("AI服务商:"), font=self.app.app_font).grid(row=1, column=0, padx=15, pady=10,
-                                                                                   sticky="w")
+        ctk.CTkLabel(provider_frame, text=_("AI服务商:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
+                                                                                       pady=10)
+
+        provider_names = [v['name'] for v in self.app.AI_PROVIDERS.values()]
         self.ai_selected_provider_var = tk.StringVar()
-        self.provider_dropdown = ctk.CTkOptionMenu(model_card, variable=self.ai_selected_provider_var,
-                                                   font=self.app.app_font, dropdown_font=self.app.app_font)
-        self.provider_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
-        ctk.CTkLabel(model_card, text=_("模型名称:"), font=self.app.app_font).grid(row=2, column=0, padx=15, pady=10,
-                                                                                   sticky="w")
-        self.ai_model_name_entry = ctk.CTkEntry(model_card, font=self.app.app_font)
-        self.ai_model_name_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+        self.provider_dropdown = ctk.CTkOptionMenu(
+            provider_frame, variable=self.ai_selected_provider_var, values=provider_names,
+            font=self.app.app_font, dropdown_font=self.app.app_font, command=self._on_provider_change
+        )
+        self.provider_dropdown.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
 
-        chat_card = ctk.CTkFrame(parent_frame, border_width=0)
-        chat_card.grid(row=2, column=0, sticky="nsew", padx=5, pady=10)
-        chat_card.grid_columnconfigure(0, weight=1)
-        chat_card.grid_rowconfigure(0, weight=1)
-        self.chat_history_textbox = ctk.CTkTextbox(chat_card, state="disabled", wrap="word", font=self.app.app_font)
-        self.chat_history_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
-        self.chat_input_entry = ctk.CTkEntry(chat_card, placeholder_text=_("在此输入您的问题..."),
-                                             font=self.app.app_font)
-        self.chat_input_entry.grid(row=1, column=0, sticky="ew", padx=(10, 5), pady=(5, 10))
-        self.send_button = ctk.CTkButton(chat_card, text=_("发送"), width=100)
-        self.send_button.grid(row=1, column=1, sticky="e", padx=(0, 10), pady=(5, 10))
+        ctk.CTkLabel(provider_frame, text=_("选择模型:"), font=self.app.app_font).grid(row=0, column=2, padx=(15, 5),
+                                                                                       pady=10)
+        self.ai_selected_model_var = tk.StringVar()
+        self.model_dropdown = ctk.CTkOptionMenu(
+            provider_frame, variable=self.ai_selected_model_var, values=[_("请先选择服务商")],
+            font=self.app.app_font, dropdown_font=self.app.app_font
+        )
+        self.model_dropdown.grid(row=0, column=3, padx=5, pady=10, sticky="ew")
 
-        proxy_card = ctk.CTkFrame(parent_frame, border_width=0)
-        proxy_card.grid(row=3, column=0, sticky="ew", padx=5, pady=10)
+        # --- 提示词选择 ---
+        prompt_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
+        prompt_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=5)
+        ctk.CTkLabel(prompt_frame, text=_("处理任务:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
+                                                                                     pady=10)
+        self.prompt_type_var = tk.StringVar(value=_("翻译"))
+        self.prompt_selector = ctk.CTkSegmentedButton(
+            prompt_frame, values=[_("翻译"), _("分析")], variable=self.prompt_type_var, font=self.app.app_font
+        )
+        self.prompt_selector.grid(row=0, column=1, padx=5, pady=10, sticky="w")
+
+        # --- CSV文件处理 ---
+        csv_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
+        csv_frame.grid(row=2, column=0, sticky="nsew", padx=0, pady=5)
+        csv_frame.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(csv_frame, text=_("CSV文件路径:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
+                                                                                     pady=10, sticky="w")
+        self.csv_path_entry = ctk.CTkEntry(csv_frame, font=self.app.app_font)
+        self.csv_path_entry.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
+        ctk.CTkButton(csv_frame, text=_("浏览..."), width=100, command=self._browse_csv_file).grid(row=0, column=2,
+                                                                                                   padx=5, pady=10)
+
+        ctk.CTkLabel(csv_frame, text=_("待处理列:"), font=self.app.app_font).grid(row=1, column=0, padx=(15, 5),
+                                                                                  pady=10, sticky="w")
+        self.source_column_var = tk.StringVar()
+        self.source_column_dropdown = ctk.CTkOptionMenu(
+            csv_frame, variable=self.source_column_var, values=[_("请先选择CSV文件")],
+            font=self.app.app_font, dropdown_font=self.app.app_font
+        )
+        self.source_column_dropdown.grid(row=1, column=1, padx=5, pady=10, sticky="ew")
+
+        ctk.CTkLabel(csv_frame, text=_("新列名称:"), font=self.app.app_font).grid(row=2, column=0, padx=(15, 5),
+                                                                                  pady=10, sticky="w")
+        self.new_column_entry = ctk.CTkEntry(csv_frame, font=self.app.app_font)
+        self.new_column_entry.grid(row=2, column=1, padx=5, pady=10, sticky="ew")
+
+        self.save_as_new_var = tk.BooleanVar(value=False)
+        ctk.CTkCheckBox(csv_frame, text=_("另存为新文件 (否则在原文件上修改)"), variable=self.save_as_new_var,
+                        font=self.app.app_font).grid(row=3, column=1, padx=5, pady=10, sticky="w")
+
         self.ai_proxy_var = tk.BooleanVar(value=False)
-        self.proxy_switch = ctk.CTkSwitch(proxy_card, text=_("使用网络代理（需在配置编辑器中设置地址）"),
-                                          variable=self.ai_proxy_var, font=self.app.app_font)
-        self.proxy_switch.pack(side="left", padx=15, pady=15)
+        ctk.CTkCheckBox(csv_frame, text=_("为AI服务使用HTTP/HTTPS代理 (请在配置编辑器中设置代理地址)"),
+                        variable=self.ai_proxy_var, font=self.app.app_font).grid(row=4, column=1, padx=5, pady=(5, 15),
+                                                                                 sticky="w")
 
+        # --- 执行按钮 ---
+        self.start_button = ctk.CTkButton(parent_frame, text=_("开始处理CSV文件"),
+                                          command=self.app.start_ai_csv_processing_task, height=40)  # 父容器是 parent_frame
+        self.start_button.grid(row=3, column=0, sticky="ew", padx=0, pady=10)
+
+
+    def _on_provider_change(self, provider_display_name: str):
+        self.update_model_dropdown()
+
+    def _browse_csv_file(self):
+        filepath = filedialog.askopenfilename(
+            title=_("选择CSV文件"),
+            filetypes=(("CSV files", "*.csv"), ("All files", "*.*"))
+        )
+        if filepath:
+            self.csv_path_entry.delete(0, tk.END)
+            self.csv_path_entry.insert(0, filepath)
+            self._update_column_dropdown()
+
+    def _update_column_dropdown(self):
+        filepath = self.csv_path_entry.get()
+        if not filepath or not os.path.exists(filepath):
+            self.source_column_dropdown.configure(values=[_("请先选择有效的CSV文件")])
+            self.source_column_var.set("")
+            return
+
+        try:
+            df = pd.read_csv(filepath, nrows=0)  # 只读取表头
+            columns = df.columns.tolist()
+            if columns:
+                self.source_column_dropdown.configure(values=columns)
+                self.source_column_var.set(columns[0])
+            else:
+                self.source_column_dropdown.configure(values=[_("文件中无列名")])
+                self.source_column_var.set("")
+        except Exception as e:
+            self.app.show_error_message(_("读取错误"), f"{_('无法读取CSV文件列名:')}\n{e}")
+            self.source_column_dropdown.configure(values=[_("读取失败")])
+            self.source_column_var.set("")
+
+    def update_model_dropdown(self):
+        if not self.app.current_config:
+            self.model_dropdown.configure(values=[_("配置未加载")])
+            return
+
+        provider_display_name = self.ai_selected_provider_var.get()
+        provider_key = self.app.LANG_NAME_TO_CODE.get(provider_display_name)
+        if not provider_key:  # Fallback for display name to key mapping
+            for key, info in self.app.AI_PROVIDERS.items():
+                if info['name'] == provider_display_name:
+                    provider_key = key
+                    break
+
+        if provider_key and provider_key in self.app.current_config.ai_services.providers:
+            model_str = self.app.current_config.ai_services.providers[provider_key].model
+            if model_str:
+                models = [m.strip() for m in model_str.split(',')]
+                self.model_dropdown.configure(values=models)
+                self.ai_selected_model_var.set(models[0])
+            else:
+                self.model_dropdown.configure(values=[_("配置中无模型")])
+                self.ai_selected_model_var.set("")
+        else:
+            self.model_dropdown.configure(values=[_("请选择服务商")])
+            self.ai_selected_model_var.set("")
 
     def update_from_config(self):
-        if self.app.current_config:
-            provider_names = [v['name'] for v in self.app.AI_PROVIDERS.values()]
-            self.provider_dropdown.configure(values=provider_names)
-            default_provider_key = self.app.current_config.ai_services.default_provider
-            default_display_name = self.app.AI_PROVIDERS.get(default_provider_key, {}).get('name', '')
-            if default_display_name in provider_names:
-                self.ai_selected_provider_var.set(default_display_name)
+        if not self.app.current_config:
+            return
+
+        default_provider_key = self.app.current_config.ai_services.default_provider
+        default_provider_name = self.app.AI_PROVIDERS.get(default_provider_key, {}).get('name', '')
+        if default_provider_name:
+            self.ai_selected_provider_var.set(default_provider_name)
+
+        self.update_model_dropdown()
+
 
     def update_button_state(self, is_running, has_config):
         state = "disabled" if is_running or not has_config else "normal"
-        self.send_button.configure(state=state)
-
+        if hasattr(self, 'start_button'):
+            self.start_button.configure(state=state)
 
     def _load_prompts_to_ai_tab(self):
         """将配置中的Prompt模板加载到AI助手页面的输入框中。"""

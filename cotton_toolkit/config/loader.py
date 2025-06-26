@@ -32,10 +32,10 @@ except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins�
 
 logger = logging.getLogger("cotton_toolkit.loader")
 
-# --- 新增辅助函数：获取本地已下载文件的预期路径 ---
+# --- 获取本地已下载文件的预期路径 ---
 def get_local_downloaded_file_path(config: MainConfig, genome_info: GenomeSourceItem, file_key: str) -> Optional[str]:
     """
-    【最终修正版】获取某个基因组的特定类型文件的本地期望路径。
+    获取某个基因组的特定类型文件的本地期望路径。
     此版本会正确地包含基因组版本的子目录。
     """
     if not hasattr(genome_info, f"{file_key}_url"):
@@ -48,8 +48,13 @@ def get_local_downloaded_file_path(config: MainConfig, genome_info: GenomeSource
     filename = os.path.basename(url)
     base_dir = config.downloader.download_output_base_dir
 
+    # 确保 genome_info 有 version_id 属性，如果没有则尝试从 species_name 推断或使用默认值
+    version_identifier = getattr(genome_info, 'version_id', None)
+    if not version_identifier:
+        # 如果没有version_id，退回到使用 species_name 或一个通用名称
+        version_identifier = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_") if genome_info.species_name else "unknown_genome"
 
-    version_specific_dir = os.path.join(base_dir, genome_info.version_id)
+    version_specific_dir = os.path.join(base_dir, version_identifier)
 
     return os.path.join(version_specific_dir, filename)
 

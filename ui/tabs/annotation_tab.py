@@ -26,7 +26,7 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
 
-        # 【核心修改】在顶部添加一个标题
+        # 在顶部添加一个标题
         ctk.CTkLabel(parent_frame, text=_("功能注释与富集分析"), font=self.app.app_title_font).grid(
             row=0, column=0, pady=(5, 15), padx=10, sticky="n")
 
@@ -106,12 +106,25 @@ class AnnotationTab(BaseTab): # 继承自 BaseTab
                                                                                     sticky="w")
         plot_type_frame = ctk.CTkFrame(enrich_card, fg_color="transparent")
         plot_type_frame.grid(row=3, column=1, columnspan=3, padx=10, pady=5, sticky="w")
-        self.bubble_plot_var = tk.BooleanVar(value=True);
+
+        # 定义所有绘图类型的变量
+        self.bubble_plot_var = tk.BooleanVar(value=True)
         self.bar_plot_var = tk.BooleanVar(value=True)
+        self.upset_plot_var = tk.BooleanVar(value=False)  # Upset图默认为不勾选
+        self.cnet_plot_var = tk.BooleanVar(value=False)  # Cnet图默认为不勾选
+
+        # 创建所有复选框
         ctk.CTkCheckBox(plot_type_frame, text=_("气泡图"), variable=self.bubble_plot_var, font=self.app.app_font).pack(
             side="left", padx=(0, 15))
         ctk.CTkCheckBox(plot_type_frame, text=_("条形图"), variable=self.bar_plot_var, font=self.app.app_font).pack(
+            side="left", padx=(0, 15))
+        # 新增的复选框
+        ctk.CTkCheckBox(plot_type_frame, text=_("Upset图"), variable=self.upset_plot_var, font=self.app.app_font).pack(
+            side="left", padx=(0, 15))
+        ctk.CTkCheckBox(plot_type_frame, text=_("网络图(Cnet)"), variable=self.cnet_plot_var,
+                        font=self.app.app_font).pack(
             side="left")
+
         ctk.CTkLabel(enrich_card, text=_("输出目录:"), font=self.app.app_font).grid(row=4, column=0, padx=15, pady=5,
                                                                                     sticky="w")
         self.enrichment_output_dir_entry = ctk.CTkEntry(enrich_card)
