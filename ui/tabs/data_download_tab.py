@@ -48,7 +48,7 @@ class DataDownloadTab(BaseTab):
                                                                                                       pady=(10, 5),
                                                                                                       sticky="w")
 
-        # --- 核心修改 3a: 下拉菜单变化时，调用状态更新方法 ---
+        # --- 下拉菜单变化时，调用状态更新方法 ---
         self.genome_option_menu = ctk.CTkOptionMenu(parent_frame, variable=self.selected_genome_var,
                                                     values=[_("配置未加载")], command=self._on_genome_selection_change)
         self.genome_option_menu.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 15))
@@ -66,9 +66,17 @@ class DataDownloadTab(BaseTab):
         ctk.CTkCheckBox(checkbox_frame, text=_("同源关系 (homology)"), variable=self.homology_var).pack(side="left",
                                                                                                         padx=10)
 
-        ### --- 核心修改 3b: 创建用于显示状态的框架 --- ###
-        ctk.CTkLabel(parent_frame, text=_("文件状态"), font=self.app.app_font_bold).grid(row=4, column=0, padx=10,
-                                                                                         pady=(10, 5), sticky="w")
+        # --- 创建包含“文件状态”标签和刷新按钮的框架 ---
+        status_header_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        status_header_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=(10, 5))
+        status_header_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(status_header_frame, text=_("文件状态"), font=self.app.app_font_bold).grid(row=0, column=0,
+                                                                                                sticky="w")
+        self.refresh_button = ctk.CTkButton(status_header_frame, text=_("刷新状态"), width=100,
+                                            command=self._refresh_status)
+        self.refresh_button.grid(row=0, column=1, sticky="e")
+
         self.status_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
         self.status_frame.grid(row=5, column=0, sticky="ew", padx=15, pady=0)
 
@@ -83,6 +91,7 @@ class DataDownloadTab(BaseTab):
 
         self.start_button = ctk.CTkButton(parent_frame, text=_("开始下载"), command=self.start_download_task, height=40)
         self.start_button.grid(row=8, column=0, sticky="ew", padx=10, pady=(25, 10))
+
 
     def _update_file_status_display(self):
         # 清空旧的状态
@@ -112,7 +121,9 @@ class DataDownloadTab(BaseTab):
 
         status_labels = []
         for file_type, check_type in files_to_check.items():
-            if not (hasattr(genome_info, f"{file_type}_url") and getattr(genome_info, f"{file_type}_url")):
+            url_attr = f"{file_type}_url"
+            # 检查属性是否存在并且有值
+            if not (hasattr(genome_info, url_attr) and getattr(genome_info, url_attr)):
                 continue
 
             status_key = 'not_downloaded'
@@ -120,9 +131,21 @@ class DataDownloadTab(BaseTab):
                 # 简单检查文件是否存在
                 file_path = get_local_downloaded_file_path(self.app.current_config, genome_info, file_type)
                 if file_path and os.path.exists(file_path):
-                    status_key = 'not_processed'  # 简单文件只有下载/未下载，这里用“已下载”橙色表示
+                    status_key = 'processed' # For simple files, 'processed' is equivalent to 'downloaded'
             else:  # annotation
-                status_key = check_annotation_file_status(self.app.current_config, genome_info, file_type)
+                # For annotation, we check the processed CSV, not the original gz
+                original_path = get_local_downloaded_file_path(self.app.current_config, genome_info, file_type)
+                if original_path:
+                    processed_csv_path = original_path.replace('.xlsx.gz', '.csv').replace('.xlsx', '.csv')
+                    if os.path.exists(processed_csv_path):
+                        status_key = 'processed'
+                    elif os.path.exists(original_path):
+                         status_key = 'not_processed'
+                    else:
+                        status_key = 'not_downloaded'
+                else:
+                    status_key = 'not_downloaded'
+
 
             status_info = status_map.get(status_key, {"text": _("未知"), "color": "gray"})
             status_labels.append((f"{file_type.title()}:", status_info["text"], status_info["color"]))
@@ -130,81 +153,33 @@ class DataDownloadTab(BaseTab):
         # 在UI上创建标签
         for i, (label_text, status_text, color) in enumerate(status_labels):
             ctk.CTkLabel(self.status_frame, text=label_text, anchor="w").grid(row=i, column=0, sticky="w", padx=(0, 10))
-            ctk.CTkLabel(self.status_frame, text=status_text, text_color=color, anchor="w").grid(row=i, column=1, sticky="w")
+            ctk.CTkLabel(self.status_frame, text=status_text, text_color=color, anchor="w").grid(row=i, column=1,
+                                                                                                 sticky="w")
 
 
     def _on_genome_selection_change(self, selection):
         """当用户在下拉菜单中选择一个新的基因组时调用。"""
         self._update_file_status_display()
 
-
     def _refresh_status(self):
         """手动刷新当前选中基因组版本的文件状态。"""
-        self.app._log_to_viewer(_("手动刷新文件状态..."), "INFO")
-        selected_assembly = self.assembly_dropdown_var.get()
-        self._on_assembly_selected(selected_assembly)
+        self.app._log_to_viewer(_("正在手动刷新文件状态..."), "INFO")
+        self._update_file_status_display()
 
     def update_assembly_dropdowns(self, assembly_ids: list):
-        ### --- 核心修改 1: 过滤掉拟南芥 --- ###
         filtered_ids = [gid for gid in assembly_ids if "arabidopsis" not in gid.lower()]
 
         values = filtered_ids if filtered_ids else [_("无可用基因组")]
         self.genome_option_menu.configure(values=values)
         if self.selected_genome_var.get() not in values:
-            self.selected_genome_var.set(values[0])
+            if values:
+                self.selected_genome_var.set(values[0])
+            else:
+                self.selected_genome_var.set("")
 
         # 初始加载时也更新一次状态
         self._update_file_status_display()
 
-
-    def _on_assembly_selected(self, selected_assembly: str):
-        """当选择新版本或刷新时，清空并重新生成文件状态列表。"""
-        for widget in self.files_frame.winfo_children():
-            widget.destroy()
-
-        if not self.app.current_config or not self.app.genome_sources_data or not selected_assembly or selected_assembly == _(
-                "无可用版本"):
-            return
-
-        genome_info = self.app.genome_sources_data.get(selected_assembly)
-        if not genome_info:
-            return
-
-        # 恢复使用固定的、安全的检测列表
-        file_types_to_check = ['gff3', 'GO', 'IPR', 'KEGG_orthologs', 'KEGG_pathways', 'homology_ath']
-        found_any_file = False
-
-        for file_type in file_types_to_check:
-            if hasattr(genome_info, f"{file_type}_url") and getattr(genome_info, f"{file_type}_url"):
-                found_any_file = True
-
-                # --- 关键错误修复 ---
-                # 假设 check_annotation_file_status 只返回一个状态字符串
-                status = check_annotation_file_status(self.app.current_config, genome_info, file_type)
-
-                self._add_file_status_row(file_type, status)
-
-        if not found_any_file:
-            ctk.CTkLabel(self.files_frame, text=_("该基因组版本没有配置任何可下载的文件。")).pack(pady=10)
-
-
-    def _add_file_status_row(self, file_type: str, status: str):
-        """动态创建一行UI来显示单个文件的状态。"""
-        status_map = {
-            "complete": {"text": _("已下载"), "color": ("#2E7D32", "#A5D6A7")},
-            "incomplete": {"text": _("不完整"), "color": ("#D84315", "#FF7043")},
-            "missing": {"text": _("未下载"), "color": ("#6c757d", "#adb5bd")}
-        }
-        # 如果 status 不是预期的值，就显示“未知”
-        info = status_map.get(status, {"text": _("未知"), "color": ("#6c757d", "#adb5bd")})
-
-        row_frame = ctk.CTkFrame(self.files_frame, fg_color="transparent")
-        row_frame.pack(fill="x", expand=True, pady=2, padx=5)
-
-        file_label = f"• {file_type.replace('_', ' ').title()}:"
-        ctk.CTkLabel(row_frame, text=file_label, anchor="w").pack(side="left")
-
-        ctk.CTkLabel(row_frame, text=info["text"], text_color=info["color"], anchor="e").pack(side="right")
 
 
     def _start_download(self):
