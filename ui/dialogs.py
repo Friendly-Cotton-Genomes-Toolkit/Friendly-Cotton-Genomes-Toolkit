@@ -19,7 +19,6 @@ class BaseDialog(ctk.CTkToplevel):
     """所有自定义对话框的基类（无动画版）。"""
 
     def __init__(self, parent, title: str):
-        # --- 核心修改：super().__init__只接收parent参数 ---
         super().__init__(parent)
         self.parent = parent
         self.result = None
@@ -140,7 +139,6 @@ class ProgressDialog(BaseDialog):
         self.on_cancel_callback = on_cancel
         self.resizable(False, False)
 
-        # --- 核心修改 1: 记录创建时间 ---
         self.creation_time = time.time()
 
         main_frame = ctk.CTkFrame(self, corner_radius=10)

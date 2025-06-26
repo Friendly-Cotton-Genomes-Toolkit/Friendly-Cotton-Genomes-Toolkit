@@ -246,26 +246,26 @@ class UIManager:
     def _hide_progress_dialog(self, data=None):
         """【最终健壮版】智能地、安全地隐藏并销毁进度弹窗。"""
         app = self.app
-        MIN_DISPLAY_TIME = 0.4  # 弹窗最短显示时间（秒）
+        MIN_DISPLAY_TIME = 0.4  # 定义一个常量：弹窗最短要显示0.4秒
 
-        # 检查弹窗是否存在
+        # 1. 首先检查弹窗实例是否存在且窗口依然有效
         if app.progress_dialog and app.progress_dialog.winfo_exists():
 
-            # 计算弹窗已存在的时间
+            # 2. 计算弹窗从创建到现在经过了多长时间
             elapsed = time.time() - app.progress_dialog.creation_time
 
-            # 如果存在时间小于最短显示时间
+            # 3. 【核心逻辑】判断存在时间是否太短
             if elapsed < MIN_DISPLAY_TIME:
-                # 计算还需要等待多久
+                # 如果时间太短，就计算还需要等待多久 (单位：毫秒)
                 delay_ms = int((MIN_DISPLAY_TIME - elapsed) * 1000)
-                # 安排自己在延迟后再次执行本方法
+                # 使用 after() 方法，让 Tkinter 在等待指定时间后，再次调用本方法
                 app.after(delay_ms, self._hide_progress_dialog)
             else:
-                # 如果时间足够长，则安全地关闭它
+                # 4. 如果显示时间足够长，就直接安全地关闭它
                 app.progress_dialog.close()
-                app.progress_dialog = None  # 清空引用
+                app.progress_dialog = None  # 清理引用，防止内存泄漏
         else:
-            # 如果弹窗已不存在，则清空引用
+            # 如果弹窗一开始就不存在，也确保引用被清理
             app.progress_dialog = None
 
 
