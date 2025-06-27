@@ -18,13 +18,11 @@ class DownloaderConfig(BaseModel):
     max_workers: int = 8
     genome_sources_file: str = "genome_sources_list.yml"
     download_output_base_dir: str = "genomes"
-    force_download: bool = False
-    use_proxy_for_download: bool = False
 
 class LocusConversionConfig(BaseModel):
     output_dir_name: str = "locus_conversion_results"
     gff_db_storage_dir: str = "gff_databases_cache"
-    force_gff_db_creation: bool = False
+
 
 class AIServicesConfig(BaseModel):
     default_provider: str = "google"
@@ -50,6 +48,7 @@ class AIServicesConfig(BaseModel):
 class AIPromptsConfig(BaseModel):
     translation_prompt: str = "请将以下生物学领域的文本翻译成中文：\n\n{text}\n\n请只返回翻译结果，不要包含任何额外的解释或说明。"
     analysis_prompt: str = "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并提供一个简洁的总结。基因功能描述：\n\n{text}\n"
+    custom_prompt: str = ""
 
 class AnnotationToolConfig(BaseModel):
     max_workers: int = 8
@@ -57,9 +56,7 @@ class AnnotationToolConfig(BaseModel):
     go_db_path: str = "go.obo"
     go_slim_db_path: str = "goslim_generic.obo"
     database_root_dir: str = "annotation_databases"
-    # 修改此处：将 lambda 替换为静态方法
     database_files: Dict[str, str] = Field(default_factory=lambda: AnnotationToolConfig._default_database_files())
-    # 修改此处：将 lambda 替换为静态方法
     database_columns: Dict[str, str] = Field(default_factory=lambda: AnnotationToolConfig._default_database_columns())
 
     @staticmethod
@@ -93,9 +90,7 @@ class BatchAIProcessorConfig(BaseModel):
     prompt_template_file: str = "prompt_template.txt"
 
 class HomologySelectionCriteria(BaseModel):
-    # 修改此处：将 lambda 替换为静态方法
     sort_by: List[str] = Field(default_factory=lambda: HomologySelectionCriteria._default_sort_by())
-    # 修改此处：将 lambda 替换为静态方法
     ascending: List[bool] = Field(default_factory=lambda: HomologySelectionCriteria._default_ascending())
     top_n: int = 1
     evalue_threshold: float = 1.0e-10
@@ -122,18 +117,12 @@ class IntegrationPipelineConfig(BaseModel):
     bridge_species_name: str = "Arabidopsis_thaliana"
     gff_db_storage_dir: str = "gff_databases_cache"
     force_gff_db_creation: bool = False
-    # 修改此处：将 lambda 替换为静态方法
     gff_files: Dict[str, Optional[str]] = Field(default_factory=lambda: IntegrationPipelineConfig._default_gff_files())
-    # 修改此处：将 lambda 替换为静态方法
     homology_files: Dict[str, Optional[str]] = Field(default_factory=lambda: IntegrationPipelineConfig._default_homology_files())
-    # 修改此处：将 lambda 替换为静态方法
     bsa_columns: Dict[str, str] = Field(default_factory=lambda: IntegrationPipelineConfig._default_bsa_columns())
-    # 修改此处：将 lambda 替换为静态方法
     hvg_columns: Dict[str, str] = Field(default_factory=lambda: IntegrationPipelineConfig._default_hvg_columns())
-    # 修改此处：将 lambda 替换为静态方法
     homology_columns: Dict[str, str] = Field(default_factory=lambda: IntegrationPipelineConfig._default_homology_columns())
     selection_criteria_source_to_bridge: HomologySelectionCriteria = Field(default_factory=HomologySelectionCriteria)
-    # 修改此处：将 lambda 替换为静态方法
     selection_criteria_bridge_to_target: HomologySelectionCriteria = Field(default_factory=lambda: IntegrationPipelineConfig._default_selection_criteria_bridge_to_target())
     common_hvg_log2fc_threshold: float = 1.0
 
@@ -194,8 +183,6 @@ class GenomeSourceItem(BaseModel):
     homology_ath_url: Optional[str] = None
     gene_id_regex: Optional[str] = None
     bridge_version: Optional[str] = "Araport11"
-    # 在 GenomeSourceItem 模型中添加 version_id 字段
-    # 这将确保它在模型中显式存在，而不是仅在 loader.py 中通过 setattr 添加
     version_id: Optional[str] = Field(default=None)
 
 
@@ -204,7 +191,6 @@ class GenomeSourceItem(BaseModel):
 
 class GenomeSourcesConfig(BaseModel):
     list_version: int = 1
-    # 修改此处：将 lambda 替换为静态方法
     genome_sources: Dict[str, GenomeSourceItem] = Field(default_factory=lambda: GenomeSourcesConfig._default_genome_sources())
 
     @staticmethod

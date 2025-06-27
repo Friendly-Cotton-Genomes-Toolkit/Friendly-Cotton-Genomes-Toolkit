@@ -166,26 +166,11 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
         save_config(default_config, main_config_path)
 
         # 创建并保存默认基因组源文件 (GenomeSourcesConfig 现在是 Pydantic BaseModel)
-        default_sources_data = GenomeSourcesConfig(
-            list_version=1, # 确保设置 list_version
-            genome_sources={
-                "NAU-NBI_v1.1": GenomeSourceItem(
-                    species_name="G. hirsutum",
-                    genome_type="cotton", # 必须指定，因为 GenomeSourceItem 中没有默认值
-                    gff3_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.gff.gz",
-                    GO_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.gene.go.gz",
-                    IPR_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.gene.ipr.gz",
-                    KEGG_orthologs_url=None,
-                    KEGG_pathways_url=None,
-                    homology_ath_url="https://www.cottongen.org/data/download/genome/NAU/gossypium_hirsutum_v1.1/annotation/Ghirsutum_v1.1.ath_homolog.gz",
-                    bridge_version="araport11",
-                    gene_id_regex=r'(Gh_[AD]\d{2}G\d{4})' # 确保此字段也有默认值或在此处指定
-                )
-            }
-        )
+        default_sources_data = GenomeSourcesConfig()
+
         with open(sources_path, 'w', encoding='utf-8') as f:
-            # 使用 model_dump() 进行序列化
-            yaml.dump(default_sources_data.model_dump(exclude_none=True, exclude_defaults=True), f, allow_unicode=True, sort_keys=False, indent=2)
+            yaml.dump(default_sources_data.model_dump(exclude_none=True), f, allow_unicode=True, sort_keys=False,
+                      indent=2)
 
         return True, main_config_path, sources_path
 

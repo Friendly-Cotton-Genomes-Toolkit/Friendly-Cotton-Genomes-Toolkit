@@ -35,6 +35,12 @@ class AIAssistantTab(BaseTab):
         self.ai_proxy_var = tk.BooleanVar(value=False)
         self._create_base_widgets()
 
+        # 为自定义提示词添加占位符
+        self.app.placeholders["custom_prompt"] = _("在此处输入您的自定义提示词模板，必须包含 {text} 占位符...")
+
+        # 用于保存提示词的防抖计时器
+        self._prompt_save_timer = None
+
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
@@ -42,10 +48,13 @@ class AIAssistantTab(BaseTab):
 
         safe_text_color = ("gray10", "#DCE4EE")
         font_regular = (self.app.font_family, 14)
+        font_mono = (self.app.mono_font_family, 12)
 
+        # --- 第0行: 服务商和模型选择 ---
         provider_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
         provider_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
         provider_frame.grid_columnconfigure((1, 3), weight=1)
+
         ctk.CTkLabel(provider_frame, text=_("AI服务商:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10)
         provider_names = [v['name'] for v in self.app.AI_PROVIDERS.values()]
         self.ai_selected_provider_var = tk.StringVar()
@@ -57,16 +66,36 @@ class AIAssistantTab(BaseTab):
         self.model_dropdown = ctk.CTkOptionMenu(provider_frame, variable=self.ai_selected_model_var, values=[_("请先选择服务商")], font=font_regular, dropdown_font=font_regular)
         self.model_dropdown.grid(row=0, column=3, padx=5, pady=10, sticky="ew")
 
+        # --- 第1行: 任务类型和提示词模板 ---
         prompt_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        prompt_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
-        ctk.CTkLabel(prompt_frame, text=_("处理任务:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10)
-        self.prompt_type_var = tk.StringVar(value=_("翻译"))
-        self.prompt_selector = ctk.CTkSegmentedButton(prompt_frame, values=[_("翻译"), _("分析")], variable=self.prompt_type_var, font=font_regular)
-        self.prompt_selector.grid(row=0, column=1, padx=5, pady=10, sticky="w")
+        prompt_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(5,0))
+        prompt_frame.grid_columnconfigure(0, weight=1)
 
+        task_header_frame = ctk.CTkFrame(prompt_frame, fg_color="transparent")
+        task_header_frame.grid(row=0, column=0, sticky="ew", pady=(0,5), padx=5)
+
+        ctk.CTkLabel(task_header_frame, text=_("处理任务:"), font=font_regular, text_color=safe_text_color).pack(side="left", padx=(10, 5))
+        self.prompt_type_var = tk.StringVar(value=_("翻译"))
+        self.prompt_selector = ctk.CTkSegmentedButton(
+            task_header_frame,
+            values=[_("翻译"), _("分析"), _("自定义")],
+            variable=self.prompt_type_var,
+            font=font_regular,
+            command=self._on_task_type_change
+        )
+        self.prompt_selector.pack(side="left", padx=5)
+
+        ctk.CTkLabel(prompt_frame, text=_("提示词模板:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0, padx=(15,5), pady=(5,0), sticky="w")
+        self.prompt_textbox = ctk.CTkTextbox(prompt_frame, height=120, font=font_mono, wrap="word")
+        self.prompt_textbox.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 10))
+        # 绑定 KeyRelease 事件以通过防抖机制触发保存
+        self.prompt_textbox.bind("<KeyRelease>", self._on_prompt_change_debounced)
+
+        # --- 第2行: CSV文件处理 ---
         csv_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
         csv_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
         csv_frame.grid_columnconfigure(1, weight=1)
+
         ctk.CTkLabel(csv_frame, text=_("CSV文件路径:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10, sticky="w")
         self.csv_path_entry = ctk.CTkEntry(csv_frame, font=font_regular)
         self.csv_path_entry.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
@@ -85,8 +114,88 @@ class AIAssistantTab(BaseTab):
         ctk.CTkCheckBox(csv_frame, text=_("另存为新文件 (否则在原文件上修改)"), variable=self.save_as_new_var, font=font_regular, text_color=safe_text_color).grid(row=3, column=1, padx=5, pady=10, sticky="w")
         ctk.CTkCheckBox(csv_frame, text=_("为AI服务使用HTTP/HTTPS代理 (请在配置编辑器中设置代理地址)"), variable=self.ai_proxy_var, font=font_regular, text_color=safe_text_color).grid(row=4, column=1, columnspan=2, padx=5, pady=(5, 15), sticky="w")
 
+        # --- 第3行: 开始按钮 ---
         self.start_button = ctk.CTkButton(parent_frame, text=_("开始处理CSV文件"), command=self.start_ai_csv_processing_task, height=40, font=(self.app.font_family, 15, "bold"))
-        self.start_button.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        self.start_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(10,15))
+
+
+    def _on_prompt_change_debounced(self, event=None):
+        """在短暂延迟后保存提示词到配置，以避免在每次按键时都保存。"""
+        # 如果存在旧的计时器，则取消它
+        if self._prompt_save_timer is not None:
+            self.after_cancel(self._prompt_save_timer)
+
+        # 设置一个新的计时器
+        self._prompt_save_timer = self.after(500, self._save_prompt_to_config)  # 500毫秒延迟
+
+    def _save_prompt_to_config(self):
+        """将文本框中当前的提示词保存到配置文件。"""
+        if not self.app.current_config or not self.app.config_path:
+            return
+
+        current_task = self.prompt_type_var.get()
+        current_prompt = self.prompt_textbox.get("1.0", tk.END).strip()
+
+        # 避免保存占位符文本
+        is_placeholder = any(current_prompt == _(ph) for ph in self.app.placeholders.values())
+        if is_placeholder:
+            return
+
+        config_changed = False
+        prompts_cfg = self.app.current_config.ai_prompts
+
+        if current_task == _("翻译") and prompts_cfg.translation_prompt != current_prompt:
+            prompts_cfg.translation_prompt = current_prompt
+            config_changed = True
+        elif current_task == _("分析") and prompts_cfg.analysis_prompt != current_prompt:
+            prompts_cfg.analysis_prompt = current_prompt
+            config_changed = True
+        elif current_task == _("自定义") and prompts_cfg.custom_prompt != current_prompt:
+            prompts_cfg.custom_prompt = current_prompt
+            config_changed = True
+
+        if config_changed:
+            self.app._log_to_viewer(_("提示词已更新，正在保存配置..."), "DEBUG")
+            # 创建一个深拷贝以传递给线程，避免竞态条件
+            config_to_save = copy.deepcopy(self.app.current_config)
+            # 在后台线程中运行保存，以免UI冻结
+            threading.Thread(
+                target=self.app.event_handler.save_config_file,
+                args=(config_to_save, False),
+                daemon=True
+            ).start()
+
+    def _on_task_type_change(self, choice=None):
+        """当任务类型改变时，更新提示词文本框。"""
+        if not self.app.current_config:
+            self.prompt_textbox.delete("1.0", tk.END)
+            self.prompt_textbox.insert("1.0", _("请先加载配置文件。"))
+            return
+
+        # 在切换内容之前，确保上一个修改已保存
+        if self._prompt_save_timer is not None:
+            self.after_cancel(self._prompt_save_timer)
+            self._save_prompt_to_config()  # 立即保存
+
+        if choice is None:
+            choice = self.prompt_type_var.get()
+
+        prompts_cfg = self.app.current_config.ai_prompts
+        self.app.ui_manager._clear_placeholder(self.prompt_textbox, "custom_prompt")
+        self.prompt_textbox.delete("1.0", tk.END)
+
+        if choice == _("翻译"):
+            self.prompt_textbox.insert("1.0", prompts_cfg.translation_prompt or "")
+        elif choice == _("分析"):
+            self.prompt_textbox.insert("1.0", prompts_cfg.analysis_prompt or "")
+        elif choice == _("自定义"):
+            custom_prompt_text = prompts_cfg.custom_prompt or ""
+            self.prompt_textbox.insert("1.0", custom_prompt_text)
+            if not custom_prompt_text:
+                self.app.ui_manager._add_placeholder(self.prompt_textbox, "custom_prompt", force=True)
+
+        # 更改内容后将焦点设置到文本框
+        self.prompt_textbox.focus_set()
 
 
 
@@ -176,15 +285,21 @@ class AIAssistantTab(BaseTab):
     def update_from_config(self):
         if not self.app.current_config:
             return
-        if self.app.current_config:
-            self.ai_proxy_var.set(self.app.current_config.ai_services.use_proxy_for_ai)
 
+        # 更新代理复选框
+        self.ai_proxy_var.set(self.app.current_config.ai_services.use_proxy_for_ai)
+
+        # 更新服务商和模型下拉菜单
         default_provider_key = self.app.current_config.ai_services.default_provider
         default_provider_name = self.app.AI_PROVIDERS.get(default_provider_key, {}).get('name', '')
         if default_provider_name:
             self.ai_selected_provider_var.set(default_provider_name)
-
         self.update_model_dropdown()
+
+        # 更新提示词文本框以反映当前配置
+        self._on_task_type_change()
+
+
 
     def update_button_state(self, is_running, has_config):
         state = "disabled" if is_running or not has_config else "normal"
@@ -284,6 +399,9 @@ class AIAssistantTab(BaseTab):
             return
 
         try:
+            # 首先，确保任何待处理的提示词修改都已保存
+            self._save_prompt_to_config()
+
             provider_name = self.ai_selected_provider_var.get()
             model = self.ai_selected_model_var.get()
             prompt_type = self.prompt_type_var.get()
@@ -291,14 +409,19 @@ class AIAssistantTab(BaseTab):
             source_column = self.source_column_var.get()
             new_column_name = self.new_column_entry.get().strip()
             save_as_new = self.save_as_new_var.get()
-            use_proxy = self.ai_proxy_var.get()
-            self.app.current_config.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
 
+            # 直接从文本框获取提示词模板
+            prompt_template = self.prompt_textbox.get("1.0", tk.END).strip()
+
+            # --- 验证 ---
             if not all([provider_name, model, csv_path, source_column, new_column_name]):
-                self.app.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"));
+                self.app.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"))
                 return
             if not os.path.exists(csv_path):
-                self.app.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"));
+                self.app.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"))
+                return
+            if prompt_type == _("自定义") and not prompt_template:
+                self.app.show_error_message(_("输入缺失"), _("使用“自定义”任务时，提示词模板不能为空。"))
                 return
 
             provider_key = ""
@@ -307,40 +430,35 @@ class AIAssistantTab(BaseTab):
 
             provider_config = self.app.current_config.ai_services.providers.get(provider_key)
             if not provider_config:
-                self.app.show_error_message(_("配置错误"), f"{_('找不到服务商')} '{provider_key}' {_('的配置。')}");
+                self.app.show_error_message(_("配置错误"), f"{_('找不到服务商')} '{provider_key}' {_('的配置。')}")
                 return
 
-            prompt_template = self.app.current_config.ai_prompts.translation_prompt if prompt_type == _(
-                "翻译") else self.app.current_config.ai_prompts.analysis_prompt
-
+            # 在启动任务前，从UI更新配置中的代理设置
             self.app.current_config.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
-
             proxies = None
             if self.ai_proxy_var.get():
-                # 从顶层配置获取代理地址
-                if self.app.current_config.proxies and (
-                        self.app.current_config.proxies.http or self.app.current_config.proxies.https):
+                if self.app.current_config.proxies and (self.app.current_config.proxies.http or self.app.current_config.proxies.https):
                     proxies = self.app.current_config.proxies.to_dict()
                 else:
                     self.app.show_warning_message(_("代理警告"), _("AI代理开关已打开，但未在配置编辑器中设置代理地址。"))
 
-            output_path_for_task = None if save_as_new else csv_path
+            output_path_for_task = None
+            if not save_as_new:
+                 output_path_for_task = csv_path
 
-            ai_client = AIWrapper(
-                provider=provider_key, api_key=provider_config.api_key, model=model,
-                base_url=provider_config.base_url, proxies=proxies
-            )
+            # 将配置深拷贝以传递给线程
+            config_for_task = copy.deepcopy(self.app.current_config)
 
-            self.app.event_handler._start_task(  # 委托给 EventHandler
+            self.app.event_handler._start_task(
                 task_name=_("AI批量处理CSV"),
                 target_func=run_ai_task,
                 kwargs={
-                    'config': self.app.current_config,
+                    'config': config_for_task,
                     'input_file': csv_path,
                     'source_column': source_column,
                     'new_column': new_column_name,
-                    'task_type': prompt_type,
-                    'custom_prompt_template': prompt_template,
+                    'task_type': prompt_type, # 传递任务类型以用于缓存标识符
+                    'custom_prompt_template': prompt_template, # 传递文本框中的实际提示词
                     'cli_overrides': None,
                     'output_file': output_path_for_task
                 }

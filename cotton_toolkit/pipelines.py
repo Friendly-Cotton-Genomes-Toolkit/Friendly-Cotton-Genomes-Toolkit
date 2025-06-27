@@ -822,83 +822,92 @@ def run_download_pipeline(
         cancel_event: Optional[threading.Event] = None
 ):
     """
-    执行数据下载流程。
+    【已修正】执行数据下载流程。
+    能根据传入的 'file_types' 参数，精确地选择性下载文件。
     """
     log = status_callback if status_callback else print
     progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
     log("INFO: 下载流程开始...")
+
     downloader_cfg = config.downloader
     genome_sources = get_genome_data_sources(config, logger_func=log)
     if cli_overrides is None: cli_overrides = {}
 
-    # --- 细化代理逻辑 ---
     versions_to_download = cli_overrides.get("versions") or list(genome_sources.keys())
     force_download = cli_overrides.get("force", downloader_cfg.force_download)
     max_workers = downloader_cfg.max_workers
-
-    # 检查CLI是否覆盖了代理设置
     use_proxy_for_this_run = cli_overrides.get("use_proxy_for_download", downloader_cfg.use_proxy_for_download)
+
+    # --- 核心修改：检查是否从UI传入了特定的文件类型列表 ---
+    file_keys_to_process = cli_overrides.get("file_types")
 
     proxies_to_use = None
     if use_proxy_for_this_run:
-        # 只有在开关为True时才尝试获取代理地址
-        if downloader_cfg.proxies and (downloader_cfg.proxies.http or downloader_cfg.proxies.https):
+        if config.proxies and (config.proxies.http or config.proxies.https):
             proxies_to_use = config.proxies.to_dict()
             log(f"INFO: 本次下载将使用代理: {proxies_to_use}")
         else:
             log("WARNING: 下载代理开关已打开，但配置文件中未设置代理地址。")
 
-
     log(f"INFO: 将尝试下载的基因组版本: {', '.join(versions_to_download)}")
 
-
     all_download_tasks = []
-    ALL_FILE_KEYS = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+    # 如果没有从UI指定，则使用models.py中定义的所有可能的URL属性作为默认值
+    if not file_keys_to_process:
+        all_possible_keys = [f.name.replace('_url', '') for f in GenomeSourceItem.model_fields.values() if
+                             f.name.endswith('_url')]
+        log(f"DEBUG: 未从UI指定文件类型，将尝试检查所有可能的类型: {all_possible_keys}")
+    else:
+        all_possible_keys = file_keys_to_process
+        log(f"DEBUG: 将根据UI的选择，精确下载以下文件类型: {all_possible_keys}")
+
     for version_id in versions_to_download:
         genome_info = genome_sources.get(version_id)
         if not genome_info:
             log(f"WARNING: 在基因组源中未找到版本 '{version_id}'，已跳过。")
             continue
-        for file_key in ALL_FILE_KEYS:
-            url = getattr(genome_info, f"{file_key}_url", None)
-            if url:
-                all_download_tasks.append({
-                    "version_id": version_id,  # <-- 将version_id也加入任务信息中
-                    "genome_info": genome_info,
-                    "file_key": file_key,
-                    "url": url
-                })
+
+        for file_key in all_possible_keys:
+            url_attr = f"{file_key}_url"
+            if hasattr(genome_info, url_attr):
+                url = getattr(genome_info, url_attr)
+                if url:
+                    all_download_tasks.append({
+                        "version_id": version_id,
+                        "genome_info": genome_info,
+                        "file_key": file_key,
+                        "url": url
+                    })
 
     if not all_download_tasks:
-        log("WARNING: 没有找到任何有效的URL可供下载。")
+        log("WARNING: 根据您的选择，没有找到任何有效的URL可供下载。")
         return
 
     log(f"INFO: 准备下载 {len(all_download_tasks)} 个文件...")
 
-    successful_downloads = 0
-    failed_downloads = 0
-
+    successful_downloads, failed_downloads = 0, 0
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_task = {
-            # 【核心修正】在提交任务时，将 task["version_id"] 作为新参数传递
             executor.submit(
                 download_genome_data,
                 downloader_config=config.downloader,
-                version_id=task["version_id"],  # <-- 新增传递的参数
+                version_id=task["version_id"],
                 genome_info=task["genome_info"],
                 file_key=task["file_key"],
                 url=task["url"],
                 force=force_download,
                 proxies=proxies_to_use,
-                status_callback=log
+                status_callback=log,
+                cancel_event=cancel_event
             ): task for task in all_download_tasks
         }
 
-        # ... (后续的循环、进度更新、日志总结部分代码保持不变) ...
+        total_tasks = len(future_to_task)
         for i, future in enumerate(as_completed(future_to_task)):
             if cancel_event and cancel_event.is_set():
                 log("INFO: 下载任务已被用户取消。")
                 break
+
             task_info = future_to_task[future]
             try:
                 if future.result():
@@ -906,11 +915,12 @@ def run_download_pipeline(
                 else:
                     failed_downloads += 1
             except Exception as exc:
-                # 使用 version_id 而不是不存在的 genome_info.id
-                log(f"ERROR: 下载 {task_info['version_id']} 的 {task_info['file_key']} 文件时发生严重错误: {exc}")
+                log(f"ERROR: 下载 {task_info['version_id']} 的 {task_info['file_key']} 文件时发生严重错误: {exc}",
+                    "ERROR")
                 failed_downloads += 1
-            progress((i + 1) * 100 // len(all_download_tasks),
-                     f"{_('总体下载进度')} ({i + 1}/{len(all_download_tasks)})")
+
+            if progress:
+                progress((i + 1) * 100 // total_tasks, f"{_('总体下载进度')} ({i + 1}/{total_tasks})")
 
     log(f"INFO: 所有指定的下载任务已完成。成功: {successful_downloads}, 失败: {failed_downloads}。")
 
