@@ -30,7 +30,6 @@ class GFFQueryTab(ctk.CTkFrame):
         self._create_widgets()
         self.update_from_config()
 
-
     def _create_widgets(self):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -38,8 +37,7 @@ class GFFQueryTab(ctk.CTkFrame):
         ctk.CTkLabel(self, text=_("基因/区域位点查询"), font=self.app.app_title_font).grid(
             row=0, column=0, pady=(10, 5), padx=20, sticky="n")
 
-        # 【核心修改】为卡片Frame添加 border_width=0
-        main_frame = ctk.CTkFrame(self, border_width=0)
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
         main_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
         main_frame.grid_columnconfigure((0, 1), weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
@@ -52,14 +50,15 @@ class GFFQueryTab(ctk.CTkFrame):
             row=0, column=0, sticky="w")
         self.gff_query_genes_textbox = ctk.CTkTextbox(input_frame, font=self.app.app_font, wrap="word")
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", pady=(5, 0))
-        self.app._add_placeholder(self.gff_query_genes_textbox, "gff_genes")
+        self.app.ui_manager._add_placeholder(self.gff_query_genes_textbox, "gff_genes")
         self.gff_query_genes_textbox.bind("<FocusIn>",
-                                          lambda e: self.app._clear_placeholder(self.gff_query_genes_textbox,
-                                                                                "gff_genes"))
+                                          lambda e: self.app.ui_manager._clear_placeholder(self.gff_query_genes_textbox,
+                                                                                           "gff_genes"))
         self.gff_query_genes_textbox.bind("<FocusOut>",
-                                          lambda e: self.app._add_placeholder(self.gff_query_genes_textbox,
-                                                                              "gff_genes"))
+                                          lambda e: self.app.ui_manager._add_placeholder(self.gff_query_genes_textbox,
+                                                                                         "gff_genes"))
         self.gff_query_genes_textbox.bind("<KeyRelease>", self._on_gff_query_gene_input_change)
+
         ctk.CTkLabel(input_frame, text=_("或 输入染色体区域:"), font=self.app.app_font_bold).grid(
             row=2, column=0, sticky="w", pady=(15, 5))
         self.gff_query_region_entry = ctk.CTkEntry(input_frame, font=self.app.app_font,
@@ -103,10 +102,10 @@ class GFFQueryTab(ctk.CTkFrame):
                                           lambda e: self.app._add_placeholder(self.gff_query_genes_textbox,
                                                                               "gff_genes"))
 
+
     def update_from_config(self):
         if self.app.genome_sources_data:
             self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
-
 
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
@@ -124,8 +123,9 @@ class GFFQueryTab(ctk.CTkFrame):
 
     def _on_gff_query_gene_input_change(self, event=None):
         """GFF查询输入框基因ID变化时触发基因组自动识别。"""
-        # 调用主应用的通用识别方法，并传入本 Tab 的控件和变量
-        self.app._auto_identify_genome_version(self.gff_query_genes_textbox, self.selected_gff_query_assembly)
+        self.app.event_handler._auto_identify_genome_version(self.gff_query_genes_textbox,
+                                                             self.selected_gff_query_assembly)  # 委托给 EventHandler
+
 
     def start_gff_query_task(self):
         if not self.app.current_config:
@@ -173,7 +173,7 @@ class GFFQueryTab(ctk.CTkFrame):
             'region': region_tuple,
             'output_csv_path': output_path
         }
-        self.app._start_task(
+        self.app.event_handler._start_task(  # 委托给 EventHandler
             task_name=_("GFF基因查询"),
             target_func=run_gff_lookup,
             kwargs=task_kwargs

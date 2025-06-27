@@ -9,7 +9,7 @@ def identify_genome_from_gene_ids(
 ) -> Optional[str]:
     """
     通过基因ID列表识别最可能的基因组版本。
-    【已增强】增加详细的匹配分数日志，并能检测和警告混合基因组输入。
+    增加详细的匹配分数日志，并能检测和警告混合基因组输入。
     """
     if not gene_ids or not genome_sources:
         return None

@@ -27,112 +27,126 @@ class HomologyTab(BaseTab):
 
         super().__init__(parent, app)
 
-    def _create_widgets(self):
-        # 所有控件都创建在 self.scrollable_frame 上
-        parent_frame = self.scrollable_frame
-        parent_frame.grid_columnconfigure(1, weight=1)  # 为两列布局
+        self._create_base_widgets()
 
-        # --- 卡片1: 基因组与基因列表 ---
-        card1 = ctk.CTkFrame(parent_frame, border_width=0)
+    def _create_widgets(self):
+        parent_frame = self.scrollable_frame
+        parent_frame.grid_columnconfigure(1, weight=1)
+
+        safe_text_color = ("gray10", "#DCE4EE")
+        font_regular = (self.app.font_family, 14)
+        font_bold = (self.app.font_family, 15, "bold")
+        font_title = (self.app.font_family, 24, "bold")
+        font_mono = (self.app.mono_font_family, 12)
+
+        card1 = ctk.CTkFrame(parent_frame, fg_color="transparent")
         card1.grid(row=0, column=0, columnspan=2, sticky="ew", padx=0, pady=(0, 10))
         card1.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(card1, text=_("基因同源转换"), font=self.app.app_title_font).grid(
-            row=0, column=0, columnspan=2, pady=(5, 10), padx=10, sticky="n")
+        ctk.CTkLabel(card1, text=_("基因同源转换"), font=font_title, text_color=safe_text_color).grid(row=0, column=0,
+                                                                                                      columnspan=2,
+                                                                                                      pady=(5, 10),
+                                                                                                      padx=10,
+                                                                                                      sticky="n")
 
-        # 源基因组
-        ctk.CTkLabel(card1, text=_("源基因组:"), font=self.app.app_font).grid(row=1, column=0, padx=(15, 5), pady=10,
-                                                                              sticky="w")
-        self.selected_homology_source_assembly = tk.StringVar()
+        ctk.CTkLabel(card1, text=_("源基因组:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0,
+                                                                                                     padx=(15, 5),
+                                                                                                     pady=10,
+                                                                                                     sticky="w")
         self.source_assembly_dropdown = ctk.CTkOptionMenu(card1, variable=self.selected_homology_source_assembly,
-                                                          values=[_("加载中...")], font=self.app.app_font,
-                                                          dropdown_font=self.app.app_font)
+                                                          values=[_("加载中...")], font=font_regular,
+                                                          dropdown_font=font_regular,
+                                                          command=self._on_homology_assembly_selection)
         self.source_assembly_dropdown.grid(row=1, column=1, padx=(0, 10), pady=10, sticky="ew")
 
-        # 目标基因组
-        ctk.CTkLabel(card1, text=_("目标基因组:"), font=self.app.app_font).grid(row=2, column=0, padx=(15, 5), pady=10,
-                                                                                sticky="w")
-        self.selected_homology_target_assembly = tk.StringVar()
+        ctk.CTkLabel(card1, text=_("目标基因组:"), font=font_regular, text_color=safe_text_color).grid(row=2, column=0,
+                                                                                                       padx=(15, 5),
+                                                                                                       pady=10,
+                                                                                                       sticky="w")
         self.target_assembly_dropdown = ctk.CTkOptionMenu(card1, variable=self.selected_homology_target_assembly,
-                                                          values=[_("加载中...")], font=self.app.app_font,
-                                                          dropdown_font=self.app.app_font)
+                                                          values=[_("加载中...")], font=font_regular,
+                                                          dropdown_font=font_regular,
+                                                          command=self._on_homology_assembly_selection)
         self.target_assembly_dropdown.grid(row=2, column=1, padx=(0, 10), pady=10, sticky="ew")
 
-        # 基因ID输入框
-        ctk.CTkLabel(card1, text=_("基因ID列表:"), font=self.app.app_font).grid(row=3, column=0, padx=(15, 5), pady=10,
-                                                                                sticky="nw")
-        self.homology_map_genes_textbox = ctk.CTkTextbox(card1, height=150, font=self.app.app_font_mono, wrap="word")
+        ctk.CTkLabel(card1, text=_("基因ID列表:"), font=font_regular, text_color=safe_text_color).grid(row=3, column=0,
+                                                                                                       padx=(15, 5),
+                                                                                                       pady=10,
+                                                                                                       sticky="nw")
+        self.homology_map_genes_textbox = ctk.CTkTextbox(card1, height=150, font=font_mono, wrap="word")
         self.homology_map_genes_textbox.grid(row=3, column=1, padx=(0, 10), pady=10, sticky="nsew")
-        # 为文本框添加占位符
-        self.app._add_placeholder(self.homology_map_genes_textbox, "homology_genes")
-        self.homology_map_genes_textbox.bind("<FocusIn>",
-                                             lambda e: self.app._clear_placeholder(self.homology_map_genes_textbox,
-                                                                                   "homology_genes"))
-        self.homology_map_genes_textbox.bind("<FocusOut>",
-                                             lambda e: self.app._add_placeholder(self.homology_map_genes_textbox,
-                                                                                 "homology_genes"))
+        self.app.ui_manager._add_placeholder(self.homology_map_genes_textbox, "homology_genes")
+        self.homology_map_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._clear_placeholder(
+            self.homology_map_genes_textbox, "homology_genes"))
+        self.homology_map_genes_textbox.bind("<FocusOut>", lambda e: self.app.ui_manager._add_placeholder(
+            self.homology_map_genes_textbox, "homology_genes"))
+        self.homology_map_genes_textbox.bind("<KeyRelease>", self._on_homology_gene_input_change)
 
-        # --- 卡片2: 参数设置 ---
-        card2 = ctk.CTkFrame(parent_frame, border_width=0)
+        card2 = ctk.CTkFrame(parent_frame, fg_color="transparent")
         card2.grid(row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=10)
-        card2.grid_columnconfigure((1, 3), weight=1)  # 设置列权重
+        card2.grid_columnconfigure((1, 3), weight=1)
 
-        ctk.CTkLabel(card2, text=_("参数设置"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=4,
-                                                                                  padx=10, pady=(10, 15), sticky="w")
-
-        self.homology_strict_priority_var = tk.BooleanVar(value=True)
+        ctk.CTkLabel(card2, text=_("参数设置"), font=font_bold, text_color=safe_text_color).grid(row=0, column=0,
+                                                                                                 columnspan=4, padx=10,
+                                                                                                 pady=(10, 15),
+                                                                                                 sticky="w")
         self.strict_switch = ctk.CTkSwitch(card2, text=_("严格匹配模式"), variable=self.homology_strict_priority_var,
-                                           font=self.app.app_font)
+                                           font=font_regular, text_color=safe_text_color)
         self.strict_switch.grid(row=1, column=0, columnspan=2, padx=15, pady=10, sticky="w")
 
-        ctk.CTkLabel(card2, text=_("Top N:"), font=self.app.app_font).grid(row=2, column=0, padx=(15, 5), pady=5,
-                                                                           sticky="w")
-        self.homology_top_n_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        ctk.CTkLabel(card2, text=_("Top N:"), font=font_regular, text_color=safe_text_color).grid(row=2, column=0,
+                                                                                                  padx=(15, 5), pady=5,
+                                                                                                  sticky="w")
+        self.homology_top_n_entry = ctk.CTkEntry(card2, font=font_regular)
         self.homology_top_n_entry.insert(0, "1")
         self.homology_top_n_entry.grid(row=2, column=1, padx=(0, 10), pady=5, sticky="ew")
 
-        ctk.CTkLabel(card2, text=_("E-value:"), font=self.app.app_font).grid(row=2, column=2, padx=(15, 5), pady=5,
-                                                                             sticky="w")
-        self.homology_evalue_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        ctk.CTkLabel(card2, text=_("E-value:"), font=font_regular, text_color=safe_text_color).grid(row=2, column=2,
+                                                                                                    padx=(15, 5),
+                                                                                                    pady=5, sticky="w")
+        self.homology_evalue_entry = ctk.CTkEntry(card2, font=font_regular)
         self.homology_evalue_entry.insert(0, "1e-10")
         self.homology_evalue_entry.grid(row=2, column=3, padx=(0, 10), pady=5, sticky="ew")
 
-        ctk.CTkLabel(card2, text=_("PID (%):"), font=self.app.app_font).grid(row=3, column=0, padx=(15, 5), pady=5,
-                                                                             sticky="w")
-        self.homology_pid_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        ctk.CTkLabel(card2, text=_("PID (%):"), font=font_regular, text_color=safe_text_color).grid(row=3, column=0,
+                                                                                                    padx=(15, 5),
+                                                                                                    pady=5, sticky="w")
+        self.homology_pid_entry = ctk.CTkEntry(card2, font=font_regular)
         self.homology_pid_entry.insert(0, "30.0")
         self.homology_pid_entry.grid(row=3, column=1, padx=(0, 10), pady=5, sticky="ew")
 
-        ctk.CTkLabel(card2, text=_("Score:"), font=self.app.app_font).grid(row=3, column=2, padx=(15, 5), pady=5,
-                                                                           sticky="w")
-        self.homology_score_entry = ctk.CTkEntry(card2, font=self.app.app_font)
+        ctk.CTkLabel(card2, text=_("Score:"), font=font_regular, text_color=safe_text_color).grid(row=3, column=2,
+                                                                                                  padx=(15, 5), pady=5,
+                                                                                                  sticky="w")
+        self.homology_score_entry = ctk.CTkEntry(card2, font=font_regular)
         self.homology_score_entry.insert(0, "50.0")
         self.homology_score_entry.grid(row=3, column=3, padx=(0, 10), pady=5, sticky="ew")
 
-        # --- 卡片3: 输出文件 ---
-        card3 = ctk.CTkFrame(parent_frame, border_width=0)
+        card3 = ctk.CTkFrame(parent_frame, fg_color="transparent")
         card3.grid(row=2, column=0, columnspan=2, sticky="ew", padx=0, pady=10)
         card3.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(card3, text=_("输出文件"), font=self.app.app_font_bold).grid(row=0, column=0, columnspan=3,
-                                                                                  padx=10, pady=(10, 15), sticky="w")
-
-        ctk.CTkLabel(card3, text=_("输出路径:"), font=self.app.app_font).grid(row=1, column=0, padx=(15, 5), pady=10,
-                                                                              sticky="w")
-        self.homology_output_file_entry = ctk.CTkEntry(card3, font=self.app.app_font)
+        ctk.CTkLabel(card3, text=_("输出文件"), font=font_bold, text_color=safe_text_color).grid(row=0, column=0,
+                                                                                                 columnspan=3, padx=10,
+                                                                                                 pady=(10, 15),
+                                                                                                 sticky="w")
+        ctk.CTkLabel(card3, text=_("输出路径:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0,
+                                                                                                     padx=(15, 5),
+                                                                                                     pady=10,
+                                                                                                     sticky="w")
+        self.homology_output_file_entry = ctk.CTkEntry(card3, font=font_regular)
         self.homology_output_file_entry.grid(row=1, column=1, padx=0, pady=10, sticky="ew")
-        self.browse_button = ctk.CTkButton(card3, text=_("浏览..."), width=100, command=self._browse_output_file)
+        self.browse_button = ctk.CTkButton(card3, text=_("浏览..."), width=100, command=self._browse_output_file,
+                                           font=font_regular)
         self.browse_button.grid(row=1, column=2, padx=10, pady=10)
 
-        # 开始按钮
-        self.start_button = ctk.CTkButton(parent_frame, text=_("开始转换"), height=40, font=self.app.app_font_bold,
+        self.start_button = ctk.CTkButton(parent_frame, text=_("开始转换"), height=40, font=font_bold,
                                           command=self._start_homology_task)
         self.start_button.grid(row=3, column=0, columnspan=2, sticky="ew", padx=0, pady=(10, 5))
 
 
-
     def _browse_output_file(self):
-        self.app._browse_save_file(
+        self.app.event_handler._browse_save_file( # 委托给 EventHandler
             self.homology_output_file_entry,
             [(_("Excel 文件"), "*.xlsx"), (_("CSV 文件"), "*.csv"), (_("所有文件"), "*.*")]
         )
@@ -171,7 +185,7 @@ class HomologyTab(BaseTab):
         output_csv = self.homology_output_file_entry.get().strip() or None
 
         # 使用 _start_task 启动后台任务，并传入所有参数
-        self.app._start_task(
+        self.app.event_handler._start_task(  # 委托给 EventHandler
             task_name=_("基因组转换"),
             target_func=run_homology_mapping,
             kwargs={
@@ -181,10 +195,9 @@ class HomologyTab(BaseTab):
                 'gene_ids': source_gene_ids_list,
                 'region': None,
                 'output_csv_path': output_csv,
-                'criteria_overrides': criteria_overrides  # 传递包含所有参数的字典
+                'criteria_overrides': criteria_overrides
             }
         )
-
 
     def update_from_config(self):
         if self.app.current_config:
@@ -272,18 +285,12 @@ class HomologyTab(BaseTab):
 
     def _on_homology_gene_input_change(self, event=None):
         """ 同源映射输入框基因ID变化时触发基因组自动识别 """
-        self.app._auto_identify_genome_version(self.homology_map_genes_textbox, self.selected_homology_source_assembly)
+        self.app.event_handler._auto_identify_genome_version(self.homology_map_genes_textbox, self.selected_homology_source_assembly) # 委托给 EventHandler
 
     def _on_homology_assembly_selection(self, event=None):
         """ 当同源映射工具中的源或目标基因组被选择时，更新UI """
         self._update_homology_version_warnings()
 
-    def _toggle_homology_warning_label(self):
-        """ 根据严格模式开关，显示或隐藏警告标签 """
-        if self.homology_strict_priority_var.get():
-            self.homology_warning_label.pack_forget()
-        else:
-            self.homology_warning_label.pack(side="left", padx=15, pady=0)
 
     def _update_homology_version_warnings(self):
         """ 检查所选基因组的同源库版本并在UI上显示警告 """
@@ -297,23 +304,3 @@ class HomologyTab(BaseTab):
         ok_color = ("#2E7D32", "#A5D6A7")
 
         source_info = self.app.genome_sources_data.get(source_id)
-        if source_info and hasattr(source_info, 'bridge_version'):
-            if source_info.bridge_version and source_info.bridge_version.lower() == 'tair10':
-                self.homology_source_version_warning_label.configure(text="⚠️ " + _("使用旧版 tair10"),
-                                                                     text_color=warning_color)
-            else:
-                self.homology_source_version_warning_label.configure(text="✓ " + _("使用新版 Araport11"),
-                                                                     text_color=ok_color)
-        else:
-            self.homology_source_version_warning_label.configure(text="")
-
-        target_info = self.app.genome_sources_data.get(target_id)
-        if target_info and hasattr(target_info, 'homology_type'):
-            if target_info.homology_type and target_info.homology_type.lower() == 'tair10':
-                self.homology_target_version_warning_label.configure(text="⚠️ " + _("使用旧版 tair10"),
-                                                                     text_color=warning_color)
-            else:
-                self.homology_target_version_warning_label.configure(text="✓ " + _("使用新版 Araport11"),
-                                                                     text_color=ok_color)
-        else:
-            self.homology_target_version_warning_label.configure(text="")

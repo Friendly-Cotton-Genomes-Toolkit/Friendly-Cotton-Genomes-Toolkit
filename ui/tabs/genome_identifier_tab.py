@@ -39,7 +39,7 @@ class GenomeIdentifierTab(ctk.CTkFrame):
         ctk.CTkLabel(self, text=_("基因组类别鉴定工具"), font=self.app.app_title_font).grid(
             row=0, column=0, padx=20, pady=(10, 5), sticky="n")
 
-        main_card = ctk.CTkFrame(self)
+        main_card = ctk.CTkFrame(self, fg_color="transparent")
         main_card.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
         main_card.grid_columnconfigure(0, weight=1)
         main_card.grid_rowconfigure(1, weight=1)

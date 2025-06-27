@@ -23,51 +23,49 @@ class LocusConversionTab(BaseTab):
         self.selected_target_assembly = tk.StringVar()
 
         super().__init__(parent, app)
+        self._create_base_widgets()
+
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
         parent_frame.grid_rowconfigure(2, weight=1)
+        parent_frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(parent_frame, text=_("位点坐标转换"), font=self.app.app_title_font).grid(
-            row=0, column=0, pady=(5, 10), padx=10, sticky="n")
+        safe_text_color = ("gray10", "#DCE4EE")
+        font_regular = (self.app.font_family, 14)
+        font_bold = (self.app.font_family, 15, "bold")
+        font_title = (self.app.font_family, 24, "bold")
+        font_mono = (self.app.mono_font_family, 12)
 
-        main_card = ctk.CTkFrame(parent_frame, border_width=0)
+        ctk.CTkLabel(parent_frame, text=_("位点坐标转换"), font=font_title, text_color=safe_text_color).grid(row=0, column=0, pady=(5, 10), padx=10, sticky="n")
+
+        main_card = ctk.CTkFrame(parent_frame, fg_color="transparent")
         main_card.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
         main_card.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(main_card, text=_("源基因组:"), font=self.app.app_font).grid(row=0, column=0, padx=15, pady=10, sticky="w")
-        self.source_assembly_dropdown = ctk.CTkOptionMenu(
-            main_card, variable=self.selected_source_assembly, values=[_("加载中...")],
-            font=self.app.app_font, dropdown_font=self.app.app_font
-        )
+        ctk.CTkLabel(main_card, text=_("源基因组:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=15, pady=10, sticky="w")
+        self.source_assembly_dropdown = ctk.CTkOptionMenu(main_card, variable=self.selected_source_assembly, values=[_("加载中...")], font=font_regular, dropdown_font=font_regular)
         self.source_assembly_dropdown.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        ctk.CTkLabel(main_card, text=_("目标基因组:"), font=self.app.app_font).grid(row=1, column=0, padx=15, pady=10, sticky="w")
-        self.target_assembly_dropdown = ctk.CTkOptionMenu(
-            main_card, variable=self.selected_target_assembly, values=[_("加载中...")],
-            font=self.app.app_font, dropdown_font=self.app.app_font
-        )
+        ctk.CTkLabel(main_card, text=_("目标基因组:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0, padx=15, pady=10, sticky="w")
+        self.target_assembly_dropdown = ctk.CTkOptionMenu(main_card, variable=self.selected_target_assembly, values=[_("加载中...")], font=font_regular, dropdown_font=font_regular)
         self.target_assembly_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-        ctk.CTkLabel(main_card, text=_("输入区域 (Chr:Start-End):"), font=self.app.app_font).grid(row=2, column=0, padx=15, pady=10, sticky="w")
-        self.region_entry = ctk.CTkEntry(main_card, font=self.app.app_font)
+        ctk.CTkLabel(main_card, text=_("输入区域 (Chr:Start-End):"), font=font_regular, text_color=safe_text_color).grid(row=2, column=0, padx=15, pady=10, sticky="w")
+        self.region_entry = ctk.CTkEntry(main_card, font=font_regular)
         self.region_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
-        self.start_button = ctk.CTkButton(
-            main_card, text=_("开始转换"),
-            command=self.start_locus_conversion_task, font=self.app.app_font_bold
-        )
+        self.start_button = ctk.CTkButton(main_card, text=_("开始转换"), command=self.start_locus_conversion_task, font=font_bold)
         self.start_button.grid(row=3, column=0, columnspan=2, padx=10, pady=(15, 20), sticky="ew")
 
-        result_card = ctk.CTkFrame(parent_frame, border_width=0)
+        result_card = ctk.CTkFrame(parent_frame, fg_color="transparent")
         result_card.grid(row=2, column=0, sticky="nsew", padx=5, pady=10)
         result_card.grid_columnconfigure(0, weight=1)
         result_card.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(result_card, text=_("转换结果"), font=self.app.app_font_bold).grid(row=0, column=0, padx=10, pady=(10,5), sticky="w")
-        self.result_textbox = ctk.CTkTextbox(result_card, state="disabled", wrap="none", font=self.app.app_font_mono)
+        ctk.CTkLabel(result_card, text=_("转换结果"), font=font_bold, text_color=safe_text_color).grid(row=0, column=0, padx=10, pady=(10,5), sticky="w")
+        self.result_textbox = ctk.CTkTextbox(result_card, state="disabled", wrap="none", font=font_mono)
         self.result_textbox.grid(row=1, column=0, padx=10, pady=(5,10), sticky="nsew")
-
 
 
     def update_from_config(self):
@@ -75,43 +73,6 @@ class LocusConversionTab(BaseTab):
             self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
 
 
-    def _update_homology_file_display(self):
-        source_id = self.selected_locus_source_assembly.get()
-        target_id = self.selected_locus_target_assembly.get()
-
-        if not self.app.current_config or not self.app.genome_sources_data:
-            self.s2b_file_path_var.set(_("请先加载配置"))
-            self.b2t_file_path_var.set(_("请先加载配置"))
-            return
-
-        ok_color, warn_color, error_color = self.app.default_label_text_color, ("#D84315", "#FF7043"), ("#D32F2F",
-                                                                                                        "#E57373")
-
-        source_info = self.app.genome_sources_data.get(source_id)
-        if source_info and hasattr(source_info, 'homology_ath_url') and source_info.homology_ath_url:
-            s2b_path = get_local_downloaded_file_path(self.app.current_config, source_info, 'homology_ath')
-            if s2b_path and os.path.exists(s2b_path):
-                self.s2b_file_path_var.set(os.path.basename(s2b_path))
-                self.s2b_file_label.configure(text_color=ok_color)
-            else:
-                self.s2b_file_path_var.set(_("文件未找到，请先下载"))
-                self.s2b_file_label.configure(text_color=error_color)
-        else:
-            self.s2b_file_path_var.set(_("源基因组未配置同源文件"))
-            self.s2b_file_label.configure(text_color=warn_color)
-
-        target_info = self.app.genome_sources_data.get(target_id)
-        if target_info and hasattr(target_info, 'homology_ath_url') and target_info.homology_ath_url:
-            b2t_path = get_local_downloaded_file_path(self.app.current_config, target_info, 'homology_ath')
-            if b2t_path and os.path.exists(b2t_path):
-                self.b2t_file_path_var.set(os.path.basename(b2t_path))
-                self.b2t_file_label.configure(text_color=ok_color)
-            else:
-                self.b2t_file_path_var.set(_("文件未找到，请先下载"))
-                self.b2t_file_label.configure(text_color=error_color)
-        else:
-            self.b2t_file_path_var.set(_("目标基因组未配置同源文件"))
-            self.b2t_file_label.configure(text_color=warn_color)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         if not assembly_ids: assembly_ids = [_("加载中...")]
@@ -164,7 +125,7 @@ class LocusConversionTab(BaseTab):
             'target_assembly_id': target_assembly,
             'region': region_tuple,
         }
-        self.app._start_task(
+        self.app.event_handler._start_task(  # 委托给 EventHandler
             task_name=_("位点转换"),
             target_func=run_locus_conversion,
             kwargs=task_kwargs

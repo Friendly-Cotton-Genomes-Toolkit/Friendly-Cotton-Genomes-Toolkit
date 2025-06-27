@@ -7,7 +7,7 @@ from tkinter import filedialog
 import customtkinter as ctk
 import copy
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 import pandas as pd
 
@@ -33,101 +33,77 @@ class AIAssistantTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
         super().__init__(parent, app)
         self.ai_proxy_var = tk.BooleanVar(value=False)
+        self._create_base_widgets()
 
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
 
-        # --- 服务商与模型选择 ---
-        provider_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
-        provider_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=(10, 5))
+        safe_text_color = ("gray10", "#DCE4EE")
+        font_regular = (self.app.font_family, 14)
+
+        provider_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        provider_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
         provider_frame.grid_columnconfigure((1, 3), weight=1)
-
-        ctk.CTkLabel(provider_frame, text=_("AI服务商:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
-                                                                                       pady=10)
-
+        ctk.CTkLabel(provider_frame, text=_("AI服务商:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10)
         provider_names = [v['name'] for v in self.app.AI_PROVIDERS.values()]
         self.ai_selected_provider_var = tk.StringVar()
-        self.provider_dropdown = ctk.CTkOptionMenu(
-            provider_frame, variable=self.ai_selected_provider_var, values=provider_names,
-            font=self.app.app_font, dropdown_font=self.app.app_font, command=self._on_provider_change
-        )
+        self.provider_dropdown = ctk.CTkOptionMenu(provider_frame, variable=self.ai_selected_provider_var, values=provider_names, font=font_regular, dropdown_font=font_regular, command=self._on_provider_change)
         self.provider_dropdown.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
 
-        ctk.CTkLabel(provider_frame, text=_("选择模型:"), font=self.app.app_font).grid(row=0, column=2, padx=(15, 5),
-                                                                                       pady=10)
+        ctk.CTkLabel(provider_frame, text=_("选择模型:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=2, padx=(15, 5), pady=10)
         self.ai_selected_model_var = tk.StringVar()
-        self.model_dropdown = ctk.CTkOptionMenu(
-            provider_frame, variable=self.ai_selected_model_var, values=[_("请先选择服务商")],
-            font=self.app.app_font, dropdown_font=self.app.app_font
-        )
+        self.model_dropdown = ctk.CTkOptionMenu(provider_frame, variable=self.ai_selected_model_var, values=[_("请先选择服务商")], font=font_regular, dropdown_font=font_regular)
         self.model_dropdown.grid(row=0, column=3, padx=5, pady=10, sticky="ew")
 
-                                                                            # --- 提示词选择 ---
-        prompt_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
-        prompt_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=5)
-        ctk.CTkLabel(prompt_frame, text=_("处理任务:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
-                                                                                     pady=10)
+        prompt_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        prompt_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        ctk.CTkLabel(prompt_frame, text=_("处理任务:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10)
         self.prompt_type_var = tk.StringVar(value=_("翻译"))
-        self.prompt_selector = ctk.CTkSegmentedButton(
-            prompt_frame, values=[_("翻译"), _("分析")], variable=self.prompt_type_var, font=self.app.app_font
-        )
+        self.prompt_selector = ctk.CTkSegmentedButton(prompt_frame, values=[_("翻译"), _("分析")], variable=self.prompt_type_var, font=font_regular)
         self.prompt_selector.grid(row=0, column=1, padx=5, pady=10, sticky="w")
 
-        # --- CSV文件处理 ---
-        csv_frame = ctk.CTkFrame(parent_frame)  # 父容器是 parent_frame
-        csv_frame.grid(row=2, column=0, sticky="nsew", padx=0, pady=5)
+        csv_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        csv_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
         csv_frame.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkLabel(csv_frame, text=_("CSV文件路径:"), font=self.app.app_font).grid(row=0, column=0, padx=(15, 5),
-                                                                                     pady=10, sticky="w")
-        self.csv_path_entry = ctk.CTkEntry(csv_frame, font=self.app.app_font)
+        ctk.CTkLabel(csv_frame, text=_("CSV文件路径:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10, sticky="w")
+        self.csv_path_entry = ctk.CTkEntry(csv_frame, font=font_regular)
         self.csv_path_entry.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
-        ctk.CTkButton(csv_frame, text=_("浏览..."), width=100, command=self._browse_csv_file).grid(row=0, column=2,
-                                                                                                   padx=5, pady=10)
+        ctk.CTkButton(csv_frame, text=_("浏览..."), width=100, command=self._browse_csv_file, font=font_regular).grid(row=0, column=2, padx=5, pady=10)
 
-        ctk.CTkLabel(csv_frame, text=_("待处理列:"), font=self.app.app_font).grid(row=1, column=0, padx=(15, 5),
-                                                                                  pady=10, sticky="w")
+        ctk.CTkLabel(csv_frame, text=_("待处理列:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0, padx=(15, 5), pady=10, sticky="w")
         self.source_column_var = tk.StringVar()
-        self.source_column_dropdown = ctk.CTkOptionMenu(
-            csv_frame, variable=self.source_column_var, values=[_("请先选择CSV文件")],
-            font=self.app.app_font, dropdown_font=self.app.app_font
-        )
+        self.source_column_dropdown = ctk.CTkOptionMenu(csv_frame, variable=self.source_column_var, values=[_("请先选择CSV文件")], font=font_regular, dropdown_font=font_regular)
         self.source_column_dropdown.grid(row=1, column=1, padx=5, pady=10, sticky="ew")
 
-        ctk.CTkLabel(csv_frame, text=_("新列名称:"), font=self.app.app_font).grid(row=2, column=0, padx=(15, 5),
-                                                                                  pady=10, sticky="w")
-        self.new_column_entry = ctk.CTkEntry(csv_frame, font=self.app.app_font)
+        ctk.CTkLabel(csv_frame, text=_("新列名称:"), font=font_regular, text_color=safe_text_color).grid(row=2, column=0, padx=(15, 5), pady=10, sticky="w")
+        self.new_column_entry = ctk.CTkEntry(csv_frame, font=font_regular)
         self.new_column_entry.grid(row=2, column=1, padx=5, pady=10, sticky="ew")
 
         self.save_as_new_var = tk.BooleanVar(value=False)
-        ctk.CTkCheckBox(csv_frame, text=_("另存为新文件 (否则在原文件上修改)"), variable=self.save_as_new_var,
-                        font=self.app.app_font).grid(row=3, column=1, padx=5, pady=10, sticky="w")
+        ctk.CTkCheckBox(csv_frame, text=_("另存为新文件 (否则在原文件上修改)"), variable=self.save_as_new_var, font=font_regular, text_color=safe_text_color).grid(row=3, column=1, padx=5, pady=10, sticky="w")
+        ctk.CTkCheckBox(csv_frame, text=_("为AI服务使用HTTP/HTTPS代理 (请在配置编辑器中设置代理地址)"), variable=self.ai_proxy_var, font=font_regular, text_color=safe_text_color).grid(row=4, column=1, columnspan=2, padx=5, pady=(5, 15), sticky="w")
 
-        self.ai_proxy_var = tk.BooleanVar(value=False)
-        ctk.CTkCheckBox(csv_frame, text=_("为AI服务使用HTTP/HTTPS代理 (请在配置编辑器中设置代理地址)"),
-                        variable=self.ai_proxy_var, font=self.app.app_font).grid(row=4, column=1, padx=5, pady=(5, 15),
-                                                                                 sticky="w")
+        self.start_button = ctk.CTkButton(parent_frame, text=_("开始处理CSV文件"), command=self.start_ai_csv_processing_task, height=40, font=(self.app.font_family, 15, "bold"))
+        self.start_button.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
 
-        # --- 执行按钮 ---
-        self.start_button = ctk.CTkButton(parent_frame, text=_("开始处理CSV文件"),
-                                          command=self.start_ai_csv_processing_task, height=40)  # 父容器是 parent_frame
-        self.start_button.grid(row=3, column=0, sticky="ew", padx=0, pady=10)
 
 
     def _on_provider_change(self, provider_display_name: str):
         self.update_model_dropdown()
 
     def _browse_csv_file(self):
-        filepath = filedialog.askopenfilename(
-            title=_("选择CSV文件"),
-            filetypes=(("CSV files", "*.csv"), ("All files", "*.*"))
-        )
+        filepath = self.app.event_handler._browse_file(None, filetypes=(("CSV files", "*.csv"),
+                                                                        ("All files", "*.*")))  # 委托给 EventHandler
         if filepath:
             self.csv_path_entry.delete(0, tk.END)
             self.csv_path_entry.insert(0, filepath)
             self._update_column_dropdown()
+        else:  # 如果用户取消了选择
+            self.csv_path_entry.delete(0, tk.END)  # 清空输入框
+            self.csv_path_entry.insert(0, "")  # 或者设置一个默认文本
+            self._update_column_dropdown()  # 刷新列下拉菜单以反映空路径
 
     def _update_column_dropdown(self):
         """### --- 核心修改: 异步读取CSV列名 --- ###"""
@@ -154,7 +130,6 @@ class AIAssistantTab(BaseTab):
 
         threading.Thread(target=load_columns_thread, daemon=True).start()
 
-
     def update_model_dropdown(self):
         if not self.app.current_config:
             self.model_dropdown.configure(values=[_("配置未加载")])
@@ -162,7 +137,7 @@ class AIAssistantTab(BaseTab):
 
         provider_display_name = self.ai_selected_provider_var.get()
         provider_key = self.app.LANG_NAME_TO_CODE.get(provider_display_name)
-        if not provider_key:  # Fallback for display name to key mapping
+        if not provider_key:
             for key, info in self.app.AI_PROVIDERS.items():
                 if info['name'] == provider_display_name:
                     provider_key = key
@@ -181,6 +156,23 @@ class AIAssistantTab(BaseTab):
             self.model_dropdown.configure(values=[_("请选择服务商")])
             self.ai_selected_model_var.set("")
 
+    def update_column_dropdown_ui(self, columns: List[str], error_msg: Optional[str]):
+        """
+        实际更新CSV列下拉菜单UI的方法。此方法应由 EventHandler 调用。
+        此方法应在 AIAssistantTab 内部实现。
+        """
+        if error_msg:
+            self.app.ui_manager.show_error_message(_("读取错误"), error_msg)
+            self.source_column_dropdown.configure(values=[_("读取失败")])
+            self.source_column_var.set(_("读取失败"))
+        elif columns:
+            self.source_column_dropdown.configure(values=columns)
+            if self.source_column_var.get() not in columns:
+                self.source_column_var.set(columns[0])
+        else:
+            self.source_column_dropdown.configure(values=[_("无可用列")])
+            self.source_column_var.set(_("无可用列"))
+
     def update_from_config(self):
         if not self.app.current_config:
             return
@@ -193,7 +185,6 @@ class AIAssistantTab(BaseTab):
             self.ai_selected_provider_var.set(default_provider_name)
 
         self.update_model_dropdown()
-
 
     def update_button_state(self, is_running, has_config):
         state = "disabled" if is_running or not has_config else "normal"
@@ -284,7 +275,7 @@ class AIAssistantTab(BaseTab):
         name_to_key_map = {v['name']: k for k, v in self.app.AI_PROVIDERS.items()}
         provider_key = name_to_key_map.get(selected_display_name)
         if provider_key:
-            self.app.start_ai_connection_test(provider_key)
+            self.app._gui_start_ai_connection_test(provider_key)
 
     def start_ai_csv_processing_task(self):
         """启动一个后台任务来使用AI处理指定的CSV文件列。"""
@@ -333,7 +324,6 @@ class AIAssistantTab(BaseTab):
                 else:
                     self.app.show_warning_message(_("代理警告"), _("AI代理开关已打开，但未在配置编辑器中设置代理地址。"))
 
-
             output_path_for_task = None if save_as_new else csv_path
 
             ai_client = AIWrapper(
@@ -341,9 +331,7 @@ class AIAssistantTab(BaseTab):
                 base_url=provider_config.base_url, proxies=proxies
             )
 
-
-
-            self.app._start_task(
+            self.app.event_handler._start_task(  # 委托给 EventHandler
                 task_name=_("AI批量处理CSV"),
                 target_func=run_ai_task,
                 kwargs={
