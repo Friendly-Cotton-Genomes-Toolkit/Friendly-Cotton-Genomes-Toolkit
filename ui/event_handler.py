@@ -4,10 +4,12 @@ import os
 import threading
 import traceback
 import webbrowser
-from tkinter import filedialog
+import tkinter as tk
+from tkinter import filedialog, font as tkfont, ttk
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Any
 
-import customtkinter as ctk
+import ttkbootstrap as ttkb
+from PIL import Image, ImageTk
 
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
@@ -19,7 +21,6 @@ from .utils.gui_helpers import identify_genome_from_gene_ids
 # 避免循环导入，同时为IDE提供类型提示
 if TYPE_CHECKING:
     from .gui_app import CottonToolkitApp
-    import tkinter as tk
 
 # 全局翻译函数
 try:
@@ -181,8 +182,6 @@ class EventHandler:
 
     def _handle_ai_test_result(self, data: tuple):
         """处理AI连接测试结果。"""
-        if self.app.ui_manager.progress_dialog:
-            self.app.ui_manager.progress_dialog.close()
         success, message = data
         if success:
             self.app.ui_manager.show_info_message(_("测试成功"), message)
@@ -193,7 +192,7 @@ class EventHandler:
         """处理基因组自动识别成功消息。"""
         target_var, assembly_id = data
         if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data:
-            if isinstance(target_var, ctk.StringVar):
+            if isinstance(target_var, tk.StringVar):
                 target_var.set(assembly_id)
                 logger.debug(f"UI已自动更新基因为: {assembly_id}")
 
@@ -210,7 +209,10 @@ class EventHandler:
     def on_closing(self):
         """处理应用程序关闭事件。"""
         app = self.app
-        dialog = MessageDialog(parent=app, title=_("退出程序"), message=_("您确定要退出吗?"), icon_type="question", buttons=[_("确定"), _("取消")], app_font=app.app_font)
+        # 修复：MessageDialog 不需要 app_font，因为它已在 dialogs.py 中处理
+        dialog = MessageDialog(parent=app, title=_("退出程序"), message=_("您确定要退出吗?"),
+                               icon_type="question", buttons=[_("确定"), _("取消")],
+                               style=app.style)
         dialog.wait_window()
         if dialog.result == _("确定"):
             app.destroy()
@@ -237,20 +239,24 @@ class EventHandler:
         app = self.app
         mode_map_from_display = {_("浅色"): "Light", _("深色"): "Dark", _("系统"): "System"}
         new_mode = mode_map_from_display.get(new_mode_display, "System")
-        ctk.set_appearance_mode(new_mode)
+        # 直接调用 UIManager 来处理主题切换和 UI 设置保存
+        app.ui_manager._set_ttk_theme_from_app_mode(new_mode)
         app.ui_settings['appearance_mode'] = new_mode
         self._save_ui_settings()
         app.ui_manager._update_log_tag_colors()
+
 
     def toggle_log_viewer(self):
         """切换日志文本框的可见性。"""
         app = self.app
         if app.log_viewer_visible:
             app.log_textbox.grid_remove()
+            # 修复：ttkb.Button 不支持直接的 font 参数
             app.toggle_log_button.configure(text=_("显示日志"))
             app.log_viewer_visible = False
         else:
             app.log_textbox.grid()
+            # 修复：ttkb.Button 不支持直接的 font 参数
             app.toggle_log_button.configure(text=_("隐藏日志"))
             app.log_viewer_visible = True
 
@@ -327,7 +333,11 @@ class EventHandler:
         main_config_path = os.path.join(output_dir, main_config_filename)
         should_overwrite = False
         if os.path.exists(main_config_path):
-            dialog = MessageDialog(parent=app, title=_("文件已存在"), message=_("配置文件 '{}' 已存在于所选目录中。\n\n您想覆盖它吗？\n(选择“否”将直接加载现有文件)").format(main_config_filename), buttons=[_("是 (覆盖)"), _("否 (加载)")], icon_type="question", app_font=app.app_font)
+            # 修复：MessageDialog 不需要 app_font
+            dialog = MessageDialog(parent=app, title=_("文件已存在"),
+                                   message=_("配置文件 '{}' 已存在于所选目录中。\n\n您想覆盖它吗？\n(选择“否”将直接加载现有文件)").format(main_config_filename),
+                                   buttons=[_("是 (覆盖)"), _("否 (加载)")], icon_type="question",
+                                   style=app.style)
             dialog.wait_window()
             user_choice = dialog.result
             if user_choice == _("是 (覆盖)"):
@@ -343,7 +353,10 @@ class EventHandler:
             success, new_main_cfg_path, new_gs_cfg_path = generate_default_config_files(output_dir, overwrite=should_overwrite, main_config_filename=main_config_filename)
             if success:
                 msg = f"{_('默认配置文件已成功生成到:')}\n{new_main_cfg_path}\n{new_gs_cfg_path}\n\n{_('是否立即加载新生成的配置文件?')}"
-                load_dialog = MessageDialog(parent=app, title=_("生成成功"), message=msg, buttons=[_("是"), _("否")], icon_type="info", app_font=app.app_font)
+                # 修复：MessageDialog 不需要 app_font
+                load_dialog = MessageDialog(parent=app, title=_("生成成功"), message=msg,
+                                            buttons=[_("是"), _("否")], icon_type="info",
+                                            style=app.style)
                 load_dialog.wait_window()
                 if load_dialog.result == _("是"):
                     self.load_config_file(filepath=new_main_cfg_path)
@@ -353,13 +366,13 @@ class EventHandler:
             app.ui_manager.show_error_message(_("生成错误"), f"{_('生成默认配置文件时发生未知错误:')} {e}")
 
     def _show_about_window(self):
-        """显示经过美化的“关于”窗口。(从 gui_app.py 移动)"""
+        """显示经过美化的“关于”窗口。"""
         app = self.app
         if hasattr(app, 'about_window') and app.about_window is not None and app.about_window.winfo_exists():
             app.about_window.focus()
             return
 
-        app.about_window = ctk.CTkToplevel(app)
+        app.about_window = ttkb.Toplevel(app)
         app.about_window.title(_("关于 FCGT"))
         app.about_window.geometry("850x700")
         app.about_window.transient(app)
@@ -372,47 +385,78 @@ class EventHandler:
 
         app.about_window.protocol("WM_DELETE_WINDOW", _on_about_window_close)
 
-        scrollable_frame = ctk.CTkScrollableFrame(app.about_window, corner_radius=0, fg_color="transparent")
-        scrollable_frame.pack(expand=True, fill="both")
+        # 修复：使用 app.style.lookup 获取 Canvas 背景色
+        canvas = tk.Canvas(app.about_window, highlightthickness=0, background=app.style.lookup('TCanvas', 'background'))
+        canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+        scrollbar = ttkb.Scrollbar(app.about_window, orient="vertical", command=canvas.yview, bootstyle="round")
+        scrollbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollable_frame = ttk.Frame(canvas)
+        canvas_window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        def _on_about_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfig(canvas_window_id, width=event.width)
+
+        scrollable_frame.bind("<Configure>", _on_about_frame_configure)
         scrollable_frame.grid_columnconfigure(0, weight=1)
 
-        base_font_family = app.app_font.cget("family")
-        title_font = ctk.CTkFont(family=base_font_family, size=20, weight="bold")
-        header_font = ctk.CTkFont(family=base_font_family, size=16, weight="bold")
-        text_font = ctk.CTkFont(family=base_font_family, size=14)
-        version_font = ctk.CTkFont(family=base_font_family, size=12)
-        link_font = ctk.CTkFont(family=base_font_family, size=14, underline=False)
-        link_font_underline = ctk.CTkFont(family=base_font_family, size=14, underline=True)
+        # Bind mouse wheel to canvas for scrolling
+        def _on_mousewheel_about(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        # 修复：只绑定到 Canvas，而不是 bind_all
+        canvas.bind("<MouseWheel>", _on_mousewheel_about)
 
-        header_frame = ctk.CTkFrame(scrollable_frame, fg_color="transparent")
+
+        base_font_family = app.app_font.cget("family")
+        title_font = tkfont.Font(family=base_font_family, size=20, weight="bold")
+        header_font = tkfont.Font(family=base_font_family, size=16, weight="bold")
+        text_font = tkfont.Font(family=base_font_family, size=14)
+        version_font = tkfont.Font(family=base_font_family, size=12)
+        link_font = tkfont.Font(family=base_font_family, size=14, underline=False)
+        link_font_underline = tkfont.Font(family=base_font_family, size=14, underline=True)
+
+        header_frame = ttk.Frame(scrollable_frame)
         header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
         header_frame.grid_columnconfigure(1, weight=1)
 
-        logo_label = ctk.CTkLabel(header_frame, text="", image=app.logo_image)
-        logo_label.grid(row=0, column=0, rowspan=2, padx=(0, 15))
+        # Use app.ui_manager.icon_cache for logo image
+        # Ensure app.logo_image_path is loaded by UIManager and cached as logo_tk_image
+        logo_tk_image = app.ui_manager.icon_cache.get(app.logo_image_path)
+        if logo_tk_image:
+            logo_label = ttk.Label(header_frame, image=logo_tk_image)
+            logo_label.grid(row=0, column=0, rowspan=3, padx=(0, 15))
+        else:
+            logo_label = ttk.Label(header_frame, text="Logo")
+            logo_label.grid(row=0, column=0, rowspan=3, padx=(0, 15))
 
-        title_label = ctk.CTkLabel(header_frame, text=_("友好棉花基因组工具包 (FCGT)"), font=title_font)
+
+        title_label = ttk.Label(header_frame, text=_("友好棉花基因组工具包 (FCGT)"), font=title_font)
         title_label.grid(row=0, column=1, sticky="w")
 
-        version_label = ctk.CTkLabel(header_frame, text=f"Version: {PKG_VERSION}", font=version_font, text_color="gray")
+        version_label = ttk.Label(header_frame, text=f"Version: {PKG_VERSION}", font=version_font, foreground="gray")
         version_label.grid(row=1, column=1, sticky="w")
 
-        version_label = ctk.CTkLabel(header_frame, text=_('本软件遵守 Apache-2.0 license 开源协议'), font=version_font,
-                                     text_color="gray")
-        version_label.grid(row=2, column=1, sticky="w")
+        license_label = ttk.Label(header_frame, text=_('本软件遵守 Apache-2.0 license 开源协议'), font=version_font,
+                                     foreground="gray")
+        license_label.grid(row=2, column=1, sticky="w")
 
         def add_section_header(parent, title_text, top_pady=20):
-            ctk.CTkLabel(parent, text=title_text, font=header_font).grid(row=parent.grid_size()[1], column=0,
+            # Using ttk.Separator for horizontal line
+            ttk.Label(parent, text=title_text, font=header_font).grid(row=parent.grid_size()[1], column=0,
                                                                          sticky="w", padx=20, pady=(top_pady, 5))
-            ctk.CTkFrame(parent, height=2, fg_color="gray50").grid(row=parent.grid_size()[1], column=0, sticky="ew",
-                                                                   padx=20)
+            ttk.Separator(parent, orient="horizontal").grid(row=parent.grid_size()[1], column=0, sticky="ew", padx=20)
+
 
         def add_section_content(parent, content_text):
-            ctk.CTkLabel(parent, text=content_text, font=text_font, wraplength=780, justify="left").grid(
+            ttk.Label(parent, text=content_text, font=text_font, wraplength=780, justify="left").grid(
                 row=parent.grid_size()[1], column=0, sticky="w", padx=25, pady=(5, 0))
 
         def create_hyperlink(parent, text, url):
-            link_label = ctk.CTkLabel(parent, text=text, text_color=("#0000EE", "#ADD8E6"), cursor="hand2",
+            # foreground 适应主题
+            link_label = ttk.Label(parent, text=text, foreground=app.style.colors.info, cursor="hand2",
                                       font=link_font)
             link_label.bind("<Button-1>", lambda e: webbrowser.open_new(url))
             link_label.bind("<Enter>", lambda e: link_label.configure(font=link_font_underline))
@@ -420,16 +464,16 @@ class EventHandler:
             return link_label
 
         add_section_header(scrollable_frame, _("开发与致谢"))
-        dev_frame = ctk.CTkFrame(scrollable_frame, fg_color="transparent")
+        dev_frame = ttk.Frame(scrollable_frame)
         dev_frame.grid(row=scrollable_frame.grid_size()[1], column=0, sticky="ew", padx=25, pady=5)
         dev_frame.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(dev_frame, text=_("作者:"), font=text_font).grid(row=0, column=0, sticky="w")
-        ctk.CTkLabel(dev_frame, text="PureAmaya", font=text_font).grid(row=0, column=1, sticky="w", padx=10)
+        ttk.Label(dev_frame, text=_("作者:"), font=text_font).grid(row=0, column=0, sticky="w")
+        ttk.Label(dev_frame, text="PureAmaya", font=text_font).grid(row=0, column=1, sticky="w", padx=10)
 
-        ctk.CTkLabel(dev_frame, text=_("致谢:"), font=text_font).grid(row=1, column=0,
+        ttk.Label(dev_frame, text=_("致谢:"), font=text_font).grid(row=1, column=0,
                                                                       sticky="w", pady=(5, 0))
-        ctk.CTkLabel(dev_frame, text=_("开源社区和科研工作者"), font=text_font).grid(row=1, column=1, sticky="w",
+        ttk.Label(dev_frame, text=_("开源社区和科研工作者"), font=text_font).grid(row=1, column=1, sticky="w",
                                                                                      padx=10, pady=(5, 0))
 
         add_section_header(scrollable_frame, _("版权与许可"))
@@ -444,24 +488,23 @@ class EventHandler:
                                 "• pillow (MIT-CMU License)\n"
                                 "• diskcache (Apache 2.0 License)\n"
                                 "• openpyxl (MIT License)\n"
-                                "• customtkinter (MIT License)\n"
-
+                                "• ttkbootstrap (MIT License)\n"
                             ))
 
         add_section_header(scrollable_frame, _("在线资源与文档"))
 
-        links_frame = ctk.CTkFrame(scrollable_frame, fg_color="transparent")
+        links_frame = ttk.Frame(scrollable_frame)
         links_frame.grid(row=scrollable_frame.grid_size()[1], column=0, sticky="ew", padx=25, pady=5)
         links_frame.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(links_frame, text=_("项目仓库 (GitHub):"), font=text_font).grid(row=0, column=0, sticky="w")
+        ttk.Label(links_frame, text=_("项目仓库 (GitHub):"), font=text_font).grid(row=0, column=0, sticky="w")
         create_hyperlink(links_frame, PKG_PUBLISH_URL, PKG_PUBLISH_URL).grid(row=0, column=1, sticky="w", padx=10)
-        ctk.CTkLabel(links_frame, text=_("在线帮助文档:"), font=text_font).grid(row=1, column=0, sticky="w",
+        ttk.Label(links_frame, text=_("在线帮助文档:"), font=text_font).grid(row=1, column=0, sticky="w",
                                                                                 pady=(5, 0))
         create_hyperlink(links_frame, PKG_HELP_URL, PKG_HELP_URL).grid(row=1, column=1, sticky="w", padx=10,
                                                                        pady=(5, 0))
 
-        ctk.CTkLabel(links_frame, text="CottonGen:", font=text_font).grid(row=2, column=0, sticky="w", pady=(5, 0))
+        ttk.Label(links_frame, text="CottonGen:", font=text_font).grid(row=2, column=0, sticky="w", pady=(5, 0))
         create_hyperlink(links_frame, "https://www.cottongen.org/",
                          "https://www.cottongen.org/").grid(row=2, column=1, sticky="w", padx=10, pady=(5, 0))
 
@@ -482,8 +525,9 @@ class EventHandler:
         add_section_header(scrollable_frame, _("免责声明"))
         add_section_content(scrollable_frame, _("上述基因组的数据下载均由用户执行，本工具仅进行通用的分析操作。"))
 
-        close_button = ctk.CTkButton(scrollable_frame, text=_("关闭"), command=_on_about_window_close,
-                                     font=app.app_font)
+        # 修复：ttkb.Button 不支持直接的 font 参数
+        close_button = ttkb.Button(scrollable_frame, text=_("关闭"), command=_on_about_window_close,
+                                     style='info.TButton')
         close_button.grid(row=scrollable_frame.grid_size()[1], column=0, pady=30)
 
 
@@ -567,7 +611,7 @@ class EventHandler:
 
     # --- 其他辅助方法 ---
 
-    def _browse_file(self, entry_widget: Optional[ctk.CTkEntry], filetypes_list: list) -> Optional[str]:
+    def _browse_file(self, entry_widget: Optional[ttk.Entry], filetypes_list: list) -> Optional[str]:
         """打开文件选择对话框并填充到输入框。"""
         filepath = filedialog.askopenfilename(title=_("选择文件"), filetypes=filetypes_list)
         if filepath and entry_widget:
@@ -575,21 +619,21 @@ class EventHandler:
             entry_widget.insert(0, filepath)
         return filepath
 
-    def _browse_save_file(self, entry_widget: ctk.CTkEntry, filetypes_list: list):
+    def _browse_save_file(self, entry_widget: ttk.Entry, filetypes_list: list):
         """打开文件保存对话框并填充到输入框。"""
         filepath = filedialog.asksaveasfilename(title=_("保存文件为"), filetypes=filetypes_list, defaultextension=filetypes_list[0][1].replace("*", ""))
         if filepath and entry_widget:
             entry_widget.delete(0, "end")
             entry_widget.insert(0, filepath)
 
-    def _browse_directory(self, entry_widget: ctk.CTkEntry):
+    def _browse_directory(self, entry_widget: ttk.Entry):
         """打开目录选择对话框并填充到输入框。"""
         directory = filedialog.askdirectory(title=_("选择目录"))
         if directory and entry_widget:
             entry_widget.delete(0, "end")
             entry_widget.insert(0, directory)
 
-    def _auto_identify_genome_version(self, gene_input_textbox: ctk.CTkTextbox, target_assembly_var: ctk.StringVar):
+    def _auto_identify_genome_version(self, gene_input_textbox: tk.Text, target_assembly_var: tk.StringVar):
         """通过基因ID列表自动识别基因组版本。"""
         current_text = gene_input_textbox.get("1.0", "end").strip()
         is_placeholder = any(current_text == _(ph) for ph in self.app.placeholders.values())
@@ -623,8 +667,9 @@ class EventHandler:
         else:
             self.app.message_queue.put(("status", message))
         # Log to standard logger, which is captured by the UI queue handler
+        # 修复：logger.info 或 log_func 不需要 str() 转换，因为 message 已经是 str
         log_func = getattr(logger, level.lower(), logger.info)
-        log_func(str(message))
+        log_func(message)
 
     def gui_progress_callback(self, percentage: float, message: str):
         """进度回调函数。"""

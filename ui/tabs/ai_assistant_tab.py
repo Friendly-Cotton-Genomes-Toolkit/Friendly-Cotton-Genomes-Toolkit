@@ -2,9 +2,9 @@
 import os
 import tkinter as tk
 import traceback
-from tkinter import filedialog
-
-import customtkinter as ctk
+from tkinter import filedialog, ttk  # Import ttk
+import ttkbootstrap as ttkb  # Import ttkbootstrap
+from ttkbootstrap.constants import * # Import ttkbootstrap constants
 import copy
 import threading
 from typing import TYPE_CHECKING, List, Optional
@@ -29,7 +29,7 @@ except ImportError:
         return s
 
 
-class AIAssistantTab(BaseTab):
+class AIAssistantTab(BaseTab):  # Assuming BaseTab is converted to ttkbootstrap
     def __init__(self, parent, app: "CottonToolkitApp"):
         super().__init__(parent, app)
         self.ai_proxy_var = tk.BooleanVar(value=False)
@@ -41,83 +41,116 @@ class AIAssistantTab(BaseTab):
         # 用于保存提示词的防抖计时器
         self._prompt_save_timer = None
 
-
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
 
-        safe_text_color = ("gray10", "#DCE4EE")
-        font_regular = (self.app.font_family, 14)
-        font_mono = (self.app.mono_font_family, 12)
+        # Access fonts directly from self.app
+        font_regular = self.app.app_font
+        font_mono = self.app.app_font_mono
+        font_bold_button = self.app.app_font_bold  # For start button
+        # 修复：Colors 对象没有 'foreground' 属性，应使用 get_foreground('TLabel') 方法
+        safe_text_color = self.app.style.lookup('TLabel', 'foreground')  # Use theme foreground color
 
         # --- 第0行: 服务商和模型选择 ---
-        provider_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        provider_frame = ttk.Frame(parent_frame)
         provider_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
         provider_frame.grid_columnconfigure((1, 3), weight=1)
 
-        ctk.CTkLabel(provider_frame, text=_("AI服务商:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10)
+        ttk.Label(provider_frame, text=_("AI服务商:"), font=font_regular).grid(row=0, column=0, padx=(15, 5), pady=10)
         provider_names = [v['name'] for v in self.app.AI_PROVIDERS.values()]
         self.ai_selected_provider_var = tk.StringVar()
-        self.provider_dropdown = ctk.CTkOptionMenu(provider_frame, variable=self.ai_selected_provider_var, values=provider_names, font=font_regular, dropdown_font=font_regular, command=self._on_provider_change)
+        # 修复：ttkb.OptionMenu 不支持直接的 font 参数，且 values 作为位置参数
+        initial_provider = provider_names[0] if provider_names else ""
+        self.provider_dropdown = ttkb.OptionMenu(provider_frame, self.ai_selected_provider_var,
+                                                 initial_provider,  # 默认值
+                                                 *provider_names,  # 选项列表
+                                                 command=self._on_provider_change, bootstyle="info")
+
         self.provider_dropdown.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
 
-        ctk.CTkLabel(provider_frame, text=_("选择模型:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=2, padx=(15, 5), pady=10)
+        ttk.Label(provider_frame, text=_("选择模型:"), font=font_regular).grid(row=0, column=2, padx=(15, 5), pady=10)
         self.ai_selected_model_var = tk.StringVar()
-        self.model_dropdown = ctk.CTkOptionMenu(provider_frame, variable=self.ai_selected_model_var, values=[_("请先选择服务商")], font=font_regular, dropdown_font=font_regular)
+        # 修复：ttkb.OptionMenu 不支持直接的 font 参数，且 values 作为位置参数
+        self.model_dropdown = ttkb.OptionMenu(provider_frame, self.ai_selected_model_var,
+                                              _("请先选择服务商"),  # 默认值
+                                              *[_("请先选择服务商")],  # 选项列表
+                                              bootstyle="info")
         self.model_dropdown.grid(row=0, column=3, padx=5, pady=10, sticky="ew")
 
         # --- 第1行: 任务类型和提示词模板 ---
-        prompt_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        prompt_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(5,0))
+        prompt_frame = ttk.Frame(parent_frame)
+        prompt_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 0))
         prompt_frame.grid_columnconfigure(0, weight=1)
 
-        task_header_frame = ctk.CTkFrame(prompt_frame, fg_color="transparent")
-        task_header_frame.grid(row=0, column=0, sticky="ew", pady=(0,5), padx=5)
+        task_header_frame = ttk.Frame(prompt_frame)
+        task_header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5), padx=5)
 
-        ctk.CTkLabel(task_header_frame, text=_("处理任务:"), font=font_regular, text_color=safe_text_color).pack(side="left", padx=(10, 5))
+        ttk.Label(task_header_frame, text=_("处理任务:"), font=font_regular).pack(side="left", padx=(10, 5))
         self.prompt_type_var = tk.StringVar(value=_("翻译"))
-        self.prompt_selector = ctk.CTkSegmentedButton(
-            task_header_frame,
-            values=[_("翻译"), _("分析"), _("自定义")],
-            variable=self.prompt_type_var,
-            font=font_regular,
-            command=self._on_task_type_change
-        )
-        self.prompt_selector.pack(side="left", padx=5)
+        # Using ttk.Radiobutton to emulate SegmentedButton
+        radio_values = [_("翻译"), _("分析"), _("自定义")]
+        for val in radio_values:
+            # 修复：ttkb.Radiobutton 不支持直接的 font 参数
+            ttkb.Radiobutton(task_header_frame, text=val, variable=self.prompt_type_var, value=val,
+                             command=self._on_task_type_change,
+                             bootstyle="toolbutton").pack(side="left", padx=5)
 
-        ctk.CTkLabel(prompt_frame, text=_("提示词模板:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0, padx=(15,5), pady=(5,0), sticky="w")
-        self.prompt_textbox = ctk.CTkTextbox(prompt_frame, height=120, font=font_mono, wrap="word")
+        ttk.Label(prompt_frame, text=_("提示词模板:"), font=font_regular).grid(row=1, column=0, padx=(15, 5),
+                                                                               pady=(5, 0), sticky="w")
+        # Use tk.Text for textbox
+        # 修复：使用 style.lookup 获取 'TText' 的背景色和前景色
+        self.prompt_textbox = tk.Text(prompt_frame, height=7, font=font_mono, wrap="word",
+                                      background=self.app.style.lookup('TText', 'background'),
+                                      foreground=self.app.style.lookup('TText', 'foreground'),
+                                      relief="flat")
         self.prompt_textbox.grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 10))
         # 绑定 KeyRelease 事件以通过防抖机制触发保存
         self.prompt_textbox.bind("<KeyRelease>", self._on_prompt_change_debounced)
 
         # --- 第2行: CSV文件处理 ---
-        csv_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        csv_frame = ttk.Frame(parent_frame)
         csv_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
         csv_frame.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(csv_frame, text=_("CSV文件路径:"), font=font_regular, text_color=safe_text_color).grid(row=0, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.csv_path_entry = ctk.CTkEntry(csv_frame, font=font_regular)
+        ttk.Label(csv_frame, text=_("CSV文件路径:"), font=font_regular).grid(row=0, column=0, padx=(15, 5), pady=10,
+                                                                             sticky="w")
+        self.csv_path_entry = ttk.Entry(csv_frame, font=font_regular)
         self.csv_path_entry.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
-        ctk.CTkButton(csv_frame, text=_("浏览..."), width=100, command=self._browse_csv_file, font=font_regular).grid(row=0, column=2, padx=5, pady=10)
+        # 修复：ttkb.Button 不支持直接的 font 参数
+        ttkb.Button(csv_frame, text=_("浏览..."), width=12, command=self._browse_csv_file, bootstyle="outline").grid(
+            row=0, column=2, padx=5, pady=10)
 
-        ctk.CTkLabel(csv_frame, text=_("待处理列:"), font=font_regular, text_color=safe_text_color).grid(row=1, column=0, padx=(15, 5), pady=10, sticky="w")
+        ttk.Label(csv_frame, text=_("待处理列:"), font=font_regular).grid(row=1, column=0, padx=(15, 5), pady=10,
+                                                                          sticky="w")
         self.source_column_var = tk.StringVar()
-        self.source_column_dropdown = ctk.CTkOptionMenu(csv_frame, variable=self.source_column_var, values=[_("请先选择CSV文件")], font=font_regular, dropdown_font=font_regular)
+        # 修复：ttkb.OptionMenu 不支持直接的 font 参数，且 values 作为位置参数
+        self.source_column_dropdown = ttkb.OptionMenu(csv_frame, self.source_column_var,
+                                                      _("请先选择CSV文件"),  # 默认值
+                                                      *[_("请先选择CSV文件")],  # 选项列表
+                                                      bootstyle="info")
         self.source_column_dropdown.grid(row=1, column=1, padx=5, pady=10, sticky="ew")
 
-        ctk.CTkLabel(csv_frame, text=_("新列名称:"), font=font_regular, text_color=safe_text_color).grid(row=2, column=0, padx=(15, 5), pady=10, sticky="w")
-        self.new_column_entry = ctk.CTkEntry(csv_frame, font=font_regular)
+        ttk.Label(csv_frame, text=_("新列名称:"), font=font_regular).grid(row=2, column=0, padx=(15, 5), pady=10,
+                                                                          sticky="w")
+        self.new_column_entry = ttk.Entry(csv_frame, font=font_regular)
         self.new_column_entry.grid(row=2, column=1, padx=5, pady=10, sticky="ew")
 
         self.save_as_new_var = tk.BooleanVar(value=False)
-        ctk.CTkCheckBox(csv_frame, text=_("另存为新文件 (否则在原文件上修改)"), variable=self.save_as_new_var, font=font_regular, text_color=safe_text_color).grid(row=3, column=1, padx=5, pady=10, sticky="w")
-        ctk.CTkCheckBox(csv_frame, text=_("为AI服务使用HTTP/HTTPS代理 (请在配置编辑器中设置代理地址)"), variable=self.ai_proxy_var, font=font_regular, text_color=safe_text_color).grid(row=4, column=1, columnspan=2, padx=5, pady=(5, 15), sticky="w")
+        # 修复：ttkb.Checkbutton 不支持直接的 font 参数
+        ttkb.Checkbutton(csv_frame, text=_("另存为新文件 (否则在原文件上修改)"), variable=self.save_as_new_var,
+                         bootstyle="round-toggle").grid(row=3, column=1, padx=5, pady=10, sticky="w")
+        # 修复：ttkb.Checkbutton 不支持直接的 font 参数
+        ttkb.Checkbutton(csv_frame, text=_("为AI服务使用HTTP/HTTPS代理 (请在配置编辑器中设置代理地址)"),
+                         variable=self.ai_proxy_var, bootstyle="round-toggle").grid(row=4, column=1, columnspan=2,
+                                                                                    padx=5, pady=(5, 15), sticky="w")
 
         # --- 第3行: 开始按钮 ---
-        self.start_button = ctk.CTkButton(parent_frame, text=_("开始处理CSV文件"), command=self.start_ai_csv_processing_task, height=40, font=(self.app.font_family, 15, "bold"))
-        self.start_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(10,15))
-
+        # 修复：ttkb.Button 不支持直接的 font 参数
+        self.start_button = ttkb.Button(parent_frame, text=_("开始处理CSV文件"),
+                                        command=self.start_ai_csv_processing_task,
+                                        bootstyle="success")
+        self.start_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(10, 15))
 
     def _on_prompt_change_debounced(self, event=None):
         """在短暂延迟后保存提示词到配置，以避免在每次按键时都保存。"""
@@ -137,7 +170,9 @@ class AIAssistantTab(BaseTab):
         current_prompt = self.prompt_textbox.get("1.0", tk.END).strip()
 
         # 避免保存占位符文本
-        is_placeholder = any(current_prompt == _(ph) for ph in self.app.placeholders.values())
+        is_placeholder = (current_prompt == _(self.app.placeholders.get("custom_prompt", "")) or
+                          current_prompt == self.app.current_config.ai_prompts.translation_prompt or
+                          current_prompt == self.app.current_config.ai_prompts.analysis_prompt)
         if is_placeholder:
             return
 
@@ -197,8 +232,6 @@ class AIAssistantTab(BaseTab):
         # 更改内容后将焦点设置到文本框
         self.prompt_textbox.focus_set()
 
-
-
     def _on_provider_change(self, provider_display_name: str):
         self.update_model_dropdown()
 
@@ -218,12 +251,15 @@ class AIAssistantTab(BaseTab):
         """### --- 核心修改: 异步读取CSV列名 --- ###"""
         filepath = self.csv_path_entry.get().strip()
         if not filepath or not os.path.exists(filepath):
-            self.source_column_dropdown.configure(values=[_("请先选择有效的CSV文件")])
+            # 修复：ttkb.OptionMenu 的 values 参数需要通过销毁重建来更新
+            # 但这里不是在创建，只是更新values，所以需要调用销毁重建逻辑
+            self.update_column_dropdown_ui(columns=[_("请先选择有效的CSV文件")], error_msg=None)
             self.source_column_var.set("")
             return
 
         # 立即更新UI，显示加载状态
-        self.source_column_dropdown.configure(values=[_("读取中...")])
+        # 修复：ttkb.OptionMenu 的 values 参数需要通过销毁重建来更新
+        self.update_column_dropdown_ui(columns=[_("读取中...")], error_msg=None)
         self.source_column_var.set(_("读取中..."))
 
         def load_columns_thread():
@@ -241,28 +277,37 @@ class AIAssistantTab(BaseTab):
 
     def update_model_dropdown(self):
         if not self.app.current_config:
-            self.model_dropdown.configure(values=[_("配置未加载")])
+            # 修复：ttkb.OptionMenu 的 values 参数需要通过销毁重建来更新
+            self.app.ui_manager.update_ai_model_dropdown(self.ai_selected_provider_var.get(), [_("配置未加载")],
+                                                         error=True)
             return
 
         provider_display_name = self.ai_selected_provider_var.get()
-        provider_key = self.app.LANG_NAME_TO_CODE.get(provider_display_name)
-        if not provider_key:
-            for key, info in self.app.AI_PROVIDERS.items():
-                if info['name'] == provider_display_name:
-                    provider_key = key
-                    break
+        provider_key = None  # Initialize provider_key
+        # Iterate through AI_PROVIDERS to find the internal key from display name
+        for key, info in self.app.AI_PROVIDERS.items():
+            if info['name'] == provider_display_name:
+                provider_key = key
+                break
 
         if provider_key and provider_key in self.app.current_config.ai_services.providers:
             model_str = self.app.current_config.ai_services.providers[provider_key].model
             if model_str:
                 models = [m.strip() for m in model_str.split(',')]
-                self.model_dropdown.configure(values=models)
-                self.ai_selected_model_var.set(models[0])
+                # 修复：ttkb.OptionMenu 的 values 参数需要通过销毁重建来更新
+                self.app.ui_manager.update_ai_model_dropdown(provider_key, models)
+                # Check if selected model is still in the new list, otherwise set to first model
+                if self.ai_selected_model_var.get() not in models and models:
+                    self.ai_selected_model_var.set(models[0])
+                elif not models:
+                    self.ai_selected_model_var.set(_("无可用模型"))
             else:
-                self.model_dropdown.configure(values=[_("配置中无模型")])
+                # 修复：ttkb.OptionMenu 的 values 参数需要通过销毁重建来更新
+                self.app.ui_manager.update_ai_model_dropdown(provider_key, [_("配置中无模型")])
                 self.ai_selected_model_var.set("")
         else:
-            self.model_dropdown.configure(values=[_("请选择服务商")])
+            # 修复：ttkb.OptionMenu 的 values 参数需要通过销毁重建来更新
+            self.app.ui_manager.update_ai_model_dropdown(provider_key, [_("请选择服务商")])
             self.ai_selected_model_var.set("")
 
     def update_column_dropdown_ui(self, columns: List[str], error_msg: Optional[str]):
@@ -270,17 +315,62 @@ class AIAssistantTab(BaseTab):
         实际更新CSV列下拉菜单UI的方法。此方法应由 EventHandler 调用。
         此方法应在 AIAssistantTab 内部实现。
         """
+        # Store old widget's layout info and variable to recreate
+        old_dropdown = self.source_column_dropdown
+        parent_frame = old_dropdown.master
+
+        # Fix: Get layout info based on the widget's actual layout manager
+        layout_info = {}
+        manager_type = None
+        if old_dropdown and old_dropdown.winfo_exists():
+            if hasattr(old_dropdown, 'winfo_manager'):
+                manager_type = old_dropdown.winfo_manager()
+                if manager_type == "grid":
+                    layout_info = old_dropdown.grid_info()
+                elif manager_type == "pack":
+                    layout_info = old_dropdown.pack_info()
+        else:
+            # If old_dropdown doesn't exist, this is likely initial creation.
+            # Grid info from _create_widgets is (row=1, column=1, padx=5, pady=10, sticky="ew")
+            layout_info = {'row': 1, 'column': 1, 'padx': 5, 'pady': 10, 'sticky': 'ew'}
+            manager_type = "grid"
+
+
+        variable = self.source_column_var
+        command = old_dropdown.cget('command') if old_dropdown and old_dropdown.winfo_exists() else None
+        bootstyle = old_dropdown.cget('bootstyle') if old_dropdown and old_dropdown.winfo_exists() else "info"
+
+        if old_dropdown and old_dropdown.winfo_exists():
+            old_dropdown.destroy()  # Destroy old dropdown
+
         if error_msg:
             self.app.ui_manager.show_error_message(_("读取错误"), error_msg)
-            self.source_column_dropdown.configure(values=[_("读取失败")])
-            self.source_column_var.set(_("读取失败"))
+            new_values = [_("读取失败")]
+            variable.set(new_values[0])
         elif columns:
-            self.source_column_dropdown.configure(values=columns)
-            if self.source_column_var.get() not in columns:
-                self.source_column_var.set(columns[0])
+            new_values = columns
+            if variable.get() not in new_values:
+                variable.set(new_values[0])
         else:
-            self.source_column_dropdown.configure(values=[_("无可用列")])
-            self.source_column_var.set(_("无可用列"))
+            new_values = [_("无可用列")]
+            variable.set(new_values[0])
+
+        # Recreate ttkb.OptionMenu
+        self.source_column_dropdown = ttkb.OptionMenu(
+            parent_frame,
+            variable,
+            variable.get(),  # Set default display value
+            *new_values,  # Pass new options list
+            command=command,
+            bootstyle=bootstyle
+        )
+
+        # Reapply layout
+        if layout_info:
+            if manager_type == "grid":
+                self.source_column_dropdown.grid(**{k: v for k, v in layout_info.items() if k != 'in'})
+            elif manager_type == "pack":
+                self.source_column_dropdown.pack(**{k: v for k, v in layout_info.items() if k != 'in'})
 
     def update_from_config(self):
         if not self.app.current_config:
@@ -297,105 +387,17 @@ class AIAssistantTab(BaseTab):
         self.update_model_dropdown()
 
         # 更新提示词文本框以反映当前配置
-        self._on_task_type_change()
-
-
+        self._on_task_type_change()  # This will update the prompt textbox based on prompt_type_var
 
     def update_button_state(self, is_running, has_config):
         state = "disabled" if is_running or not has_config else "normal"
         if hasattr(self, 'start_button'):
             self.start_button.configure(state=state)
 
-    def _load_prompts_to_ai_tab(self):
-        """将配置中的Prompt模板加载到AI助手页面的输入框中。"""
-        if not self.app.current_config: return
-        prompts_cfg = self.app.current_config.ai_prompts
-        trans_prompt = prompts_cfg.translation_prompt
-        analy_prompt = prompts_cfg.analysis_prompt
-
-        self.ai_translate_prompt_textbox.delete("1.0", tk.END)
-        self.ai_translate_prompt_textbox.insert("1.0", trans_prompt)
-
-        self.ai_analyze_prompt_textbox.delete("1.0", tk.END)
-        self.ai_analyze_prompt_textbox.insert("1.0", analy_prompt)
-
-    def _update_ai_model_dropdown_from_config(self):
-        """根据当前配置，更新AI助手的模型下拉菜单。"""
-        if not self.app.current_config:
-            self.ai_model_dropdown.configure(values=[_("需先加载配置")])
-            self.ai_selected_model_var.set(_("需先加载配置"))
-            return
-
-        selected_provider_name = self.ai_selected_provider_var.get()
-        name_to_key_map = {v['name']: k for k, v in self.app.AI_PROVIDERS.items()}
-        provider_key = name_to_key_map.get(selected_provider_name)
-
-        if not provider_key:
-            self.ai_model_dropdown.configure(values=[_("无效的服务商")])
-            self.ai_selected_model_var.set(_("无效的服务商"))
-            return
-
-        provider_config = self.app.current_config.ai_services.providers.get(provider_key)
-        if not provider_config or not provider_config.model:
-            self.ai_model_dropdown.configure(values=[_("未在配置中指定模型")])
-            self.ai_selected_model_var.set(_("未在配置中指定模型"))
-            return
-
-        model_list_str = provider_config.model
-        available_models = [m.strip() for m in model_list_str.split(',') if m.strip()]
-
-        if not available_models:
-            self.ai_model_dropdown.configure(values=[_("模型列表为空")])
-            self.ai_selected_model_var.set(_("模型列表为空"))
-            return
-
-        self.ai_model_dropdown.configure(values=available_models)
-        self.ai_selected_model_var.set(available_models[0])
-
-    def _on_ai_task_type_change(self, choice):
-        """根据AI任务类型切换显示的Prompt输入框。"""
-        if choice == _("分析"):
-            self.ai_analyze_prompt_textbox.grid()
-            self.ai_translate_prompt_textbox.grid_remove()
-        else:
-            self.ai_translate_prompt_textbox.grid()
-            self.ai_analyze_prompt_textbox.grid_remove()
-
-    def _on_ai_provider_selected(self, selected_display_name: str):
-        """当服务商下拉菜单变化时触发。"""
-        self.app._log_to_viewer(f"INFO: AI provider changed to '{selected_display_name}'")
-        self._update_ai_model_dropdown_from_config()
-
-        # 异步自动保存用户的服务商选择到主配置文件
-        name_to_key_map = {v['name']: k for k, v in self.app.AI_PROVIDERS.items()}
-        provider_key = name_to_key_map.get(selected_display_name)
-        if self.app.current_config and provider_key:
-            self.app.current_config.ai_services.default_provider = provider_key
-            threading.Thread(target=self.app._save_config_from_ui, daemon=True).start()
-
-    def _on_ai_model_selected(self, selected_model: str):
-        """当模型下拉菜单被用户选择时触发。"""
-        if not self.app.current_config: return
-        selected_provider_name = self.ai_selected_provider_var.get()
-        name_to_key_map = {v['name']: k for k, v in self.app.AI_PROVIDERS.items()}
-        provider_key = name_to_key_map.get(selected_provider_name)
-
-        if provider_key:
-            self.app.current_config.ai_services.providers[provider_key].model = selected_model
-            threading.Thread(target=self.app._save_config_from_ui, daemon=True).start()
-
-    def start_ai_test_on_tab(self):
-        """从AI助手页面触发连接测试。"""
-        selected_display_name = self.ai_selected_provider_var.get()
-        name_to_key_map = {v['name']: k for k, v in self.app.AI_PROVIDERS.items()}
-        provider_key = name_to_key_map.get(selected_display_name)
-        if provider_key:
-            self.app._gui_start_ai_connection_test(provider_key)
-
     def start_ai_csv_processing_task(self):
         """启动一个后台任务来使用AI处理指定的CSV文件列。"""
         if not self.app.current_config:
-            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         try:
@@ -415,13 +417,15 @@ class AIAssistantTab(BaseTab):
 
             # --- 验证 ---
             if not all([provider_name, model, csv_path, source_column, new_column_name]):
-                self.app.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"))
+                self.app.ui_manager.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"))
                 return
             if not os.path.exists(csv_path):
-                self.app.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"))
+                self.app.ui_manager.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"))
                 return
-            if prompt_type == _("自定义") and not prompt_template:
-                self.app.show_error_message(_("输入缺失"), _("使用“自定义”任务时，提示词模板不能为空。"))
+            if prompt_type == _("自定义") and (
+                    not prompt_template or prompt_template == _(self.app.placeholders.get("custom_prompt", ""))):
+                self.app.ui_manager.show_error_message(_("输入缺失"),
+                                                       _("使用“自定义”任务时，提示词模板不能为空或占位符。"))
                 return
 
             provider_key = ""
@@ -430,21 +434,24 @@ class AIAssistantTab(BaseTab):
 
             provider_config = self.app.current_config.ai_services.providers.get(provider_key)
             if not provider_config:
-                self.app.show_error_message(_("配置错误"), f"{_('找不到服务商')} '{provider_key}' {_('的配置。')}")
+                self.app.ui_manager.show_error_message(_("配置错误"),
+                                                       f"{_('找不到服务商')} '{provider_key}' {_('的配置。')}")
                 return
 
             # 在启动任务前，从UI更新配置中的代理设置
             self.app.current_config.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
             proxies = None
             if self.ai_proxy_var.get():
-                if self.app.current_config.proxies and (self.app.current_config.proxies.http or self.app.current_config.proxies.https):
+                if self.app.current_config.proxies and (
+                        self.app.current_config.proxies.http or self.app.current_config.proxies.https):
                     proxies = self.app.current_config.proxies.to_dict()
                 else:
-                    self.app.show_warning_message(_("代理警告"), _("AI代理开关已打开，但未在配置编辑器中设置代理地址。"))
+                    self.app.ui_manager.show_warning_message(_("代理警告"),
+                                                             _("AI代理开关已打开，但未在配置编辑器中设置代理地址。"))
 
             output_path_for_task = None
             if not save_as_new:
-                 output_path_for_task = csv_path
+                output_path_for_task = csv_path
 
             # 将配置深拷贝以传递给线程
             config_for_task = copy.deepcopy(self.app.current_config)
@@ -457,13 +464,15 @@ class AIAssistantTab(BaseTab):
                     'input_file': csv_path,
                     'source_column': source_column,
                     'new_column': new_column_name,
-                    'task_type': prompt_type, # 传递任务类型以用于缓存标识符
-                    'custom_prompt_template': prompt_template, # 传递文本框中的实际提示词
+                    'task_type': prompt_type,  # 传递任务类型以用于缓存标识符
+                    'custom_prompt_template': prompt_template,  # 传递文本框中的实际提示词
                     'cli_overrides': None,
                     'output_file': output_path_for_task
                 }
             )
 
         except Exception as e:
-            self.app.show_error_message(_("任务启动失败"),
-                                        f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
+            self.app.ui_manager.show_error_message(_("任务启动失败"),
+                                                   f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
+
+

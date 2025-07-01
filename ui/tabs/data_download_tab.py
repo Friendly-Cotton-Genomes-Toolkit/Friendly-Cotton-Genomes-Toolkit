@@ -1,8 +1,9 @@
 ﻿# ui/tabs/data_download_tab.py
 
 import tkinter as tk
-
-import customtkinter as ctk
+from tkinter import ttk  # Import ttk module
+import ttkbootstrap as ttkb  # Import ttkbootstrap
+from ttkbootstrap.constants import *  # Import ttkbootstrap constants
 import os
 from typing import TYPE_CHECKING, Dict
 
@@ -24,17 +25,16 @@ except ImportError:
         return s
 
 
-class DataDownloadTab(BaseTab):
+class DataDownloadTab(BaseTab):  # Assuming BaseTab is converted to ttkbootstrap
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, app)
         self.selected_genome_var = tk.StringVar()
         self.use_proxy_for_download_var = tk.BooleanVar(value=False)
         self.force_download_var = tk.BooleanVar(value=False)
 
-        # 这个字典现在用来存储动态创建的控件变量
+        # This dictionary now stores dynamically created widget variables
         self.file_type_vars: Dict[str, tk.BooleanVar] = {}
-        # 这个字典定义了所有可能的文件类型及其显示名称，与 models.py 对应
-        # UI将根据配置文件中URL是否存在，来决定是否显示这些选项
+        # This dictionary defines all possible file types and their display names, corresponding to models.py
+        # The UI will decide whether to display these options based on whether the URL exists in the configuration file.
         self.FILE_TYPE_MAP = {
             "gff3": "Annotation (gff3)",
             "GO": "GO",
@@ -44,6 +44,11 @@ class DataDownloadTab(BaseTab):
             "homology_ath": _("同源关系 (homology)"),
         }
 
+        # Store initial command and bootstyle for OptionMenu recreation
+        self._genome_option_menu_command = self._on_genome_selection_change
+        self._genome_option_menu_bootstyle = "info"
+
+        super().__init__(parent, app)
         self._create_base_widgets()
         self.update_from_config()
 
@@ -51,42 +56,53 @@ class DataDownloadTab(BaseTab):
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
 
-        font_bold = (self.app.font_family, 15, "bold")
-        safe_text_color = ("gray10", "#DCE4EE")
+        font_bold = self.app.app_font_bold  # Use font from app
+        font_regular = self.app.app_font  # Use font from app
+        # Fix: Colors object has no 'foreground' attribute, should use get_foreground() method
+        safe_text_color = self.app.style.lookup('TLabel', 'foreground')  # Use foreground from theme
 
-        ctk.CTkLabel(parent_frame, text=_("1. 选择要下载的基因组"), font=font_bold, text_color=safe_text_color).grid(
+        ttk.Label(parent_frame, text=_("1. 选择要下载的基因组"), font=font_bold, foreground=safe_text_color).grid(
             row=0, column=0, padx=10, pady=(10, 5), sticky="w")
-        self.genome_option_menu = ctk.CTkOptionMenu(parent_frame, variable=self.selected_genome_var,
-                                                    values=[_("配置未加载")], command=self._on_genome_selection_change)
+        # Fix: ttkb.OptionMenu does not support direct font parameter
+        initial_value = [_("配置未加载")][0]  # Ensure a default value
+        self.genome_option_menu = ttkb.OptionMenu(parent_frame, self.selected_genome_var,
+                                                  initial_value,  # Default value
+                                                  *_([_("配置未加载")]),  # Option list
+                                                  command=self._genome_option_menu_command,
+                                                  bootstyle=self._genome_option_menu_bootstyle)
         self.genome_option_menu.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 15))
 
-        # --- 动态内容区域的容器 ---
-        # 这个框架将由 _update_dynamic_widgets 方法根据配置文件内容填充
-        self.dynamic_content_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        # --- Container for dynamic content ---
+        # This frame will be populated by the _update_dynamic_widgets method based on the configuration file content.
+        self.dynamic_content_frame = ttk.Frame(parent_frame)
         self.dynamic_content_frame.grid(row=2, column=0, sticky="nsew", padx=10)
         self.dynamic_content_frame.grid_columnconfigure(0, weight=1)
 
-        # --- 静态下载选项 ---
-        ctk.CTkLabel(parent_frame, text=_("3. 下载选项"), font=font_bold, text_color=safe_text_color).grid(row=3,
-                                                                                                           column=0,
-                                                                                                           padx=10,
-                                                                                                           pady=(15, 5),
-                                                                                                           sticky="w")
-        options_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        # --- Static download options ---
+        ttk.Label(parent_frame, text=_("3. 下载选项"), font=font_bold, foreground=safe_text_color).grid(row=3,
+                                                                                                        column=0,
+                                                                                                        padx=10,
+                                                                                                        pady=(15, 5),
+                                                                                                        sticky="w")
+        options_frame = ttk.Frame(parent_frame)
         options_frame.grid(row=4, column=0, sticky="w", padx=5, pady=0)
-        ctk.CTkCheckBox(options_frame, text=_("强制重新下载 (覆盖本地已存在文件)"), variable=self.force_download_var,
-                        text_color=safe_text_color).pack(anchor="w", padx=10, pady=5)
-        ctk.CTkCheckBox(options_frame, text=_("对数据下载使用网络代理 (请在配置编辑器中设置)"),
-                        variable=self.use_proxy_for_download_var, text_color=safe_text_color).pack(anchor="w", padx=10,
-                                                                                                   pady=5)
+        # Fix: ttkb.Checkbutton does not support direct font parameter
+        ttkb.Checkbutton(options_frame, text=_("强制重新下载 (覆盖本地已存在文件)"), variable=self.force_download_var,
+                         bootstyle="round-toggle",
+                         ).pack(anchor="w", padx=10, pady=5)
+        # Fix: ttkb.Checkbutton does not support direct font parameter
+        ttkb.Checkbutton(options_frame, text=_("对数据下载使用网络代理 (请在配置编辑器中设置)"),
+                         variable=self.use_proxy_for_download_var, bootstyle="round-toggle",
+                         ).pack(anchor="w", padx=10, pady=5)
 
-        self.start_button = ctk.CTkButton(parent_frame, text=_("开始下载"), command=self.start_download_task, height=40,
-                                          font=font_bold)
+        # Fix: ttkb.Button does not support direct font parameter
+        self.start_button = ttkb.Button(parent_frame, text=_("开始下载"), command=self.start_download_task,
+                                        bootstyle="success")
         self.start_button.grid(row=5, column=0, sticky="ew", padx=10, pady=(25, 10))
 
     def _update_dynamic_widgets(self, genome_id: str):
-        """根据选择的基因组，动态创建文件类型复选框和文件状态标签。"""
-        # 清理旧控件
+        """Dynamically creates file type checkboxes and file status labels based on the selected genome."""
+        # Clean up old widgets
         for widget in self.dynamic_content_frame.winfo_children():
             widget.destroy()
         self.file_type_vars.clear()
@@ -95,45 +111,54 @@ class DataDownloadTab(BaseTab):
         genome_info = self.app.genome_sources_data.get(genome_id)
         if not genome_info: return
 
-        font_bold = (self.app.font_family, 15, "bold")
-        font_regular = (self.app.font_family, 14)
-        safe_text_color = ("gray10", "#DCE4EE")
+        font_bold = self.app.app_font_bold
+        font_regular = self.app.app_font
+        # Fix: Colors object has no 'foreground' attribute, should use get_foreground() method
+        safe_text_color = self.app.style.lookup('TLabel', 'foreground')
+        # Check for dark theme to adjust placeholder color
+        current_theme = self.app.style.theme.name
+        is_dark_theme = "dark" in current_theme.lower()
+        placeholder_color_value = self.app.placeholder_color[1] if is_dark_theme else self.app.placeholder_color[0]
 
-        ctk.CTkLabel(self.dynamic_content_frame, text=_("2. 选择要下载的文件类型"), font=font_bold,
-                     text_color=safe_text_color).grid(row=0, column=0, sticky="w", pady=(10, 5))
-        checkbox_frame = ctk.CTkFrame(self.dynamic_content_frame, fg_color="transparent")
+        ttk.Label(self.dynamic_content_frame, text=_("2. 选择要下载的文件类型"), font=font_bold,
+                  foreground=safe_text_color).grid(row=0, column=0, sticky="w", pady=(10, 5))
+        checkbox_frame = ttk.Frame(self.dynamic_content_frame)
         checkbox_frame.grid(row=1, column=0, sticky="w", pady=(0, 10))
 
-        status_header_frame = ctk.CTkFrame(self.dynamic_content_frame, fg_color="transparent")
+        status_header_frame = ttk.Frame(self.dynamic_content_frame)
         status_header_frame.grid(row=2, column=0, sticky="ew", pady=(10, 5))
         status_header_frame.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(status_header_frame, text=_("文件状态"), font=font_bold, text_color=safe_text_color).grid(row=0,
-                                                                                                               column=0,
-                                                                                                               sticky="w")
-        self.refresh_button = ctk.CTkButton(status_header_frame, text=_("刷新状态"), width=100,
-                                            command=lambda: self._update_dynamic_widgets(
-                                                self.selected_genome_var.get()))
+        ttk.Label(status_header_frame, text=_("文件状态"), font=font_bold, foreground=safe_text_color).grid(row=0,
+                                                                                                            column=0,
+                                                                                                            sticky="w")
+        # Fix: ttkb.Button does not support direct font parameter
+        self.refresh_button = ttkb.Button(status_header_frame, text=_("刷新状态"), width=12,
+                                          command=lambda: self._update_dynamic_widgets(
+                                              self.selected_genome_var.get()), bootstyle="info-outline")
         self.refresh_button.grid(row=0, column=1, sticky="e")
 
-        status_frame = ctk.CTkFrame(self.dynamic_content_frame, fg_color="transparent")
+        status_frame = ttk.Frame(self.dynamic_content_frame)
         status_frame.grid(row=3, column=0, sticky="ew", padx=15, pady=0)
         status_frame.grid_columnconfigure(1, weight=1)
 
-        status_map = {'not_downloaded': {"text": _("未下载"), "color": ("#D32F2F", "#E57373")},
-                      'downloaded': {"text": _("已下载 (待处理)"), "color": ("#F57C00", "#FFB74D")},
-                      'processed': {"text": _("已就绪"), "color": ("#388E3C", "#A5D6A7")}}
+        # Using ttkbootstrap theme colors
+        status_map = {'not_downloaded': {"text": _("未下载"), "color": self.app.style.colors.danger},
+                      'downloaded': {"text": _("已下载 (待处理)"), "color": self.app.style.colors.warning},
+                      'processed': {"text": _("已就绪"), "color": self.app.style.colors.success}}
 
         status_row_idx = 0
         checkbox_count = 0
 
         for key, display_name in self.FILE_TYPE_MAP.items():
             url_attr = f"{key}_url"
-            # 核心逻辑：只有当基因组信息对象中存在对应的URL属性，且该URL不为空时，才显示相关UI
+            # Core logic: Only display relevant UI if the corresponding URL attribute exists in the genome info object and is not empty.
             if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
                 var = tk.BooleanVar(value=True)
                 self.file_type_vars[key] = var
-                ctk.CTkCheckBox(checkbox_frame, text=display_name, variable=var, font=font_regular,
-                                text_color=safe_text_color).pack(side="left", padx=10, pady=5)
+                # Fix: ttkb.Checkbutton does not support direct font parameter
+                ttkb.Checkbutton(checkbox_frame, text=display_name, variable=var,
+                                 bootstyle="round-toggle",
+                                 ).pack(side="left", padx=10, pady=5)
                 checkbox_count += 1
 
                 local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
@@ -145,27 +170,25 @@ class DataDownloadTab(BaseTab):
                             local_path.rsplit('.', 1)[0] + '.csv'
                         status_key = 'processed' if os.path.exists(csv_path) else 'downloaded'
                     else:
-                        status_key = 'processed'  # 对于非Excel文件，下载即认为是就绪状态
+                        status_key = 'processed'  # For non-Excel files, downloaded means ready.
 
                 status_info = status_map[status_key]
-                ctk.CTkLabel(status_frame, text=f"{display_name}:", anchor="e", width=180, font=font_regular,
-                             text_color=safe_text_color).grid(row=status_row_idx, column=0, sticky="w", padx=(0, 10))
-                ctk.CTkLabel(status_frame, text=status_info["text"], text_color=status_info["color"], anchor="w",
-                             font=font_regular).grid(row=status_row_idx, column=1, sticky="w")
+                ttk.Label(status_frame, text=f"{display_name}:", anchor="e", width=20, font=font_regular,
+                          foreground=safe_text_color).grid(row=status_row_idx, column=0, sticky="w", padx=(0, 10))
+                ttk.Label(status_frame, text=status_info["text"], foreground=status_info["color"], anchor="w",
+                          font=font_regular).grid(row=status_row_idx, column=1, sticky="w")
                 status_row_idx += 1
 
         if checkbox_count == 0:
-            ctk.CTkLabel(checkbox_frame, text=_("当前基因组版本在配置文件中没有可供下载的URL链接。"),
-                         text_color=safe_text_color).pack()
-
-
+            ttk.Label(checkbox_frame, text=_("当前基因组版本在配置文件中没有可供下载的URL链接。"),
+                      foreground=safe_text_color).pack()
 
     def _on_genome_selection_change(self, selection):
-        """当用户在下拉菜单中选择一个新的基因组时调用。"""
+        """Called when the user selects a new genome from the dropdown menu."""
         self._update_dynamic_widgets(selection)
 
     def _refresh_status(self):
-        """手动刷新当前选中基因组版本的文件状态。"""
+        """Manually refreshes the file status for the currently selected genome version."""
         self.app._log_to_viewer(_("正在手动刷新文件状态..."), "INFO")
         self._update_dynamic_widgets(self.selected_genome_var.get())
 
@@ -173,34 +196,78 @@ class DataDownloadTab(BaseTab):
         filtered_ids = [gid for gid in assembly_ids if "arabidopsis" not in gid.lower()]
 
         values = filtered_ids if filtered_ids else [_("无可用基因组")]
-        self.genome_option_menu.configure(values=values)
-        if self.selected_genome_var.get() not in values:
-            if values:
-                self.selected_genome_var.set(values[0])
-            else:
-                self.selected_genome_var.set("")
 
-        # 初始加载时也更新一次状态
-        self._update_dynamic_widgets(self.selected_genome_var.get())
+        old_dropdown = self.genome_option_menu
 
-    def _start_download(self):
-        if not self.app.current_config:
-            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
-            return
-        selected_assembly = self.assembly_dropdown_var.get()
-        if not selected_assembly or selected_assembly == _("无可用版本"):
-            self.app.show_error_message(_("错误"), _("请选择一个要下载的基因组版本。"))
-            return
-
-        force_value = self.force_download_var.get()
-        cli_overrides = {"versions": [selected_assembly], "force": force_value}
-
-        if hasattr(self.app, '_start_task'):
-            self.app._start_task(
-                task_name=_("数据下载"),
-                target_func=run_download_pipeline,
-                kwargs={'config': self.app.current_config, 'cli_overrides': cli_overrides}
+        # Add a check to ensure old_dropdown is a valid widget and is mapped
+        if old_dropdown is None or not old_dropdown.winfo_exists():
+            # This is the initial creation or after a full destruction.
+            # The dropdown needs to be created from scratch.
+            parent_frame = self.scrollable_frame  # Or direct parent if known
+            new_initial_value = values[0] if values else ""
+            self.genome_option_menu = ttkb.OptionMenu(
+                parent_frame,
+                self.selected_genome_var,
+                new_initial_value,  # Set initial value safely
+                *values,
+                command=self._genome_option_menu_command,  # Use stored command
+                bootstyle=self._genome_option_menu_bootstyle  # Use stored bootstyle
             )
+            self.genome_option_menu.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 15))
+            self.selected_genome_var.set(new_initial_value)
+            self._update_dynamic_widgets(self.selected_genome_var.get())
+            self.app.logger.debug("DataDownloadTab: Initial assembly dropdown created.")
+            return
+
+        parent_frame = old_dropdown.master
+
+        # Get layout information *before* checking winfo_ismapped or destroying,
+        # but check winfo_manager only if it exists.
+        layout_info = {}
+        manager_type = None
+        if hasattr(old_dropdown, 'winfo_manager'):
+            manager_type = old_dropdown.winfo_manager()
+            if manager_type == "grid":
+                layout_info = old_dropdown.grid_info()
+            elif manager_type == "pack":
+                layout_info = old_dropdown.pack_info()
+
+        # Get current variable
+        variable = self.selected_genome_var
+
+        # Destroy old OptionMenu
+        old_dropdown.destroy()
+
+        # Ensure a default value to initialize the new OptionMenu
+        new_initial_value = variable.get()
+        if new_initial_value not in values and values:
+            new_initial_value = values[0]
+        elif not values:
+            new_initial_value = _("无可用基因组")
+
+        # Recreate OptionMenu
+        self.genome_option_menu = ttkb.OptionMenu(
+            parent_frame,
+            variable,
+            new_initial_value,
+            *values,
+            command=self._genome_option_menu_command,  # Use stored command
+            bootstyle=self._genome_option_menu_bootstyle  # Use stored bootstyle
+        )
+        variable.set(new_initial_value)
+
+        # Apply layout based on saved information
+        if layout_info and manager_type:
+            if manager_type == "grid":
+                self.genome_option_menu.grid(**{k: v for k, v in layout_info.items() if k != 'in'})
+            elif manager_type == "pack":
+                self.genome_option_menu.pack(**{k: v for k, v in layout_info.items() if k != 'in'})
+        else:
+            # Fallback: if no layout info, ensure it's still visible
+            # For DataDownloadTab, it's grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 15))
+            self.genome_option_menu.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 15))
+
+        self._update_dynamic_widgets(variable.get())
 
     def update_from_config(self):
         if self.app.current_config:
@@ -214,7 +281,6 @@ class DataDownloadTab(BaseTab):
         if hasattr(self, 'start_button'): self.start_button.configure(state=state)
         if hasattr(self, 'refresh_button'): self.refresh_button.configure(state=state)
 
-
     def start_download_task(self):
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
@@ -225,7 +291,7 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_error_message(_("选择错误"), _("请选择一个有效的基因组进行下载。"))
             return
 
-        # 精确地从 file_type_vars 中获取用户勾选的、且当前界面上实际显示的类型
+        # Accurately get the file types checked by the user and actually displayed on the current interface.
         file_types_to_download = [key for key, var in self.file_type_vars.items() if var.get()]
         if not file_types_to_download:
             self.app.ui_manager.show_error_message(_("选择错误"), _("请至少选择一种要下载的文件类型。"))
@@ -238,7 +304,7 @@ class DataDownloadTab(BaseTab):
             'config': self.app.current_config,
             'cli_overrides': {
                 'versions': [selected_genome_id],
-                'file_types': file_types_to_download,  # 将精确的列表传递给后台
+                'file_types': file_types_to_download,  # Pass the precise list to the backend
                 'force': self.force_download_var.get(),
             }
         }
@@ -249,12 +315,12 @@ class DataDownloadTab(BaseTab):
         )
 
     def start_preprocess_task(self):
-        """启动注释文件预处理任务。"""
+        """Starts the annotation file preprocessing task."""
         if not self.app.current_config:
-            self.app.show_error_message(_("错误"), _("请先加载配置文件。"))
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        self.app.event_handler._start_task(  # 委托给 EventHandler
+        self.app.event_handler._start_task(  # Delegate to EventHandler
             task_name=_("预处理注释文件"),
             target_func=run_preprocess_annotation_files,
             kwargs={'config': self.app.current_config}

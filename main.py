@@ -3,7 +3,7 @@
 import sys
 import traceback
 from tkinter import messagebox
-import tkinter as tk
+import tkinter as tk # 仍然保留tkinter用于messagebox和Toplevel
 
 # 1. --- 定义全局异常处理函数 ---
 def show_uncaught_exception(exc_type, exc_value, exc_tb):
@@ -37,6 +37,7 @@ def main():
     """
     主函数，用于创建并运行应用实例。
     """
+    # 这里我们只修改了导入路径，因为 gui_app 现在将使用 ttkbootstrap
     from ui.gui_app import CottonToolkitApp
     try:
         app = CottonToolkitApp()

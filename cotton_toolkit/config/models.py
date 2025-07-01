@@ -18,6 +18,8 @@ class DownloaderConfig(BaseModel):
     max_workers: int = 8
     genome_sources_file: str = "genome_sources_list.yml"
     download_output_base_dir: str = "genomes"
+    force_download :bool = False
+    use_proxy_for_download :bool = False
 
 class LocusConversionConfig(BaseModel):
     output_dir_name: str = "locus_conversion_results"

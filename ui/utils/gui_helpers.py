@@ -5,7 +5,7 @@ from typing import Any, Optional, Callable
 def identify_genome_from_gene_ids(
         gene_ids: list[str],
         genome_sources: dict[str, Any],
-        status_callback: Optional[Callable[[str], None]] = None
+        status_callback: Optional[Callable[[str, str], None]] = None # Changed type hint to include level
 ) -> Optional[str]:
     """
     通过基因ID列表识别最可能的基因组版本。
@@ -14,7 +14,8 @@ def identify_genome_from_gene_ids(
     if not gene_ids or not genome_sources:
         return None
 
-    log = status_callback if status_callback else print
+    # Ensure log function accepts level argument
+    log = status_callback if status_callback else (lambda msg, level="INFO": print(f"[{level}] {msg}"))
 
     gene_ids_to_check = [
         gid for gid in gene_ids
@@ -22,7 +23,7 @@ def identify_genome_from_gene_ids(
     ]
 
     if not gene_ids_to_check:
-        log("DEBUG: 过滤后没有用于识别的有效基因ID。", "DEBUG")
+        log("过滤后没有用于识别的有效基因ID。", "DEBUG")
         return None
 
     scores = {}
@@ -48,18 +49,18 @@ def identify_genome_from_gene_ids(
                 score = (match_count / total_valid_ids) * 100
                 scores[assembly_id] = score
         except re.error as e:
-            log(f"警告: 基因组 '{assembly_id}' 的正则表达式无效: {e}", "WARNING")
+            log(f"基因组 '{assembly_id}' 的正则表达式无效: {e}", "WARNING")
             continue
 
     if not scores:
-        log("INFO: 无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输入ID)。")
+        log("无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输入ID)。", "INFO")
         return None
 
     # 2. 对分数进行排序和分析
     sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
 
     # 【新功能】打印详细的诊断日志
-    log("DEBUG: 基因组自动识别诊断分数:", "DEBUG")
+    log("基因组自动识别诊断分数:", "DEBUG")
     for assembly_id, score in sorted_scores:
         log(f"  - {assembly_id}: {score:.2f}%", "DEBUG")
 
@@ -71,12 +72,12 @@ def identify_genome_from_gene_ids(
     if len(significant_matches) > 1:
         # 如果存在多于一个显著匹配项，则发出警告
         top_matches_str = ", ".join([f"{asm_id} ({score:.1f}%)" for asm_id, score in significant_matches[:3]])
-        log(f"警告: 检测到混合的基因组ID输入。可能性较高的基因组包括: {top_matches_str}", "WARNING")
+        log(f"检测到混合的基因组ID输入。可能性较高的基因组包括: {top_matches_str}", "WARNING")
 
     # 4. 判断最终结果 (降低识别阈值至50%)
     if highest_score > 50:
-        log(f"INFO: 自动识别基因为 '{best_match_id}'，置信度: {highest_score:.2f}%.")
+        log(f"自动识别基因为 '{best_match_id}'，置信度: {highest_score:.2f}%.", "INFO")
         return best_match_id
     else:
-        log("INFO: 无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。")
+        log("无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。", "INFO")
         return None
