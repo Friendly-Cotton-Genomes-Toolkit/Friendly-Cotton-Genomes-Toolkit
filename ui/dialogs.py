@@ -97,7 +97,8 @@ class MessageDialog(BaseDialog):
         icon_map = {"info": "ℹ️", "warning": "⚠️", "error": "❌", "question": "❓"}
         icon = icon_map.get(icon_type, "")
 
-        main_frame = ttkb.Frame(self, bootstyle="light") # Using a light colored frame for contrast
+        # Use 'secondary' bootstyle for frame background, better for both light/dark themes
+        main_frame = ttkb.Frame(self, bootstyle="secondary")
         main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         # Style for icon label
@@ -165,7 +166,8 @@ class ProgressDialog(BaseDialog):
 
         self.creation_time = time.time()
 
-        main_frame = ttkb.Frame(self, bootstyle="light")
+        # Use 'secondary' bootstyle for frame background, better for both light/dark themes
+        main_frame = ttkb.Frame(self, bootstyle="secondary")
         main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         # Get font from parent.app.app_font if available, otherwise fallback

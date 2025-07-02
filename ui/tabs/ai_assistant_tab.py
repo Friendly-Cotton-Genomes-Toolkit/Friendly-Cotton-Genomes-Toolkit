@@ -31,8 +31,8 @@ except ImportError:
 
 class AIAssistantTab(BaseTab):  # Assuming BaseTab is converted to ttkbootstrap
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, app)
         self.ai_proxy_var = tk.BooleanVar(value=False)
+        super().__init__(parent, app) # Changed order to call super().__init__ first
         self._create_base_widgets()
 
         # 为自定义提示词添加占位符
@@ -50,9 +50,12 @@ class AIAssistantTab(BaseTab):  # Assuming BaseTab is converted to ttkbootstrap
         font_mono = self.app.app_font_mono
         font_bold_button = self.app.app_font_bold  # For start button
         # 修复：Colors 对象没有 'foreground' 属性，应使用 get_foreground('TLabel') 方法
-        safe_text_color = self.app.style.lookup('TLabel', 'foreground')  # Use theme foreground color
+        # safe_text_color is already defined in UIManager and used where needed.
+        # direct lookup here is fine if it's the only usage.
+        # safe_text_color = self.app.style.lookup('TLabel', 'foreground')  # Use theme foreground color
 
         # --- 第0行: 服务商和模型选择 ---
+        # Using ttkb.Frame without specific bootstyle will inherit parent's background, which is fine
         provider_frame = ttk.Frame(parent_frame)
         provider_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
         provider_frame.grid_columnconfigure((1, 3), weight=1)
@@ -474,5 +477,3 @@ class AIAssistantTab(BaseTab):  # Assuming BaseTab is converted to ttkbootstrap
         except Exception as e:
             self.app.ui_manager.show_error_message(_("任务启动失败"),
                                                    f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
-
-

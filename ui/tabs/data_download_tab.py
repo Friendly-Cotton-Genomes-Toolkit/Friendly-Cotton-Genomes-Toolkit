@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkinter import ttk  # Import ttk module
 import ttkbootstrap as ttkb  # Import ttkbootstrap
-from ttkbootstrap.constants import *  # Import ttkbootstrap constants
+from ttkbootstrap.constants import * # Import ttkbootstrap constants
 import os
 from typing import TYPE_CHECKING, Dict
 
@@ -74,7 +74,8 @@ class DataDownloadTab(BaseTab):  # Assuming BaseTab is converted to ttkbootstrap
 
         # --- Container for dynamic content ---
         # This frame will be populated by the _update_dynamic_widgets method based on the configuration file content.
-        self.dynamic_content_frame = ttk.Frame(parent_frame)
+        # Added bootstyle="secondary" for a card-like appearance
+        self.dynamic_content_frame = ttkb.Frame(parent_frame, bootstyle="secondary")
         self.dynamic_content_frame.grid(row=2, column=0, sticky="nsew", padx=10)
         self.dynamic_content_frame.grid_columnconfigure(0, weight=1)
 

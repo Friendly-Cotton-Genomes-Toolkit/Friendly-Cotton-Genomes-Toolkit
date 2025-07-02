@@ -42,7 +42,8 @@ class GenomeIdentifierTab(ttk.Frame): # Changed from ctk.CTkFrame to ttk.Frame
         ttk.Label(self, text=_("基因组类别鉴定工具"), font=self.app.app_title_font).grid(
             row=0, column=0, padx=20, pady=(10, 5), sticky="n")
 
-        main_card = ttk.Frame(self)
+        # Added bootstyle="secondary" for a card-like appearance
+        main_card = ttkb.Frame(self, bootstyle="secondary")
         main_card.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
         main_card.grid_columnconfigure(0, weight=1)
         main_card.grid_rowconfigure(1, weight=1)
@@ -77,7 +78,7 @@ class GenomeIdentifierTab(ttk.Frame): # Changed from ctk.CTkFrame to ttk.Frame
         """执行基因组类别鉴定。"""
         # Set text color dynamically based on theme
         # 修复：Colors 对象没有 'foreground' 属性，应使用 get_foreground() 方法
-        default_label_text_color = self.app.style.colors.get_foreground()
+        default_label_text_color = self.app.style.lookup('TLabel', 'foreground') # Use direct lookup for safety
         warning_color = self.app.style.colors.warning
         error_color = self.app.style.colors.danger
 

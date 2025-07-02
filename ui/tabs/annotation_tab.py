@@ -39,12 +39,13 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
         font_title = self.app.app_title_font
         font_mono = self.app.app_font_mono
         # 修复：Colors 对象没有 'foreground' 属性，应使用 get_foreground('TLabel') 方法
-        safe_text_color = self.app.style.lookup('TLabel', 'foreground')
+        # safe_text_color is not directly used for colors here, but good practice.
 
         ttk.Label(parent_frame, text=_("功能注释与富集分析"), font=font_title,
                   foreground=self.app.style.colors.primary).grid(row=0, column=0, pady=(5, 15), padx=10,
                                                                  sticky="n")
-        input_card = ttk.Frame(parent_frame)
+        # Added bootstyle="secondary" for a card-like appearance
+        input_card = ttkb.Frame(parent_frame, bootstyle="secondary")
         input_card.grid(row=1, column=0, sticky="ew", padx=5, pady=(5, 10))
         input_card.grid_columnconfigure(1, weight=1)
         ttk.Label(input_card, text=_("输入数据"), font=font_bold).grid(row=0, column=0, columnspan=2, sticky="w",
@@ -52,11 +53,13 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
         ttk.Label(input_card, text=_("基因组版本:"), font=font_regular).grid(row=1, column=0, sticky="w", padx=(15, 5),
                                                                              pady=10)
 
-        # 修复：ttkb.OptionMenu 的 values 参数不应作为关键字参数传递，而是作为位置参数 (*args)
+        # Initialize the dropdown with a default variable value, before actual options are loaded
         initial_assembly_value = [_("加载中...")][0]
+        self.selected_annotation_assembly.set(initial_assembly_value) # Ensure StringVar is set initially
+
         self.assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_annotation_assembly,
-                                                 initial_assembly_value,  # 默认值
-                                                 *[initial_assembly_value],  # 选项列表
+                                                 initial_assembly_value,  # Default display value
+                                                 *[initial_assembly_value],  # Initial options list
                                                  bootstyle="info")
         self.assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
@@ -77,7 +80,8 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
                                                                                           "genes_input"))
         self.annotation_genes_textbox.bind("<KeyRelease>", self._on_gene_input_change)
 
-        anno_card = ttk.Frame(parent_frame)
+        # Added bootstyle="secondary" for a card-like appearance
+        anno_card = ttkb.Frame(parent_frame, bootstyle="secondary")
         anno_card.grid(row=2, column=0, sticky="ew", padx=5, pady=10)
         anno_card.grid_columnconfigure(0, weight=1)
         ttk.Label(anno_card, text=_("功能注释"), font=font_bold).grid(row=0, column=0, sticky="w", padx=10,
@@ -103,7 +107,7 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
                          bootstyle="round-toggle").pack(side="left", padx=5)
 
         # 修复：ttk.Entry 不支持 placeholder_text 参数。移除此参数。
-        self.annotation_output_csv_entry = ttk.Entry(anno_card, font=font_regular) # Corrected line
+        self.annotation_output_csv_entry = ttk.Entry(anno_card, font=font_regular)
         self.annotation_output_csv_entry.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         # 修复：ttkb.Button 不支持直接的 font 参数
         self.start_annotation_button = ttkb.Button(anno_card, text=_("开始功能注释"),
@@ -111,7 +115,8 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
                                                    bootstyle="primary")
         self.start_annotation_button.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 15))
 
-        enrich_card = ttk.Frame(parent_frame)
+        # Added bootstyle="secondary" for a card-like appearance
+        enrich_card = ttkb.Frame(parent_frame, bootstyle="secondary")
         enrich_card.grid(row=3, column=0, sticky="ew", padx=5, pady=10)
         enrich_card.grid_columnconfigure(1, weight=3)
         enrich_card.grid_columnconfigure(3, weight=1)
@@ -185,6 +190,12 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
         old_dropdown = self.assembly_dropdown
         parent_frame = old_dropdown.master # 获取父容器
 
+        # --- 在销毁旧控件之前，安全地获取所有必需的属性 ---
+        # 确保 old_dropdown 存在且是 ttkbootstrap.OptionMenu 实例
+        variable = self.selected_annotation_assembly
+        command = old_dropdown.cget('command') if old_dropdown and old_dropdown.winfo_exists() else None
+        bootstyle = old_dropdown.cget('bootstyle') if old_dropdown and old_dropdown.winfo_exists() else "info"
+
         # 获取布局信息
         layout_info = {}
         manager_type = None
@@ -195,34 +206,24 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
                     layout_info = old_dropdown.grid_info()
                 elif manager_type == "pack":
                     layout_info = old_dropdown.pack_info()
-        else:
-            # If old_dropdown doesn't exist, this is likely initial creation.
-            # Grid info from _create_widgets is (row=1, column=1, sticky="ew", padx=10, pady=10)
-            layout_info = {'row': 1, 'column': 1, 'sticky': 'ew', 'padx': 10, 'pady': 10}
-            manager_type = "grid"
-
-        # 获取当前变量和命令，以便重建
-        variable = self.selected_annotation_assembly
-        command = old_dropdown.cget('command') if old_dropdown and old_dropdown.winfo_exists() else None # Ensure command exists
-        bootstyle = old_dropdown.cget('bootstyle') if old_dropdown and old_dropdown.winfo_exists() else "info"
 
         if old_dropdown and old_dropdown.winfo_exists():
             old_dropdown.destroy() # Destroy old OptionMenu
 
         # 确保有一个默认值来初始化新的 OptionMenu
-        if not assembly_ids: assembly_ids = [_("加载中...")] # 如果传入空列表，则使用默认提示
+        if not assembly_ids: assembly_ids = [_("无可用基因组")] # Changed from "加载中..." for clarity
         new_initial_value = variable.get()
         if new_initial_value not in assembly_ids and assembly_ids:
             new_initial_value = assembly_ids[0]
-        elif not assembly_ids: # If no available values, set to empty or default prompt
-            new_initial_value = _("加载中...")
-        variable.set(new_initial_value) # Ensure StringVar also updates to the new initial value
+        elif not assembly_ids:
+            new_initial_value = _("无可用基因组") # Ensure it's set to this if list is empty
+        variable.set(new_initial_value) # Ensure StringVar is updated to the new initial value
 
         # Recreate OptionMenu
         self.assembly_dropdown = ttkb.OptionMenu(
             parent_frame,
             variable, # Pass StringVar object
-            new_initial_value, # Default display value
+            new_initial_value, # Default display value (must be one of the options)
             *assembly_ids, # New options list as positional argument
             command=command,
             bootstyle=bootstyle
@@ -234,9 +235,9 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
                 self.assembly_dropdown.grid(**{k:v for k,v in layout_info.items() if k != 'in'})
             elif manager_type == "pack":
                 self.assembly_dropdown.pack(**{k:v for k,v in layout_info.items() if k != 'in'})
-
-        # This line is mostly redundant now, as the new_initial_value logic handles it.
-        # if assembly_ids: self.selected_annotation_assembly.set(assembly_ids[0]) # redundant after new_initial_value setup, but keep for robustness
+        else:
+            # Fallback for initial creation if layout_info was empty (shouldn't happen with _create_widgets call)
+            self.assembly_dropdown.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
 
     def update_from_config(self):
@@ -279,7 +280,7 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
 
         if not gene_ids: self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                 _("请输入要注释的基因ID。")); return
-        if not assembly_id or assembly_id == _("加载中..."): self.app.ui_manager.show_error_message(_("输入缺失"),
+        if not assembly_id or assembly_id == _("加载中...") or assembly_id == _("无可用基因组"): self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                                                     _("请选择一个基因组版本。")); return
         if not anno_types: self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                   _("请至少选择一种注释类型。")); return
@@ -355,13 +356,13 @@ class AnnotationTab(BaseTab):  # 继承自 BaseTab
 
         if not study_gene_ids: self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                       _("请输入要分析的基因ID。")); return
-        if not assembly_id or assembly_id == _("加载中..."): self.app.ui_manager.show_error_message(_("输入缺失"),
+        if not assembly_id or assembly_id == _("加载中...") or assembly_id == _("无可用基因组"): self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                                                     _("请选择一个基因组版本。")); return
         if not plot_types: self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                   _("请至少选择一种图表类型。")); return
         if not output_dir: self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                   _("请选择图表的输出目录。")); return
-        # Current Japanese Standard Time (JST): Wednesday, July 2, 2025 1:04:01 AM
+        # Current Japanese Standard Time (JST): Wednesday, July 2, 2025 3:05:18 AM
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,

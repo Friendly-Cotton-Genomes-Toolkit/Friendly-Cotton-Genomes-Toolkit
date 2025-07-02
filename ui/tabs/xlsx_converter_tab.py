@@ -45,7 +45,8 @@ class XlsxConverterTab(BaseTab): # Changed from ctk.CTkFrame to ttk.Frame
                      foreground=self.app.secondary_text_color).grid(
             row=1, column=0, pady=0, padx=30, sticky="ew")
 
-        card = ttk.Frame(parent_frame) # Changed from self to parent_frame
+        # Added bootstyle="secondary" for a card-like appearance
+        card = ttkb.Frame(parent_frame, bootstyle="secondary")
         card.grid(row=2, column=0, sticky="nsew", padx=20, pady=20)
         card.grid_columnconfigure(1, weight=1)
 
