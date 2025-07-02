@@ -1,216 +1,137 @@
-﻿# cotton_toolkit/ui/dialogs.py
-import os
-import sys
-import time
+﻿# 文件: cotton_tool/ui/dialogs.py
+
 import tkinter as tk
-from tkinter import ttk, font as tkfont # 导入 ttk 和 tkfont
-from typing import Optional, Callable, List
+import time
+import ttkbootstrap as ttkb
+from ttkbootstrap.constants import *
+from typing import Optional, List, Callable
 
-import ttkbootstrap as ttkb # 导入 ttkbootstrap
-from ttkbootstrap.constants import * # 导入 ttkbootstrap 常量
-
+# 全局翻译函数占位符
 try:
-    import builtins
-    _ = builtins._
-except (AttributeError, ImportError):
-    def _(text: str) -> str:
-        return text
+    from builtins import _
+except ImportError:
+    _ = lambda s: str(s)
 
 
-class BaseDialog(ttkb.Toplevel): # 继承 ttkbootstrap.Toplevel
-    """所有自定义对话框的基类。"""
+class MessageDialog(ttkb.Toplevel):
+    """
+    一个通用的、带主题的消息对话框。
+    """
 
-    def __init__(self, parent, title: str, style: Optional[ttkb.Style] = None):
-        # The ttkb.Toplevel constructor should be called without explicitly passing 'style'
-        # if 'style' is meant to be the *application's* style object that Toplevel automatically inherits/uses.
-        # The 'self.style' property is already part of ttkb.Toplevel,
-        # it's not meant to be reassigned directly.
-        super().__init__(parent) # Removed 'style=style' as ttkb.Toplevel doesn't take it directly.
-                                   # The Toplevel will automatically use the parent's style or the default app style.
-        self.parent = parent
-        self.result = None
-        # Removed the problematic line: self.style = style if style else ttkb.Style()
-        # The 'self.style' property is already provided by ttkb.Toplevel, it's a getter, not a setter.
-        # If the 'style' object is needed for lookups within the dialog,
-        # it should be accessed via self.style property provided by ttkb.Toplevel
-        # or passed explicitly to internal widgets that need styling, not assigned to self.style.
-
-        # 单独使用 .title() 方法来设置标题
+    def __init__(self, parent, title: str, message: str, icon_type: str = "info",
+                 buttons: Optional[List[str]] = None, style=None):  # style 参数是为了兼容，但未使用
+        super().__init__(parent)
         self.title(_(title))
-
         self.transient(parent)
-        self.attributes("-topmost", True)
-        self.protocol("WM_DELETE_WINDOW", self.on_cancel)
-        self.minsize(380, 180)
-
-        try:
-            # 确保在打包后也能找到图标
-            if hasattr(sys, '_MEIPASS'):
-                 icon_path = os.path.join(sys._MEIPASS, "icon.ico")
-                 if os.path.exists(icon_path):
-                     self.iconbitmap(icon_path)
-            else:
-                 # 尝试使用父窗口的图标
-                 if hasattr(parent, 'iconbitmap') and parent.iconbitmap():
-                     self.iconbitmap(parent.iconbitmap())
-                 else:
-                     pass # 忽略，不设置图标
-        except Exception:
-            pass # 如果找不到图标，则忽略
-
-        self.after(20, self._center_window_and_grab_focus)
-
-
-    def _center_window_and_grab_focus(self):
-        """计算居中位置并捕获焦点。"""
-        try:
-            self.update_idletasks()
-            parent_x, parent_y = self.parent.winfo_x(), self.parent.winfo_y()
-            parent_w, parent_h = self.parent.winfo_width(), self.parent.winfo_height()
-            dialog_w, dialog_h = self.winfo_width(), self.winfo_height()
-            x = parent_x + (parent_w - dialog_w) // 2
-            y = parent_y + (parent_h - dialog_h) // 2
-            self.geometry(f"+{x}+{y}")
-        except tk.TclError:
-            pass # 父窗口可能已关闭
         self.grab_set()
-
-
-    def on_cancel(self):
-        """默认的关闭/取消行为。"""
-        self.result = getattr(self, '_last_button_text', None)
-        self.grab_release()
-        self.destroy()
-
-
-class MessageDialog(BaseDialog):
-    """可滚动的消息弹窗。"""
-
-    def __init__(self, parent, title: str, message: str, icon_type: str = "info", buttons: List[str] = None,
-                 style: Optional[ttkb.Style] = None): # app_font removed
-        super().__init__(parent, title, style) # Pass style to BaseDialog
+        self.result = None
+        self.resizable(False, False)
 
         if buttons is None:
             buttons = [_("确定")]
-        self._last_button_text = buttons[-1] if buttons else None
 
-        icon_map = {"info": "ℹ️", "warning": "⚠️", "error": "❌", "question": "❓"}
-        icon = icon_map.get(icon_type, "")
+        # --- 修复：使用兼容性更强的Unicode字符作为图标 ---
+        icon_map = {"info": "ℹ", "warning": "⚠", "error": "❌", "question": "❓"}
+        icon_char = icon_map.get(icon_type, "ℹ")
 
-        # Use 'secondary' bootstyle for frame background, better for both light/dark themes
-        main_frame = ttkb.Frame(self, bootstyle="secondary")
-        main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+        bootstyle_map = {
+            "info": "info",
+            "warning": "warning",
+            "error": "danger",
+            "question": "primary"
+        }
+        color_name = bootstyle_map.get(icon_type, "info")
 
-        # Style for icon label
-        # Access style via self.style property from ttkb.Toplevel
-        self.style.configure("Icon.TLabel", font=("Segoe UI Emoji", 28))
-        if icon:
-            ttk.Label(main_frame, text=icon, style="Icon.TLabel").pack(pady=(10, 5))
+        # --- 布局 ---
+        main_frame = ttkb.Frame(self, padding=20)
+        main_frame.pack(expand=True, fill=BOTH)
+        main_frame.grid_columnconfigure(1, weight=1)
 
-        # Use tk.Text for scrollable message content
-        # Set background/foreground based on current theme's input/text colors
-        # 修复：tk.Text 的背景色和前景色通过 style.lookup 获取
-        text_bg = self.style.lookup('TText', 'background')
-        text_fg = self.style.lookup('TText', 'foreground')
+        # 使用一个Label来显示Unicode字符图标，通过字体大小来控制图标大小
+        icon_label = ttkb.Label(main_frame, text=icon_char, bootstyle=color_name, font=("-size", 28))
+        icon_label.grid(row=0, column=0, rowspan=2, sticky="n", padx=(0, 20), pady=5)
 
-        # Get font from parent.app.app_font if available, otherwise fallback
-        msg_font = getattr(parent, 'app_font', ("TkDefaultFont", 14))
+        message_label = ttkb.Label(main_frame, text=message, wraplength=400, justify="left")
+        message_label.grid(row=0, column=1, sticky="w")
 
+        button_frame = ttkb.Frame(main_frame)
+        button_frame.grid(row=1, column=1, sticky="e", pady=(20, 0))
 
-        textbox = tk.Text(
-            main_frame,
-            wrap="word",
-            font=msg_font, # Use the font from app or fallback
-            relief="flat", # Flat border for modern look
-            borderwidth=1,
-            background=text_bg,
-            foreground=text_fg,
-            height=6 # Adjust initial height
-        )
-        textbox.pack(fill="both", expand=True, padx=15, pady=5)
-        textbox.insert("1.0", message)
-        textbox.configure(state="disabled")
+        for i, text in enumerate(buttons):
+            # 主按钮（通常是第一个）使用实心样式，其他使用线框样式
+            style = color_name if i == 0 else f"{color_name}-outline"
+            btn = ttkb.Button(button_frame, text=text, bootstyle=style, command=lambda t=text: self.on_button_click(t))
+            btn.pack(side=LEFT, padx=(0, 10))
 
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(pady=(15, 10))
+        # --- 窗口居中 ---
+        self.update_idletasks()
+        try:
+            parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
+            parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
+            w, h = self.winfo_width(), self.winfo_height()
+            x, y = parent_x + (parent_w - w) // 2, parent_y + (parent_h - h) // 2
+            self.geometry(f"+{x}+{y}")
+        except tk.TclError:  # 如果父窗口已关闭
+            pass
 
-        for button_text in buttons:
-            btn_style = "info" if icon_type == "info" else "primary" # Example style
-            if icon_type == "error":
-                btn_style = "danger"
-            elif icon_type == "warning":
-                btn_style = "warning"
-            elif icon_type == "question":
-                btn_style = "secondary"
-
-            # 修复：ttkb.Button 不支持直接的 font 参数
-            btn = ttkb.Button(button_frame, text=_(button_text),
-                                command=lambda bt=button_text: self._on_button_click(bt), width=15,
-                                bootstyle=btn_style)
-            btn.pack(side="left", padx=5)
-
-    def _on_button_click(self, button_text: str):
-        self.result = button_text
-        self.grab_release()
+    def on_button_click(self, result: str):
+        self.result = result
         self.destroy()
 
 
-class ProgressDialog(BaseDialog):
+class ProgressDialog(ttkb.Toplevel):
     """任务进度弹窗。"""
 
-    def __init__(self, parent, title: str = "任务进行中", on_cancel: Optional[Callable] = None,
-                 style: Optional[ttkb.Style] = None): # app_font removed
-        super().__init__(parent, title, style)
-        self.on_cancel_callback = on_cancel
+    def __init__(self, parent, title: str, on_cancel: Optional[Callable] = None, style=None):
+        super().__init__(parent)
+        self.title(_(title))
+        self.transient(parent)
+        self.grab_set()
         self.resizable(False, False)
-
+        self.on_cancel_callback = on_cancel
         self.creation_time = time.time()
 
-        # Use 'secondary' bootstyle for frame background, better for both light/dark themes
-        main_frame = ttkb.Frame(self, bootstyle="secondary")
-        main_frame.pack(padx=20, pady=20, fill="both", expand=True)
-
-        # Get font from parent.app.app_font if available, otherwise fallback
-        prog_font = getattr(parent, 'app_font', ("TkDefaultFont", 14))
+        main_frame = ttkb.Frame(self, padding=20)
+        main_frame.pack(expand=True, fill=BOTH)
+        main_frame.grid_columnconfigure(0, weight=1)
 
         self.message_var = tk.StringVar(value=_("正在准备任务..."))
-        ttk.Label(main_frame, textvariable=self.message_var, wraplength=300, justify="center", font=prog_font).pack(pady=10, padx=10)
+        ttkb.Label(main_frame, textvariable=self.message_var, wraplength=350, justify="center").grid(row=0, column=0,
+                                                                                                     pady=10, padx=10)
 
-        # 修复：ttkb.Progressbar 不支持直接的 font 参数
-        self.progress_bar = ttkb.Progressbar(main_frame, length=300, mode='determinate', bootstyle="info")
-        # Fixed line: Use configure(value=0) instead of set(0)
-        self.progress_bar.configure(value=0)
-        self.progress_bar.pack(pady=10, padx=10, fill="x", expand=True)
+        self.progress_bar = ttkb.Progressbar(main_frame, length=350, mode='determinate', bootstyle="info-striped")
+        self.progress_bar.grid(row=1, column=0, pady=10, padx=10, sticky="ew")
 
-        if self.on_cancel_callback:
-            # 修复：ttkb.Button 不支持直接的 font 参数
+        if on_cancel:
             cancel_button = ttkb.Button(main_frame, text=_("取消"), command=self.on_close_button,
-                                        bootstyle="danger")
-            cancel_button.pack(pady=(10, 0), anchor="center")
+                                        bootstyle="danger-outline")
+            cancel_button.grid(row=2, column=0, pady=(10, 0))
 
         self.protocol("WM_DELETE_WINDOW", self.on_close_button)
 
-    def update_progress(self, percentage: float, text: str): # percentage can be float
+        self.update_idletasks()
+        try:
+            parent_x, parent_y, parent_w, parent_h = parent.winfo_x(), parent.winfo_y(), parent.winfo_width(), parent.winfo_height()
+            w, h = self.winfo_width(), self.winfo_height()
+            x, y = parent_x + (parent_w - w) // 2, parent_y + (parent_h - h) // 2
+            self.geometry(f"+{x}+{y}")
+        except tk.TclError:
+            pass
+
+    def update_progress(self, percentage: float, text: str):
         try:
             if self.winfo_exists():
                 self.message_var.set(_(text))
-                self.progress_bar.configure(value=percentage) # ttkb.Progressbar expects value directly
+                self.progress_bar['value'] = percentage
                 self.update_idletasks()
         except tk.TclError:
             pass
 
-
     def on_close_button(self):
-        """当用户点击取消或关闭按钮时调用。"""
         if self.on_cancel_callback:
             self.on_cancel_callback()
-
+        self.destroy()
 
     def close(self):
-        """一个简单的、用于被外部调用的销毁方法。"""
         if self.winfo_exists():
             self.destroy()
-
-    def on_cancel(self):
-        """重写基类的 on_cancel，确保总是调用安全的 close 方法。"""
-        self.close()

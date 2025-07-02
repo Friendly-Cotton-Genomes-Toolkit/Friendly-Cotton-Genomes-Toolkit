@@ -9,6 +9,7 @@ import webbrowser
 import tkinter as tk
 from tkinter import filedialog
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Any
+import requests
 
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
@@ -18,6 +19,7 @@ from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUB
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.config.models import MainConfig
+from cotton_toolkit.core.ai_wrapper import AIWrapper
 from .dialogs import MessageDialog
 from .utils.gui_helpers import identify_genome_from_gene_ids
 
@@ -53,6 +55,7 @@ class EventHandler:
             "ai_models_fetched": self._handle_ai_models_fetched,
             "ai_test_result": self._handle_ai_test_result,
             "auto_identify_success": self._handle_auto_identify_success,
+            "proxy_test_done": self._handle_proxy_test_done,
         }
 
     # --- 任务启动与管理 ---
@@ -67,11 +70,8 @@ class EventHandler:
         """后台加载线程。"""
         app = self.app
         try:
-            loaded_config = None
-            genome_sources = None
-            config_path_to_send = None
-            default_config_path = "config.yml"
-            if os.path.exists(default_config_path):
+            loaded_config, genome_sources, config_path_to_send = None, None, None
+            if os.path.exists(default_config_path := "config.yml"):
                 app.message_queue.put(("progress", (10, _("加载配置文件..."))))
                 config_path_to_send = os.path.abspath(default_config_path)
                 loaded_config = load_config(config_path_to_send)
@@ -82,8 +82,7 @@ class EventHandler:
                             "config_path": config_path_to_send}
             app.message_queue.put(("startup_complete", startup_data))
         except Exception as e:
-            error_message = f"{_('应用启动失败')}: {e}\n--- TRACEBACK ---\n{traceback.format_exc()}"
-            app.message_queue.put(("startup_failed", error_message))
+            app.message_queue.put(("startup_failed", f"{_('应用启动失败')}: {e}\n{traceback.format_exc()}"))
         finally:
             app.message_queue.put(("hide_progress_dialog", None))
 
@@ -105,10 +104,9 @@ class EventHandler:
     def _task_wrapper(self, target_func, kwargs, task_name):
         try:
             result = target_func(**kwargs)
-            msg_type = "task_done"
             data = (False, task_name, "CANCELLED") if self.app.cancel_current_task_event.is_set() else (True, task_name,
                                                                                                         result)
-            self.app.message_queue.put((msg_type, data))
+            self.app.message_queue.put(("task_done", data))
         except Exception as e:
             self.app.message_queue.put(("error", f"{_('任务执行出错')}: {e}\n{traceback.format_exc()}"))
 
@@ -161,10 +159,9 @@ class EventHandler:
                 textbox = tab.result_textbox
                 textbox.configure(state="normal")
                 textbox.delete("1.0", "end")
-                if success and result_data is not None and not result_data.empty:
-                    textbox.insert("1.0", result_data.to_string(index=False))
-                else:
-                    textbox.insert("1.0", _("未找到有效的同源区域。") if success else _("任务执行失败。"))
+                textbox.insert("1.0", result_data.to_string(
+                    index=False) if success and result_data is not None and not result_data.empty else (
+                    _("未找到有效的同源区域。") if success else _("任务执行失败。")))
                 textbox.configure(state="disabled")
 
     def _handle_error(self, data: str):
@@ -180,10 +177,14 @@ class EventHandler:
             self.app.ui_manager.progress_dialog.update_progress(*data)
 
     def _handle_ai_models_fetched(self, data: tuple):
-        provider_key, models = data
-        self.app.ui_manager.update_ai_model_dropdown(provider_key, models)
-        self.app.ui_manager.show_info_message(_("刷新成功"),
-                                              f"{_('已成功获取并更新')} {provider_key} {_('的模型列表。')}")
+        provider_key, models_or_error = data
+        if isinstance(models_or_error, list):
+            self.app.ui_manager.update_ai_model_dropdown(provider_key, models_or_error)
+            self.app.ui_manager.show_info_message(_("刷新成功"),
+                                                  f"{_('已成功获取并更新')} {provider_key} {_('的模型列表。')}")
+        else:
+            self.app.ui_manager.update_ai_model_dropdown(provider_key, [])  # 传递空列表以显示错误状态
+            self.app.ui_manager.show_error_message(_("刷新失败"), str(models_or_error))
 
     def _handle_ai_test_result(self, data: tuple):
         success, message = data
@@ -197,10 +198,16 @@ class EventHandler:
                                                                                                        tk.StringVar):
             target_var.set(assembly_id)
 
+    def _handle_proxy_test_done(self, data: tuple):
+        success, message = data
+        if success:
+            self.app.ui_manager.show_info_message(_("代理测试成功"), message)
+        else:
+            self.app.ui_manager.show_error_message(_("代理测试失败"), message)
+
     # --- 用户界面事件处理 ---
     def on_closing(self):
-        dialog = MessageDialog(self.app, _("退出程序"), _("您确定要退出吗?"), "question", [_("确定"), _("取消")],
-                               self.app.style)
+        dialog = MessageDialog(self.app, _("退出程序"), _("您确定要退出吗?"), "question", [_("确定"), _("取消")])
         if dialog.wait_window() or dialog.result == _("确定"):
             self.app.destroy()
 
@@ -231,17 +238,17 @@ class EventHandler:
 
     def clear_log_viewer(self):
         if hasattr(self.app, 'log_textbox'):
-            self.app.log_textbox.configure(state="normal")
-            self.app.log_textbox.delete("1.0", "end")
+            self.app.log_textbox.configure(state="normal");
+            self.app.log_textbox.delete("1.0", "end");
             self.app.log_textbox.configure(state="disabled")
 
     def load_config_file(self, filepath: Optional[str] = None):
-        if not filepath:
-            filepath = filedialog.askopenfilename(title=_("选择配置文件"),
-                                                  filetypes=[("YAML files", "*.yml *.yaml"), ("All files", "*.*")])
-        if filepath:
-            self.app.ui_manager._show_progress_dialog(title=_("加载中..."), message=_("正在加载配置文件..."))
-            threading.Thread(target=self._load_config_thread, args=(filepath,), daemon=True).start()
+        if not filepath and not (filepath := filedialog.askopenfilename(title=_("选择配置文件"),
+                                                                        filetypes=[("YAML files", "*.yml *.yaml"),
+                                                                                   ("All files", "*.*")])):
+            return
+        self.app.ui_manager._show_progress_dialog(title=_("加载中..."), message=_("正在加载配置文件..."))
+        threading.Thread(target=self._load_config_thread, args=(filepath,), daemon=True).start()
 
     def _load_config_thread(self, filepath: str):
         try:
@@ -255,15 +262,14 @@ class EventHandler:
         main_config_path = os.path.join(output_dir, "config.yml")
         if os.path.exists(main_config_path):
             dialog = MessageDialog(self.app, _("文件已存在"), _("配置文件 'config.yml' 已存在，是否覆盖?"), "question",
-                                   [_("是"), _("否")], self.app.style)
+                                   [_("是"), _("否")])
             if dialog.wait_window() or dialog.result != _("是"): return
         try:
-            # 修复语法错误：先赋值，再判断
-            success, new_cfg_path, _v = generate_default_config_files(output_dir, overwrite=True)
+            success, new_cfg_path, _d = generate_default_config_files(output_dir, overwrite=True)
             if success:
                 dialog = MessageDialog(self.app, _("生成成功"),
                                        f"{_('默认配置文件已成功生成。')}\n\n{_('是否立即加载?')}", "info",
-                                       [_("是"), _("否")], self.app.style)
+                                       [_("是"), _("否")])
                 if dialog.wait_window() or dialog.result == _("是"): self.load_config_file(filepath=new_cfg_path)
         except Exception as e:
             self.app.ui_manager.show_error_message(_("生成错误"), f"{_('生成默认配置文件时发生错误:')} {e}")
@@ -328,6 +334,79 @@ class EventHandler:
                 self.app.message_queue.put(("auto_identify_success", (target_assembly_var, assembly_id)))
         except Exception as e:
             logger.error(f"自动识别基因组时发生错误: {e}")
+
+    def test_proxy_connection(self):
+        app = self.app
+        http_proxy = app.proxy_http_entry.get().strip()
+        https_proxy = app.proxy_https_entry.get().strip()
+        if not http_proxy and not https_proxy:
+            app.ui_manager.show_info_message(_("信息"), _("请先填写HTTP或HTTPS代理地址。"))
+            return
+        proxies = {k: v for k, v in {'http': http_proxy, 'https': https_proxy}.items() if v}
+        app.ui_manager._show_progress_dialog(title=_("正在测试代理..."), message=_("尝试通过代理连接到测试站点..."))
+        threading.Thread(target=self._test_proxy_thread, args=(proxies,), daemon=True).start()
+
+    def _test_proxy_thread(self, proxies: dict):
+        test_url = "https://httpbin.org/get"
+        try:
+            response = requests.get(test_url, proxies=proxies, timeout=15)
+            response.raise_for_status()
+            origin_ip = response.json().get('origin', 'N/A')
+            message = f"{_('连接成功！')}\n{_('测试站点报告的IP地址是:')} {origin_ip}"
+            self.app.message_queue.put(("proxy_test_done", (True, message)))
+        except requests.exceptions.RequestException as e:
+            self.app.message_queue.put(("proxy_test_done", (False, f"{_('连接失败。')}\n{_('错误详情:')} {e}")))
+        finally:
+            self.app.message_queue.put(("hide_progress_dialog", None))
+
+    def _gui_fetch_ai_models(self, provider_key: str, use_proxy: bool):
+        app = self.app
+        app.logger.info(f"正在获取 '{provider_key}' 的模型列表... (使用代理: {use_proxy})")
+        if app.active_task_name:
+            app.ui_manager.show_warning_message(_("任务进行中"),
+                                                f"{_('任务')} '{app.active_task_name}' {_('正在运行。')}")
+            return
+        try:
+            safe_key = provider_key.replace('-', '_')
+            api_key = getattr(app, f"ai_{safe_key}_apikey_entry").get().strip()
+            base_url = getattr(app, f"ai_{safe_key}_baseurl_entry").get().strip() or None
+        except AttributeError:
+            app.ui_manager.show_error_message(_("UI错误"), _("配置编辑器UI尚未完全加载。"))
+            return
+        if not api_key or "YOUR_" in api_key:
+            app.ui_manager.show_warning_message(_("缺少API Key"),
+                                                _("请先在编辑器中为 '{}' 填写有效的API Key。").format(provider_key))
+            return
+        proxies = None
+        if use_proxy:
+            http_p, https_p = app.proxy_http_entry.get().strip(), app.proxy_https_entry.get().strip()
+            if http_p or https_p: proxies = {'http': http_p, 'https': https_p}
+        app.active_task_name = f"{_('刷新模型列表')}: {provider_key}"
+        app.cancel_current_task_event.clear()
+        app.ui_manager._show_progress_dialog(title=_("正在获取模型..."), message=_("连接到 {}...").format(provider_key),
+                                             on_cancel=app.cancel_current_task_event.set)
+        thread_kwargs = {'provider': provider_key, 'api_key': api_key, 'base_url': base_url, 'proxies': proxies,
+                         'cancel_event': app.cancel_current_task_event}
+        threading.Thread(target=self._fetch_models_thread, kwargs=thread_kwargs, daemon=True).start()
+
+    def _fetch_models_thread(self, **kwargs):
+        provider = kwargs.get('provider')
+        cancel_event = kwargs.get('cancel_event')
+        try:
+            if cancel_event and cancel_event.is_set():
+                self.app.message_queue.put(("ai_models_fetched", (provider, "CANCELLED")));
+                return
+            models = AIWrapper.get_models(**kwargs)
+            if cancel_event and cancel_event.is_set():
+                self.app.message_queue.put(("ai_models_fetched", (provider, "CANCELLED")))
+            else:
+                self.app.message_queue.put(("ai_models_fetched", (provider, models)))
+        except Exception as e:
+            if not (cancel_event and cancel_event.is_set()):
+                self.app.message_queue.put(("ai_models_fetched", (provider, str(e))))
+        finally:
+            self.app.message_queue.put(("hide_progress_dialog", None))
+            self.app.active_task_name = None
 
     def gui_status_callback(self, message: str, level: str = "INFO"):
         logger.log(logging.getLevelName(level.upper()), message)

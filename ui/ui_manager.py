@@ -1,5 +1,4 @@
-﻿# 文件: cotton_tool/ui/ui_manager.py
-import json
+﻿import json
 import os
 import time
 import tkinter as tk
@@ -205,17 +204,17 @@ class UIManager:
         if frame_to_show := getattr(app, f"{name}_frame", None): frame_to_show.grid(row=0, column=0, sticky="nsew")
 
     def show_info_message(self, title: str, message: str):
-        MessageDialog(self.app, _(title), _(message), "info", self.style).wait_window()
+        MessageDialog(self.app, _(title), _(message), icon_type="info").wait_window()
 
     def show_error_message(self, title: str, message: str):
-        MessageDialog(self.app, _(title), message, "error", self.style).wait_window()
+        MessageDialog(self.app, _(title), message, icon_type="error").wait_window()
 
     def show_warning_message(self, title: str, message: str):
-        MessageDialog(self.app, _(title), _(message), "warning", self.style).wait_window()
+        MessageDialog(self.app, _(title), _(message), icon_type="warning").wait_window()
 
     def _show_progress_dialog(self, title: str, message: str, on_cancel: Optional[Callable] = None):
         if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
-        self.progress_dialog = ProgressDialog(self.app, title, on_cancel, self.style)
+        self.progress_dialog = ProgressDialog(self.app, title, on_cancel)
         self.progress_dialog.update_progress(0, message)
 
     def _hide_progress_dialog(self):
@@ -266,78 +265,69 @@ class UIManager:
             if not (widget and widget.winfo_exists()): continue
             if isinstance(options, str):
                 widget.configure(text=_(options))
-            # Other translation logic...
 
     def _add_placeholder(self, widget, key):
-        """通用占位符添加函数，兼容Entry和Text。"""
         if not widget.winfo_exists(): return
         placeholder_text = _(self.app.placeholders.get(key, ""))
         is_dark = self.style.theme.type == 'dark'
         ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
-
         if isinstance(widget, (tk.Entry, ttkb.Entry)):
-            widget.delete(0, tk.END)
-            widget.insert(0, placeholder_text)
-            # 对于ttk Entry，修改前景色需要通过样式，这里直接配置可能无效，但保留尝试
+            widget.delete(0, tk.END);
+            widget.insert(0, placeholder_text);
             widget.configure(foreground=ph_color)
         elif isinstance(widget, tk.Text):
-            widget.delete("1.0", tk.END)
-            widget.insert("1.0", placeholder_text)
+            widget.delete("1.0", tk.END);
+            widget.insert("1.0", placeholder_text);
             widget.configure(font=self.app.app_font_italic, foreground=ph_color)
 
     def _clear_placeholder(self, widget, key):
-        """通用占位符清除函数，兼容Entry和Text。"""
         if not widget.winfo_exists(): return
         placeholder_text = _(self.app.placeholders.get(key, ""))
-        current_text = ""
-
-        if isinstance(widget, (tk.Entry, ttkb.Entry)):
-            current_text = widget.get()
-        elif isinstance(widget, tk.Text):
-            current_text = widget.get("1.0", tk.END).strip()
-
+        current_text = widget.get() if isinstance(widget, (tk.Entry, ttkb.Entry)) else widget.get("1.0", tk.END).strip()
         if current_text == placeholder_text:
             if isinstance(widget, (tk.Entry, ttkb.Entry)):
-                widget.delete(0, tk.END)
+                widget.delete(0, tk.END);
                 widget.configure(foreground=self.app.default_text_color)
             elif isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END)
+                widget.delete("1.0", tk.END);
                 widget.configure(font=self.app.app_font, foreground=self.app.default_text_color)
 
     def _handle_focus_in(self, event, widget, key):
-        """通用焦点进入处理函数。"""
         self._clear_placeholder(widget, key)
 
     def _handle_focus_out(self, event, widget, key):
-        """通用焦点移出处理函数。"""
-        current_text = ""
-        if isinstance(widget, (tk.Entry, ttkb.Entry)):
-            current_text = widget.get()
-        elif isinstance(widget, tk.Text):
-            current_text = widget.get("1.e", tk.END).strip()
-
-        if not current_text:
-            self._add_placeholder(widget, key)
+        current_text = widget.get() if isinstance(widget, (tk.Entry, ttkb.Entry)) else widget.get("1.0", tk.END).strip()
+        if not current_text: self._add_placeholder(widget, key)
 
     def _update_assembly_id_dropdowns(self, ids: List[str]):
         ids = ids or [_("无可用基因组")]
         for tab in self.app.tool_tab_instances.values():
             if hasattr(tab, 'update_assembly_dropdowns'): tab.update_assembly_dropdowns(ids)
 
-    def update_ai_model_dropdown(self, provider_key: str, models: List[str], error: bool = False):
+    def update_ai_model_dropdown(self, provider_key: str, models: List[str]):
         selector = getattr(self.app, f'ai_{provider_key.replace("-", "_")}_model_selector', None)
         if not selector: return
-        frame, entry, dropdown, var, button = selector
-        if error:
-            dropdown.grid_remove();
-            entry.grid()
-        else:
-            current_val = var.get()
-            new_val = current_val if models and current_val in models else (models[0] if models else _("无可用模型"))
-            var.set(new_val)
+        dropdown, var = selector
+
+        if not models:
+            dropdown.configure(state="disabled")
+            var.set(_("刷新失败或无模型"))
+            # 清空并添加一个禁用的菜单项
             menu = dropdown["menu"]
             menu.delete(0, "end")
-            for model in (models or [_("无可用模型")]):
-                menu.add_command(label=model, command=lambda v=model: var.set(v))
-            entry.grid_remove();
-            dropdown.grid()
+            menu.add_command(label=var.get(), state="disabled")
+            return
+
+        dropdown.configure(state="normal")
+        current_val = var.get()
+        # 如果当前值不在新列表中，或者当前值是提示性文字，则更新为列表第一项
+        if current_val not in models or current_val == _("点击刷新获取列表"):
+            new_val = models[0]
+        else:
+            new_val = current_val
+        var.set(new_val)
+
+        menu = dropdown["menu"]
+        menu.delete(0, "end")
+        for model in models:
+            menu.add_command(label=model, command=lambda v=model: var.set(v))

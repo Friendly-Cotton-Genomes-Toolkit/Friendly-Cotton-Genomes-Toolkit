@@ -64,7 +64,6 @@ class CottonToolkitApp(ttkb.Window):
             "gff_region": _("例如: Gh_A01:1-100000"),
         }
 
-        # --- Initialize App State ---
         self.current_config: Optional[MainConfig] = None
         self.config_path: Optional[str] = None
         self.genome_sources_data = {}
@@ -78,19 +77,16 @@ class CottonToolkitApp(ttkb.Window):
         self.editor_ui_built = False
         self.tool_tab_instances = {}
 
-        # --- Initialize StringVars ---
         self.config_path_display_var = tk.StringVar(value=_("未加载配置"))
         self.selected_language_var = tk.StringVar()
         self.selected_appearance_var = tk.StringVar()
 
-        # --- Initialize Managers ---
         self.ui_manager = UIManager(self)
         self.event_handler = EventHandler(self)
 
         self._create_image_assets()
         setup_global_logger(log_level_str="INFO", log_queue=self.log_queue)
 
-        # --- Build UI and Start Processes ---
         self.ui_manager.setup_initial_ui()
         self.event_handler.start_app_async_startup()
         self.check_queue_periodic()
@@ -115,134 +111,150 @@ class CottonToolkitApp(ttkb.Window):
 
     def _create_editor_widgets(self, parent):
         parent.grid_columnconfigure(0, weight=1)
-        row = 0
+        row_counter = 0
 
-        # Helper functions to create UI elements
+        def get_row():
+            nonlocal row_counter; r = row_counter; row_counter += 1; return r
+
         def section(title):
-            nonlocal row
-            ttkb.Label(parent, text=f"◇ {title} ◇", font=self.app_subtitle_font, bootstyle="primary").grid(row=row,
-                                                                                                           column=0,
-                                                                                                           pady=(25,
-                                                                                                                 10),
-                                                                                                           sticky="w",
-                                                                                                           padx=5);
-            row += 1
+            ttkb.Label(parent, text=f"◇ {title} ◇", font=self.app_subtitle_font, bootstyle="primary").grid(
+                row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
 
-        def entry(p, label, tooltip=""):
-            nonlocal row
-            f = ttkb.Frame(p);
-            f.grid(row=row, column=0, sticky="ew", pady=4, padx=5);
-            f.grid_columnconfigure(1, weight=1)
-            ttkb.Label(f, text=label).grid(row=0, column=0, sticky="w", padx=(5, 10))
-            e = ttkb.Entry(f);
-            e.grid(row=0, column=1, sticky="ew")
-            if tooltip: ttkb.Label(f, text=tooltip, font=self.app_comment_font, bootstyle="secondary",
-                                   wraplength=500).grid(row=1, column=1, sticky="w", pady=(0, 5), padx=2)
-            row += 1
-            return e
+        def create_entry_row(label, tooltip=""):
+            container = ttkb.Frame(parent);
+            container.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+            container.grid_columnconfigure(1, weight=1)
+            ttkb.Label(container, text=label).grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
+            widget = ttkb.Entry(container);
+            widget.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
+            if tooltip: ttkb.Label(container, text=tooltip, font=self.app_comment_font, bootstyle="secondary").grid(
+                row=1, column=1, sticky="w", padx=5)
+            return widget
 
-        def switch(p, label, tooltip=""):
-            nonlocal row
-            f = ttkb.Frame(p);
-            f.grid(row=row, column=0, sticky="ew", pady=8, padx=5);
-            f.grid_columnconfigure(1, weight=1)
-            ttkb.Label(f, text=label).grid(row=0, column=0, sticky="w", padx=(5, 10))
+        def create_switch_row(label, tooltip=""):
+            container = ttkb.Frame(parent);
+            container.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+            container.grid_columnconfigure(1, weight=1)
+            ttkb.Label(container, text=label).grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
             var = tk.BooleanVar();
-            s = ttkb.Checkbutton(f, variable=var, bootstyle="round-toggle");
-            s.grid(row=0, column=1, sticky="w")
-            if tooltip: ttkb.Label(f, text=tooltip, font=self.app_comment_font, bootstyle="secondary",
-                                   wraplength=500).grid(row=1, column=1, sticky="w", pady=(0, 5), padx=10)
-            row += 1
-            return s, var
+            widget = ttkb.Checkbutton(container, variable=var, bootstyle="round-toggle");
+            widget.grid(row=0, column=1, sticky="w", padx=5)
+            if tooltip: ttkb.Label(container, text=tooltip, font=self.app_comment_font, bootstyle="secondary").grid(
+                row=1, column=1, sticky="w", padx=5)
+            return widget, var
 
-        def textbox(p, label, tooltip=""):
-            nonlocal row
-            f = ttkb.Frame(p);
-            f.grid(row=row, column=0, sticky="ew", pady=8, padx=5);
-            f.grid_columnconfigure(1, weight=1)
-            ttkb.Label(f, text=label).grid(row=0, column=0, sticky="nw", padx=(5, 10))
-            bg, fg = self.style.lookup('TFrame', 'background'), self.style.lookup('TLabel', 'foreground')
-            t = tk.Text(f, height=7, font=self.app_font_mono, wrap="word", relief="flat", background=bg, foreground=fg,
-                        insertbackground=fg)
-            t.grid(row=0, column=1, sticky="ew")
-            self.ui_manager._bind_mouse_wheel_to_scrollable(t)
-            if tooltip: ttkb.Label(f, text=tooltip, font=self.app_comment_font, bootstyle="secondary",
-                                   wraplength=500).grid(row=1, column=1, sticky="w", pady=(0, 5))
-            row += 1
-            return t
+        def create_option_menu_row(label, var, default, values, tooltip=""):
+            container = ttkb.Frame(parent);
+            container.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+            container.grid_columnconfigure(1, weight=1)
+            ttkb.Label(container, text=label).grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
+            var.set(default);
+            widget = ttkb.OptionMenu(container, var, default, *values, bootstyle='info-outline');
+            widget.grid(row=0, column=1, sticky="ew", padx=5)
+            if tooltip: ttkb.Label(container, text=tooltip, font=self.app_comment_font, bootstyle="secondary").grid(
+                row=1, column=1, sticky="w", padx=5)
+            return widget
 
-        def option_menu(p, label, tooltip, options):
-            nonlocal row
-            f = ttkb.Frame(p);
-            f.grid(row=row, column=0, sticky="ew", pady=8, padx=5);
-            f.grid_columnconfigure(1, weight=1)
-            ttkb.Label(f, text=label).grid(row=0, column=0, sticky="w", padx=(5, 10))
-            var = tk.StringVar();
-            m = ttkb.OptionMenu(f, var, (options[0] if options else ""), *options, bootstyle='info');
-            m.grid(row=0, column=1, sticky="ew")
-            if tooltip: ttkb.Label(f, text=tooltip, font=self.app_comment_font, bootstyle="secondary",
-                                   wraplength=500).grid(row=1, column=1, sticky="w", pady=(0, 5))
-            row += 1
-            return m, var
-
-        # --- Create Widgets and assign to instance attributes ---
         section(_("通用设置"))
-        self.general_log_level_menu, self.general_log_level_var = option_menu(parent, _("日志级别"),
-                                                                              _("设置应用程序的日志详细程度。"),
-                                                                              ["DEBUG", "INFO", "WARNING", "ERROR"])
-        self.general_i18n_lang_menu, self.general_i18n_lang_var = option_menu(parent, _("命令行语言"),
-                                                                              _("设置后端日志和消息的语言。"),
-                                                                              list(self.LANG_CODE_TO_NAME.values()))
-        self.proxy_http_entry = entry(parent, _("HTTP代理"), _("例如: http://user:pass@host:port"))
-        self.proxy_https_entry = entry(parent, _("HTTPS代理"), _("例如: https://user:pass@host:port"))
+        self.general_log_level_var = tk.StringVar()
+        self.general_log_level_menu = create_option_menu_row(_("日志级别"), self.general_log_level_var, "INFO",
+                                                             ["DEBUG", "INFO", "WARNING", "ERROR"],
+                                                             _("设置应用程序的日志详细程度。"))
+        self.general_i18n_lang_var = tk.StringVar()
+        self.general_i18n_lang_menu = create_option_menu_row(_("命令行语言"), self.general_i18n_lang_var, "简体中文",
+                                                             list(self.LANG_CODE_TO_NAME.values()),
+                                                             _("设置后端日志和消息的语言。"))
+        self.proxy_http_entry = create_entry_row(_("HTTP代理"), _("例如: http://127.0.0.1:7890"))
+        self.proxy_https_entry = create_entry_row(_("HTTPS代理"), _("例如: https://127.0.0.1:7890"))
+
+        proxy_button_frame = ttkb.Frame(parent)
+        proxy_button_frame.grid(row=get_row(), column=0, sticky="e", padx=5, pady=5)
+        self.test_proxy_button = ttkb.Button(proxy_button_frame, text=_("测试代理连接"),
+                                             command=self.event_handler.test_proxy_connection,
+                                             bootstyle="primary-outline")
+        self.test_proxy_button.pack()
 
         section(_("数据下载器配置"))
-        self.downloader_sources_file_entry = entry(parent, _("基因组源文件"), _("定义基因组下载链接的YAML文件。"))
-        self.downloader_output_dir_entry = entry(parent, _("下载输出根目录"), _("所有下载文件存放的基准目录。"))
-        self.downloader_force_download_switch, self.downloader_force_download_var = switch(parent, _("强制重新下载"),
-                                                                                           _("如果文件已存在，是否覆盖。"))
-        self.downloader_max_workers_entry = entry(parent, _("最大下载线程数"), _("多线程下载时使用的最大线程数。"))
-        self.downloader_use_proxy_switch, self.downloader_use_proxy_var = switch(parent, _("为下载使用代理"),
-                                                                                 _("是否为数据下载启用代理。"))
+        self.downloader_sources_file_entry = create_entry_row(_("基因组源文件"), _("定义基因组下载链接的YAML文件。"))
+        self.downloader_output_dir_entry = create_entry_row(_("下载输出根目录"), _("所有下载文件存放的基准目录。"))
+        self.downloader_force_download_switch, self.downloader_force_download_var = create_switch_row(_("强制重新下载"),
+                                                                                                      _("如果文件已存在，是否覆盖。"))
+        self.downloader_max_workers_entry = create_entry_row(_("最大下载线程数"), _("多线程下载时使用的最大线程数。"))
+        self.downloader_use_proxy_switch, self.downloader_use_proxy_var = create_switch_row(_("为下载使用代理"),
+                                                                                            _("是否为数据下载启用代理。"))
 
         section(_("AI 服务配置"))
-        self.ai_default_provider_menu, self.ai_default_provider_var = option_menu(parent, _("默认AI服务商"),
-                                                                                  _("选择默认使用的AI模型提供商。"),
-                                                                                  [p['name'] for p in
-                                                                                   self.AI_PROVIDERS.values()])
-        self.ai_use_proxy_switch, self.ai_use_proxy_var = switch(parent, _("为AI服务使用代理"),
-                                                                 _("是否为连接AI模型API启用代理。"))
+        self.ai_default_provider_var = tk.StringVar()
+        self.ai_default_provider_menu = create_option_menu_row(_("默认AI服务商"), self.ai_default_provider_var,
+                                                               "Google Gemini",
+                                                               [p['name'] for p in self.AI_PROVIDERS.values()],
+                                                               _("选择默认使用的AI模型提供商。"))
+        self.ai_use_proxy_switch, self.ai_use_proxy_var = create_switch_row(_("为AI服务使用代理"),
+                                                                            _("是否为连接AI模型API启用代理。"))
 
         for p_key, p_info in self.AI_PROVIDERS.items():
             card = ttkb.LabelFrame(parent, text=p_info['name'], bootstyle="secondary")
-            card.grid(row=row, column=0, sticky="ew", pady=8, padx=5);
-            row += 1
+            card.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
             card.grid_columnconfigure(1, weight=1)
             safe_key = p_key.replace('-', '_')
 
-            # 修复：创建控件并将其引用保存到self
-            apikey_entry = entry(card, "API Key")
-            baseurl_entry = entry(card, "Base URL", _("部分服务商或代理需要填写，例如 http://localhost:8080/v1"))
+            ttkb.Label(card, text="API Key").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+            apikey_entry = ttkb.Entry(card);
+            apikey_entry.grid(row=0, column=1, sticky="ew", pady=5, padx=5)
             setattr(self, f"ai_{safe_key}_apikey_entry", apikey_entry)
+
+            ttkb.Label(card, text="Model").grid(row=1, column=0, sticky="w", padx=10, pady=5)
+            model_frame = ttkb.Frame(card);
+            model_frame.grid(row=1, column=1, sticky="ew", pady=5, padx=5);
+            model_frame.grid_columnconfigure(0, weight=1)
+            model_var = tk.StringVar(value=_("点击刷新获取列表"))
+            model_dropdown = ttkb.OptionMenu(model_frame, model_var, _("点击刷新..."), bootstyle="info");
+            model_dropdown.configure(state="disabled");
+            model_dropdown.grid(row=0, column=0, sticky="ew")
+            button_frame = ttkb.Frame(model_frame);
+            button_frame.grid(row=0, column=1, padx=(10, 0))
+            ttkb.Button(button_frame, text=_("刷新"), width=8,
+                        command=lambda pk=p_key: self.event_handler._gui_fetch_ai_models(pk, use_proxy=False),
+                        bootstyle='outline').pack(side="left")
+            ttkb.Button(button_frame, text=_("代理刷新"), width=10,
+                        command=lambda pk=p_key: self.event_handler._gui_fetch_ai_models(pk, use_proxy=True),
+                        bootstyle='info-outline').pack(side="left", padx=(5, 0))
+            setattr(self, f"ai_{safe_key}_model_selector", (model_dropdown, model_var))
+
+            ttkb.Label(card, text="Base URL").grid(row=2, column=0, sticky="w", padx=10, pady=5)
+            baseurl_entry = ttkb.Entry(card);
+            baseurl_entry.grid(row=2, column=1, sticky="ew", pady=5, padx=5)
             setattr(self, f"ai_{safe_key}_baseurl_entry", baseurl_entry)
 
         section(_("AI 提示词模板"))
-        self.ai_translation_prompt_textbox = textbox(parent, _("翻译提示词"), _("必须包含 {text} 占位符。"))
-        self.ai_analysis_prompt_textbox = textbox(parent, _("分析提示词"), _("必须包含 {text} 占位符。"))
+        f_trans = ttkb.Frame(parent);
+        f_trans.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5);
+        f_trans.grid_columnconfigure(1, weight=1)
+        ttkb.Label(f_trans, text=_("翻译提示词")).grid(row=0, column=0, sticky="nw", padx=(5, 10))
+        bg_t, fg_t = self.style.lookup('TFrame', 'background'), self.style.lookup('TLabel', 'foreground')
+        self.ai_translation_prompt_textbox = tk.Text(f_trans, height=7, font=self.app_font_mono, wrap="word",
+                                                     relief="flat", background=bg_t, foreground=fg_t,
+                                                     insertbackground=fg_t)
+        self.ai_translation_prompt_textbox.grid(row=0, column=1, sticky="ew", padx=5)
+
+        f_ana = ttkb.Frame(parent);
+        f_ana.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5);
+        f_ana.grid_columnconfigure(1, weight=1)
+        ttkb.Label(f_ana, text=_("分析提示词")).grid(row=0, column=0, sticky="nw", padx=(5, 10))
+        self.ai_analysis_prompt_textbox = tk.Text(f_ana, height=7, font=self.app_font_mono, wrap="word", relief="flat",
+                                                  background=bg_t, foreground=fg_t, insertbackground=fg_t)
+        self.ai_analysis_prompt_textbox.grid(row=0, column=1, sticky="ew", padx=5)
 
     def _apply_config_values_to_editor(self):
-        """将配置值填充到编辑器控件。"""
         if not self.current_config or not self.editor_ui_built: return
         cfg = self.current_config
 
         def set_val(widget, value):
             if not widget: return
             if isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END);
-                widget.insert("1.0", str(value or ""))
+                widget.delete("1.0", tk.END); widget.insert("1.0", str(value or ""))
             elif isinstance(widget, ttkb.Entry):
-                widget.delete(0, tk.END);
-                widget.insert(0, str(value or ""))
+                widget.delete(0, tk.END); widget.insert(0, str(value or ""))
 
         self.general_log_level_var.set(cfg.log_level)
         self.general_i18n_lang_var.set(self.LANG_CODE_TO_NAME.get(cfg.i18n_language, "zh-hans"))
@@ -256,21 +268,21 @@ class CottonToolkitApp(ttkb.Window):
         self.ai_default_provider_var.set(self.AI_PROVIDERS.get(cfg.ai_services.default_provider, {}).get('name', ''))
         self.ai_use_proxy_var.set(cfg.ai_services.use_proxy_for_ai)
 
-        # 修复：遍历配置中的providers，并将值填充到对应的UI控件
         for p_key, p_cfg in cfg.ai_services.providers.items():
             safe_key = p_key.replace('-', '_')
-            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry", None):
-                set_val(apikey_widget, p_cfg.api_key)
-            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry", None):
-                set_val(baseurl_widget, p_cfg.base_url)
+            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry", None): set_val(apikey_widget,
+                                                                                            p_cfg.api_key)
+            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry", None): set_val(baseurl_widget,
+                                                                                              p_cfg.base_url)
+            if model_selector := getattr(self, f"ai_{safe_key}_model_selector", None):
+                _dropdown, var = model_selector
+                var.set(p_cfg.model or "")
 
         set_val(self.ai_translation_prompt_textbox, cfg.ai_prompts.translation_prompt)
         set_val(self.ai_analysis_prompt_textbox, cfg.ai_prompts.analysis_prompt)
-
         self.logger.info("配置已应用到编辑器UI。")
 
     def _save_config_from_editor(self):
-        """从编辑器收集数据并保存配置。"""
         if not self.current_config or not self.config_path:
             self.ui_manager.show_error_message("错误", "没有加载配置文件，无法保存。")
             return
@@ -289,13 +301,15 @@ class CottonToolkitApp(ttkb.Window):
                 (k for k, v in self.AI_PROVIDERS.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
             cfg.ai_services.use_proxy_for_ai = self.ai_use_proxy_var.get()
 
-            # 修复：遍历providers，从对应的UI控件读取值并保存
             for p_key, p_cfg in cfg.ai_services.providers.items():
                 safe_key = p_key.replace('-', '_')
-                if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry", None):
-                    p_cfg.api_key = apikey_widget.get()
-                if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry", None):
-                    p_cfg.base_url = baseurl_widget.get() or None
+                if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry",
+                                            None): p_cfg.api_key = apikey_widget.get()
+                if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry",
+                                             None): p_cfg.base_url = baseurl_widget.get() or None
+                if model_selector := getattr(self, f"ai_{safe_key}_model_selector", None):
+                    dropdown, var = model_selector
+                    p_cfg.model = var.get()
 
             cfg.ai_prompts.translation_prompt = self.ai_translation_prompt_textbox.get("1.0", tk.END).strip()
             cfg.ai_prompts.analysis_prompt = self.ai_analysis_prompt_textbox.get("1.0", tk.END).strip()
@@ -306,28 +320,25 @@ class CottonToolkitApp(ttkb.Window):
             else:
                 self.ui_manager.show_error_message("保存失败", "写入文件时发生未知错误。")
         except Exception as e:
-            self.ui_manager.show_error_message("保存错误", f"保存配置时发生错误:\n{e}")
+            self.ui_manager.show_error_message("保存错误", f"保存配置时发生错误:\n{traceback.format_exc()}")
 
     def _create_home_frame(self, parent):
-        """创建主页框架"""
-        page = ttkb.Frame(parent)
+        page = ttkb.Frame(parent);
         page.grid_columnconfigure(0, weight=1)
-
         ttkb.Label(page, text=self.title_text_key, font=self.app_title_font).pack(pady=(40, 10))
         ttkb.Label(page, textvariable=self.config_path_display_var, font=self.app_font, bootstyle="secondary").pack(
             pady=(10, 20))
-
-        cards_frame = ttkb.Frame(page)
-        cards_frame.pack(pady=20, padx=20, fill="x", expand=False)
+        cards_frame = ttkb.Frame(page);
+        cards_frame.pack(pady=20, padx=20, fill="x", expand=False);
         cards_frame.grid_columnconfigure((0, 1), weight=1)
 
         def create_card(p, col, title_key, buttons):
-            card = ttkb.LabelFrame(p, text=_(title_key), bootstyle="primary")
-            card.grid(row=0, column=col, padx=10, pady=10, sticky="nsew")
+            card = ttkb.LabelFrame(p, text=_(title_key), bootstyle="primary");
+            card.grid(row=0, column=col, padx=10, pady=10, sticky="nsew");
             card.grid_columnconfigure(0, weight=1)
             for i, (text_key, cmd, style) in enumerate(buttons):
-                btn = ttkb.Button(card, text=_(text_key), command=cmd, bootstyle=style)
-                btn.grid(row=i, column=0, sticky="ew", padx=20, pady=10)
+                btn = ttkb.Button(card, text=_(text_key), command=cmd, bootstyle=style);
+                btn.grid(row=i, column=0, sticky="ew", padx=20, pady=10);
                 self.translatable_widgets[btn] = text_key
 
         create_card(cards_frame, 0, "配置文件", [("加载配置文件...", self.event_handler.load_config_file, "outline"),
@@ -336,20 +347,17 @@ class CottonToolkitApp(ttkb.Window):
         create_card(cards_frame, 1, "帮助与支持", [("在线帮助文档", self.event_handler._open_online_help, "outline"),
                                                    ("关于本软件", self.event_handler._show_about_window,
                                                     "info-outline")])
-
         return page
 
     def _create_tools_frame(self, parent):
-        """创建“数据工具”选项卡的主框架。"""
-        frame = ttkb.Frame(parent)
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_rowconfigure(1, weight=1)
-        self.tools_notebook = ttkb.Notebook(frame, bootstyle="info")
+        frame = ttkb.Frame(parent);
+        frame.grid_columnconfigure(0, weight=1);
+        frame.grid_rowconfigure(0, weight=1)
+        self.tools_notebook = ttkb.Notebook(frame, bootstyle="info");
         self.tools_notebook.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         return frame
 
     def _populate_tools_notebook(self):
-        """填充工具选项卡视图。"""
         self.tool_tab_instances.clear()
         tab_map = {"download": DataDownloadTab, "xlsx_to_csv": XlsxConverterTab,
                    "genome_identifier": GenomeIdentifierTab, "homology": HomologyTab,
@@ -371,98 +379,86 @@ class CottonToolkitApp(ttkb.Window):
             self.logger.warning(f"加载主窗口图标失败: {e}。")
 
     def _create_editor_frame(self, parent):
-        """创建配置编辑器的主框架。"""
-        page = ttkb.Frame(parent)
-        page.grid_columnconfigure(0, weight=1)
+        page = ttkb.Frame(parent);
+        page.grid_columnconfigure(0, weight=1);
         page.grid_rowconfigure(1, weight=1)
-
-        top_frame = ttkb.Frame(page)
-        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
+        top_frame = ttkb.Frame(page);
+        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0));
         top_frame.grid_columnconfigure(0, weight=1)
         ttkb.Label(top_frame, text=_("!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"), font=self.app_font_bold,
                    bootstyle="danger").grid(row=0, column=0, sticky="w", padx=5)
         self.save_editor_button = ttkb.Button(top_frame, text=_("应用并保存"), command=self._save_config_from_editor,
-                                              bootstyle='success')
+                                              bootstyle='success');
         self.save_editor_button.grid(row=0, column=1, sticky="e", padx=5)
-
-        canvas = tk.Canvas(page, highlightthickness=0, background=self.style.lookup('TFrame', 'background'))
+        canvas = tk.Canvas(page, highlightthickness=0, background=self.style.lookup('TFrame', 'background'));
         canvas.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        scrollbar = ttkb.Scrollbar(page, orient="vertical", command=canvas.yview, bootstyle="round")
+        scrollbar = ttkb.Scrollbar(page, orient="vertical", command=canvas.yview, bootstyle="round");
         scrollbar.grid(row=1, column=1, sticky="ns", pady=10)
         canvas.configure(yscrollcommand=scrollbar.set)
-
         self.editor_scroll_frame = ttkb.Frame(canvas)
         window_id = canvas.create_window((0, 0), window=self.editor_scroll_frame, anchor="nw")
 
-        def on_configure(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig(window_id, width=event.width)
+        def on_configure(event): canvas.configure(scrollregion=canvas.bbox("all")); canvas.itemconfig(window_id,
+                                                                                                      width=event.width)
 
         canvas.bind("<Configure>", on_configure)
         canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
-
         self.editor_no_config_label = ttkb.Label(page, text=_("请先从“主页”加载或生成一个配置文件。"),
-                                                 font=self.app_subtitle_font, bootstyle="secondary")
+                                                 font=self.app_subtitle_font, bootstyle="secondary");
         self.editor_no_config_label.grid(row=1, column=0, sticky="nsew", columnspan=2)
-
         return page
 
     def _handle_editor_ui_update(self):
-        """更新编辑器UI的可见性和数据。"""
         if not self.editor_ui_built: return
         has_config = bool(self.current_config)
-
         canvas = self.editor_scroll_frame.master
-        scrollbar = canvas.master.grid_slaves(row=1, column=1)[0]
-
-        if has_config:
-            canvas.grid()
-            scrollbar.grid()
-            self.editor_no_config_label.grid_remove()
-            self._apply_config_values_to_editor()
-        else:
-            canvas.grid_remove()
-            scrollbar.grid_remove()
-            self.editor_no_config_label.grid()
-
-        self.save_editor_button.configure(state="normal" if has_config else "disabled")
+        if canvas.winfo_exists():
+            slaves = canvas.master.grid_slaves(row=1, column=1)
+            if slaves:
+                scrollbar = slaves[0]
+                if has_config:
+                    canvas.grid();
+                    scrollbar.grid();
+                    self.editor_no_config_label.grid_remove()
+                    self._apply_config_values_to_editor()
+                else:
+                    canvas.grid_remove();
+                    scrollbar.grid_remove();
+                    self.editor_no_config_label.grid()
+        if hasattr(self, 'save_editor_button'):
+            self.save_editor_button.configure(state="normal" if has_config else "disabled")
 
     def _setup_fonts(self):
-        """设置全局字体和样式。"""
-        font_stack = ["Microsoft YaHei UI", "Segoe UI", "Calibri", "Helvetica", "sans-serif"]
+        font_stack = ["Microsoft YaHei UI", "Segoe UI", "Calibri", "Helvetica", "sans-serif"];
         mono_stack = ["Consolas", "Courier New", "monospace"]
         self.font_family = next((f for f in font_stack if f in tkfont.families()), "sans-serif")
         self.mono_font_family = next((f for f in mono_stack if f in tkfont.families()), "monospace")
         self.logger.info(f"UI font set to: {self.font_family}, Monospace font to: {self.mono_font_family}")
-
-        self.app_font = tkfont.Font(family=self.font_family, size=12)
-        self.app_font_italic = tkfont.Font(family=self.font_family, size=12, slant="italic")
-        self.app_font_bold = tkfont.Font(family=self.font_family, size=13, weight="bold")
-        self.app_subtitle_font = tkfont.Font(family=self.font_family, size=16, weight="bold")
-        self.app_title_font = tkfont.Font(family=self.font_family, size=24, weight="bold")
-        self.app_comment_font = tkfont.Font(family=self.font_family, size=11)
+        self.app_font = tkfont.Font(family=self.font_family, size=12);
+        self.app_font_italic = tkfont.Font(family=self.font_family, size=12, slant="italic");
+        self.app_font_bold = tkfont.Font(family=self.font_family, size=13, weight="bold");
+        self.app_subtitle_font = tkfont.Font(family=self.font_family, size=16, weight="bold");
+        self.app_title_font = tkfont.Font(family=self.font_family, size=24, weight="bold");
+        self.app_comment_font = tkfont.Font(family=self.font_family, size=11);
         self.app_font_mono = tkfont.Font(family=self.mono_font_family, size=12)
-
-        # Configure styles for all widgets
         for style_name in ['TButton', 'TCheckbutton', 'TMenubutton', 'TLabel', 'TEntry', 'Toolbutton',
                            'Labelframe.TLabel']:
             self.style.configure(style_name, font=self.app_font)
         self.style.configure('success.TButton', font=self.app_font_bold)
+        self.style.configure('info-outline.TButton', font=self.app_font)
+        self.style.configure('outline.TButton', font=self.app_font)
 
     def _log_to_viewer(self, message, level="INFO"):
-        """向UI日志队列发送消息。"""
         if logging.getLogger().getEffectiveLevel() <= logging.getLevelName(level.upper()):
             self.log_queue.put((message, level))
 
     def check_queue_periodic(self):
-        """定期检查并处理日志和消息队列。"""
         try:
             while not self.log_queue.empty():
                 log_message, log_level = self.log_queue.get_nowait()
                 self.ui_manager.display_log_message_in_ui(log_message, log_level)
         except queue.Empty:
             pass
-
         try:
             while not self.message_queue.empty():
                 msg_type, data = self.message_queue.get_nowait()
@@ -472,16 +468,12 @@ class CottonToolkitApp(ttkb.Window):
             pass
         except Exception as e:
             self.logger.critical(f"处理消息队列时出错: {e}", exc_info=True)
-
         self.after(100, self.check_queue_periodic)
 
     def reconfigure_logging(self, log_level_str: str):
-        """重新配置全局日志级别。"""
         try:
-            new_level = logging.getLevelName(log_level_str.upper())
-            if isinstance(new_level, int):
-                root = logging.getLogger()
-                if root.getEffectiveLevel() != new_level:
+            if isinstance(new_level := logging.getLevelName(log_level_str.upper()), int):
+                if (root := logging.getLogger()).getEffectiveLevel() != new_level:
                     root.setLevel(new_level)
                     for handler in root.handlers: handler.setLevel(new_level)
                     self.logger.info(f"全局日志级别已更新为: {log_level_str}")
