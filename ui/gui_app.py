@@ -357,6 +357,8 @@ class CottonToolkitApp(ttkb.Window):
         self.tools_notebook.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         return frame
 
+
+
     def _populate_tools_notebook(self):
         self.tool_tab_instances.clear()
         tab_map = {"download": DataDownloadTab, "xlsx_to_csv": XlsxConverterTab,

@@ -280,6 +280,12 @@ class UIManager:
             widget.insert("1.0", placeholder_text);
             widget.configure(font=self.app.app_font_italic, foreground=ph_color)
 
+    def _remove_placeholder(self, widget):
+        if not widget.winfo_exists(): return
+        widget.config(foreground=self.app.style.lookup('TLabel', 'foreground'))
+
+
+
     def _clear_placeholder(self, widget, key):
         if not widget.winfo_exists(): return
         placeholder_text = _(self.app.placeholders.get(key, ""))
@@ -331,3 +337,24 @@ class UIManager:
         menu.delete(0, "end")
         for model in models:
             menu.add_command(label=model, command=lambda v=model: var.set(v))
+
+    def update_option_menu(self, dropdown: ttkb.OptionMenu, string_var: tk.StringVar, new_values: List[str],
+                           default_text: str = _("无可用选项")):
+        """
+        通用函数，用于安全地更新 OptionMenu 的选项。
+        """
+        if not (dropdown and dropdown.winfo_exists()): return
+
+        final_values = new_values if new_values else [default_text]
+
+        menu = dropdown['menu']
+        menu.delete(0, 'end')
+
+        for value in final_values:
+            # 使用 tk._setit 来确保回调函数在点击时传递正确的值
+            menu.add_command(label=value, command=tk._setit(string_var, value))
+
+        current_val = string_var.get()
+        if current_val not in final_values:
+            string_var.set(final_values[0])
+

@@ -1,128 +1,65 @@
-﻿# ui/tabs/genome_identifier_tab.py
+﻿# 文件路径: ui/tabs/genome_identifier_tab.py
 
 import tkinter as tk
-from tkinter import ttk, font as tkfont # Import ttk and tkfont
-import ttkbootstrap as ttkb # Import ttkbootstrap
-from ttkbootstrap.constants import * # Import ttkbootstrap constants
-
+from tkinter import ttk
+import ttkbootstrap as ttkb
+from ttkbootstrap.constants import *
 from typing import TYPE_CHECKING
 
-# 导入后台任务函数
+from .base_tab import BaseTab
 from ui.utils.gui_helpers import identify_genome_from_gene_ids
 
-# 避免循环导入
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
 
-# 全局翻译函数
 try:
     from builtins import _
 except ImportError:
-    def _(s):
-        return s
+    _ = lambda s: str(s)
 
 
-class GenomeIdentifierTab(ttk.Frame): # Changed from ctk.CTkFrame to ttk.Frame
-    """ “基因组类别鉴定”选项卡的主界面类 """
-
+class GenomeIdentifierTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent)
-        self.app = app
-        self.pack(fill="both", expand=True)
-
-        # 此模块没有需要管理的Tkinter变量
-
-        self._create_widgets()
+        super().__init__(parent, app)
+        if self.action_button:
+            self.action_button.configure(text=_("开始鉴定"), command=self.start_identification_task)
+        self.update_from_config()
 
     def _create_widgets(self):
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        parent_frame = self.scrollable_frame
+        parent_frame.grid_columnconfigure(0, weight=1)
+        parent_frame.grid_rowconfigure(1, weight=1)
 
-        # --- 统一使用 self.app 来访问字体 ---
-        ttk.Label(self, text=_("基因组类别鉴定工具"), font=self.app.app_title_font).grid(
-            row=0, column=0, padx=20, pady=(10, 5), sticky="n")
+        ttkb.Label(parent_frame, text=_("基因组类别鉴定工具"), font=self.app.app_title_font, bootstyle="primary").grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
+        input_card = ttkb.LabelFrame(parent_frame, text=_("输入基因列表"), bootstyle="secondary")
+        input_card.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        input_card.grid_columnconfigure(0, weight=1)
+        input_card.grid_rowconfigure(1, weight=1)
+        ttkb.Label(input_card, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"), wraplength=650, justify='left').grid(row=0, column=0, sticky='w', padx=10, pady=(10, 5))
+        text_bg = self.app.style.lookup('TFrame', 'background')
+        text_fg = self.app.style.lookup('TLabel', 'foreground')
+        self.gene_list_textbox = tk.Text(input_card, height=15, wrap="word", relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg, font=self.app.app_font_mono)
+        self.gene_list_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
 
-        # Added bootstyle="secondary" for a card-like appearance
-        main_card = ttkb.Frame(self, bootstyle="secondary")
-        main_card.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
-        main_card.grid_columnconfigure(0, weight=1)
-        main_card.grid_rowconfigure(1, weight=1)
-
-        ttk.Label(main_card, text=_("在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"), wraplength=500,
-                     justify="left", font=self.app.app_font).grid(
-            row=0, column=0, padx=15, pady=(15, 5), sticky="w")
-
-        # Use tk.Text for textbox
-        # 修复：tk.Text 的背景色和前景色通过 style.lookup 获取
-        self.identifier_genes_textbox = tk.Text(main_card, font=self.app.app_font,
-                                                background=self.app.style.lookup('TText', 'background'),
-                                                foreground=self.app.style.lookup('TText', 'foreground'),
-                                                relief="flat")
-        self.identifier_genes_textbox.grid(row=1, column=0, padx=15, pady=5, sticky="nsew")
-
-        action_frame = ttk.Frame(main_card)
-        action_frame.grid(row=2, column=0, padx=15, pady=10, sticky="ew")
-        action_frame.grid_columnconfigure(1, weight=1)
-
-        # 修复：ttkb.Button 不支持直接的 font 参数
-        self.start_button = ttkb.Button(action_frame, text=_("开始鉴定"), command=self._run_genome_identification,
-                                          bootstyle="primary")
-        self.start_button.grid(row=0, column=0, sticky="w")
-        # 修复：ttk.Label 不支持 text_color 参数，应使用 foreground
-        self.identifier_result_label = ttk.Label(action_frame, text=_("鉴定结果将显示在这里。"),
-                                                    font=self.app.app_font)
-        self.identifier_result_label.grid(row=0, column=1, padx=10, sticky="e")
-
-
-    def _run_genome_identification(self):
-        """执行基因组类别鉴定。"""
-        # Set text color dynamically based on theme
-        # 修复：Colors 对象没有 'foreground' 属性，应使用 get_foreground() 方法
-        default_label_text_color = self.app.style.lookup('TLabel', 'foreground') # Use direct lookup for safety
-        warning_color = self.app.style.colors.warning
-        error_color = self.app.style.colors.danger
-
-        self.identifier_result_label.configure(text=_("正在鉴定中..."), font=self.app.app_font, foreground=default_label_text_color)
-        gene_ids_text = self.identifier_genes_textbox.get("1.0", tk.END).strip()
-
-        if not gene_ids_text:
-            self.identifier_result_label.configure(text=_("请输入基因ID。"), foreground=warning_color)
-            return
-
-        gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
-        if not gene_ids:
-            self.identifier_result_label.configure(text=_("请输入有效的基因ID。"), foreground=warning_color)
-            return
-
-        if not self.app.genome_sources_data:
-            self.app._log_to_viewer(_("警告: 基因组源数据未加载，无法进行鉴定。"), "WARNING")
-            self.identifier_result_label.configure(text=_("错误：基因组源未加载。"), foreground=error_color)
-            return
-
-        # Directly call the imported helper function, which logs via gui_status_callback
-        identified_assembly = identify_genome_from_gene_ids(
-            gene_ids,
-            self.app.genome_sources_data,
-            self.app.event_handler.gui_status_callback
-        )
-
-
-        if identified_assembly:
-            result_text = f"{_('鉴定结果')}: {identified_assembly}"
-            self.identifier_result_label.configure(text=result_text, foreground=default_label_text_color)
-        else:
-            self.identifier_result_label.configure(text=_("未能识别到匹配的基因组。"), foreground=warning_color)
-
-
-    def update_button_state(self, is_task_running: bool, has_config: bool):
-        """更新本选项卡中的按钮状态。"""
-        state = "disabled" if is_task_running or not has_config else "normal"
-        self.start_button.configure(state=state)
+        result_card = ttkb.LabelFrame(parent_frame, text=_("鉴定结果"), bootstyle="info")
+        result_card.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        result_card.grid_columnconfigure(0, weight=1)
+        result_card.grid_rowconfigure(0, weight=1)
+        self.result_label = ttkb.Label(result_card, text=_("鉴定结果将显示在这里。"), anchor="center", justify="center")
+        self.result_label.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
     def update_from_config(self):
-        """基因组鉴定Tab不直接使用配置值，因此此方法为空。"""
-        pass
+        self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
-    def update_assembly_dropdowns(self, assembly_ids: list[str]):
-        """基因组鉴定Tab不包含基因组下拉菜单，因此此方法为空。"""
-        pass
+    def start_identification_task(self):
+        if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。")); return
+        if not self.app.genome_sources_data: self.app.ui_manager.show_error_message(_("错误"), _("基因组源数据未加载，无法进行鉴定。")); return
+        gene_ids_text = self.gene_list_textbox.get("1.0", tk.END).strip()
+        if not gene_ids_text: self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入至少一个基因ID进行鉴定。")); return
+        gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]
+        self.result_label.configure(text=_("正在鉴定中..."), bootstyle="info")
+        identified_assembly = identify_genome_from_gene_ids(gene_ids, self.app.genome_sources_data, lambda msg, level: self.app._log_to_viewer(msg, level))
+        if identified_assembly:
+            result_text = f"{_('鉴定结果')}: {identified_assembly}"; self.result_label.configure(text=result_text, bootstyle="success")
+        else:
+            self.result_label.configure(text=_("未能识别到匹配的基因组。"), bootstyle="warning")

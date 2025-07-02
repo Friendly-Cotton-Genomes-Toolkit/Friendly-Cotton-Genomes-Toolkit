@@ -1,11 +1,9 @@
 ﻿# 文件路径: ui/tabs/base_tab.py
 
 import tkinter as tk
-from tkinter import ttk # Import ttk module
-import ttkbootstrap as ttkb # Import ttkbootstrap
-from ttkbootstrap.constants import * # Import ttkbootstrap constants
-
-from typing import TYPE_CHECKING, List
+from tkinter import ttk
+from typing import TYPE_CHECKING, List, Callable, Optional
+import ttkbootstrap as ttkb
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -13,79 +11,118 @@ if TYPE_CHECKING:
 try:
     from builtins import _
 except ImportError:
-    def _(s):
-        return s
+    _ = lambda s: str(s)
 
 
-class BaseTab(ttk.Frame): # Changed from ctk.CTkFrame to ttk.Frame
+class BaseTab(ttk.Frame):
     """
     所有选项卡的“基类”或“模板”。
-    它包含了所有选项卡共有的初始化逻辑和方法。
+    它定义了一个上下布局：上部为可滚动内容区，下部为固定的操作按钮区。
     """
 
     def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent) # No fg_color for ttk.Frame
-        self.parent = parent
+        super().__init__(parent)
         self.app = app
-        self.scrollable_frame = None # This will be the inner frame within the canvas
+        self.scrollable_frame: Optional[ttk.Frame] = None
+        self.action_button: Optional[ttkb.Button] = None
 
-    def _create_base_widgets(self):
-        """
-        创建所有标签页共有的基础控件（一个可滚动的框架）。
-        此方法现在由子类显式调用。
-        """
-        # Create a Canvas for the scrollable area
-        # Use parent as the container for the canvas, then pack the canvas to fill the parent
-        # 修复：self.app.style.colors 对象没有 'background' 属性，应使用 style.lookup
-        canvas = tk.Canvas(self.parent, highlightthickness=0, background=self.app.style.lookup('TCanvas', 'background'))
-        canvas.pack(side="left", fill="both", expand=True)
+        # 应用 fill="both" 和 expand=True 使 BaseTab 自身填满 Notebook 的空间
+        # 移除左右的 padding/margin
+        self.pack(fill="both", expand=True, padx=0, pady=0)
 
-        # Create a Scrollbar and link it to the Canvas
-        scrollbar = ttkb.Scrollbar(self.parent, orient="vertical", command=canvas.yview, bootstyle="round")
-        scrollbar.pack(side="right", fill="y")
+        # 创建基础布局
+        self._create_base_layout()
+        # 调用子类的方法来填充滚动区域
+        self._create_widgets()
+
+    def _create_base_layout(self):
+        """创建基础的上下布局框架。"""
+        self.grid_rowconfigure(0, weight=1)  # 可滚动内容区占据大部分空间
+        self.grid_rowconfigure(1, weight=0)  # 操作按钮区高度固定
+        self.grid_columnconfigure(0, weight=1)  # 整体列可拉伸
+
+        # --- 上部：可滚动内容区 ---
+        # 使用一个 Frame 包裹 Canvas 和 Scrollbar
+        scroll_container = ttk.Frame(self)
+        scroll_container.grid(row=0, column=0, sticky="nsew")
+        scroll_container.grid_rowconfigure(0, weight=1)
+        scroll_container.grid_columnconfigure(0, weight=1)
+
+        canvas = tk.Canvas(scroll_container, highlightthickness=0, bd=0,
+                           background=self.app.style.lookup('TFrame', 'background'))
+        canvas.grid(row=0, column=0, sticky="nsew")
+
+        # 使用 ttkbootstrap 的 Scrollbar
+        scrollbar = ttkb.Scrollbar(scroll_container, orient="vertical", command=canvas.yview,
+                                   bootstyle="round-secondary")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Create an inner Frame inside the Canvas to hold the actual widgets
+        # 创建可滚动框架
         self.scrollable_frame = ttk.Frame(canvas)
-        # Create a window in the canvas to contain the inner frame
-        canvas_window_id = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        # 将可滚动框架的宽度与Canvas同步
+        canvas_window_id = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw",
+                                                width=self.winfo_width())
 
-        # Bind the inner frame's Configure event to update the canvas's scrollregion
         def _on_frame_configure(event):
+            # 更新滚动区域以包含所有内容
             canvas.configure(scrollregion=canvas.bbox("all"))
-            # Also update the window width to match canvas width when canvas resizes
+
+        def _on_canvas_configure(event):
+            # 当Canvas大小改变时，更新其中窗口的宽度
             canvas.itemconfig(canvas_window_id, width=event.width)
 
-        self.scrollable_frame.bind("<Configure>", _on_frame_configure)
-
-        # Bind mouse wheel to the canvas for scrolling
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        # 修复：由于 canvas.bind_all 会导致整个应用程序捕获鼠标滚轮事件，影响其他滚动区域，
-        # 建议仅绑定到 canvas 本身，或者在需要时动态绑定/解绑。
-        # 这里将其改为 canvas.bind，只影响当前的Canvas
-        canvas.bind("<MouseWheel>", _on_mousewheel)
+            # 统一不同平台的滚轮事件
+            if event.num == 5 or event.delta == -120:
+                canvas.yview_scroll(1, "units")
+            if event.num == 4 or event.delta == 120:
+                canvas.yview_scroll(-1, "units")
 
-        # Ensure the inner frame (self.scrollable_frame) can expand horizontally
-        self.scrollable_frame.grid_columnconfigure(0, weight=1)
+        self.scrollable_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
 
-        self._create_widgets()  # 调用应由子类重写的方法
+        # 绑定滚轮事件
+        self.bind_all("<MouseWheel>", _on_mousewheel, add="+")
+        self.bind_all("<Button-4>", _on_mousewheel, add="+")
+        self.bind_all("<Button-5>", _on_mousewheel, add="+")
+
+        # --- 下部：固定操作区 ---
+        action_frame = ttkb.Frame(self, bootstyle="light")  # 使用一个有背景色的Frame
+        action_frame.grid(row=1, column=0, sticky="ew")
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_rowconfigure(0, weight=1)
+
+        self.action_button = ttkb.Button(action_frame, text=_("执行操作"), bootstyle="success")
+        self.action_button.grid(row=0, column=0, sticky="se", padx=15, pady=10)
+
+    def get_primary_action(self) -> Optional[Callable]:
+        """返回此选项卡的主要操作函数，用于绑定回车键。"""
+        if self.action_button and self.action_button.winfo_exists():
+            # 返回一个无参数的 lambda，因为它可能被绑定到需要可调用对象的事件
+            command = self.action_button.cget('command')
+            return lambda: command() if command else None
+        return None
 
     def _create_widgets(self):
         """
-        此方法旨在被子类重写，以填充具体的UI控件。
+        此方法旨在被子类重写，以填充 scrollable_frame。
         """
-        pass
+        raise NotImplementedError("Each tab must implement _create_widgets")
 
     def update_assembly_dropdowns(self, assembly_ids: list):
-        """此方法旨在被子类重写。"""
+        """子类可以重写此方法以更新其特有的下拉菜单。"""
         pass
 
     def update_from_config(self):
-        """此方法旨在被子类重写。"""
+        """子类可以重写此方法以从加载的配置中更新UI。"""
         pass
 
-    def update_button_state(self, is_running, has_config):
-        """此方法旨在被子类重写。"""
-        pass
+    def update_button_state(self, is_running: bool, has_config: bool):
+        """更新基类中操作按钮的状态。"""
+        if not self.action_button or not self.action_button.winfo_exists(): return
+
+        # 按钮在没有配置时也应该禁用
+        state = "disabled" if is_running or not has_config else "normal"
+        self.action_button.configure(state=state)
