@@ -6,7 +6,8 @@ import logging  # 用于日志记录
 import os
 import re
 import shutil  # 用于文件操作 (如 copyfileobj)
-import time  # <---【修改点1】新增导入，用于重试等待
+import threading
+import time
 from typing import List, Dict, Optional, Callable, Any
 from urllib.parse import urlparse  # 用于从URL解析文件名
 
@@ -19,14 +20,12 @@ from cotton_toolkit.core.convertXlsx2csv import convert_excel_to_standard_csv
 # --- 国际化和日志设置 ---
 try:
     import builtins
+
     _ = builtins._
 except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
-
-# 获取logger实例。主应用入口会配置根logger或包logger。
-# 这里我们获取一个特定于本模块的logger。
 logger = logging.getLogger("cotton_toolkit.downloader")
 
 
@@ -46,22 +45,10 @@ def download_file(
         url: str,
         target_path: str,
         force_download: bool = False,
-        task_desc: str = "",  # 用于tqdm的描述
+        task_desc: str = "",
         proxies: Optional[Dict[str, str]] = None
 ) -> bool:
-    """
-    下载单个文件到指定路径，支持代理。
-
-    Args:
-        url (str): 文件的下载链接。
-        target_path (str): 本地保存路径（包含文件名）。
-        force_download (bool): 如果为True，即使文件已存在也重新下载。
-        task_desc (str): 用于进度条的额外描述。
-        proxies (Optional[Dict[str, str]]): 代理配置。
-
-    Returns:
-        bool: 下载成功返回True，否则返回False。
-    """
+    """下载单个文件到指定路径，支持代理。"""
     if not force_download and os.path.exists(target_path):
         logger.info(_("文件已存在: {} (跳过下载)").format(target_path))
         return True
@@ -80,11 +67,12 @@ def download_file(
         logger.info(
             _("开始下载: {} -> {} (代理: {})").format(url, target_path, proxies if proxies else _("系统默认/无")))
 
-        response = requests.get(url, stream=True, timeout=60, proxies=proxies)
-        response.raise_for_status()  # 如果状态码是 4xx 或 5xx，则抛出HTTPError
+        # 使用分离的连接和读取超时以提高取消操作的响应性
+        response = requests.get(url, stream=True, timeout=(10, 60), proxies=proxies)
+        response.raise_for_status()
 
         total_size_in_bytes = int(response.headers.get('content-length', 0))
-        block_size = 1024 * 8  # 8KB 块大小
+        block_size = 1024 * 8
 
         with open(target_path, 'wb') as file, \
                 tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True, desc=effective_desc, leave=False,
@@ -93,29 +81,22 @@ def download_file(
                 progress_bar.update(len(data))
                 file.write(data)
 
-        # 确保进度条在循环结束后达到100% (如果total_size已知且准确)
         if total_size_in_bytes != 0 and progress_bar.n < total_size_in_bytes:
-            progress_bar.update(total_size_in_bytes - progress_bar.n)  # 补齐进度
+            progress_bar.update(total_size_in_bytes - progress_bar.n)
         progress_bar.close()
 
         if total_size_in_bytes != 0 and os.path.getsize(target_path) != total_size_in_bytes:
             logger.error(_("错误: 下载的文件 {} 大小 ({}) 与预期 ({}) 不符。可能下载不完整。").format(
                 os.path.basename(target_path), os.path.getsize(target_path), total_size_in_bytes
             ))
-            # if os.path.exists(target_path): os.remove(target_path) # 可选择删除不完整文件
-            return False  # 标记为失败
+            return False
 
-        # logger.info(_("下载成功: {}").format(target_path)) # 成功信息由调用者统一打印
         return True
-    except requests.exceptions.HTTPError as e:
-        logger.error(_("HTTP错误导致下载失败: {}. URL: {}. 响应: {}").format(e, url, e.response.text[
-                                                                                     :200] if e.response else "N/A"))
     except requests.exceptions.RequestException as e:
         logger.error(_("网络请求错误导致下载失败: {}. URL: {}").format(e, url))
     except Exception as e:
-        logger.exception(_("下载 {} 时发生未知错误:").format(url))  # logger.exception 会记录堆栈跟踪
+        logger.exception(_("下载 {} 时发生未知错误:").format(url))
 
-    # 如果发生任何异常，且文件已部分创建，则删除
     if os.path.exists(target_path):
         try:
             os.remove(target_path)
@@ -126,27 +107,31 @@ def download_file(
 
 
 def download_genome_data(
-    downloader_config: DownloaderConfig,
-    version_id: str,
-    genome_info: GenomeSourceItem,
-    file_key: str,
-    url: str,
-    force: bool,
-    proxies: Optional[Dict[str, str]],
-    status_callback: Callable,
+        downloader_config: DownloaderConfig,
+        version_id: str,
+        genome_info: GenomeSourceItem,
+        file_key: str,
+        url: str,
+        force: bool,
+        proxies: Optional[Dict[str, str]],
+        status_callback: Callable,
+        cancel_event: Optional[threading.Event] = None,
 ) -> bool:
-    """
-    【全新版本】下载单个指定的基因组数据文件，并处理后续操作。
-    此函数现在由 run_download_pipeline 在多线程中为每个文件调用一次。
-    """
+    """为单个文件执行下载和后续处理的包装函数。"""
     log = status_callback
 
-    # 1. 构建输出目录和文件路径
-    base_dir = downloader_config.download_output_base_dir
-    safe_species_name = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_")
-    version_output_dir = os.path.join(base_dir, safe_species_name)
+    if cancel_event and cancel_event.is_set():
+        log(f"INFO: Task cancelled before downloading {version_id}_{file_key}.")
+        return False
 
-    # 【修正 WinError 183】使用 exist_ok=True, 多线程同时调用也不会报错
+    base_dir = downloader_config.download_output_base_dir
+    version_identifier = getattr(genome_info, 'version_id', None)
+    if not version_identifier:
+        log(f"WARNING: GenomeSourceItem for '{genome_info.species_name}' is missing 'version_id'. Falling back to species name for directory.",
+            "WARNING")
+        version_identifier = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_")
+    version_output_dir = os.path.join(base_dir, version_identifier)
+
     try:
         os.makedirs(version_output_dir, exist_ok=True)
     except OSError as e:
@@ -156,27 +141,27 @@ def download_genome_data(
     filename = os.path.basename(urlparse(url).path)
     local_path = os.path.join(version_output_dir, filename)
 
-    # 2. 检查文件是否存在以及是否需要强制下载
     if not force and os.path.exists(local_path):
         log(f"INFO: 文件已存在，跳过下载: {os.path.basename(local_path)}")
-        # 即使跳过下载，也检查是否需要进行后续转换
         is_download_successful = True
     else:
-        # 3. 开始下载
         description = f"{version_id}_{file_key}"
         log(f"INFO: 开始下载: {description}...")
-        is_download_successful = _download_file_with_progress(url, local_path, description, proxies, log)
+        is_download_successful = _download_file_with_progress(url, local_path, description, proxies, log, cancel_event)
 
-    # 4. 如果下载成功，执行后续操作（如解压和转换）
+    if cancel_event and cancel_event.is_set():
+        return False
+
     if is_download_successful and file_key == 'homology_ath' and local_path.lower().endswith(".xlsx.gz"):
         gz_excel_path = local_path
-        base_name, _ = os.path.splitext(os.path.basename(gz_excel_path))  # xxx.xlsx
-        csv_filename = os.path.splitext(base_name)[0] + ".csv"  # xxx.csv
+        base_name, _ = os.path.splitext(os.path.basename(gz_excel_path))
+        csv_filename = os.path.splitext(base_name)[0] + ".csv"
         final_csv_path = os.path.join(os.path.dirname(gz_excel_path), csv_filename)
 
         if not force and os.path.exists(final_csv_path):
             log(f"INFO: 对应的CSV文件已存在，跳过转换: {csv_filename}")
         else:
+            if cancel_event and cancel_event.is_set(): return False
             log(f"INFO: 尝试将 {os.path.basename(gz_excel_path)} 转换为 CSV...")
             temp_xlsx_path = os.path.splitext(gz_excel_path)[0]
             if decompress_gz_to_temp_file(gz_excel_path, temp_xlsx_path, log):
@@ -185,7 +170,6 @@ def download_genome_data(
                 except Exception as e:
                     log(f"ERROR: 转换Excel到CSV时发生错误: {e}")
                 finally:
-                    # 线程安全的文件删除
                     if os.path.exists(temp_xlsx_path):
                         for i in range(3):
                             try:
@@ -196,7 +180,6 @@ def download_genome_data(
                             except Exception as e:
                                 log(f"ERROR: 删除临时文件 {temp_xlsx_path} 失败: {e}")
                                 break
-
     return is_download_successful
 
 
@@ -205,21 +188,26 @@ def _download_file_with_progress(
         local_path: str,
         description: str,
         proxies: Optional[Dict[str, str]],
-        status_callback: Optional[Callable] = None
+        status_callback: Optional[Callable] = None,
+        cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    """一个带有tqdm进度条的文件下载辅助函数。"""
+    """一个带有tqdm进度条和取消功能的文件下载辅助函数。"""
     log = status_callback if status_callback else print
     try:
-        with requests.get(url, stream=True, proxies=proxies, timeout=60) as r:
+        # =========== 代码修正部分 ===========
+        # 使用分离的连接(10s)和读取(60s)超时来提高取消操作的响应性
+        with requests.get(url, stream=True, proxies=proxies, timeout=(10, 60)) as r:
             r.raise_for_status()
             total_size = int(r.headers.get('content-length', 0))
 
-            with tqdm(
-                    total=total_size, unit='iB', unit_scale=True, desc=description,
-                    ncols=100, leave=False, ascii=" #",
-            ) as pbar:
+            with tqdm(total=total_size, unit='iB', unit_scale=True, desc=description, ncols=100, leave=False,
+                      ascii=" #") as pbar:
                 with open(local_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
+                        if cancel_event and cancel_event.is_set():
+                            log(f"INFO: Download for {description} was cancelled by user.")
+                            return False
+
                         if chunk:
                             f.write(chunk)
                             pbar.update(len(chunk))
@@ -228,8 +216,12 @@ def _download_file_with_progress(
                 log(f"WARNING: Downloaded size for {description} is less than expected. The file might be incomplete.")
                 return False
             return True
+
     except requests.exceptions.RequestException as e:
-        log(f"ERROR: Failed to download {description} from {url}. Network error: {e}")
+        if cancel_event and cancel_event.is_set():
+            log(f"INFO: Download for {description} was cancelled during request setup.")
+        else:
+            log(f"ERROR: Failed to download {description} from {url}. Network error: {e}")
         if os.path.exists(local_path): os.remove(local_path)
         return False
     except Exception as e:

@@ -189,6 +189,7 @@ class CottonToolkitApp(ttkb.Window):
                                                                "Google Gemini",
                                                                [p['name'] for p in self.AI_PROVIDERS.values()],
                                                                _("选择默认使用的AI模型提供商。"))
+        self.batch_ai_max_workers_entry = create_entry_row(_("最大并行AI任务数"), _("执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"))
         self.ai_use_proxy_switch, self.ai_use_proxy_var = create_switch_row(_("为AI服务使用代理"),
                                                                             _("是否为连接AI模型API启用代理。"))
 
@@ -265,6 +266,7 @@ class CottonToolkitApp(ttkb.Window):
         self.downloader_force_download_var.set(cfg.downloader.force_download)
         set_val(self.downloader_max_workers_entry, cfg.downloader.max_workers)
         self.downloader_use_proxy_var.set(cfg.downloader.use_proxy_for_download)
+        set_val(self.batch_ai_max_workers_entry, cfg.batch_ai_processor.max_workers)
         self.ai_default_provider_var.set(self.AI_PROVIDERS.get(cfg.ai_services.default_provider, {}).get('name', ''))
         self.ai_use_proxy_var.set(cfg.ai_services.use_proxy_for_ai)
 
@@ -297,6 +299,16 @@ class CottonToolkitApp(ttkb.Window):
             cfg.downloader.force_download = self.downloader_force_download_var.get()
             cfg.downloader.max_workers = int(self.downloader_max_workers_entry.get() or 3)
             cfg.downloader.use_proxy_for_download = self.downloader_use_proxy_var.get()
+
+            try:
+                max_workers_val = int(self.batch_ai_max_workers_entry.get())
+                if max_workers_val <= 0:
+                    raise ValueError
+                cfg.batch_ai_processor.max_workers = max_workers_val
+            except (ValueError, TypeError):
+                cfg.batch_ai_processor.max_workers = 4  # 如果输入无效，则恢复为默认值
+                self.logger.warning("无效的最大工作线程数值，已重置为默认值 4。")
+
             cfg.ai_services.default_provider = next(
                 (k for k, v in self.AI_PROVIDERS.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
             cfg.ai_services.use_proxy_for_ai = self.ai_use_proxy_var.get()

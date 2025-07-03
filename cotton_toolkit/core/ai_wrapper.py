@@ -5,6 +5,8 @@ import threading
 import os
 import contextlib
 
+from requests.adapters import HTTPAdapter
+
 # 尝试导入 google.generativeai，如果失败则优雅处理
 try:
     import google.generativeai as genai
@@ -55,7 +57,9 @@ class AIWrapper:
             api_key: str,
             model: str,
             base_url: Optional[str] = None,
-            proxies: Optional[Dict[str, str]] = None
+            proxies: Optional[Dict[str, str]] = None,
+            # 【核心修改1】新增 max_workers 参数
+            max_workers: int = 4
     ):
         if not provider or not api_key or not model:
             raise ValueError(_("AI服务商、API Key和模型名称不能为空。"))
@@ -63,7 +67,7 @@ class AIWrapper:
         self.provider = provider
         self.api_key = api_key
         self.model = model
-        self.proxies = proxies  # 保存代理设置
+        self.proxies = proxies
         self.client = None
         self.session = None
         self.api_base = None
@@ -71,12 +75,10 @@ class AIWrapper:
         if self.provider == 'google':
             if not genai:
                 raise ImportError(_("缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安装。"))
-            # 在设置代理的环境下配置Google SDK
             with temp_proxies(self.proxies):
                 genai.configure(api_key=self.api_key, transport='rest')
                 self.client = genai.GenerativeModel(self.model)
         else:
-            # 对于所有其他 OpenAI 兼容的接口
             if base_url:
                 self.api_base = base_url.rstrip('/')
             else:
@@ -92,7 +94,14 @@ class AIWrapper:
             if not self.api_base:
                 raise ValueError(f"{_('不支持的服务商或缺少Base URL:')} {provider}")
 
+            # 【核心修改2】配置一个与工作线程数匹配的连接池
             self.session = requests.Session()
+            # 创建一个HTTP适配器，并设置连接池大小
+            adapter = HTTPAdapter(pool_connections=max_workers, pool_maxsize=max_workers)
+            # 为http和https都挂载这个适配器
+            self.session.mount('http://', adapter)
+            self.session.mount('https://', adapter)
+
             self.session.headers.update({
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
@@ -133,6 +142,7 @@ class AIWrapper:
             error_type = type(e).__name__
             error_message = f"{_('AI API处理时发生错误')} ({error_type}): {e}"
             raise RuntimeError(error_message) from e
+
 
     @staticmethod
     def get_models(

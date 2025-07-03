@@ -1,6 +1,4 @@
-﻿# ui/event_handler.py
-
-import json
+﻿import json
 import logging
 import os
 import threading
@@ -20,6 +18,7 @@ from cotton_toolkit.config.loader import load_config, save_config, generate_defa
     get_genome_data_sources
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.ai_wrapper import AIWrapper
+from cotton_toolkit.pipelines import run_preprocess_annotation_files
 from .dialogs import MessageDialog
 from .utils.gui_helpers import identify_genome_from_gene_ids
 
@@ -43,6 +42,7 @@ class EventHandler:
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
         """返回消息类型到其处理函数的映射。"""
+        # 【核心修改2】在这里注册新的消息处理器
         return {
             "startup_complete": self._handle_startup_complete,
             "startup_failed": self._handle_startup_failed,
@@ -56,10 +56,10 @@ class EventHandler:
             "ai_test_result": self._handle_ai_test_result,
             "auto_identify_success": self._handle_auto_identify_success,
             "proxy_test_done": self._handle_proxy_test_done,
+            "csv_columns_fetched": self._handle_csv_columns_fetched, # 新增的处理器
         }
 
-    # --- 任务启动与管理 ---
-
+    # --- 【核心修改】添加回遗漏的启动函数 ---
     def start_app_async_startup(self):
         """启动应用的异步加载流程。"""
         self.app.ui_manager._show_progress_dialog(title=_("图形界面启动中..."),
@@ -85,6 +85,8 @@ class EventHandler:
             app.message_queue.put(("startup_failed", f"{_('应用启动失败')}: {e}\n{traceback.format_exc()}"))
         finally:
             app.message_queue.put(("hide_progress_dialog", None))
+
+    # ------------------------------------------
 
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any]):
         app = self.app
@@ -152,17 +154,20 @@ class EventHandler:
         app = self.app
         success, task_display_name, result_data = data
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
-        if "富集分析" in task_display_name and success and result_data:
+
+        if task_display_name in [_("数据下载"), _("预处理注释文件")]:
+            if download_tab := app.tool_tab_instances.get('download'):
+                if hasattr(download_tab, '_update_dynamic_widgets'):
+                    selected_genome = download_tab.selected_genome_var.get()
+                    download_tab._update_dynamic_widgets(selected_genome)
+                    app.logger.info("数据下载选项卡状态已在任务完成后自动刷新。")
+
+        elif task_display_name == _("位点转换"):
+            if success and result_data:
+                self.app.ui_manager.show_info_message(_("转换成功"), result_data)
+
+        elif "富集分析" in task_display_name and success and result_data:
             app.ui_manager._show_plot_results(result_data)
-        elif task_display_name == _("位点转换") and (tab := app.tool_tab_instances.get('locus_conversion')):
-            if hasattr(tab, 'result_textbox'):
-                textbox = tab.result_textbox
-                textbox.configure(state="normal")
-                textbox.delete("1.0", "end")
-                textbox.insert("1.0", result_data.to_string(
-                    index=False) if success and result_data is not None and not result_data.empty else (
-                    _("未找到有效的同源区域。") if success else _("任务执行失败。")))
-                textbox.configure(state="disabled")
 
     def _handle_error(self, data: str):
         self.app.ui_manager.show_error_message(_("任务执行出错"), data)
@@ -183,7 +188,7 @@ class EventHandler:
             self.app.ui_manager.show_info_message(_("刷新成功"),
                                                   f"{_('已成功获取并更新')} {provider_key} {_('的模型列表。')}")
         else:
-            self.app.ui_manager.update_ai_model_dropdown(provider_key, [])  # 传递空列表以显示错误状态
+            self.app.ui_manager.update_ai_model_dropdown(provider_key, [])
             self.app.ui_manager.show_error_message(_("刷新失败"), str(models_or_error))
 
     def _handle_ai_test_result(self, data: tuple):
@@ -315,6 +320,11 @@ class EventHandler:
         except Exception as e:
             self.app.ui_manager.show_error_message(_("错误"), _("无法打开帮助链接: {}").format(e))
 
+    def _browse_file(self, entry_widget: ttkb.Entry, filetypes_list: list):
+        if filepath := filedialog.askopenfilename(title=_("选择文件"), filetypes=filetypes_list):
+            entry_widget.delete(0, "end")
+            entry_widget.insert(0, filepath)
+
     def _browse_save_file(self, entry_widget: ttkb.Entry, filetypes_list: list):
         if filepath := filedialog.asksaveasfilename(title=_("保存文件为"), filetypes=filetypes_list,
                                                     defaultextension=filetypes_list[0][1].replace("*", "")):
@@ -409,8 +419,22 @@ class EventHandler:
             self.app.active_task_name = None
 
     def gui_status_callback(self, message: str, level: str = "INFO"):
-        logger.log(logging.getLevelName(level.upper()), message)
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        log_level = level.upper() if level.upper() in valid_levels else "INFO"
+        logger.log(logging.getLevelName(log_level), message)
         self.app.message_queue.put(("status", message))
 
     def gui_progress_callback(self, percentage: float, message: str):
         self.app.message_queue.put(("progress", (percentage, message)))
+
+    def _handle_csv_columns_fetched(self, data: tuple):
+        """处理从后台线程获取到的CSV列名。"""
+        columns, error_msg = data
+        # 从app实例中安全地获取AI助手选项卡
+        if ai_tab := self.app.tool_tab_instances.get('ai_assistant'):
+            # 调用AI助手选项卡自己的UI更新方法
+            ai_tab.update_column_dropdown_ui(columns, error_msg)
+        else:
+            logger.warning("无法找到AI助手选项卡实例来更新列名。")
+
+

@@ -1,6 +1,7 @@
 ﻿# cotton_toolkit/pipelines.py
 
 import gzip
+import io
 import logging
 import os
 import re
@@ -14,7 +15,6 @@ from typing import List, Dict, Any, Optional, Callable, Tuple
 import pandas as pd
 
 from .config.loader import get_genome_data_sources, get_local_downloaded_file_path
-# 核心模块导入
 from .config.models import (
     MainConfig, HomologySelectionCriteria, GenomeSourceItem
 )
@@ -29,32 +29,28 @@ from .tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
 from .tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, plot_enrichment_cnet
 from .utils.gene_utils import map_transcripts_to_genes
 
-# --- 国际化和日志设置 ---
+# 【核心修改】使用更健壮的方式来设置翻译函数
 try:
-    import builtins
-
-    _ = builtins._
-except (AttributeError, ImportError):
+    from builtins import _
+except ImportError:
     def _(text: str) -> str:
         return text
 
 logger = logging.getLogger("cotton_toolkit.pipelines")
 
-bridge_id_regex = r'(AT[1-5MC]G\d{5})'
-
-
-
+def _find_header_row(sheet_df: pd.DataFrame, keywords: List[str]) -> Optional[int]:
+    for i in range(min(3, len(sheet_df))):
+        row_values_str = ' '.join([str(v).lower() for v in sheet_df.iloc[i].values])
+        if any(keyword.lower() in row_values_str for keyword in keywords):
+            return i
+    return None
 
 def convert_all_xlsx_in_folder_to_csv(folder_path: str, log: Callable) -> None:
-    """
-    遍历指定文件夹中的所有 .xlsx 或 .xlsx.gz 文件，并转换为 .csv 文件。
-    """
     log(f"INFO: 正在转换文件夹 '{folder_path}' 中的所有Excel文件到CSV。")
     for root, _, files in os.walk(folder_path):
         for file in files:
             if file.lower().endswith((".xlsx", ".xlsx.gz")):
                 excel_path = os.path.join(root, file)
-                # 定义CSV输出路径：在同目录下，文件名不变，后缀改为.csv
                 if file.lower().endswith(".xlsx.gz"):
                     csv_filename = os.path.splitext(os.path.splitext(file)[0])[0] + ".csv"
                 else:
@@ -66,33 +62,54 @@ def convert_all_xlsx_in_folder_to_csv(folder_path: str, log: Callable) -> None:
                     continue
 
                 log(f"INFO: 正在转换 {file} 到 {csv_filename}")
-                success = convert_excel_to_standard_csv(excel_path, output_csv_path, log) #
+                success = convert_excel_to_standard_csv(excel_path, output_csv_path, log)
                 if not success:
                     log(f"WARNING: 转换文件 {file} 失败。", "WARNING")
 
 
-# 模拟 create_homology_df 函数
-def create_homology_df(file_path: str) -> pd.DataFrame:
-    """
-    从 CSV 或 Excel 文件加载同源数据到 DataFrame。
-    """
+def create_homology_df(file_path: str, progress_callback: Optional[Callable] = None) -> pd.DataFrame:
+    progress = progress_callback if progress_callback else lambda p, m: None
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"同源文件未找到: {file_path}")
 
-    if file_path.lower().endswith(".csv"):
-        return pd.read_csv(file_path)
-    elif file_path.lower().endswith((".xlsx", ".xls")):
-        # 如果是Excel，用pandas读取
-        return pd.read_excel(file_path, engine='openpyxl')
-    else:
-        raise ValueError(f"不支持的同源文件格式: {os.path.basename(file_path)}")
+    lowered_path = file_path.lower()
+    header_keywords = ['Query', 'Match', 'Score', 'Exp', 'PID', 'evalue', 'identity']
+
+    progress(0, f"正在打开文件: {os.path.basename(file_path)}...")
+    with open(file_path, 'rb') as f_raw:
+        is_gz = lowered_path.endswith('.gz')
+        file_obj = gzip.open(f_raw, 'rb') if is_gz else f_raw
+        try:
+            progress(20, _("正在解析文件结构..."))
+            if lowered_path.endswith(('.xlsx', '.xlsx.gz', '.xls', '.xls.gz')):
+                xls = pd.ExcelFile(file_obj)
+                all_sheets_data = []
+                num_sheets = len(xls.sheet_names)
+                for i, sheet_name in enumerate(xls.sheet_names):
+                    progress(20 + int(60 * (i / num_sheets)), f"正在处理工作表: {sheet_name}...")
+                    preview_df = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=5)
+                    header_row_index = _find_header_row(preview_df, header_keywords)
+                    if header_row_index is not None:
+                        sheet_df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index)
+                        sheet_df.dropna(how='all', inplace=True)
+                        all_sheets_data.append(sheet_df)
+                if not all_sheets_data:
+                    raise ValueError("在Excel文件的任何工作表中都未能找到有效的表头或数据。")
+                progress(80, _("正在合并所有工作表..."))
+                return pd.concat(all_sheets_data, ignore_index=True)
+            else:
+                progress(50, _("正在读取文本数据..."))
+                return pd.read_csv(file_obj, sep=r'\s+', engine='python', comment='#')
+        except Exception as e:
+            logger.error(f"读取同源文件 '{file_path}' 时出错: {e}")
+            raise
+        finally:
+            progress(100, _("文件加载完成。"))
+            if is_gz:
+                file_obj.close()
 
 
 def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
-    """
-    【最终增强版】智能加载数据文件的辅助函数。
-    它能处理 .gz 压缩，在多种格式间自动尝试，并强力净化列名。
-    """
     if not file_path or not os.path.exists(file_path):
         log(f"错误: 文件不存在 -> {file_path}", "ERROR")
         return None
@@ -101,7 +118,6 @@ def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
     file_name = os.path.basename(file_path)
     df = None
 
-    # 尝试1: 作为Excel文件读取
     try:
         with open_func(file_path, 'rb') as f:
             log(f"正在尝试作为 Excel (.xlsx) 文件读取: {file_name}", "DEBUG")
@@ -109,13 +125,11 @@ def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
     except Exception as excel_error:
         log(f"作为Excel读取失败 ({excel_error})，继续尝试其他格式...", "WARNING")
 
-    # 尝试2: 作为逗号分隔的CSV文件读取 (如果Excel失败)
     if df is None:
         try:
             with open_func(file_path, 'rt', encoding='utf-8') as f:
                 log(f"正在尝试作为逗号分隔 (CSV) 文件读取: {file_name}", "DEBUG")
                 temp_df = pd.read_csv(f, sep=',', engine='python')
-                # 检查是否成功解析出多于一列
                 if len(temp_df.columns) > 1:
                     df = temp_df
                 else:
@@ -123,7 +137,6 @@ def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
         except Exception as csv_error:
             log(f"作为CSV读取失败 ({csv_error})，继续尝试其他格式...", "WARNING")
 
-    # 尝试3: 作为制表符分隔的TSV文件读取 (如果CSV失败或不适用)
     if df is None:
         try:
             with open_func(file_path, 'rt', encoding='utf-8') as f:
@@ -133,9 +146,7 @@ def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
             log(f"作为TSV也读取失败 ({tsv_error})。无法加载文件: {file_name}", "ERROR")
             return None
 
-    # --- 强力净化列名 ---
     if df is not None:
-        # 移除所有非字母、数字、下划线、点、连字符或空格的字符，然后去除首尾空格
         cleaned_columns = [re.sub(r'[^\w\s\.-]', '', str(col)).strip() for col in df.columns]
         df.columns = cleaned_columns
         log(f"文件加载成功，净化后的列名为: {list(df.columns)}", "DEBUG")
@@ -146,7 +157,6 @@ def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
 
 
 def _update_config_from_overrides(config_obj: Any, overrides: Optional[Dict[str, Any]]):
-    """使用CLI/GUI的重写值递归更新配置对象。"""
     if not overrides:
         return
     for key, value in overrides.items():
@@ -159,7 +169,6 @@ def _update_config_from_overrides(config_obj: Any, overrides: Optional[Dict[str,
 
 def _update_criteria_from_cli(base_criteria: HomologySelectionCriteria,
                               cli_overrides: Optional[Dict[str, Any]]) -> HomologySelectionCriteria:
-    """使用CLI/GUI参数安全地更新HomologySelectionCriteria实例。"""
     if not cli_overrides:
         return base_criteria
 
@@ -186,13 +195,9 @@ def run_homology_mapping(
         progress_callback: Optional[Callable] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> Optional[pd.DataFrame]:
-    """
-    【最终版】执行同源基因映射。根据 calculate_target_locus 参数决定是否计算目标概要位点。
-    """
-    log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
+    log = lambda msg, level="INFO": status_callback(msg, level)
 
     try:
-        # 步骤 1 & 2: 加载配置和数据 (此部分逻辑不变)
         log(_("步骤 1&2: 加载配置和同源数据..."), "INFO")
         genome_sources = get_genome_data_sources(config, logger_func=log)
         source_genome_info = genome_sources.get(source_assembly_id)
@@ -207,8 +212,8 @@ def run_homology_mapping(
         source_gene_ids = gene_ids
         if region:
             gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
-            gff_db_cache_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
-                                            config.integration_pipeline.gff_db_storage_dir)
+            gff_db_cache_dir = os.path.join(os.path.dirname(config.config_file_abs_path_),
+                                            config.locus_conversion.gff_db_storage_dir)
             genes_in_region_list = get_genes_in_region(
                 assembly_id=source_assembly_id, gff_filepath=gff_path, db_storage_dir=gff_db_cache_dir, region=region,
                 force_db_creation=config.integration_pipeline.force_gff_db_creation, status_callback=log
@@ -227,7 +232,6 @@ def run_homology_mapping(
         source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
         bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
 
-        # 步骤 3: 执行映射 (此部分逻辑不变)
         log(_("步骤 3: 通过桥梁物种执行基因映射..."), "INFO")
         selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge
         selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target
@@ -241,7 +245,6 @@ def run_homology_mapping(
             selection_criteria_s_to_b = type(selection_criteria_s_to_b)
             selection_criteria_b_to_t = type(selection_criteria_b_to_t)
         homology_columns = config.integration_pipeline.homology_columns
-
 
         mapped_df, failed_genes = map_genes_via_bridge(
             source_gene_ids=source_gene_ids,
@@ -262,7 +265,6 @@ def run_homology_mapping(
 
         log(_("步骤 4: 保存映射结果..."), "INFO")
         if output_csv_path:
-            # 准备自定义头部
             source_locus_str = f"{source_assembly_id} | {region[0]}:{region[1]}-{region[2]}" if region else f"{source_assembly_id} | {len(source_gene_ids)} genes"
             header_line1 = f"# 源基因组的位点（即用户输入的位点）: {source_locus_str}\n"
 
@@ -273,14 +275,13 @@ def run_homology_mapping(
                     target_gene_ids_list = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
                     if target_gene_ids_list:
                         target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
-                        gff_db_cache_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
+                        gff_db_cache_dir = os.path.join(os.path.dirname(config.config_file_abs_path_),
                                                         config.integration_pipeline.gff_db_storage_dir)
                         target_genes_details_df = get_gene_info_by_ids(
                             assembly_id=target_assembly_id, gff_filepath=target_gff_path,
                             db_storage_dir=gff_db_cache_dir, gene_ids=target_gene_ids_list, status_callback=log
                         )
 
-                        # --- 核心修正点 1：修复 KeyError ---
                         if target_genes_details_df is not None and not target_genes_details_df.empty:
                             locus_bounds = target_genes_details_df.groupby('chrom').agg(min_start=('start', 'min'),
                                                                                         max_end=('end',
@@ -289,28 +290,23 @@ def run_homology_mapping(
                                              locus_bounds.iterrows()]
                             target_locus_summary = " | " + (
                                 ", ".join(summary_parts) if summary_parts else "无具体位点信息")
-                        # 如果找不到坐标信息，则概要留空
                 else:
                     target_locus_summary = " | 无映射结果"
 
             header_line2 = f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id}{target_locus_summary}\n"
 
-            # --- 核心修正点 2：改进失败基因报告 ---
             with open(output_csv_path, 'w', encoding='utf-8-sig', newline='') as f:
-                # 写入头部信息
                 f.write(header_line1)
                 f.write(header_line2)
-                f.write("#\n")  # 写入一个空注释行作为分隔
+                f.write("#\n")
 
-                # 写入成功匹配的结果表格
                 if mapped_df is not None and not mapped_df.empty:
                     mapped_df.to_csv(f, index=False, lineterminator='\n')
                 else:
                     f.write("# 未找到任何成功的同源匹配。\n")
 
-                # 如果有匹配失败的基因，在表格下方追加一个新部分
                 if failed_genes:
-                    f.write("\n\n")  # 写入两个换行符作为间隔
+                    f.write("\n\n")
                     f.write("# --- 匹配失败的源基因 ---\n")
                     failed_df = pd.DataFrame({
                         'Failed_Source_Gene_ID': failed_genes,
@@ -318,7 +314,7 @@ def run_homology_mapping(
                     })
                     failed_df.to_csv(f, index=False, lineterminator='\n')
 
-            log(f"结果已成功保存到: {output_csv_path}", "SUCCESS")
+            log(f"结果已成功保存到: {output_csv_path}", "INFO")
         else:
             log("未提供输出路径，跳过保存文件。", "INFO")
 
@@ -337,69 +333,69 @@ def run_locus_conversion(
         region: Tuple[str, int, int],
         output_path: str,
         status_callback: Callable,
+        progress_callback: Optional[Callable] = None,  # 明确接收 progress_callback
         criteria_overrides: Optional[Dict[str, Any]] = None,
         **kwargs
-) -> None:
-    """
-    通过调用核心同源映射流程，执行带概要位点计算的位点转换。
-    """
-    log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
+) -> Optional[str]:
+    log = lambda msg, level="INFO": status_callback(msg, level)
+    # 【核心修改】定义一个安全的进度更新函数
+    progress = progress_callback if progress_callback else lambda p, m: None
 
     try:
+        progress(0, _("流程开始，正在加载配置..."))
         log("步骤1: 加载配置...", "INFO")
         genome_sources = get_genome_data_sources(config, logger_func=log)
         source_genome_info = genome_sources.get(source_assembly_id)
         target_genome_info = genome_sources.get(target_assembly_id)
-        bridge_species_name = config.integration_pipeline.bridge_species_name
+
+        bridge_species_name = "Arabidopsis thaliana"
         bridge_genome_info = genome_sources.get(bridge_species_name)
+        if not bridge_genome_info:
+            bridge_genome_info = genome_sources.get(bridge_species_name.replace(' ', '_'))
 
         if not all([source_genome_info, target_genome_info, bridge_genome_info]):
             log(f"错误: 无法为 {source_assembly_id}, {target_assembly_id} 或 {bridge_species_name} 找到配置。", "ERROR")
-            return
+            return None
 
-        # 步骤1.1: 从GFF中获取源基因ID
+        progress(10, _("正在从GFF文件中提取基因..."))
         gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
-        gff_db_cache_dir = os.path.join(os.path.dirname(config._config_file_abs_path_),
-                                        config.integration_pipeline.gff_db_storage_dir)
+        gff_db_cache_dir = config.locus_conversion.gff_db_storage_dir
+        os.makedirs(gff_db_cache_dir, exist_ok=True)
+
         source_gene_list = get_genes_in_region(
             assembly_id=source_assembly_id, gff_filepath=gff_path,
             db_storage_dir=gff_db_cache_dir, region=region,
-            force_db_creation=config.integration_pipeline.force_gff_db_creation,
             status_callback=log,
             gene_id_regex=source_genome_info.gene_id_regex
         )
         if not source_gene_list:
             log(f"在区域 {region} 中未找到任何基因。", "WARNING")
-            return
+            return "在指定区域未找到任何基因。"
         source_gene_ids = [gene['gene_id'] for gene in source_gene_list]
 
-        # 步骤1.2: 准备调用 map_genes_via_bridge 所需的所有参数
+        progress(25, _("正在加载同源文件..."))
         s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
         b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
 
-        # --- 健壮性检查 ---
-        if not s_to_b_homology_file or not b_to_t_homology_file:
-            log(f"错误: 缺少必要的同源文件。源文件路径: '{s_to_b_homology_file}', 目标文件路径: '{b_to_t_homology_file}'。请先运行下载流程。", "ERROR")
-            return
+        if not s_to_b_homology_file or not os.path.exists(
+                s_to_b_homology_file) or not b_to_t_homology_file or not os.path.exists(b_to_t_homology_file):
+            log(f"错误: 缺少必要的同源文件。请先为相关基因组下载数据。", "ERROR")
+            return None
 
+        progress(35, _("正在解析源到桥梁的同源文件..."))
         source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
+        progress(50, _("正在解析桥梁到目标的同源文件..."))
         bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
 
-        selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge
-        selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target
-        if criteria_overrides:
-            s2b_dict = selection_criteria_s_to_b.to_dict()
-            b2t_dict = selection_criteria_b_to_t.to_dict()
-            for key, value in criteria_overrides.items():
-                if value is not None:
-                    if key in s2b_dict: s2b_dict[key] = value
-                    if key in b2t_dict: b2t_dict[key] = value
-            selection_criteria_s_to_b = type(selection_criteria_s_to_b)
-            selection_criteria_b_to_t = type(selection_criteria_b_to_t)
-        homology_columns = config.integration_pipeline.homology_columns
+        homology_columns = {"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"}
+        if homology_columns['query'] not in source_to_bridge_homology_df.columns:
+            raise ValueError(
+                f"配置错误: 在同源文件中找不到查询列 '{homology_columns['query']}'。可用列: {source_to_bridge_homology_df.columns.tolist()}")
 
-        # 步骤 2: 调用核心映射逻辑
-        log("正在执行核心同源映射...", "INFO")
+        selection_criteria_s_to_b = {"top_n": 1, "evalue_threshold": 1e-10}
+        selection_criteria_b_to_t = {"top_n": 1, "evalue_threshold": 1e-10}
+
+        progress(65, _("正在执行核心同源映射..."))
         mapped_df, failed_genes = map_genes_via_bridge(
             source_gene_ids=source_gene_ids,
             source_assembly_name=source_assembly_id,
@@ -407,8 +403,8 @@ def run_locus_conversion(
             bridge_species_name=bridge_species_name,
             source_to_bridge_homology_df=source_to_bridge_homology_df,
             bridge_to_target_homology_df=bridge_to_target_homology_df,
-            selection_criteria_s_to_b=selection_criteria_s_to_b.to_dict(),
-            selection_criteria_b_to_t=selection_criteria_b_to_t.to_dict(),
+            selection_criteria_s_to_b=selection_criteria_s_to_b,
+            selection_criteria_b_to_t=selection_criteria_b_to_t,
             homology_columns=homology_columns,
             source_genome_info=source_genome_info,
             target_genome_info=target_genome_info,
@@ -417,49 +413,31 @@ def run_locus_conversion(
             cancel_event=kwargs.get('cancel_event')
         )
 
-        # 步骤 3: 计算目标概要位点
-        target_locus_summary = "无具体位点信息"
-        if mapped_df is not None and not mapped_df.empty:
-            target_gene_ids_list = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
-            if target_gene_ids_list:
-                target_gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
-                target_genes_details_df = get_gene_info_by_ids(
-                    assembly_id=target_assembly_id,
-                    gff_filepath=target_gff_path,
-                    db_storage_dir=gff_db_cache_dir,
-                    gene_ids=target_gene_ids_list,
-                    status_callback=log,
-                    gene_id_regex=target_genome_info.gene_id_regex  # 传递目标正则
-                )
-                if not target_genes_details_df.empty:
-                    locus_bounds = target_genes_details_df.groupby('chrom').agg(min_start=('start', 'min'),
-                                                                                max_end=('end', 'max')).reset_index()
-                    summary_parts = [f"{row['chrom']}:{row['min_start']}-{row['max_end']}" for _, row in
-                                     locus_bounds.iterrows()]
-                    target_locus_summary = ", ".join(summary_parts)
-
-        # 步骤 4: 写入最终的CSV文件
-        header_line1 = f"# 源基因组的位点（即用户输入的位点）: {source_assembly_id} | {region[0]}:{region[1]}-{region[2]}\n"
-        header_line2 = f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id} | {target_locus_summary}\n"
-        failed_genes_str = ",".join(failed_genes) if failed_genes else "无"
-        header_line3 = f"# 匹配失败的源基因 ({len(failed_genes)}): {failed_genes_str}\n"
-
+        progress(90, _("映射完成，正在整理并保存结果..."))
         output_dir = os.path.dirname(output_path)
         if output_dir: os.makedirs(output_dir, exist_ok=True)
+
         with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
-            f.write(header_line1)
-            f.write(header_line2)
-            f.write(header_line3)
+            f.write(f"# Source Locus: {source_assembly_id} | {region[0]}:{region[1]}-{region[2]}\n")
+            f.write(f"# Target Assembly: {target_assembly_id}\n")
+            f.write(
+                f"# Failed to map {len(failed_genes)} genes: {','.join(failed_genes) if failed_genes else 'None'}\n")
+            f.write("#\n# --- Detailed Mapping Results ---\n")
             if mapped_df is not None and not mapped_df.empty:
                 mapped_df.to_csv(f, index=False, lineterminator='\n')
             else:
-                f.write("# 未找到任何成功的同源匹配。\n")
+                f.write("# No successful homologous matches found.\n")
 
-        log(f"位点转换结果已成功保存到: {output_path}", "SUCCESS")
+        progress(100, _("全部完成！"))
+        success_message = f"位点转换结果已成功保存到:\n{os.path.abspath(output_path)}"
+        log(success_message, "INFO")
+        return success_message
 
     except Exception as e:
         log(f"位点转换流程出错: {e}", "ERROR")
         log(traceback.format_exc(), "DEBUG")
+        progress(100, _("任务因错误而终止。"))
+        return None
 
 
 def run_ai_task(
@@ -475,61 +453,52 @@ def run_ai_task(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         output_file: Optional[str] = None
 ):
-    """【已修正】执行AI任务流程，增加对 progress_callback 的支持以兼容GUI。"""
     batch_cfg = config.batch_ai_processor
     _update_config_from_overrides(batch_cfg, cli_overrides)
-
-    # 如果提供了进度回调，就使用它，否则使用一个不做任何事的占位函数
     progress = progress_callback if progress_callback else lambda p, m: None
+    log = lambda msg, level="INFO": status_callback(msg, level)
 
-    status_callback(_("AI任务流程开始..."), "INFO")
+    log(_("AI任务流程开始..."), "INFO")
     progress(0, _("初始化AI客户端..."))
-
     ai_cfg = config.ai_services
     provider_name = ai_cfg.default_provider
     provider_cfg_obj = ai_cfg.providers.get(provider_name)
     if not provider_cfg_obj:
-        status_callback(f"错误: 在配置中未找到默认AI服务商 '{provider_name}' 的设置。", "ERROR")
+        log(f"错误: 在配置中未找到默认AI服务商 '{provider_name}' 的设置。", "ERROR")
         return
-
     api_key = provider_cfg_obj.api_key
     model = provider_cfg_obj.model
     base_url = provider_cfg_obj.base_url
     if not api_key or "YOUR_API_KEY" in api_key:
-        status_callback(f"错误: 请在配置文件中为服务商 '{provider_name}' 设置一个有效的API Key。", "ERROR")
+        log(f"错误: 请在配置文件中为服务商 '{provider_name}' 设置一个有效的API Key。", "ERROR")
         return
 
-
-    # --- 细化AI代理逻辑 ---
     proxies_to_use = None
     if ai_cfg.use_proxy_for_ai:
-        if config.downloader.proxies and (config.downloader.proxies.http or config.downloader.proxies.https):
-            proxies_to_use = config.proxies.to_dict()
-            status_callback(f"INFO: AI服务将使用代理: {proxies_to_use}")
+        if config.proxies and (config.proxies.http or config.proxies.https):
+            proxies_to_use = config.proxies.model_dump(exclude_none=True)
+            log(f"INFO: AI服务将使用代理: {proxies_to_use}")
         else:
-            status_callback("WARNING: AI代理开关已打开，但配置文件中未设置代理地址。")
+            log("WARNING: AI代理开关已打开，但配置文件中未设置代理地址。")
 
-    status_callback(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model))
+    log(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model))
     ai_client = AIWrapper(
         provider=provider_name,
         api_key=api_key,
         model=model,
         base_url=base_url,
-        proxies=proxies_to_use
+        proxies=proxies_to_use,
+        max_workers=config.batch_ai_processor.max_workers
     )
-
-    project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
-    output_dir_name = getattr(batch_cfg, 'output_dir_name', 'ai_results')  # 安全访问
+    project_root = os.path.dirname(config.config_file_abs_path_) if hasattr(config, 'config_file_abs_path_') and config.config_file_abs_path_ else '.'
+    output_dir_name = getattr(config.batch_ai_processor, 'output_dir_name', 'ai_results')
     output_dir = os.path.join(project_root, output_dir_name)
-    os.makedirs(output_dir, exist_ok=True)  # 确保输出目录存在
-
+    os.makedirs(output_dir, exist_ok=True)
     prompt_to_use = custom_prompt_template
     if not prompt_to_use:
         prompt_to_use = config.ai_prompts.translation_prompt if task_type == 'translate' else config.ai_prompts.analysis_prompt
 
     progress(10, _("正在处理CSV文件..."))
-
-    # 将回调函数传递给核心处理模块
     process_single_csv_file(
         client=ai_client,
         input_csv_path=input_file,
@@ -544,9 +513,8 @@ def run_ai_task(
         cancel_event=cancel_event,
         output_csv_path=output_file
     )
-
     progress(100, _("任务完成。"))
-    status_callback(_("AI任务流程成功完成。"), "SUCCESS")
+    log(_("AI任务流程成功完成。"), "INFO")
 
 
 def run_functional_annotation(
@@ -564,20 +532,9 @@ def run_functional_annotation(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> None:
-    """
-    【完整且最终修正版】执行功能注释流水线。
-
-    此函数功能完备，支持:
-    - 通过基因ID列表或文件路径输入。
-    - 在源和目标基因组不同时，自动执行同源映射。
-    - 支持任务取消。
-    - 支持手动指定一个包含所有注释文件的数据库目录 (custom_db_dir)。
-    - 支持手动指定一个完整的输出文件路径 (output_path)，否则在输出目录 (output_dir) 中自动生成。
-    """
-    log = lambda msg, level="INFO": status_callback(f"[{level}] {msg}")
+    log = lambda msg, level="INFO": status_callback(msg, level)
     progress = progress_callback if progress_callback else lambda p, m: log(f"[{p}%] {m}")
 
-    # --- 步骤 1: 准备输入基因列表 ---
     progress(0, _("准备输入基因列表..."))
     source_gene_ids = []
     if gene_ids:
@@ -603,7 +560,6 @@ def run_functional_annotation(
     genes_to_annotate = source_gene_ids
     original_to_target_map_df = pd.DataFrame({'Source_Gene_ID': source_gene_ids})
 
-    # --- 步骤 2: 按需进行同源转换 ---
     progress(20, _("检查是否需要同源映射..."))
     if source_genome != target_genome:
         log(f"源基因组 ({source_genome}) 与目标基因组 ({target_genome}) 不同，准备进行同源转换。", "INFO")
@@ -662,7 +618,6 @@ def run_functional_annotation(
         genes_to_annotate = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
         original_to_target_map_df = mapped_df[['Source_Gene_ID', 'Target_Gene_ID']]
 
-    # --- 步骤 3: 初始化 Annotator ---
     progress(60, _("初始化注释器..."))
     genome_sources = get_genome_data_sources(config, logger_func=log)
     target_genome_info = genome_sources.get(target_genome)
@@ -679,7 +634,6 @@ def run_functional_annotation(
         custom_db_dir=custom_db_dir
     )
 
-    # --- 步骤 4: 执行注释 ---
     progress(70, _("正在为 {len(genes_to_annotate)} 个基因执行功能注释..."))
     result_df = annotator.annotate_genes(genes_to_annotate, annotation_types)
 
@@ -687,20 +641,16 @@ def run_functional_annotation(
         log("任务在注释阶段被用户取消。", "INFO")
         return
 
-    # --- 步骤 5: 处理并保存结果 ---
     progress(90, _("整理并保存结果..."))
     if result_df is not None and not result_df.empty:
-        # 如果进行了同源转换，将注释结果与原始基因ID关联起来
         if 'Target_Gene_ID' in original_to_target_map_df.columns:
             final_df = pd.merge(original_to_target_map_df, result_df, on='Target_Gene_ID', how='left')
         else:
             final_df = result_df
 
-        # --- 决定最终输出路径 ---
         final_output_path = ""
         if output_path:
             final_output_path = output_path
-            # 确保其父目录存在
             os.makedirs(os.path.dirname(final_output_path), exist_ok=True)
         elif output_dir:
             os.makedirs(output_dir, exist_ok=True)
@@ -715,7 +665,7 @@ def run_functional_annotation(
 
         try:
             final_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-            log(f"注释成功！结果已保存至: {final_output_path}", "SUCCESS")
+            log(f"注释成功！结果已保存至: {final_output_path}", "INFO")
         except Exception as e:
             log(f"保存结果到 {final_output_path} 时发生错误: {e}", "ERROR")
 
@@ -723,7 +673,6 @@ def run_functional_annotation(
         log("注释完成，但没有生成任何结果。", "WARNING")
 
     progress(100, _("功能注释流程结束。"))
-
 
 
 def run_gff_lookup(
@@ -736,10 +685,6 @@ def run_gff_lookup(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    """
-    【重构版】执行GFF基因位点查询流程。
-    可以根据基因ID列表或染色体区域进行查询。
-    """
     log = status_callback if status_callback else lambda msg, level="INFO": print(f"[{level}] {msg}")
     progress = progress_callback if progress_callback else lambda p, m: print(f"[{p}%] {m}")
 
@@ -747,17 +692,18 @@ def run_gff_lookup(
         log(_("错误: 必须提供基因ID列表或染色体区域进行查询。"), "ERROR")
         return False
 
+    progress(0, _("流程开始，正在初始化配置..."))
     log(_("开始GFF基因查询流程..."), "INFO")
-    progress(0, _("初始化配置..."))
 
-    pipeline_cfg = config.integration_pipeline
-    downloader_cfg = config.downloader
-    project_root = os.path.dirname(config._config_file_abs_path_) if config._config_file_abs_path_ else '.'
+    # 【核心修改】移除对 pipeline_cfg 的依赖，直接从 locus_conversion 配置中获取路径
+    project_root = '.'  # 默认为当前目录，或者您可以根据需要定义
+    if hasattr(config, 'config_file_abs_path_') and config.config_file_abs_path_:
+        project_root = os.path.dirname(config.config_file_abs_path_)
 
     genome_sources = get_genome_data_sources(config, logger_func=log)
     selected_genome_info = genome_sources.get(assembly_id)
     if not selected_genome_info:
-        log(_("错误: 基因组 '{}' 未在基因组源列表中找到。").format(assembly_id), "ERROR")
+        log(_("错误:s 基因组 '{}' 未在基因组源列表中找到。").format(assembly_id), "ERROR")
         return False
 
     gff_file_path = get_local_downloaded_file_path(config, selected_genome_info, 'gff3')
@@ -765,11 +711,15 @@ def run_gff_lookup(
         log(_("错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。").format(assembly_id), "ERROR")
         return False
 
-    progress(20, _("正在加载GFF数据库..."))
-    gff_db_dir = os.path.join(project_root, pipeline_cfg.gff_db_storage_dir)
-    force_creation = pipeline_cfg.force_gff_db_creation
+    progress(20, _("正在准备GFF数据库..."))
+    gff_db_dir = config.locus_conversion.gff_db_storage_dir
+    os.makedirs(gff_db_dir, exist_ok=True)
+
+    # force_creation 应该从一个更通用的地方获取，暂时设为False
+    force_creation = False
 
     results_df = pd.DataFrame()
+    progress(40, _("正在数据库中查询..."))
     if gene_ids:
         log(_("按基因ID查询 {} 个基因...").format(len(gene_ids)), "INFO")
         results_df = get_gene_info_by_ids(
@@ -804,7 +754,7 @@ def run_gff_lookup(
 
         try:
             results_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-            log(_("GFF基因查询结果已保存到: {}").format(final_output_path), "SUCCESS")
+            log(_("GFF基因查询结果已保存到: {}").format(final_output_path), "INFO")
         except Exception as e:
             log(_("保存结果时出错: {}").format(e), "ERROR")
             return False
@@ -813,7 +763,6 @@ def run_gff_lookup(
     return True
 
 
-# GO KEGG 富集分析
 def run_download_pipeline(
         config: MainConfig,
         cli_overrides: Optional[Dict[str, Any]] = None,
@@ -821,11 +770,7 @@ def run_download_pipeline(
         progress_callback: Optional[Callable] = None,
         cancel_event: Optional[threading.Event] = None
 ):
-    """
-    【已修正】执行数据下载流程。
-    能根据传入的 'file_types' 参数，精确地选择性下载文件。
-    """
-    log = status_callback if status_callback else print
+    log = lambda msg, level="INFO": status_callback(msg, level)
     progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
     log("INFO: 下载流程开始...")
 
@@ -838,13 +783,12 @@ def run_download_pipeline(
     max_workers = downloader_cfg.max_workers
     use_proxy_for_this_run = cli_overrides.get("use_proxy_for_download", downloader_cfg.use_proxy_for_download)
 
-    # --- 核心修改：检查是否从UI传入了特定的文件类型列表 ---
     file_keys_to_process = cli_overrides.get("file_types")
 
     proxies_to_use = None
     if use_proxy_for_this_run:
         if config.proxies and (config.proxies.http or config.proxies.https):
-            proxies_to_use = config.proxies.to_dict()
+            proxies_to_use = config.proxies.model_dump(exclude_none=True)
             log(f"INFO: 本次下载将使用代理: {proxies_to_use}")
         else:
             log("WARNING: 下载代理开关已打开，但配置文件中未设置代理地址。")
@@ -852,7 +796,6 @@ def run_download_pipeline(
     log(f"INFO: 将尝试下载的基因组版本: {', '.join(versions_to_download)}")
 
     all_download_tasks = []
-    # 如果没有从UI指定，则使用models.py中定义的所有可能的URL属性作为默认值
     if not file_keys_to_process:
         all_possible_keys = [f.name.replace('_url', '') for f in GenomeSourceItem.model_fields.values() if
                              f.name.endswith('_url')]
@@ -944,10 +887,7 @@ def run_enrichment_pipeline(
         height: float = 8,
         file_format: str = 'png'
 ) -> Optional[List[str]]:
-    """
-    【全功能修正版】执行富集分析与可视化的完整流程。
-    """
-    log = status_callback if status_callback else print
+    log = lambda msg, level="INFO": status_callback(msg, level)
     progress = progress_callback if progress_callback else lambda p, m: log(f"进度 {p}%: {m}")
 
     log(f"INFO: {analysis_type.upper()} 富集与可视化流程启动。")
@@ -972,14 +912,14 @@ def run_enrichment_pipeline(
     os.makedirs(output_dir, exist_ok=True)
     enrichment_df = None
 
-    # --- 步骤 1: 执行核心富集分析 ---
     if analysis_type == 'go':
         progress(20, _("正在执行GO富集分析..."))
         gaf_path = get_local_downloaded_file_path(config, genome_info, 'GO')
         if not gaf_path or not os.path.exists(gaf_path):
             log(f"ERROR: 未找到 '{assembly_id}' 的GO注释关联文件 (GAF)。请先下载数据。")
             return None
-        enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, go_annotation_path=gaf_path, output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
+        enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, go_annotation_path=gaf_path,
+                                          output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
 
     elif analysis_type == 'kegg':
         progress(20, _("正在执行KEGG富集分析..."))
@@ -987,7 +927,8 @@ def run_enrichment_pipeline(
         if not pathways_path or not os.path.exists(pathways_path):
             log(f"ERROR: 未找到 '{assembly_id}' 的KEGG通路文件。请先下载数据。")
             return None
-        enrichment_df = run_kegg_enrichment(study_gene_ids=study_gene_ids, kegg_pathways_path=pathways_path, output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
+        enrichment_df = run_kegg_enrichment(study_gene_ids=study_gene_ids, kegg_pathways_path=pathways_path,
+                                            output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex)
 
 
     else:
@@ -1000,11 +941,10 @@ def run_enrichment_pipeline(
 
     if enrichment_df is None or enrichment_df.empty:
         log("WARNING: 富集分析未发现任何显著结果，流程终止。")
-        return []  # 返回空列表表示成功但无结果
+        return []
 
     progress(70, _("富集分析完成，正在生成图表..."))
 
-    # --- 步骤 2: 遍历并生成所有请求的图表 ---
     generated_plots = []
 
     plot_kwargs_common = {
@@ -1027,8 +967,6 @@ def run_enrichment_pipeline(
                 if plot_path: generated_plots.append(plot_path)
 
             if 'bar' in plot_types:
-                # !!!!!!!!!!!!!!! 这是修改点 !!!!!!!!!!!!!!!
-                # 将 has_log2fc=... 替换为 gene_log2fc_map=...
                 output_path = os.path.join(output_dir, f"{file_prefix_ns}_bar.{file_format}")
                 plot_path = plot_enrichment_bar(enrichment_df=df_sub, output_path=output_path, title=title_ns,
                                                 gene_log2fc_map=gene_log2fc_map, **plot_kwargs_common)
@@ -1055,8 +993,6 @@ def run_enrichment_pipeline(
             if plot_path: generated_plots.append(plot_path)
 
         if 'bar' in plot_types:
-            # !!!!!!!!!!!!!!! 这是另一个修改点 !!!!!!!!!!!!!!!
-            # 同样，替换参数
             output_path = os.path.join(output_dir, f"{file_prefix}_bar.{file_format}")
             plot_path = plot_enrichment_bar(enrichment_df=enrichment_df, output_path=output_path, title=title,
                                             gene_log2fc_map=gene_log2fc_map, **plot_kwargs_common)
@@ -1074,15 +1010,12 @@ def run_enrichment_pipeline(
             if plot_path: generated_plots.append(plot_path)
 
     progress(100, _("所有图表已生成。"))
-    log(f"SUCCESS: 流程完成。在 '{output_dir}' 中成功生成 {len(generated_plots)} 个图表。", "SUCCESS")
+    log(f"流程完成。在 '{output_dir}' 中成功生成 {len(generated_plots)} 个图表。", "INFO")
 
     return generated_plots
 
 
 def _preprocess_single_annotation_excel(excel_path: str, output_csv_path: str, log: Callable) -> bool:
-    """
-    【新增的专用函数】专门用于读取多Sheet的Excel注释文件，合并并添加标准表头。
-    """
     try:
         all_sheets_dict = pd.read_excel(excel_path, sheet_name=None, header=None, engine='openpyxl')
         all_dfs = [df for df in all_sheets_dict.values() if not df.empty and df.dropna(how='all').shape[0] > 0]
@@ -1093,7 +1026,6 @@ def _preprocess_single_annotation_excel(excel_path: str, output_csv_path: str, l
 
         concatenated_df = pd.concat(all_dfs, ignore_index=True)
 
-        # 强制设置我们需要的标准列名
         num_cols = len(concatenated_df.columns)
         new_columns = []
         if num_cols > 0: new_columns.append('Query')
@@ -1116,19 +1048,15 @@ def run_preprocess_annotation_files(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    """
-    【已恢复】调用公用的 convert_excel_to_standard_csv 函数，
-    预处理所有已下载的Excel注释文件。
-    """
-    log = status_callback if status_callback else print
+    log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
     progress = progress_callback if progress_callback else lambda p, m: log(f"[{p}%] {m}")
 
-    log("INFO: 开始预处理注释文件（转换为CSV）...")
+    log("开始预处理注释文件（转换为CSV）...", "INFO")
     progress(0, "初始化...")
 
     genome_sources = get_genome_data_sources(config)
     if not genome_sources:
-        log("ERROR: 未能加载基因组源数据。", "ERROR")
+        log("未能加载基因组源数据。", "ERROR")
         return False
 
     tasks_to_run = []
@@ -1136,35 +1064,32 @@ def run_preprocess_annotation_files(
     for genome_info in genome_sources.values():
         for key in ALL_ANNO_KEYS:
             source_path = get_local_downloaded_file_path(config, genome_info, key)
-            # 只处理存在的、且是Excel格式的文件
             if source_path and os.path.exists(source_path) and source_path.lower().endswith(('.xlsx', '.xlsx.gz')):
-                # 智能推断输出路径
                 base_path = source_path.replace('.xlsx.gz', '').replace('.xlsx', '')
                 output_path = base_path + '.csv'
-                # 如果CSV文件不存在，或者源文件比它更新，则需要处理
                 if not os.path.exists(output_path) or os.path.getmtime(source_path) > os.path.getmtime(output_path):
                     tasks_to_run.append((source_path, output_path))
 
     if not tasks_to_run:
-        log("INFO: 所有注释文件均已是最新状态，无需预处理。", "INFO")
+        log("所有注释文件均已是最新状态，无需预处理。", "INFO")
         progress(100, "无需处理。")
         return True
 
     total_tasks = len(tasks_to_run)
-    log(f"INFO: 找到 {total_tasks} 个文件需要进行预处理。")
+    log(f"找到 {total_tasks} 个文件需要进行预处理。", "INFO")
     success_count = 0
 
     for i, (source, output) in enumerate(tasks_to_run):
         if cancel_event and cancel_event.is_set():
-            log("INFO: 任务被用户取消。", "INFO")
+            log("任务被用户取消。", "INFO")
             return False
 
         progress((i + 1) * 100 // total_tasks, f"正在转换: {os.path.basename(source)}")
 
-        # 调用您公用的转换函数
         if convert_excel_to_standard_csv(source, output, log):
             success_count += 1
 
-    log(f"SUCCESS: 预处理完成。成功转换 {success_count}/{total_tasks} 个文件。", "SUCCESS")
+    log(f"预处理完成。成功转换 {success_count}/{total_tasks} 个文件。", "INFO")
     progress(100, "全部完成。")
     return True
+

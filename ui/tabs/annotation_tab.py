@@ -52,18 +52,18 @@ class AnnotationTab(BaseTab):
         input_card = ttkb.LabelFrame(parent_frame, text=_("输入数据"), bootstyle="secondary")
         input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
         input_card.grid_columnconfigure(1, weight=1)
-        ttk.Label(input_card, text=_("基因组版本:")).grid(row=0, column=0, sticky="w", padx=(10, 5), pady=10)
+        ttk.Label(input_card, text=_("基因组版本:"), font=self.app.app_font_bold).grid(row=0, column=0, sticky="w", padx=(10, 5), pady=10)
         self.assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_annotation_assembly, _("加载中..."),
                                                  bootstyle="info")
         self.assembly_dropdown.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
-        ttk.Label(input_card, text=_("基因ID列表:")).grid(row=1, column=0, sticky="nw", padx=(10, 5), pady=10)
+        ttk.Label(input_card, text=_("基因ID列表:"), font=self.app.app_font_bold).grid(row=1, column=0, sticky="nw", padx=(10, 5), pady=10)
         text_bg = self.app.style.lookup('TFrame', 'background');
         text_fg = self.app.style.lookup('TLabel', 'foreground')
         self.annotation_genes_textbox = tk.Text(input_card, height=10, font=self.app.app_font_mono, wrap="word",
                                                 relief="flat", background=text_bg, foreground=text_fg,
                                                 insertbackground=text_fg)
         self.annotation_genes_textbox.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
-        self.app.ui_manager._add_placeholder(self.annotation_genes_textbox, "genes_input")
+        self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, "genes_input")
         self.annotation_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                        self.annotation_genes_textbox,
                                                                                                        "genes_input"))
@@ -85,28 +85,28 @@ class AnnotationTab(BaseTab):
                          bootstyle="round-toggle").pack(side="left", padx=5)
         ttkb.Checkbutton(checkbox_frame, text="KEGG Pathways", variable=self.kegg_path_anno_var,
                          bootstyle="round-toggle").pack(side="left", padx=5)
-        ttk.Label(anno_card, text=_("输出文件 (可选):")).grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        ttk.Label(anno_card, text=_("输出文件 (可选):"), font=self.app.app_font_bold).grid(row=1, column=0, sticky="w", padx=10, pady=5)
         self.annotation_output_csv_entry = ttk.Entry(anno_card);
         self.annotation_output_csv_entry.grid(row=1, column=1, sticky="ew", padx=10, pady=(5, 10))
 
-        enrich_card = ttkb.LabelFrame(parent_frame, text=_("富集分析与绘图"), bootstyle="info")
+        enrich_card = ttkb.LabelFrame(parent_frame, text=_("富集分析与绘图"), bootstyle="secondary")
         enrich_card.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
         enrich_card.grid_columnconfigure(1, weight=1)
-        ttk.Label(enrich_card, text=_("输入格式:")).grid(row=1, column=0, padx=15, pady=5, sticky="w")
+        ttk.Label(enrich_card, text=_("输入格式:"), font=self.app.app_font_bold).grid(row=1, column=0, padx=15, pady=5, sticky="w")
         input_format_frame = ttk.Frame(enrich_card);
         input_format_frame.grid(row=1, column=1, columnspan=3, padx=10, pady=5, sticky="w")
         ttkb.Checkbutton(input_format_frame, text=_("包含表头"), variable=self.has_header_var,
                          bootstyle="round-toggle").pack(side="left", padx=(0, 15))
         ttkb.Checkbutton(input_format_frame, text=_("包含Log2FC"), variable=self.has_log2fc_var,
                          bootstyle="round-toggle").pack(side="left")
-        ttk.Label(enrich_card, text=_("分析类型:")).grid(row=2, column=0, padx=15, pady=5, sticky="w")
+        ttk.Label(enrich_card, text=_("分析类型:"), font=self.app.app_font_bold).grid(row=2, column=0, padx=15, pady=5, sticky="w")
         radio_frame = ttk.Frame(enrich_card);
         radio_frame.grid(row=2, column=1, padx=10, pady=5, sticky="w")
         ttkb.Radiobutton(radio_frame, text="GO", variable=self.analysis_type_var, value="GO",
                          bootstyle="toolbutton-success").pack(side="left", padx=5)
         ttkb.Radiobutton(radio_frame, text="KEGG", variable=self.analysis_type_var, value="KEGG",
                          bootstyle="toolbutton-success").pack(side="left", padx=5)
-        ttk.Label(enrich_card, text=_("绘图类型:")).grid(row=3, column=0, padx=15, pady=5, sticky="w")
+        ttk.Label(enrich_card, text=_("绘图类型:"), font=self.app.app_font_bold).grid(row=3, column=0, padx=15, pady=5, sticky="w")
         plot_type_frame = ttk.Frame(enrich_card);
         plot_type_frame.grid(row=3, column=1, columnspan=3, padx=10, pady=5, sticky="w")
         ttkb.Checkbutton(plot_type_frame, text=_("气泡图"), variable=self.bubble_plot_var,
@@ -117,7 +117,7 @@ class AnnotationTab(BaseTab):
                          bootstyle="round-toggle").pack(side="left", padx=(0, 15))
         ttkb.Checkbutton(plot_type_frame, text=_("网络图(Cnet)"), variable=self.cnet_plot_var,
                          bootstyle="round-toggle").pack(side="left")
-        ttk.Label(enrich_card, text=_("输出目录:")).grid(row=4, column=0, padx=15, pady=5, sticky="w")
+        ttk.Label(enrich_card, text=_("输出目录:"), font=self.app.app_font_bold).grid(row=4, column=0, padx=15, pady=5, sticky="w")
         self.enrichment_output_dir_entry = ttk.Entry(enrich_card);
         self.enrichment_output_dir_entry.grid(row=4, column=1, columnspan=2, sticky="ew", padx=(10, 5), pady=5)
         ttkb.Button(enrich_card, text=_("浏览..."), width=12,
@@ -175,7 +175,7 @@ class AnnotationTab(BaseTab):
     def start_enrichment_task(self):
         if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),
                                                                                _("请先加载配置文件。")); return
-        gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
+        gene_ids_text = self.annotation_genes_textbox.get("1.Tcl.END").strip()
         is_placeholder = (gene_ids_text == _(self.app.placeholders.get("genes_input", "")))
         lines = gene_ids_text.splitlines()
         assembly_id = self.selected_annotation_assembly.get();

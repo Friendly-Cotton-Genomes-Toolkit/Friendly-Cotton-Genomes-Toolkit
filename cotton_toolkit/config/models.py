@@ -109,49 +109,6 @@ class HomologySelectionCriteria(BaseModel):
     def _default_ascending() -> List[bool]:
         return [False, True]
 
-class IntegrationPipelineConfig(BaseModel):
-    input_excel_path: str = "path/to/your/input_data.xlsx"
-    bsa_sheet_name: str = "BSA_Results"
-    hvg_sheet_name: str = "HVG_List"
-    output_sheet_name: str = "Combined_BSA_HVG_Analysis"
-    bsa_assembly_id: str = "NBI_v1.1"
-    hvg_assembly_id: str = "HAU_v2.0"
-    bridge_species_name: str = "Arabidopsis_thaliana"
-    gff_db_storage_dir: str = "gff_databases_cache"
-    force_gff_db_creation: bool = False
-    gff_files: Dict[str, Optional[str]] = Field(default_factory=lambda: IntegrationPipelineConfig._default_gff_files())
-    homology_files: Dict[str, Optional[str]] = Field(default_factory=lambda: IntegrationPipelineConfig._default_homology_files())
-    bsa_columns: Dict[str, str] = Field(default_factory=lambda: IntegrationPipelineConfig._default_bsa_columns())
-    hvg_columns: Dict[str, str] = Field(default_factory=lambda: IntegrationPipelineConfig._default_hvg_columns())
-    homology_columns: Dict[str, str] = Field(default_factory=lambda: IntegrationPipelineConfig._default_homology_columns())
-    selection_criteria_source_to_bridge: HomologySelectionCriteria = Field(default_factory=HomologySelectionCriteria)
-    selection_criteria_bridge_to_target: HomologySelectionCriteria = Field(default_factory=lambda: IntegrationPipelineConfig._default_selection_criteria_bridge_to_target())
-    common_hvg_log2fc_threshold: float = 1.0
-
-    @staticmethod
-    def _default_gff_files() -> Dict[str, Optional[str]]:
-        return {}
-
-    @staticmethod
-    def _default_homology_files() -> Dict[str, Optional[str]]:
-        return {}
-
-    @staticmethod
-    def _default_bsa_columns() -> Dict[str, str]:
-        return {"chr": "chr", "start": "region.start", "end": "region.end"}
-
-    @staticmethod
-    def _default_hvg_columns() -> Dict[str, str]:
-        return {"gene_id": "gene_id", "category": "hvg_category", "log2fc": "log2fc_WT_vs_Ms1"}
-
-    @staticmethod
-    def _default_homology_columns() -> Dict[str, str]:
-        return {"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"}
-
-    @staticmethod
-    def _default_selection_criteria_bridge_to_target() -> HomologySelectionCriteria:
-        return HomologySelectionCriteria(evalue_threshold=1.0e-15, pid_threshold=40.0, score_threshold=80.0)
-
 
 class MainConfig(BaseModel):
     config_version: int = 1
@@ -166,7 +123,6 @@ class MainConfig(BaseModel):
     bsa_analyzer: BSAAnalyzerConfig = Field(default_factory=BSAAnalyzerConfig)
     arabidopsis_analyzer: ArabidopsisAnalyzerConfig = Field(default_factory=ArabidopsisAnalyzerConfig)
     batch_ai_processor: BatchAIProcessorConfig = Field(default_factory=BatchAIProcessorConfig)
-    integration_pipeline: IntegrationPipelineConfig = Field(default_factory=IntegrationPipelineConfig)
     locus_conversion: LocusConversionConfig = Field(default_factory=LocusConversionConfig)
     config_file_abs_path_: Optional[str] = Field(default=None, exclude=True) # 重命名后的字段
 
@@ -294,7 +250,7 @@ class GenomeSourcesConfig(BaseModel):
                 genome_type='cotton',
                 gene_id_regex= r'(Ghir_[AD]\d{2}G\d{5})'
             ),
-            "Arabidopsis thaliana": GenomeSourceItem(
+            "Arabidopsis_thaliana": GenomeSourceItem(
                 species_name="Arabidopsis thaliana",
                 genome_type="arabidopsis",
                 bridge_version=None,

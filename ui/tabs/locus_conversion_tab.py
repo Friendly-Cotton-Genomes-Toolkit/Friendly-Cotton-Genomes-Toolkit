@@ -22,6 +22,9 @@ class LocusConversionTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
         self.selected_source_assembly = tk.StringVar()
         self.selected_target_assembly = tk.StringVar()
+        self.region_entry_var = tk.StringVar()
+        self.output_path_var = tk.StringVar()
+
         super().__init__(parent, app)
         if self.action_button:
             self.action_button.configure(text=_("开始转换"), command=self.start_locus_conversion_task)
@@ -30,41 +33,57 @@ class LocusConversionTab(BaseTab):
     def _create_widgets(self):
         parent = self.scrollable_frame
         parent.grid_columnconfigure(0, weight=1)
-        parent.grid_rowconfigure(2, weight=1)
 
-        ttkb.Label(parent, text=_("位点坐标转换"), font=self.app.app_title_font, bootstyle="primary").grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
+        ttkb.Label(parent, text=_("位点坐标转换"), font=self.app.app_title_font, bootstyle="primary").grid(row=0,
+                                                                                                           column=0,
+                                                                                                           padx=10,
+                                                                                                           pady=(10,
+                                                                                                                 15),
+                                                                                                           sticky="n")
 
-        input_card = ttkb.LabelFrame(parent, text=_("输入"), bootstyle="secondary")
+        # --- 输入卡片 ---
+        input_card = ttkb.LabelFrame(parent, text=_("输入参数"), bootstyle="secondary")
         input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
         input_card.grid_columnconfigure(1, weight=1)
 
-        ttkb.Label(input_card, text=_("源基因组:")).grid(row=0, column=0, padx=(10,5), pady=10, sticky="w")
-        self.source_assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_source_assembly, _("加载中..."), bootstyle="info")
+        ttkb.Label(input_card, text=_("源基因组:")).grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.source_assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_source_assembly, _("加载中..."),
+                                                        bootstyle="info")
         self.source_assembly_dropdown.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        ttkb.Label(input_card, text=_("目标基因组:")).grid(row=1, column=0, padx=(10,5), pady=10, sticky="w")
-        self.target_assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_target_assembly, _("加载中..."), bootstyle="info")
+        ttkb.Label(input_card, text=_("目标基因组:")).grid(row=1, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.target_assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_target_assembly, _("加载中..."),
+                                                        bootstyle="info")
         self.target_assembly_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-        ttkb.Label(input_card, text=_("输入区域 (Chr:Start-End):")).grid(row=2, column=0, padx=(10,5), pady=10, sticky="w")
-        self.region_entry = ttkb.Entry(input_card)
+        ttkb.Label(input_card, text=_("输入区域 (Chr:Start-End):")).grid(row=2, column=0, padx=(10, 5), pady=10,
+                                                                         sticky="w")
+        self.region_entry = ttkb.Entry(input_card, textvariable=self.region_entry_var)
         self.region_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
-        result_card = ttkb.LabelFrame(parent, text=_("转换结果"), bootstyle="info")
-        result_card.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-        result_card.grid_columnconfigure(0, weight=1)
-        result_card.grid_rowconfigure(0, weight=1)
-        text_bg = self.app.style.lookup('TFrame', 'background')
-        text_fg = self.app.style.lookup('TLabel', 'foreground')
-        self.result_textbox = tk.Text(result_card, state="disabled", wrap="none", font=self.app.app_font_mono, background=text_bg, foreground=text_fg, relief="flat")
-        self.result_textbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        # 【核心修改】将结果文本框替换为输出文件路径选择
+        output_card = ttkb.LabelFrame(parent, text=_("输出设置"), bootstyle="secondary")
+        output_card.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        output_card.grid_columnconfigure(1, weight=1)
+
+        ttkb.Label(output_card, text=_("结果输出CSV文件:")).grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.output_entry = ttkb.Entry(output_card, textvariable=self.output_path_var)
+        self.output_entry.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
+        ttkb.Button(output_card, text=_("浏览..."), width=12, bootstyle="info-outline",
+                    command=lambda: self.app.event_handler._browse_save_file(self.output_entry,
+                                                                             [("CSV 文件", "*.csv")])).grid(row=0,
+                                                                                                            column=2,
+                                                                                                            padx=(5,
+                                                                                                                  10))
 
     def update_from_config(self):
-        self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
+        self.update_assembly_dropdowns(
+            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         valid_ids = assembly_ids or [_("无可用基因组")]
+
         def update_menu(dropdown, string_var):
             if not (dropdown and dropdown.winfo_exists()): return
             menu = dropdown['menu']
@@ -73,6 +92,7 @@ class LocusConversionTab(BaseTab):
                 menu.add_command(label=value, command=lambda v=value, sv=string_var: sv.set(v))
             if string_var.get() not in valid_ids:
                 string_var.set(valid_ids[0])
+
         update_menu(self.source_assembly_dropdown, self.selected_source_assembly)
         update_menu(self.target_assembly_dropdown, self.selected_target_assembly)
 
@@ -80,12 +100,18 @@ class LocusConversionTab(BaseTab):
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
+
         source_assembly = self.selected_source_assembly.get()
         target_assembly = self.selected_target_assembly.get()
-        region_str = self.region_entry.get().strip()
-        if not all([source_assembly, target_assembly, region_str]) or _("加载中...") in [source_assembly, target_assembly] or _("无可用基因组") in [source_assembly, target_assembly]:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择源/目标基因组并输入区域。"))
+        region_str = self.region_entry_var.get().strip()
+        output_path = self.output_path_var.get().strip()
+
+        if not all([source_assembly, target_assembly, region_str, output_path]) or _("加载中...") in [source_assembly,
+                                                                                                      target_assembly] or _(
+                "无可用基因组") in [source_assembly, target_assembly]:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择源/目标基因组、输入区域并指定输出文件路径。"))
             return
+
         try:
             chrom, pos_range = region_str.split(':')
             start, end = map(int, pos_range.split('-'))
@@ -93,6 +119,7 @@ class LocusConversionTab(BaseTab):
         except ValueError:
             self.app.ui_manager.show_error_message(_("输入错误"), _("区域格式不正确，请使用 'Chr:Start-End' 格式。"))
             return
+
         self.app.event_handler._start_task(
             task_name=_("位点转换"),
             target_func=run_locus_conversion,
@@ -101,5 +128,6 @@ class LocusConversionTab(BaseTab):
                 'source_assembly_id': source_assembly,
                 'target_assembly_id': target_assembly,
                 'region': region_tuple,
+                'output_path': output_path
             }
         )

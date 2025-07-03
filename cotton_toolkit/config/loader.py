@@ -63,7 +63,7 @@ def save_config(config: MainConfig, path: str) -> bool:
     """将配置对象保存到YAML文件。"""
     try:
         # 更新 exclude 参数中的字段名
-        config_dict = config.model_dump(exclude={'config_file_abs_path_'}, exclude_none=True, exclude_defaults=True)
+        config_dict = config.model_dump(exclude={'config_file_abs_path_'}, exclude_none=True, exclude_defaults=False)
 
         with open(path, 'w', encoding='utf-8') as f:
             yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False, indent=2)

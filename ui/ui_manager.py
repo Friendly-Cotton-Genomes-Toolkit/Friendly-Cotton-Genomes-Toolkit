@@ -117,11 +117,13 @@ class UIManager:
         app = self.app
         app.navigation_frame = ttkb.Frame(parent)
         app.navigation_frame.grid(row=0, column=0, sticky="nsew")
+
         app.navigation_frame.grid_rowconfigure(4, weight=1)
+
         nav_bg = self.style.lookup('TFrame', 'background')
         nav_fg = self.style.lookup('TLabel', 'foreground')
         self.style.configure('Transparent.TLabel', background=nav_bg, foreground=nav_fg)
-        self.style.configure('Transparent.TMenubutton', background=nav_bg, foreground=nav_fg)
+
         header_frame = ttkb.Frame(app.navigation_frame)
         header_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
         if app.logo_image_path:
@@ -135,21 +137,27 @@ class UIManager:
 
         def load_icon(name):
             try:
-                img = Image.open(getattr(app, f"{name}_icon_path")).resize((24, 24), Image.LANCZOS)
+                img = Image.open(getattr(app, f"{name}_icon_path")).resize((20, 20), Image.LANCZOS)
                 self.icon_cache[name] = ImageTk.PhotoImage(img)
                 return self.icon_cache[name]
             except:
                 return None
 
-        button_defs = [("home", _("主页"), load_icon("home")), ("editor", _("配置编辑器"), load_icon("settings")),
+        button_defs = [("home", _("主页"), load_icon("home")),
+                       ("editor", _("配置编辑器"), load_icon("settings")),
                        ("tools", _("数据工具"), load_icon("tools"))]
         for i, (name, text, icon) in enumerate(button_defs):
             btn = ttkb.Button(app.navigation_frame, text=text, command=lambda n=name: self.select_frame_by_name(n),
                               image=icon, compound="left", bootstyle="outline")
-            btn.grid(row=i + 1, column=0, sticky="ew", padx=10, pady=5)
+            btn.grid(row=i + 1, column=0, sticky="ew", padx=15, pady=5)
             setattr(app, f"{name}_button", btn)
+
         self.style.configure('Selected.Outline.TButton', background=self.style.colors.primary,
                              foreground=self.style.colors.light)
+
+        separator = ttkb.Separator(app.navigation_frame, orient='horizontal')
+        separator.grid(row=3, column=0, sticky='ew', padx=15, pady=(15, 10))
+
         settings_frame = ttkb.Frame(app.navigation_frame)
         settings_frame.grid(row=5, column=0, padx=10, pady=10, sticky="s")
         settings_frame.grid_columnconfigure(0, weight=1)
@@ -161,8 +169,11 @@ class UIManager:
             lbl = ttkb.Label(settings_frame, text=_(label_key), font=app.app_font, style='Transparent.TLabel')
             lbl.grid(row=i * 2, column=0, padx=5, pady=(5, 0), sticky="w")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_label", lbl)
+
+            # 【最终修改】使用 secondary-outline 样式，确保清晰可见
             menu = ttkb.OptionMenu(settings_frame, var, var.get(), *values, command=cmd,
-                                   style='Transparent.TMenubutton')
+                                   bootstyle="secondary-outline")
+
             menu.grid(row=i * 2 + 1, column=0, padx=5, pady=(0, 10), sticky="ew")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_optionmenu", menu)
             if i == 1: app.translatable_widgets[menu] = ("values", [_("浅色"), _("深色"), _("系统")])
@@ -266,7 +277,7 @@ class UIManager:
             if isinstance(options, str):
                 widget.configure(text=_(options))
 
-    def _add_placeholder(self, widget, key):
+    def add_placeholder(self, widget, key):
         if not widget.winfo_exists(): return
         placeholder_text = _(self.app.placeholders.get(key, ""))
         is_dark = self.style.theme.type == 'dark'
@@ -283,8 +294,6 @@ class UIManager:
     def _remove_placeholder(self, widget):
         if not widget.winfo_exists(): return
         widget.config(foreground=self.app.style.lookup('TLabel', 'foreground'))
-
-
 
     def _clear_placeholder(self, widget, key):
         if not widget.winfo_exists(): return
@@ -303,7 +312,7 @@ class UIManager:
 
     def _handle_focus_out(self, event, widget, key):
         current_text = widget.get() if isinstance(widget, (tk.Entry, ttkb.Entry)) else widget.get("1.0", tk.END).strip()
-        if not current_text: self._add_placeholder(widget, key)
+        if not current_text: self.add_placeholder(widget, key)
 
     def _update_assembly_id_dropdowns(self, ids: List[str]):
         ids = ids or [_("无可用基因组")]
@@ -318,7 +327,6 @@ class UIManager:
         if not models:
             dropdown.configure(state="disabled")
             var.set(_("刷新失败或无模型"))
-            # 清空并添加一个禁用的菜单项
             menu = dropdown["menu"]
             menu.delete(0, "end")
             menu.add_command(label=var.get(), state="disabled")
@@ -326,7 +334,6 @@ class UIManager:
 
         dropdown.configure(state="normal")
         current_val = var.get()
-        # 如果当前值不在新列表中，或者当前值是提示性文字，则更新为列表第一项
         if current_val not in models or current_val == _("点击刷新获取列表"):
             new_val = models[0]
         else:
@@ -340,21 +347,12 @@ class UIManager:
 
     def update_option_menu(self, dropdown: ttkb.OptionMenu, string_var: tk.StringVar, new_values: List[str],
                            default_text: str = _("无可用选项")):
-        """
-        通用函数，用于安全地更新 OptionMenu 的选项。
-        """
         if not (dropdown and dropdown.winfo_exists()): return
-
         final_values = new_values if new_values else [default_text]
-
         menu = dropdown['menu']
         menu.delete(0, 'end')
-
         for value in final_values:
-            # 使用 tk._setit 来确保回调函数在点击时传递正确的值
             menu.add_command(label=value, command=tk._setit(string_var, value))
-
         current_val = string_var.get()
         if current_val not in final_values:
             string_var.set(final_values[0])
-
