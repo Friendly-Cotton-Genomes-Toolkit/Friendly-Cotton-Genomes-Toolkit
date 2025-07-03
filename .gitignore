@@ -85,3 +85,5 @@ genome_sources_list.yml
 ui_settings.json
 logs/
 tmp/
+gff_query_results
+ai_query_results
