@@ -1,19 +1,18 @@
 ﻿# 文件路径: ui/tabs/ai_assistant_tab.py
 
-import os
-import tkinter as tk
-from tkinter import filedialog, ttk
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 import copy
+import os
 import threading
+import tkinter as tk
 import traceback
+from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING, List, Optional
 
 import pandas as pd
+import ttkbootstrap as ttkb
 
-from .base_tab import BaseTab
 from cotton_toolkit.pipelines import run_ai_task
+from .base_tab import BaseTab
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -115,11 +114,11 @@ class AIAssistantTab(BaseTab):
 
     def _save_prompt_to_config(self):
         if not self.app.current_config or not self.app.config_path: return
-        current_task = self.prompt_type_var.get();
-        current_prompt = self.prompt_textbox.get("1.0", tk.END).strip();
+        current_task = self.prompt_type_var.get()
+        current_prompt = self.prompt_textbox.get("1.0", tk.END).strip()
         is_placeholder = (current_prompt == _(self.app.placeholders.get("custom_prompt", "")))
         if not current_prompt or is_placeholder: return
-        config_changed = False;
+        config_changed = False
         prompts_cfg = self.app.current_config.ai_prompts
         if current_task == _("翻译") and prompts_cfg.translation_prompt != current_prompt:
             prompts_cfg.translation_prompt = current_prompt; config_changed = True
@@ -140,9 +139,9 @@ class AIAssistantTab(BaseTab):
         if self._prompt_save_timer is not None: self.after_cancel(
             self._prompt_save_timer); self._save_prompt_to_config()
         if choice is None: choice = self.prompt_type_var.get()
-        prompts_cfg = self.app.current_config.ai_prompts;
+        prompts_cfg = self.app.current_config.ai_prompts
         self.prompt_textbox.delete("1.0", tk.END)
-        prompt_text = "";
+        prompt_text = ""
         if choice == _("翻译"):
             prompt_text = prompts_cfg.translation_prompt
         elif choice == _("分析"):
@@ -150,7 +149,7 @@ class AIAssistantTab(BaseTab):
         elif choice == _("自定义"):
             custom_prompt_text = getattr(prompts_cfg, 'custom_prompt', '') or ""
             if not custom_prompt_text:
-                self.app.ui_manager._add_placeholder(self.prompt_textbox, "custom_prompt")
+                self.app.ui_manager.add_placeholder(self.prompt_textbox, "custom_prompt")
             else:
                 prompt_text = custom_prompt_text
         if prompt_text: self.prompt_textbox.insert("1.0", prompt_text)
@@ -162,15 +161,15 @@ class AIAssistantTab(BaseTab):
     def _browse_csv_file(self):
         filepath = filedialog.askopenfilename(filetypes=(("CSV files", "*.csv"), ("All files", "*.*")))
         if filepath:
-            self.csv_path_entry.delete(0, tk.END);
-            self.csv_path_entry.insert(0, filepath);
+            self.csv_path_entry.delete(0, tk.END)
+            self.csv_path_entry.insert(0, filepath)
             self._update_column_dropdown()
 
     def _update_column_dropdown(self):
         filepath = self.csv_path_entry.get().strip()
         if not filepath or not os.path.exists(filepath):
             self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var,
-                                                   [_("请先选择有效的CSV文件")]);
+                                                   [_("请先选择有效的CSV文件")])
             return
 
         self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [_("读取中...")])
@@ -229,16 +228,16 @@ class AIAssistantTab(BaseTab):
             prompt_template = self.prompt_textbox.get("1.0", tk.END).strip()
 
             if not all([provider_name, model, csv_path, source_column, new_column_name, prompt_template]):
-                self.app.ui_manager.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"));
+                self.app.ui_manager.show_error_message(_("输入缺失"), _("请确保所有必填项都已填写。"))
                 return
             if source_column in [_("请先选择CSV文件"), _("读取中..."), _("读取失败"), _("无可用列")]:
-                self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个有效的“待处理列”。"));
+                self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个有效的“待处理列”。"))
                 return
             if not os.path.exists(csv_path):
-                self.app.ui_manager.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"));
+                self.app.ui_manager.show_error_message(_("文件错误"), _("指定的CSV文件不存在。"))
                 return
             if "{text}" not in prompt_template:
-                self.app.ui_manager.show_error_message(_("模板错误"), _("提示词模板必须包含 {text} 占位符。"));
+                self.app.ui_manager.show_error_message(_("模板错误"), _("提示词模板必须包含 {text} 占位符。"))
                 return
 
             config_for_task = copy.deepcopy(self.app.current_config)

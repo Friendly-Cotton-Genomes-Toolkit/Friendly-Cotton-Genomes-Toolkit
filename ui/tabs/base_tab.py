@@ -2,7 +2,7 @@
 
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING, List, Callable, Optional
+from typing import TYPE_CHECKING,  Callable, Optional
 import ttkbootstrap as ttkb
 
 if TYPE_CHECKING:

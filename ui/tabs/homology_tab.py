@@ -1,10 +1,9 @@
 ﻿# 文件路径: ui/tabs/homology_tab.py
 
 import tkinter as tk
-from tkinter import ttk
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 from typing import TYPE_CHECKING, List
+
+import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_homology_mapping
 from .base_tab import BaseTab
@@ -48,7 +47,7 @@ class HomologyTab(BaseTab):
         self.target_assembly_dropdown.grid(row=1, column=1, padx=(0, 10), pady=10, sticky="ew")
         ttkb.Label(card1, text=_("基因ID列表:"), font=self.app.app_font_bold).grid(row=2, column=0, padx=(10, 5), pady=10, sticky="nw")
         text_bg = self.app.style.lookup('TFrame', 'background'); text_fg = self.app.style.lookup('TLabel', 'foreground')
-        self.homology_map_genes_textbox = tk.Text(card1, height=10, font=self.app.app_font_mono, wrap="word", relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg)
+        self.homology_map_genes_textbox = tk.Text(card1, height=10, font=self.app.app_font_mono, wrap="word", relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg) # 【保留】Text控件的 foreground 和 insertbackground
         self.homology_map_genes_textbox.grid(row=3, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="nsew")
         self.app.ui_manager.add_placeholder(self.homology_map_genes_textbox, "homology_genes")
         self.homology_map_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e, self.homology_map_genes_textbox, "homology_genes"))
@@ -60,10 +59,17 @@ class HomologyTab(BaseTab):
         card2.grid_columnconfigure((1, 3), weight=1)
         self.strict_switch = ttkb.Checkbutton(card2, text=_("严格匹配模式 (同源亚组内优先)"), variable=self.homology_strict_priority_var, bootstyle="round-toggle")
         self.strict_switch.grid(row=0, column=0, columnspan=4, padx=10, pady=10, sticky="w")
+
+        # 【修复开始】修改 create_param_entry 函数，为 ttkb.Entry 添加 foreground 选项，并移除 insertbackground
         def create_param_entry(p, label, default_val, r, c):
             ttkb.Label(p, text=label, font=self.app.app_font_bold).grid(row=r, column=c * 2, padx=(10, 5), pady=5, sticky="w")
-            entry = ttkb.Entry(p, width=15); entry.insert(0, default_val)
-            entry.grid(row=r, column=c * 2 + 1, padx=(0, 10), pady=5, sticky="ew"); return entry
+            entry = ttkb.Entry(p, width=15, font=self.app.app_font_mono, # 确保字体一致
+                               foreground=text_fg) # 【修改】添加 foreground
+            entry.insert(0, default_val)
+            entry.grid(row=r, column=c * 2 + 1, padx=(0, 10), pady=5, sticky="ew")
+            return entry
+        # 【修复结束】
+
         self.homology_top_n_entry = create_param_entry(card2, _("Top N:"), "1", 1, 0)
         self.homology_evalue_entry = create_param_entry(card2, _("E-value:"), "1e-10", 1, 1)
         self.homology_pid_entry = create_param_entry(card2, _("PID (%):"), "30.0", 2, 0)
@@ -73,7 +79,8 @@ class HomologyTab(BaseTab):
         card3.grid(row=3, column=0, sticky="new", padx=10, pady=5)
         card3.grid_columnconfigure(1, weight=1)
         ttkb.Label(card3, text=_("输出路径:"), font=self.app.app_font_bold).grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
-        self.homology_output_file_entry = ttkb.Entry(card3)
+        self.homology_output_file_entry = ttkb.Entry(card3, font=self.app.app_font_mono, # 【修复】移除 insertbackground
+                                                     foreground=text_fg) # 【保留】foreground
         self.homology_output_file_entry.grid(row=0, column=1, padx=0, pady=10, sticky="ew")
         self.browse_button = ttkb.Button(card3, text=_("浏览..."), width=12, command=self._browse_output_file, bootstyle="info-outline")
         self.browse_button.grid(row=0, column=2, padx=(5, 10), pady=10)

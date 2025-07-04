@@ -1,15 +1,15 @@
 ﻿# 文件路径: ui/tabs/data_download_tab.py
 
+import os
 import tkinter as tk
 from tkinter import ttk
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
-import os
 from typing import TYPE_CHECKING, Dict
 
+import ttkbootstrap as ttkb
+
+from cotton_toolkit.config.loader import get_local_downloaded_file_path
 # 【修改1】导入新的后端处理函数
 from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files
-from cotton_toolkit.config.loader import get_local_downloaded_file_path
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:
@@ -188,7 +188,7 @@ class DataDownloadTab(BaseTab):
         file_types_to_download = [key for key, var in self.file_type_vars.items() if var.get()]
         if not file_types_to_download: self.app.ui_manager.show_error_message(_("选择错误"),
                                                                               _("请至少选择一种要下载的文件类型。")); return
-        self.app.current_config.downloader.force_download = self.force_download_var.get();
+        self.app.current_config.downloader.force_download = self.force_download_var.get()
         self.app.current_config.downloader.use_proxy_for_download = self.use_proxy_for_download_var.get()
         task_kwargs = {'config': self.app.current_config,
                        'cli_overrides': {'versions': [selected_genome_id], 'file_types': file_types_to_download,

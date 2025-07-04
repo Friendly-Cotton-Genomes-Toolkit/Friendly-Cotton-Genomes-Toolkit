@@ -3,10 +3,9 @@ import json
 import os
 import time
 import tkinter as tk
-from tkinter import ttk
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 from typing import TYPE_CHECKING, Optional, Callable, Any, List
+
+import ttkbootstrap as ttkb
 from PIL import Image, ImageTk
 
 from cotton_toolkit.utils.localization import setup_localization
@@ -29,10 +28,19 @@ class UIManager:
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
+        # 初始设置主题，会从ui_settings加载
         self._set_ttk_theme_from_app_mode(self.app.selected_appearance_var.get())
 
     def _set_ttk_theme_from_app_mode(self, mode: str):
-        theme_name = "superhero" if mode in (_("深色"), "Dark") else "flatly"
+        # 根据 ui_settings.json 中的设置调整主题加载逻辑
+        # 假设 app.ui_settings 包含了 dark_mode_theme 和 light_mode_theme
+        if mode in (_("深色"), "Dark"):
+            # 从设置中获取深色主题，如果未设置则默认为 'darkly'
+            theme_name = self.app.ui_settings.get("dark_mode_theme", "darkly")
+        else: # 浅色或系统模式
+            # 从设置中获取浅色主题，如果未设置则默认为 'flatly'
+            theme_name = self.app.ui_settings.get("light_mode_theme", "flatly")
+
         self.style.theme_use(theme_name)
         # 重新应用自定义字体设置，确保跨主题的尺寸一致性
         self.app._setup_fonts()
@@ -182,7 +190,7 @@ class UIManager:
                        ("tools", _("数据工具"), load_icon("tools"))]
         for i, (name, text, icon) in enumerate(button_defs):
             btn = ttkb.Button(app.navigation_frame, text=text, command=lambda n=name: self.select_frame_by_name(n),
-                              image=icon, compound="left", bootstyle="outline")
+                              image=icon, compound="left", bootstyle="secondary-outline") # 【修改】将 outline 改为 secondary-outline
             btn.grid(row=i + 1, column=0, sticky="ew", padx=15, pady=5)
             setattr(app, f"{name}_button", btn)
 
@@ -243,7 +251,8 @@ class UIManager:
     def select_frame_by_name(self, name):
         app = self.app
         for btn_name in ["home", "editor", "tools"]:
-            if btn := getattr(app, f"{btn_name}_button", None): btn.config(bootstyle="outline")
+            # 【修改】这里也改为 secondary-outline 作为默认未选中样式
+            if btn := getattr(app, f"{btn_name}_button", None): btn.config(bootstyle="secondary-outline")
         if btn_to_select := getattr(app, f"{name}_button", None): btn_to_select.config(bootstyle="Selected.Outline")
         for frame_name in ["home_frame", "editor_frame", "tools_frame"]:
             if frame := getattr(app, frame_name, None): frame.grid_remove()
@@ -306,7 +315,8 @@ class UIManager:
         app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
         for i, key in enumerate(app.TOOL_TAB_ORDER):
             if i < len(app.tools_notebook.tabs()):
-                app.tools_notebook.tab(i, text=_(app.TAB_TITLE_KEYS[key]))
+                # 【修复】访问 TAB_TITLE_KEYS 属性需要通过 self.app
+                app.tools_notebook.tab(i, text=_(self.app.TAB_TITLE_KEYS[key]))
         for widget, options in list(app.translatable_widgets.items()):
             if not (widget and widget.winfo_exists()): continue
             if isinstance(options, str):
@@ -337,10 +347,10 @@ class UIManager:
         if current_text == placeholder_text:
             if isinstance(widget, (tk.Entry, ttkb.Entry)):
                 widget.delete(0, tk.END)
-                widget.configure(foreground=self.app.default_text_color)
+                widget.configure(foreground=self.app.style.lookup('TLabel', 'foreground'))
             elif isinstance(widget, tk.Text):
                 widget.delete("1.0", tk.END)
-                widget.configure(font=self.app.app_font, foreground=self.app.default_text_color)
+                widget.configure(font=self.app.app_font, foreground=self.app.style.lookup('TLabel', 'foreground'))
 
     def _handle_focus_in(self, event, widget, key):
         self._clear_placeholder(widget, key)

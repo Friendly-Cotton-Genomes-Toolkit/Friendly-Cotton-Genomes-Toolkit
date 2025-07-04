@@ -1,10 +1,9 @@
 ﻿# 文件路径: ui/tabs/genome_identifier_tab.py
 
 import tkinter as tk
-from tkinter import ttk
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 from typing import TYPE_CHECKING
+
+import ttkbootstrap as ttkb
 
 from .base_tab import BaseTab
 from ..utils.gui_helpers import identify_genome_from_gene_ids

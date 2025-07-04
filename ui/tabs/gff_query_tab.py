@@ -2,13 +2,12 @@
 
 import tkinter as tk
 from tkinter import ttk
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 from typing import TYPE_CHECKING, List
-import re
 
-from .base_tab import BaseTab
+import ttkbootstrap as ttkb
+
 from cotton_toolkit.pipelines import run_gff_lookup
+from .base_tab import BaseTab
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -45,7 +44,7 @@ class GFFQueryTab(BaseTab):
         main_frame.grid_rowconfigure(0, weight=1)
 
         # --- 左侧：输入卡片 ---
-        input_frame = ttkb.LabelFrame(main_frame, text=_("输入"), bootstyle="secondary")
+        input_frame = ttkb.LabelFrame(main_frame, text=_("输入参数"), bootstyle="secondary") # 标签文本更通用
         input_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=10)
         input_frame.grid_columnconfigure(0, weight=1)
         input_frame.grid_rowconfigure(1, weight=1)  # 让文本框可以扩展
@@ -58,22 +57,23 @@ class GFFQueryTab(BaseTab):
         text_bg = self.app.style.lookup('TFrame', 'background')
         text_fg = self.app.style.lookup('TLabel', 'foreground')
         self.gff_query_genes_textbox = tk.Text(input_frame, wrap="word", height=10, font=self.app.app_font_mono,
-                                               relief="flat", background=text_bg, foreground=text_fg,
-                                               insertbackground=text_fg)
+                                               relief="flat", background=text_bg, foreground=text_fg, # 【保留】foreground
+                                               insertbackground=text_fg) # 【保留】insertbackground
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
         self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
         self.gff_query_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                       self.gff_query_genes_textbox,
                                                                                                       "gff_genes"))
         self.gff_query_genes_textbox.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e,
-                                                                                                        self.gff_query_genes_textbox,
-                                                                                                        "gff_genes"))
+                                                                                                         self.gff_query_genes_textbox,
+                                                                                                         "gff_genes"))
         self.gff_query_genes_textbox.bind("<KeyRelease>", self._on_gff_query_gene_input_change)
 
         ttkb.Label(input_frame, text=_("或 输入染色体区域:"), font=self.app.app_font_bold).grid(row=2, column=0,
                                                                                                 sticky="w", padx=10,
                                                                                                 pady=(10, 0))
-        self.gff_query_region_entry = ttkb.Entry(input_frame)
+        self.gff_query_region_entry = ttkb.Entry(input_frame, font=self.app.app_font_mono, # 【修复】移除 insertbackground
+                                                 foreground=text_fg) # 【保留】foreground
         self.gff_query_region_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 10))
         self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
         self.gff_query_region_entry.bind("<FocusIn>",
@@ -99,7 +99,8 @@ class GFFQueryTab(BaseTab):
         ttkb.Label(config_frame, text=_("结果输出CSV文件:"), font=self.app.app_font_bold).grid(row=2, column=0,
                                                                                                sticky="w", padx=10,
                                                                                                pady=(10, 0))
-        self.gff_query_output_csv_entry = ttkb.Entry(config_frame, textvariable=self.output_path_var)
+        self.gff_query_output_csv_entry = ttkb.Entry(config_frame, textvariable=self.output_path_var, font=self.app.app_font_mono, # 【修复】移除 insertbackground
+                                                     foreground=text_fg) # 【保留】foreground
         self.gff_query_output_csv_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
 
         browse_btn = ttkb.Button(config_frame, text=_("浏览..."), width=12, bootstyle="info-outline",
@@ -130,7 +131,7 @@ class GFFQueryTab(BaseTab):
 
     def start_gff_query_task(self):
         if not self.app.current_config:
-            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         assembly_id = self.selected_gff_query_assembly.get()
@@ -149,10 +150,10 @@ class GFFQueryTab(BaseTab):
         has_region = bool(region_str and not is_region_placeholder)
 
         if not has_genes and not has_region:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("必须输入基因ID列表或染色体区域之一。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("必须输入基因ID列表或染色体区域之一。"))
             return
         if has_genes and has_region:
-            self.app.ui_manager.show_warning_message(_("输入冲突"), _("将优先使用基因ID列表进行查询。"));
+            self.app.ui_manager.show_warning_message(_("输入冲突"), _("将优先使用基因ID列表进行查询。"))
             region_str = ""
 
         gene_ids_list = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if
@@ -165,11 +166,11 @@ class GFFQueryTab(BaseTab):
                 start, end = map(int, pos_range.split('-'))
                 region_tuple = (chrom.strip(), start, end)
             except ValueError:
-                self.app.ui_manager.show_error_message(_("输入错误"), _("区域格式不正确。请使用 'Chr:Start-End' 格式。"));
+                self.app.ui_manager.show_error_message(_("输入错误"), _("区域格式不正确。请使用 'Chr:Start-End' 格式。"))
                 return
 
         if not assembly_id or assembly_id in [_("加载中..."), _("无可用基因组")]:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
             return
 
         task_kwargs = {

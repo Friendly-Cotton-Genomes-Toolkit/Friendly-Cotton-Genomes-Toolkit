@@ -3,7 +3,6 @@
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 import os
 from typing import TYPE_CHECKING
 

@@ -1,9 +1,7 @@
 ﻿# 文件路径: ui/tabs/locus_conversion_tab.py
 
 import tkinter as tk
-from tkinter import ttk
 import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 from typing import TYPE_CHECKING, List
 
 from .base_tab import BaseTab

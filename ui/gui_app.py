@@ -7,15 +7,13 @@ import threading
 import tkinter as tk
 import traceback
 from queue import Queue
-from tkinter import filedialog, font as tkfont
-from typing import Optional, Any, Dict, List
+from tkinter import font as tkfont
+from typing import Optional
 
 import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
 
-from cotton_toolkit.config.loader import save_config, load_config
+from cotton_toolkit.config.loader import save_config
 from cotton_toolkit.config.models import MainConfig
-from cotton_toolkit.core.ai_wrapper import AIWrapper
 from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
 from ui.tabs.ai_assistant_tab import AIAssistantTab
@@ -78,6 +76,7 @@ class CottonToolkitApp(ttkb.Window):
         self.editor_ui_built = False
         self.tool_tab_instances = {}
         self.latest_log_message_var = tk.StringVar(value="") # 新增：用于显示最新日志信息
+        self.editor_canvas: Optional[tk.Canvas] = None # 【新增】声明 editor_canvas 实例变量
 
 
         self.config_path_display_var = tk.StringVar(value=_("未加载配置"))
@@ -271,10 +270,10 @@ class CottonToolkitApp(ttkb.Window):
 
         for p_key, p_cfg in cfg.ai_services.providers.items():
             safe_key = p_key.replace('-', '_')
-            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry", None): set_val(apikey_widget,
-                                                                                            p_cfg.api_key)
-            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry", None): set_val(baseurl_widget,
-                                                                                              p_cfg.base_url)
+            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry",
+                                            None): p_cfg.api_key = apikey_widget.get()
+            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry",
+                                             None): p_cfg.base_url = baseurl_widget.get() or None
             if model_selector := getattr(self, f"ai_{safe_key}_model_selector", None):
                 _dropdown, var = model_selector
                 var.set(p_cfg.model or "")
@@ -308,7 +307,7 @@ class CottonToolkitApp(ttkb.Window):
                 self.logger.warning("无效的最大工作线程数值，已重置为默认值 4。")
 
             cfg.ai_services.default_provider = next(
-                (k for k, v in self.AI_PROVIDers.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
+                (k for k, v in self.AI_PROVIDERS.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
             cfg.ai_services.use_proxy_for_ai = self.ai_use_proxy_var.get()
 
             for p_key, p_cfg in cfg.ai_services.providers.items():
@@ -347,6 +346,11 @@ class CottonToolkitApp(ttkb.Window):
             card.grid(row=0, column=col, padx=10, pady=10, sticky="nsew");
             card.grid_columnconfigure(0, weight=1)
             for i, (text_key, cmd, style) in enumerate(buttons):
+                # 更改主页按钮样式为填充样式
+                if style == "outline":
+                    style = "primary" # 将 "outline" 更改为 "primary" 填充样式
+                elif style == "info-outline":
+                    style = "info" # 将 "info-outline" 更改为 "info" 填充样式
                 btn = ttkb.Button(card, text=_(text_key), command=cmd, bootstyle=style);
                 btn.grid(row=i, column=0, sticky="ew", padx=20, pady=10);
                 self.translatable_widgets[btn] = text_key
@@ -402,19 +406,22 @@ class CottonToolkitApp(ttkb.Window):
         self.save_editor_button = ttkb.Button(top_frame, text=_("应用并保存"), command=self._save_config_from_editor,
                                               bootstyle='success');
         self.save_editor_button.grid(row=0, column=1, sticky="e", padx=5)
-        canvas = tk.Canvas(page, highlightthickness=0, background=self.style.lookup('TFrame', 'background'));
-        canvas.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        scrollbar = ttkb.Scrollbar(page, orient="vertical", command=canvas.yview, bootstyle="round");
+        # 【修改开始】将 canvas 定义为实例变量
+        self.editor_canvas = tk.Canvas(page, highlightthickness=0, background=self.style.lookup('TFrame', 'background'));
+        self.editor_canvas.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        # 【修改结束】
+        scrollbar = ttkb.Scrollbar(page, orient="vertical", command=self.editor_canvas.yview, bootstyle="round");
         scrollbar.grid(row=1, column=1, sticky="ns", pady=10)
-        canvas.configure(yscrollcommand=scrollbar.set)
-        self.editor_scroll_frame = ttkb.Frame(canvas)
-        window_id = canvas.create_window((0, 0), window=self.editor_scroll_frame, anchor="nw")
+        self.editor_canvas.configure(yscrollcommand=scrollbar.set)
+        self.editor_scroll_frame = ttkb.Frame(self.editor_canvas)
+        window_id = self.editor_canvas.create_window((0, 0), window=self.editor_scroll_frame, anchor="nw")
 
-        def on_configure(event): canvas.configure(scrollregion=canvas.bbox("all")); canvas.itemconfig(window_id,
+        def on_configure(event): self.editor_canvas.configure(scrollregion=self.editor_canvas.bbox("all")); self.editor_canvas.itemconfig(window_id,
                                                                                                       width=event.width)
 
-        canvas.bind("<Configure>", on_configure)
-        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
+        self.editor_canvas.bind("<Configure>", on_configure)
+        # 【注意】这里的 bind_all 需要在 event_handler.py 中处理，因为它在 traceback 中显示在那里
+        # self.editor_canvas.bind_all("<MouseWheel>", lambda e: self.editor_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
         self.editor_no_config_label = ttkb.Label(page, text=_("请先从“主页”加载或生成一个配置文件。"),
                                                  font=self.app_subtitle_font, bootstyle="secondary");
         self.editor_no_config_label.grid(row=1, column=0, sticky="nsew", columnspan=2)
@@ -423,18 +430,18 @@ class CottonToolkitApp(ttkb.Window):
     def _handle_editor_ui_update(self):
         if not self.editor_ui_built: return
         has_config = bool(self.current_config)
-        canvas = self.editor_scroll_frame.master
-        if canvas.winfo_exists():
-            slaves = canvas.master.grid_slaves(row=1, column=1)
+        # 【修改】使用 self.editor_canvas
+        if self.editor_canvas and self.editor_canvas.winfo_exists():
+            slaves = self.editor_canvas.master.grid_slaves(row=1, column=1) # 这里可能需要调整，确保拿到正确的滚动条
             if slaves:
                 scrollbar = slaves[0]
                 if has_config:
-                    canvas.grid();
+                    self.editor_canvas.grid();
                     scrollbar.grid();
                     self.editor_no_config_label.grid_remove()
                     self._apply_config_values_to_editor()
                 else:
-                    canvas.grid_remove();
+                    self.editor_canvas.grid_remove();
                     scrollbar.grid_remove();
                     self.editor_no_config_label.grid()
         if hasattr(self, 'save_editor_button'):
