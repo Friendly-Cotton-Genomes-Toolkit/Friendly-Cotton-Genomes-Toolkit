@@ -1,4 +1,5 @@
-﻿import logging
+﻿# 文件路径: ui/gui_app.py
+import logging
 import os
 import queue
 import sys
@@ -76,6 +77,8 @@ class CottonToolkitApp(ttkb.Window):
         self.log_viewer_visible = False
         self.editor_ui_built = False
         self.tool_tab_instances = {}
+        self.latest_log_message_var = tk.StringVar(value="") # 新增：用于显示最新日志信息
+
 
         self.config_path_display_var = tk.StringVar(value=_("未加载配置"))
         self.selected_language_var = tk.StringVar()
@@ -160,10 +163,7 @@ class CottonToolkitApp(ttkb.Window):
         self.general_log_level_menu = create_option_menu_row(_("日志级别"), self.general_log_level_var, "INFO",
                                                              ["DEBUG", "INFO", "WARNING", "ERROR"],
                                                              _("设置应用程序的日志详细程度。"))
-        self.general_i18n_lang_var = tk.StringVar()
-        self.general_i18n_lang_menu = create_option_menu_row(_("命令行语言"), self.general_i18n_lang_var, "简体中文",
-                                                             list(self.LANG_CODE_TO_NAME.values()),
-                                                             _("设置后端日志和消息的语言。"))
+
         self.proxy_http_entry = create_entry_row(_("HTTP代理"), _("例如: http://127.0.0.1:7890"))
         self.proxy_https_entry = create_entry_row(_("HTTPS代理"), _("例如: https://127.0.0.1:7890"))
 
@@ -258,7 +258,6 @@ class CottonToolkitApp(ttkb.Window):
                 widget.delete(0, tk.END); widget.insert(0, str(value or ""))
 
         self.general_log_level_var.set(cfg.log_level)
-        self.general_i18n_lang_var.set(self.LANG_CODE_TO_NAME.get(cfg.i18n_language, "zh-hans"))
         set_val(self.proxy_http_entry, cfg.proxies.http)
         set_val(self.proxy_https_entry, cfg.proxies.https)
         set_val(self.downloader_sources_file_entry, cfg.downloader.genome_sources_file)
@@ -291,7 +290,6 @@ class CottonToolkitApp(ttkb.Window):
         try:
             cfg = self.current_config
             cfg.log_level = self.general_log_level_var.get()
-            cfg.i18n_language = self.LANG_NAME_TO_CODE.get(self.general_i18n_lang_var.get(), "zh-hans")
             cfg.proxies.http = self.proxy_http_entry.get() or None
             cfg.proxies.https = self.proxy_https_entry.get() or None
             cfg.downloader.genome_sources_file = self.downloader_sources_file_entry.get()
@@ -310,7 +308,7 @@ class CottonToolkitApp(ttkb.Window):
                 self.logger.warning("无效的最大工作线程数值，已重置为默认值 4。")
 
             cfg.ai_services.default_provider = next(
-                (k for k, v in self.AI_PROVIDERS.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
+                (k for k, v in self.AI_PROVIDers.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
             cfg.ai_services.use_proxy_for_ai = self.ai_use_proxy_var.get()
 
             for p_key, p_cfg in cfg.ai_services.providers.items():

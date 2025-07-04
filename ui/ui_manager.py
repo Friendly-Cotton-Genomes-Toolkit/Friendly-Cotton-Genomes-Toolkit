@@ -1,4 +1,5 @@
-﻿import json
+﻿# 文件路径: ui/ui_manager.py
+import json
 import os
 import time
 import tkinter as tk
@@ -33,6 +34,10 @@ class UIManager:
     def _set_ttk_theme_from_app_mode(self, mode: str):
         theme_name = "superhero" if mode in (_("深色"), "Dark") else "flatly"
         self.style.theme_use(theme_name)
+        # 重新应用自定义字体设置，确保跨主题的尺寸一致性
+        self.app._setup_fonts()
+        # 此外，更新依赖于主题的日志标签颜色
+        self._update_log_tag_colors()
 
     def setup_initial_ui(self):
         app = self.app
@@ -49,11 +54,19 @@ class UIManager:
         app = self.app
         app.status_bar_frame = ttkb.Frame(app, height=35)
         app.status_bar_frame.pack(side="bottom", fill="x", padx=0, pady=0)
+
         app.log_viewer_frame = ttkb.Frame(app)
         app.log_viewer_frame.pack(side="bottom", fill="x", padx=10, pady=5)
+
+        # 在日志区域上方添加分隔线
+        app.log_separator = ttkb.Separator(app, orient='horizontal', bootstyle="secondary")
+        app.log_separator.pack(side="bottom", fill="x", padx=10, pady=(5, 5))
+
         self._create_log_viewer_widgets()
+
         top_frame = ttkb.Frame(app)
         top_frame.pack(side="top", fill="both", expand=True)
+
         top_frame.grid_columnconfigure(1, weight=1)
         top_frame.grid_rowconfigure(0, weight=1)
         self._create_navigation_frame(parent=top_frame)
@@ -101,6 +114,11 @@ class UIManager:
         if not app.log_viewer_visible:
             app.log_textbox.grid_remove()
         self._update_log_tag_colors()
+        # 添加新的日志显示区域
+        app.status_label = ttkb.Label(app.status_bar_frame, textvariable=app.latest_log_message_var,
+                                      font=app.app_font, bootstyle="secondary")
+        app.status_label.pack(side="left", padx=10, fill="x", expand=True)
+
 
     def display_log_message_in_ui(self, message: str, level: str):
         app = self.app
@@ -109,9 +127,23 @@ class UIManager:
             if int(app.log_textbox.index('end-1c').split('.')[0]) > 500:
                 app.log_textbox.delete("1.0", "2.0")
             timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            app.log_textbox.insert("end", f"[{timestamp}] {message}\n", f"{level.lower()}_log")
+            full_message = f"[{timestamp}] {message}"
+            app.log_textbox.insert("end", f"{full_message}\n", f"{level.lower()}_log")
             app.log_textbox.see("end")
             app.log_textbox.configure(state="disabled")
+
+            # 更新最新的日志消息和颜色
+            app.latest_log_message_var.set(full_message)
+            is_dark = self.style.theme.type == 'dark'
+            color_map = {
+                "error": "#e57373" if is_dark else "#d9534f",
+                "warning": "#ffb74d" if is_dark else "#f0ad4e",
+                "info": self.style.lookup('TLabel', 'foreground') # INFO级别使用默认前景色
+            }
+            # 如果是其他级别或者没有特殊颜色，使用默认前景色
+            display_color = color_map.get(level.lower(), self.style.lookup('TLabel', 'foreground'))
+            app.status_label.configure(foreground=display_color)
+
 
     def _create_navigation_frame(self, parent):
         app = self.app
@@ -128,6 +160,7 @@ class UIManager:
         header_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
         if app.logo_image_path:
             try:
+                # 修正图片加载方式
                 img = Image.open(app.logo_image_path).resize((60, 60), Image.LANCZOS)
                 self.icon_cache["logo"] = ImageTk.PhotoImage(img)
                 ttkb.Label(header_frame, image=self.icon_cache["logo"], style='Transparent.TLabel').pack(pady=(0, 10))
@@ -137,6 +170,7 @@ class UIManager:
 
         def load_icon(name):
             try:
+                # 修正图片加载方式
                 img = Image.open(getattr(app, f"{name}_icon_path")).resize((20, 20), Image.LANCZOS)
                 self.icon_cache[name] = ImageTk.PhotoImage(img)
                 return self.icon_cache[name]
@@ -155,8 +189,9 @@ class UIManager:
         self.style.configure('Selected.Outline.TButton', background=self.style.colors.primary,
                              foreground=self.style.colors.light)
 
-        separator = ttkb.Separator(app.navigation_frame, orient='horizontal')
-        separator.grid(row=3, column=0, sticky='ew', padx=15, pady=(15, 10))
+        # 移除此处的分隔线
+        # separator = ttkb.Separator(app.navigation_frame, orient='horizontal') #
+        # separator.grid(row=3, column=0, sticky='ew', padx=15, pady=(15, 10)) #
 
         settings_frame = ttkb.Frame(app.navigation_frame)
         settings_frame.grid(row=5, column=0, padx=10, pady=10, sticky="s")
@@ -170,9 +205,9 @@ class UIManager:
             lbl.grid(row=i * 2, column=0, padx=5, pady=(5, 0), sticky="w")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_label", lbl)
 
-            # 【最终修改】使用 secondary-outline 样式，确保清晰可见
+            # 【最终修改】使用 primary-outline 样式，确保清晰可见
             menu = ttkb.OptionMenu(settings_frame, var, var.get(), *values, command=cmd,
-                                   bootstyle="secondary-outline")
+                                   bootstyle="primary-outline")
 
             menu.grid(row=i * 2 + 1, column=0, padx=5, pady=(0, 10), sticky="ew")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_optionmenu", menu)
@@ -283,12 +318,12 @@ class UIManager:
         is_dark = self.style.theme.type == 'dark'
         ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
         if isinstance(widget, (tk.Entry, ttkb.Entry)):
-            widget.delete(0, tk.END);
-            widget.insert(0, placeholder_text);
+            widget.delete(0, tk.END)
+            widget.insert(0, placeholder_text)
             widget.configure(foreground=ph_color)
         elif isinstance(widget, tk.Text):
-            widget.delete("1.0", tk.END);
-            widget.insert("1.0", placeholder_text);
+            widget.delete("1.0", tk.END)
+            widget.insert("1.0", placeholder_text)
             widget.configure(font=self.app.app_font_italic, foreground=ph_color)
 
     def _remove_placeholder(self, widget):
@@ -301,10 +336,10 @@ class UIManager:
         current_text = widget.get() if isinstance(widget, (tk.Entry, ttkb.Entry)) else widget.get("1.0", tk.END).strip()
         if current_text == placeholder_text:
             if isinstance(widget, (tk.Entry, ttkb.Entry)):
-                widget.delete(0, tk.END);
+                widget.delete(0, tk.END)
                 widget.configure(foreground=self.app.default_text_color)
             elif isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END);
+                widget.delete("1.0", tk.END)
                 widget.configure(font=self.app.app_font, foreground=self.app.default_text_color)
 
     def _handle_focus_in(self, event, widget, key):

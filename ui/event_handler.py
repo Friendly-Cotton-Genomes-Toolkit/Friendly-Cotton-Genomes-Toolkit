@@ -1,4 +1,5 @@
-﻿import json
+﻿# 文件路径: ui/event_handler.py
+import json
 import logging
 import os
 import threading
@@ -175,7 +176,7 @@ class EventHandler:
 
     def _handle_status(self, data: str):
         if hasattr(self.app, 'status_label') and self.app.status_label.winfo_exists():
-            self.app.status_label.configure(text=str(data)[:150])
+            self.app.latest_log_message_var.set(str(data)[:150]) # 更新StringVar
 
     def _handle_progress(self, data: tuple):
         if self.app.ui_manager.progress_dialog and self.app.ui_manager.progress_dialog.winfo_exists():
@@ -246,6 +247,7 @@ class EventHandler:
             self.app.log_textbox.configure(state="normal");
             self.app.log_textbox.delete("1.0", "end");
             self.app.log_textbox.configure(state="disabled")
+            self.app._log_to_viewer(_("操作日志已清除。"), "INFO") # 新增：清除日志后，生成一条INFO日志
 
     def load_config_file(self, filepath: Optional[str] = None):
         if not filepath and not (filepath := filedialog.askopenfilename(title=_("选择配置文件"),
@@ -436,5 +438,3 @@ class EventHandler:
             ai_tab.update_column_dropdown_ui(columns, error_msg)
         else:
             logger.warning("无法找到AI助手选项卡实例来更新列名。")
-
-
