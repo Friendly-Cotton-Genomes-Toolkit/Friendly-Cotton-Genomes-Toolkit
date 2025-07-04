@@ -123,6 +123,7 @@ def map_genes_via_bridge(
         source_genome_info: GenomeSourceItem,
         target_genome_info: GenomeSourceItem,
         status_callback: Optional[Callable[[str, str], None]] = None,
+        progress_callback: Optional[Callable] = None,
         **kwargs
 ) -> Tuple[Optional[pd.DataFrame], List[str]]:
     """
@@ -130,6 +131,9 @@ def map_genes_via_bridge(
     返回一个包含(DataFrame, failed_genes_list)的元组。
     """
     log = status_callback if status_callback else lambda msg, level="INFO": logger.info(f"[{level}] {msg}")
+    progress = progress_callback if progress_callback else lambda p, m: None
+    base_progress = 50  # 这个函数内的进度从50%开始
+    progress_range = 45  # 这个函数内的进度范围为45% (从50%到95%)
 
     bridge_genome_info = kwargs.get('bridge_genome_info')
     bridge_id_regex = kwargs.get('bridge_id_regex')
@@ -145,6 +149,7 @@ def map_genes_via_bridge(
     temp_s2b_criteria = {**selection_criteria_s_to_b, 'top_n': 0}
     temp_b2t_criteria = {**selection_criteria_b_to_t, 'top_n': 0}
 
+    progress(base_progress + 5, "正在映射: 源 -> 桥梁...")
     s2b_map = load_and_map_homology(source_to_bridge_homology_df, homology_columns, temp_s2b_criteria, source_gene_ids,
                                     source_genome_info.gene_id_regex, bridge_id_regex)
     if not s2b_map:
@@ -153,6 +158,7 @@ def map_genes_via_bridge(
     s2b_hits_df = pd.DataFrame([match for matches in s2b_map.values() for match in matches])
     bridge_gene_ids = s2b_hits_df[homology_columns.get('match')].unique().tolist()
 
+    progress(base_progress + 15, "正在映射: 桥梁 -> 目标...")
     b2t_homology_cols = {'query': homology_columns.get('match'), 'match': homology_columns.get('query'),
                          **{k: v for k, v in homology_columns.items() if k not in ['query', 'match']}}
     b2t_map = load_and_map_homology(bridge_to_target_homology_df, b2t_homology_cols, temp_b2t_criteria, bridge_gene_ids,
@@ -162,6 +168,7 @@ def map_genes_via_bridge(
 
     b2t_hits_df = pd.DataFrame([match for matches in b2t_map.values() for match in matches])
 
+    progress(base_progress + 25, "正在合并映射结果...")
     df1 = s2b_hits_df.rename(
         columns={homology_columns.get('query'): "Source_Gene_ID", homology_columns.get('match'): "Bridge_Gene_ID"})
     df2 = b2t_hits_df.rename(
@@ -171,6 +178,7 @@ def map_genes_via_bridge(
         return pd.DataFrame(), source_gene_ids
 
     # --- 步骤 3: 根据模式进行筛选和排序 ---
+    progress(base_progress + 35, "正在根据模式筛选和排序...")
     is_cotton_to_cotton = source_genome_info.is_cotton() and target_genome_info.is_cotton()
     # 使用新的开关，并默认开启
     strict_mode = selection_criteria_s_to_b.get('strict_subgenome_priority', True)
@@ -205,6 +213,7 @@ def map_genes_via_bridge(
         sorted_df = merged_df.sort_values(by=secondary_sort_cols, ascending=ascending_flags)
 
     # --- 步骤 4: 应用Top N并找出匹配失败的基因 ---
+    progress(base_progress + 40, "正在筛选 Top N 结果...")
     final_df = sorted_df
     if user_top_n is not None and user_top_n > 0:
         final_df = sorted_df.groupby('Source_Gene_ID', sort=False).head(user_top_n)

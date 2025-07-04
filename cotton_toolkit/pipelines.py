@@ -196,13 +196,14 @@ def run_homology_mapping(
         cancel_event: Optional[threading.Event] = None
 ) -> Optional[pd.DataFrame]:
     log = lambda msg, level="INFO": status_callback(msg, level)
+    progress = progress_callback if progress_callback else lambda p, m: None
 
     try:
         log(_("步骤 1&2: 加载配置和同源数据..."), "INFO")
         genome_sources = get_genome_data_sources(config, logger_func=log)
         source_genome_info = genome_sources.get(source_assembly_id)
         target_genome_info = genome_sources.get(target_assembly_id)
-        bridge_species_name = config.integration_pipeline.bridge_species_name
+        bridge_species_name = "Arabidopsis_thaliana"  # 直接使用默认桥梁物种
         bridge_genome_info = genome_sources.get(bridge_species_name)
 
         if not all([source_genome_info, target_genome_info, bridge_genome_info]):
@@ -212,11 +213,12 @@ def run_homology_mapping(
         source_gene_ids = gene_ids
         if region:
             gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+            # 从 locus_conversion 配置中获取路径
             gff_db_cache_dir = os.path.join(os.path.dirname(config.config_file_abs_path_),
                                             config.locus_conversion.gff_db_storage_dir)
             genes_in_region_list = get_genes_in_region(
                 assembly_id=source_assembly_id, gff_filepath=gff_path, db_storage_dir=gff_db_cache_dir, region=region,
-                force_db_creation=config.integration_pipeline.force_gff_db_creation, status_callback=log
+                force_db_creation=False, status_callback=log  # 使用安全的默认值
             )
             if not genes_in_region_list:
                 log(f"在区域 {region} 中未找到任何基因。", "WARNING")
@@ -233,18 +235,22 @@ def run_homology_mapping(
         bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
 
         log(_("步骤 3: 通过桥梁物种执行基因映射..."), "INFO")
-        selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge
-        selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target
+        s2b_criteria = HomologySelectionCriteria()
+        b2t_criteria = HomologySelectionCriteria()
+        homology_columns = {
+            "query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"
+        }
+
+        # 应用来自UI的覆盖参数
+        s2b_dict = s2b_criteria.model_dump()
+        b2t_dict = b2t_criteria.model_dump()
         if criteria_overrides:
-            s2b_dict = selection_criteria_s_to_b.to_dict()
-            b2t_dict = selection_criteria_b_to_t.to_dict()
             for key, value in criteria_overrides.items():
                 if value is not None:
-                    if key in s2b_dict: s2b_dict[key] = value
-                    if key in b2t_dict: b2t_dict[key] = value
-            selection_criteria_s_to_b = type(selection_criteria_s_to_b)
-            selection_criteria_b_to_t = type(selection_criteria_b_to_t)
-        homology_columns = config.integration_pipeline.homology_columns
+                    if key in s2b_dict:
+                        s2b_dict[key] = value
+                    if key in b2t_dict:
+                        b2t_dict[key] = value
 
         mapped_df, failed_genes = map_genes_via_bridge(
             source_gene_ids=source_gene_ids,
@@ -253,13 +259,14 @@ def run_homology_mapping(
             bridge_species_name=bridge_species_name,
             source_to_bridge_homology_df=source_to_bridge_homology_df,
             bridge_to_target_homology_df=bridge_to_target_homology_df,
-            selection_criteria_s_to_b=selection_criteria_s_to_b.to_dict(),
-            selection_criteria_b_to_t=selection_criteria_b_to_t.to_dict(),
-            homology_columns=homology_columns,
+            selection_criteria_s_to_b=s2b_dict,  # 传递更新后的字典
+            selection_criteria_b_to_t=b2t_dict,  # 传递更新后的字典
+            homology_columns=homology_columns,  # 传递定义好的列名
             source_genome_info=source_genome_info,
             target_genome_info=target_genome_info,
             bridge_genome_info=bridge_genome_info,
             status_callback=status_callback,
+            progress_callback=progress_callback,
             cancel_event=cancel_event
         )
 
@@ -585,9 +592,11 @@ def run_functional_annotation(
         source_to_bridge_homology_df = pd.read_excel(s_to_b_homology_file)
         bridge_to_target_homology_df = pd.read_excel(b_to_t_homology_file)
 
-        selection_criteria_s_to_b = config.integration_pipeline.selection_criteria_source_to_bridge.to_dict()
-        selection_criteria_b_to_t = config.integration_pipeline.selection_criteria_bridge_to_target.to_dict()
-        homology_columns = config.integration_pipeline.homology_columns
+        selection_criteria_s_to_b = HomologySelectionCriteria().model_dump()
+        selection_criteria_b_to_t = HomologySelectionCriteria().model_dump()
+        homology_columns = {
+            "query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"
+        }
 
         progress(40, _("正在通过桥梁物种进行基因映射..."))
         mapped_df, _c = map_genes_via_bridge(
@@ -1092,4 +1101,8 @@ def run_preprocess_annotation_files(
     log(f"预处理完成。成功转换 {success_count}/{total_tasks} 个文件。", "INFO")
     progress(100, "全部完成。")
     return True
+
+
+
+
 

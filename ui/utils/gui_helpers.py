@@ -41,8 +41,7 @@ def identify_genome_from_gene_ids(
             continue
 
         try:
-            # 使用 re.IGNORECASE 使匹配不区分大小写，增加灵活性
-            regex = re.compile(regex_pattern, re.IGNORECASE)
+            regex = re.compile(regex_pattern)
             match_count = sum(1 for gene_id in gene_ids_to_check if regex.match(gene_id))
 
             if match_count > 0:

@@ -85,9 +85,29 @@ class HomologyTab(BaseTab):
         if not gene_ids_text or is_placeholder: self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要映射的源基因ID。")); return
         gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]; source_assembly = self.selected_homology_source_assembly.get(); target_assembly = self.selected_homology_target_assembly.get()
         if not all([source_assembly, target_assembly]) or _("加载中...") in [source_assembly, target_assembly] or _("无可用基因组") in [source_assembly, target_assembly]: self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择有效的源和目标基因组。")); return
-        try: criteria = {"top_n": int(self.homology_top_n_entry.get()),"evalue_threshold": float(self.homology_evalue_entry.get()),"pid_threshold": float(self.homology_pid_entry.get()),"score_threshold": float(self.homology_score_entry.get()),"strict_subgenome_priority": self.homology_strict_priority_var.get()}
-        except (ValueError, TypeError): self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的阈值必须是有效的数字。")); return
-        self.app.event_handler._start_task(task_name=_("基因同源转换"), target_func=run_homology_mapping,kwargs={'config': self.app.current_config, 'source_assembly_id': source_assembly, 'target_assembly_id': target_assembly, 'gene_ids': gene_ids, 'output_csv_path': self.homology_output_file_entry.get().strip() or None, 'criteria_overrides': criteria})
+        try:
+            criteria = {"top_n": int(self.homology_top_n_entry.get()),
+                        "evalue_threshold": float(self.homology_evalue_entry.get()),
+                        "pid_threshold": float(self.homology_pid_entry.get()),
+                        "score_threshold": float(self.homology_score_entry.get()),
+                        "strict_subgenome_priority": self.homology_strict_priority_var.get()}
+        except (ValueError, TypeError):
+            self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的阈值必须是有效的数字。")); return
+        self.app.event_handler._start_task(
+            task_name=_("基因同源转换"),
+            target_func=run_homology_mapping,
+            kwargs={
+                'config': self.app.current_config,
+                'source_assembly_id': source_assembly,
+                'target_assembly_id': target_assembly,
+                'gene_ids': gene_ids,
+                'region': None,  # <--- 在这里添加这一行
+                'output_csv_path': self.homology_output_file_entry.get().strip() or None,
+                'criteria_overrides': criteria
+            }
+        )
+
+
     def update_from_config(self):
         if self.app.current_config: self.homology_output_file_entry.delete(0, tk.END); self.homology_output_file_entry.insert(0, "homology_results.xlsx")
         self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])

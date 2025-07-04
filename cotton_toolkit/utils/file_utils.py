@@ -138,3 +138,44 @@ def smart_load_file(file_path: str, logger_func: Optional[Callable] = None) -> O
         return None
 
 
+
+def save_dataframe_as(df: pd.DataFrame, output_path: str, logger_func: Optional[Callable] = None) -> bool:
+    """
+    根据输出路径的扩展名，将DataFrame保存为CSV或Excel文件。
+
+    Args:
+        df (pd.DataFrame): 需要保存的DataFrame。
+        output_path (str): 输出文件的完整路径，应以 .csv 或 .xlsx 结尾。
+        logger_func (Callable, optional): 用于记录日志的回调函数。
+
+    Returns:
+        bool: 保存成功则返回 True，否则返回 False。
+    """
+    if logger_func is None:
+        # 如果没有提供日志函数，则使用简单的 print
+        logger_func = lambda msg, level="INFO": print(f"[{level}] {msg}")
+
+    # 确保输出目录存在
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    # 获取小写的文件扩展名
+    file_ext = os.path.splitext(output_path)[1].lower()
+
+    try:
+        if file_ext == '.csv':
+            # 使用 utf-8-sig 编码以确保Excel能正确打开包含中文的CSV
+            df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            logger_func(f"DataFrame 已成功保存为CSV文件: {output_path}", "INFO")
+        elif file_ext == '.xlsx':
+            df.to_excel(output_path, index=False, engine='openpyxl')
+            logger_func(f"DataFrame 已成功保存为Excel文件: {output_path}", "INFO")
+        else:
+            logger_func(f"错误: 不支持的文件格式 '{file_ext}'。请使用 '.csv' 或 '.xlsx'。", "ERROR")
+            return False
+        return True
+    except Exception as e:
+        logger_func(f"保存DataFrame到 {output_path} 时发生错误: {e}", "ERROR")
+        return False
+
