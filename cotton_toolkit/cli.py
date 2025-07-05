@@ -5,13 +5,9 @@ import os
 import signal
 import sys
 import threading
+from typing import Callable
 
 import pandas as pd
-
-from cotton_toolkit.casestudies.bsa_hvg_integration import run_integrate_pipeline
-from cotton_toolkit.core.ai_wrapper import AIWrapper
-from .utils.localization import setup_localization
-from .utils.logger import setup_global_logger
 import click
 
 from . import VERSION
@@ -19,13 +15,19 @@ from .pipelines import (
     run_download_pipeline,
     run_homology_mapping,
     run_ai_task, run_gff_lookup, run_functional_annotation, run_preprocess_annotation_files, run_enrichment_pipeline,
-
+    run_locus_conversion, run_xlsx_to_csv,
 )
 from .config.loader import load_config, generate_default_config_files, MainConfig, get_genome_data_sources, \
     check_annotation_file_status
+from .core.ai_wrapper import AIWrapper
+from .utils.gene_utils import parse_region_string
+from .utils.localization import setup_localization
+from .utils.logger import setup_global_logger
+from ui.utils.gui_helpers import identify_genome_from_gene_ids
+
 
 cancel_event = threading.Event()
-_ = lambda s: str(s) # 占位符
+_ = lambda s: str(s)
 logger = logging.getLogger("cotton_toolkit.gui")
 
 
@@ -57,6 +59,7 @@ class AppContext:
         self.config = config
         self.verbose = verbose
         self.logger = logging.getLogger("cotton_toolkit.cli")
+        self.cancel_event = cancel_event
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.version_option(VERSION, '--version', message='%(prog)s, version %(version)s')
@@ -69,7 +72,6 @@ def cli(ctx, config, lang, verbose):
     builtins._ = setup_localization(language_code=lang)
 
     if ctx.invoked_subcommand == 'init':
-        # init 命令不需要预加载配置
         ctx.obj = AppContext(config=MainConfig(), verbose=verbose)
         setup_global_logger(log_level_str="DEBUG" if verbose else "INFO")
     else:
@@ -77,6 +79,16 @@ def cli(ctx, config, lang, verbose):
         log_level_to_set = "DEBUG" if verbose else loaded_config.log_level
         setup_global_logger(log_level_str=log_level_to_set)
         ctx.obj = AppContext(config=loaded_config, verbose=verbose)
+
+def _create_cli_progress_callback(bar: click.progressbar) -> Callable[[int, str], None]:
+    """创建一个用于更新Click进度条的回调函数。"""
+    def cli_progress_callback(percentage: int, message: str):
+        bar.label = f"{message.ljust(40)}"
+        current_pos = bar.pos
+        steps_to_advance = percentage - current_pos
+        if steps_to_advance > 0:
+            bar.update(steps_to_advance)
+    return cli_progress_callback
 
 
 @cli.command()
@@ -104,7 +116,14 @@ def download(ctx, versions, force, use_download_proxy):
         "force": force,
         "use_proxy_for_download": use_download_proxy
     }
-    run_download_pipeline(ctx.obj.config, cli_overrides, ctx.obj.logger.info, cancel_event=cancel_event)
+    with click.progressbar(length=100, label=_("准备下载...").ljust(40)) as bar:
+        run_download_pipeline(
+            config=ctx.obj.config,
+            cli_overrides=cli_overrides,
+            status_callback=ctx.obj.logger.info,
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
 
 @cli.command()
 @click.option('--genes', help=_("源基因ID列表，以逗号分隔。"))
@@ -133,26 +152,23 @@ def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, eval
         except ValueError:
             raise click.BadParameter(_("区域格式无效。请使用 'chr:start-end' 格式。"), param_hint='--region')
 
-    # --- 修改点 ---
-    # 根据新的开关设置参数
     criteria_overrides = {
         "top_n": top_n, "evalue_threshold": evalue, "pid_threshold": pid,
         "score_threshold": score, "strict_subgenome_priority": not no_strict_priority
     }
 
-    # 如果关闭了严格模式，显示红色警告
     if no_strict_priority:
         click.secho(_("警告: 严格模式已关闭，可能导致不同染色体的基因发生错配。"), fg='red', err=True)
 
-    run_homology_mapping(
-        config=ctx.obj.config, gene_ids=gene_list, region=region_tuple,
-        source_assembly_id=source_asm, target_assembly_id=target_asm,
-        output_csv_path=output_csv, criteria_overrides=criteria_overrides,
-        status_callback=ctx.obj.logger.info,
-        cancel_event=cancel_event
-
-    )
-
+    with click.progressbar(length=100, label=_("准备同源映射...").ljust(40)) as bar:
+        run_homology_mapping(
+            config=ctx.obj.config, gene_ids=gene_list, region=region_tuple,
+            source_assembly_id=source_asm, target_assembly_id=target_asm,
+            output_csv_path=output_csv, criteria_overrides=criteria_overrides,
+            status_callback=ctx.obj.logger.info,
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
 
 @cli.command('ai-task')
 @click.option('--input-file', required=True, type=click.Path(exists=True, dir_okay=False), help=_("输入的CSV文件。"))
@@ -166,19 +182,18 @@ def homology(ctx, genes, region, source_asm, target_asm, output_csv, top_n, eval
 @click.pass_context
 def ai_task(ctx, input_file, source_column, new_column, output_file, task_type, prompt, temperature, use_ai_proxy):
     """在CSV文件上运行批量AI任务。"""
-    # --- 修改点: 传递新的代理标志 ---
     cli_overrides = {
         "temperature": temperature,
         "use_proxy_for_ai": use_ai_proxy
     }
-    # --- 修改结束 ---
-    run_ai_task(
-        config=ctx.obj.config, input_file=input_file, source_column=source_column,
-        new_column=new_column, task_type=task_type, custom_prompt_template=prompt,
-        cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info,
-        cancel_event=cancel_event, output_file=output_file
-    )
-
+    with click.progressbar(length=100, label=_("准备AI任务...").ljust(40)) as bar:
+        run_ai_task(
+            config=ctx.obj.config, input_file=input_file, source_column=source_column,
+            new_column=new_column, task_type=task_type, custom_prompt_template=prompt,
+            cli_overrides=cli_overrides, status_callback=ctx.obj.logger.info,
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event, output_file=output_file
+        )
 
 @cli.command('gff-query')
 @click.option('--assembly-id', required=True, help=_("要查询的基因组版本ID。"))
@@ -187,11 +202,7 @@ def ai_task(ctx, input_file, source_column, new_column, output_file, task_type, 
 @click.option('--output-csv', type=click.Path(), help=_("【可选】保存结果的CSV文件路径。不提供则自动命名。"))
 @click.pass_context
 def gff_query(ctx, assembly_id, genes, region, output_csv):
-    """
-    从GFF文件中查询基因信息。
-    可根据基因ID列表或染色体区域进行查询。
-    """
-    # 输入验证
+    """从GFF文件中查询基因信息。"""
     if not genes and not region:
         raise click.UsageError(_("错误: 必须提供 --genes 或 --region 参数之一。"))
     if genes and region:
@@ -208,24 +219,99 @@ def gff_query(ctx, assembly_id, genes, region, output_csv):
         except ValueError:
             raise click.BadParameter(_("区域格式无效。请使用 'Chr:Start-End' 格式。"), param_hint='--region')
 
-    click.echo(_("正在启动GFF查询..."))
-
-    # 调用后端流水线
-    success = run_gff_lookup(
-        config=ctx.obj.config,
-        assembly_id=assembly_id,
-        gene_ids=gene_list,
-        region=region_tuple,
-        output_csv_path=output_csv,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
-        cancel_event=cancel_event
-    )
+    with click.progressbar(length=100, label=_("准备GFF查询...").ljust(40)) as bar:
+        success = run_gff_lookup(
+            config=ctx.obj.config,
+            assembly_id=assembly_id,
+            gene_ids=gene_list,
+            region=region_tuple,
+            output_csv_path=output_csv,
+            status_callback=lambda msg, level: click.echo(f"[{level}] {msg}", err=True),
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
 
     if success:
         click.echo(_("GFF查询任务成功完成。"))
     else:
-        click.echo(_("GFF查询任务失败。"), err=True)
+        click.echo(_("GFF查询任务失败或无结果。"), err=True)
 
+@cli.command('locus-convert')
+@click.option('--source-asm', required=True, help=_("源基因组版本ID。"))
+@click.option('--target-asm', required=True, help=_("目标基因组版本ID。"))
+@click.option('--region', required=True, help=_("要转换的源基因组区域, 格式如 'Chr:Start-End' 或 'Chr:Start..End'。"))
+@click.option('--output-csv', required=True, type=click.Path(), help=_("保存输出CSV文件的路径。"))
+@click.pass_context
+def locus_convert(ctx, source_asm, target_asm, region, output_csv):
+    """在不同基因组版本间进行位点坐标的同源转换。"""
+    region_tuple = parse_region_string(region)
+    if not region_tuple:
+        raise click.BadParameter(_("区域格式无效。请使用 'Chr:Start-End' 格式。"), param_hint='--region')
+
+    with click.progressbar(length=100, label=_("准备位点转换...").ljust(40)) as bar:
+        result_message = run_locus_conversion(
+            config=ctx.obj.config,
+            source_assembly_id=source_asm,
+            target_assembly_id=target_asm,
+            region=region_tuple,
+            output_path=output_csv,
+            status_callback=lambda msg, level: click.echo(f"[{level}] {msg}", err=True),
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
+    if result_message and "成功" in result_message:
+        click.secho(result_message, fg='green')
+    else:
+        click.secho(_("位点转换失败。请查看日志获取详情。"), fg='red')
+        raise click.Abort()
+
+@cli.command('xlsx-to-csv')
+@click.option('--input-excel', required=True, type=click.Path(exists=True, dir_okay=False), help=_("输入的Excel (.xlsx) 文件路径。"))
+@click.option('--output-csv', required=True, type=click.Path(), help=_("输出的CSV文件路径。"))
+@click.pass_context
+def xlsx_to_csv(ctx, input_excel, output_csv):
+    """将一个Excel文件(.xlsx)的所有工作表合并并转换为一个CSV文件。"""
+    with click.progressbar(length=100, label=_("准备转换Excel...").ljust(40)) as bar:
+        success = run_xlsx_to_csv(
+            excel_path=input_excel,
+            output_csv_path=output_csv,
+            status_callback=lambda msg, level: click.echo(f"[{level}] {msg}", err=True),
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
+    if success:
+        click.secho(_("文件转换成功！"), fg='green')
+    else:
+        click.secho(_("文件转换失败。"), fg='red')
+        raise click.Abort()
+
+@cli.command('identify-genome')
+@click.argument('genes', nargs=-1, required=True)
+@click.pass_context
+def identify_genome(ctx, genes):
+    """根据基因ID列表，自动识别其最可能的基因组版本。"""
+    if not genes:
+        click.echo(_("请输入至少一个基因ID。"), err=True)
+        return
+
+    gene_list = list(genes)
+    click.echo(_("正在为 {} 个基因ID进行基因组鉴定...").format(len(gene_list)))
+
+    genome_sources = get_genome_data_sources(ctx.obj.config, logger_func=lambda msg, level: click.echo(f"[{level}] {msg}", err=True))
+    if not genome_sources:
+        click.secho(_("错误: 未能加载基因组源数据，无法进行鉴定。"), fg='red', err=True)
+        raise click.Abort()
+
+    identified_assembly = identify_genome_from_gene_ids(
+        gene_ids=gene_list,
+        genome_sources=genome_sources,
+        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}", err=True)
+    )
+
+    if identified_assembly:
+        click.secho(_("鉴定结果: {}").format(identified_assembly), fg='green', bold=True)
+    else:
+        click.secho(_("未能识别到匹配的基因组版本。"), fg='yellow')
 
 @cli.command('annotate')
 @click.option('--genes', required=True, help=_("要注释的基因ID列表，以逗号分隔。或包含基因列表的文件路径。"))
@@ -235,7 +321,6 @@ def gff_query(ctx, assembly_id, genes, region, output_csv):
 @click.pass_context
 def annotate(ctx, genes, assembly_id, types, output_path):
     """对基因列表进行功能注释。"""
-
     gene_ids_list = []
     gene_list_file = None
     if os.path.exists(genes):
@@ -252,43 +337,38 @@ def annotate(ctx, genes, assembly_id, types, output_path):
     if not anno_types:
         raise click.BadParameter(_("必须至少提供一种注释类型。"), param_hint='--types')
 
-    # 准备备用输出目录
     output_dir = os.path.join(os.getcwd(), "annotation_results")
 
-    run_functional_annotation(
-        config=ctx.obj.config,
-        source_genome=assembly_id,
-        target_genome=assembly_id,  # 在CLI中，假定源和目标相同
-        bridge_species=ctx.obj.config.integration_pipeline.bridge_species_name,
-        annotation_types=anno_types,
-        gene_ids=gene_ids_list,
-        gene_list_path=gene_list_file,
-        output_dir=output_dir,
-        output_path=output_path,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
-        cancel_event=cancel_event
-
-    )
-
+    with click.progressbar(length=100, label=_("准备功能注释...").ljust(40)) as bar:
+        run_functional_annotation(
+            config=ctx.obj.config,
+            source_genome=assembly_id,
+            target_genome=assembly_id,
+            bridge_species=ctx.obj.config.integration_pipeline.bridge_species_name,
+            annotation_types=anno_types,
+            gene_ids=gene_ids_list,
+            gene_list_path=gene_list_file,
+            output_dir=output_dir,
+            output_path=output_path,
+            status_callback=lambda msg, level: click.echo(f"[{level}] {msg}", err=True),
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
 
 @cli.command('enrich')
 @click.option('--genes', required=True, help=_("要进行富集分析的基因ID列表 (逗号分隔), 或包含基因列表的文件路径。"))
 @click.option('--assembly-id', required=True, help=_("基因ID所属的基因组版本。"))
-@click.option('--analysis-type', type=click.Choice(['go', 'kegg'], case_sensitive=False), default='go',
-              show_default=True, help=_("富集分析的类型。"))
+@click.option('--analysis-type', type=click.Choice(['go', 'kegg'], case_sensitive=False), default='go', show_default=True, help=_("富集分析的类型。"))
 @click.option('--output-dir', required=True, type=click.Path(file_okay=False), help=_("富集结果和图表的输出目录。"))
-@click.option('--plot-types', default='bubble,bar', show_default=True,
-              help=_("要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"))
+@click.option('--plot-types', default='bubble,bar', show_default=True, help=_("要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"))
 @click.option('--top-n', type=int, default=20, show_default=True, help=_("在图表中显示的前N个富集条目。"))
-@click.option('--collapse-transcripts', is_flag=True, default=False, show_default=True,
-              help=_("将转录本ID合并为其父基因ID进行分析。"))
+@click.option('--collapse-transcripts', is_flag=True, default=False, show_default=True, help=_("将转录本ID合并为其父基因ID进行分析。"))
 @click.pass_context
 def enrich(ctx, genes, assembly_id, analysis_type, output_dir, plot_types, top_n, collapse_transcripts):
     """对基因列表进行GO或KEGG富集分析并生成图表。"""
     config = ctx.obj.config
     cancel_event = ctx.obj.cancel_event
 
-    # 解析基因列表输入 (可以是字符串或文件路径)
     gene_ids_list = []
     if os.path.exists(genes):
         click.echo(_("从文件读取基因列表: {}").format(genes))
@@ -303,14 +383,9 @@ def enrich(ctx, genes, assembly_id, analysis_type, output_dir, plot_types, top_n
         raise click.UsageError(_("错误: 未提供任何有效的基因ID。"))
 
     click.echo(_("共找到 {} 个唯一基因ID用于分析。").format(len(gene_ids_list)))
-
-    # 解析图表类型
     plot_types_list = [p.strip().lower() for p in plot_types.split(',') if p.strip()]
 
-    click.echo(_("启动 {} 富集分析...").format(analysis_type.upper()))
-
-    # 调用后端的富集分析流程
-    try:
+    with click.progressbar(length=100, label=_("准备富集分析...").ljust(40)) as bar:
         run_enrichment_pipeline(
             config=config,
             assembly_id=assembly_id,
@@ -320,16 +395,11 @@ def enrich(ctx, genes, assembly_id, analysis_type, output_dir, plot_types, top_n
             output_dir=output_dir,
             top_n=top_n,
             collapse_transcripts=collapse_transcripts,
-            status_callback=lambda msg, level: click.echo(f"[{level.upper()}] {msg}"),
+            status_callback=lambda msg, level: click.echo(f"[{level.upper()}] {msg}", err=True),
+            progress_callback=_create_cli_progress_callback(bar),
             cancel_event=cancel_event
         )
-        click.secho(_("富集分析流程执行完毕。结果已保存至: {}").format(output_dir), fg='green')
-    except Exception as e:
-        click.secho(_("富集分析过程中发生错误: {}").format(e), fg='red')
-        # 如果需要更详细的错误调试信息，可以取消下面这行的注释
-        # traceback.print_exc()
-        raise click.Abort()
-
+    click.secho(_("富集分析流程执行完毕。结果已保存至: {}").format(output_dir), fg='green')
 
 @cli.command('status')
 @click.pass_context
@@ -344,33 +414,26 @@ def status(ctx):
     click.secho(f"{'Genome':<25} {'File Type':<20} {'Status'}", bold=True)
     click.echo("-" * 60)
 
-    status_colors = {
-        'processed': 'green',
-        'not_processed': 'yellow',
-        'not_downloaded': 'red'
-    }
-
+    status_colors = {'processed': 'green', 'not_processed': 'yellow', 'not_downloaded': 'red'}
     anno_keys = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
     for genome_id, genome_info in genome_sources.items():
         for key in anno_keys:
-            # 只显示配置了URL的文件类型
             if hasattr(genome_info, f"{key}_url") and getattr(genome_info, f"{key}_url"):
                 file_status = check_annotation_file_status(config, genome_info, key)
                 click.echo(f"{genome_id:<25} {key:<20} ", nl=False)
                 click.secho(file_status, fg=status_colors.get(file_status, 'white'))
 
-
 @cli.command('preprocess-annos')
 @click.pass_context
 def preprocess_annos(ctx):
     """预处理所有已下载的注释文件，转换为标准的CSV格式。"""
-    click.echo(_("正在启动注释文件预处理流程..."))
-    run_preprocess_annotation_files(
-        config=ctx.obj.config,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
-        cancel_event=cancel_event
-    )
-
+    with click.progressbar(length=100, label=_("准备预处理...").ljust(40)) as bar:
+        run_preprocess_annotation_files(
+            config=ctx.obj.config,
+            status_callback=lambda msg, level: click.echo(f"[{level}] {msg}", err=True),
+            progress_callback=_create_cli_progress_callback(bar),
+            cancel_event=ctx.obj.cancel_event
+        )
 
 @cli.command('test-ai')
 @click.option('--provider', help=_("要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"))
@@ -378,8 +441,6 @@ def preprocess_annos(ctx):
 def test_ai(ctx, provider):
     """测试配置文件中指定的AI服务商连接。"""
     config = ctx.obj.config
-
-    # 如果未指定，则使用默认服务商
     provider_key = provider if provider else config.ai_services.default_provider
     click.echo(_("正在测试服务商: {}...").format(provider_key))
 
@@ -388,19 +449,16 @@ def test_ai(ctx, provider):
         click.secho(_("错误: 在配置文件中未找到服务商 '{}' 的配置。").format(provider_key), fg='red')
         return
 
-    # 从配置中获取参数
     api_key = provider_config.api_key
     model = provider_config.model
     base_url = provider_config.base_url
 
-    # 假设CLI也可能需要代理
     proxies = None
     if config.ai_services.use_proxy_for_ai:
         if config.proxies and (config.proxies.http or config.proxies.https):
             proxies = config.proxies.to_dict()
             click.echo(f"INFO: 将使用代理进行连接测试: {proxies}")
 
-    # 调用后端的测试函数
     success, message = AIWrapper.test_connection(
         provider=provider_key,
         api_key=api_key,
@@ -413,31 +471,6 @@ def test_ai(ctx, provider):
         click.secho(f"✅ {message}", fg='green')
     else:
         click.secho(f"❌ {message}", fg='red')
-
-
-@cli.command()
-@click.option('--excel-path', type=click.Path(exists=True, dir_okay=False), help=_("覆盖配置文件中的输入Excel文件路径。"))
-@click.option('--log2fc-threshold', type=float, help=_("覆盖配置文件中的 Log2FC 阈值。"))
-@click.pass_context
-def integrate(ctx, excel_path, log2fc_threshold):
-    """
-    (高级案例) 运行整合分析流程，筛选候选基因。
-    """
-    config_obj = ctx.obj.config
-
-    # 覆盖配置
-    if excel_path:
-        config_obj.integration_pipeline.input_excel_path = excel_path
-    if log2fc_threshold is not None:
-        config_obj.integration_pipeline.common_hvg_log2fc_threshold = log2fc_threshold
-
-    run_integrate_pipeline(
-        config=config_obj,
-        cli_overrides=None,
-        status_callback=lambda msg, level: click.echo(f"[{level}] {msg}"),
-        progress_callback=lambda p, m: click.echo(f"[{p}%] {m}"),
-        cancel_event=cancel_event
-    )
 
 if __name__ == '__main__':
     cli()

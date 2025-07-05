@@ -45,26 +45,6 @@ def _find_header_row(sheet_df: pd.DataFrame, keywords: List[str]) -> Optional[in
             return i
     return None
 
-def convert_all_xlsx_in_folder_to_csv(folder_path: str, log: Callable) -> None:
-    log(f"INFO: 正在转换文件夹 '{folder_path}' 中的所有Excel文件到CSV。")
-    for root, _C, files in os.walk(folder_path):
-        for file in files:
-            if file.lower().endswith((".xlsx", ".xlsx.gz")):
-                excel_path = os.path.join(root, file)
-                if file.lower().endswith(".xlsx.gz"):
-                    csv_filename = os.path.splitext(os.path.splitext(file)[0])[0] + ".csv"
-                else:
-                    csv_filename = os.path.splitext(file)[0] + ".csv"
-                output_csv_path = os.path.join(root, csv_filename)
-
-                if os.path.exists(output_csv_path):
-                    log(f"INFO: 发现已转换的CSV文件，跳过: {csv_filename}")
-                    continue
-
-                log(f"INFO: 正在转换 {file} 到 {csv_filename}")
-                success = convert_excel_to_standard_csv(excel_path, output_csv_path, log)
-                if not success:
-                    log(f"WARNING: 转换文件 {file} 失败。", "WARNING")
 
 
 def create_homology_df(file_path: str, progress_callback: Optional[Callable] = None) -> pd.DataFrame:
@@ -109,52 +89,6 @@ def create_homology_df(file_path: str, progress_callback: Optional[Callable] = N
                 file_obj.close()
 
 
-def _load_data_file(file_path: str, log: Callable) -> Optional[pd.DataFrame]:
-    if not file_path or not os.path.exists(file_path):
-        log(f"错误: 文件不存在 -> {file_path}", "ERROR")
-        return None
-
-    open_func = gzip.open if file_path.endswith('.gz') else open
-    file_name = os.path.basename(file_path)
-    df = None
-
-    try:
-        with open_func(file_path, 'rb') as f:
-            log(f"正在尝试作为 Excel (.xlsx) 文件读取: {file_name}", "DEBUG")
-            df = pd.read_excel(f, engine='openpyxl')
-    except Exception as excel_error:
-        log(f"作为Excel读取失败 ({excel_error})，继续尝试其他格式...", "WARNING")
-
-    if df is None:
-        try:
-            with open_func(file_path, 'rt', encoding='utf-8') as f:
-                log(f"正在尝试作为逗号分隔 (CSV) 文件读取: {file_name}", "DEBUG")
-                temp_df = pd.read_csv(f, sep=',', engine='python')
-                if len(temp_df.columns) > 1:
-                    df = temp_df
-                else:
-                    log(f"作为CSV读取后仅发现一列，可能分隔符不正确。", "WARNING")
-        except Exception as csv_error:
-            log(f"作为CSV读取失败 ({csv_error})，继续尝试其他格式...", "WARNING")
-
-    if df is None:
-        try:
-            with open_func(file_path, 'rt', encoding='utf-8') as f:
-                log(f"正在尝试作为制表符分隔 (TSV) 文件读取: {file_name}", "DEBUG")
-                df = pd.read_csv(f, sep='\t', engine='python')
-        except Exception as tsv_error:
-            log(f"作为TSV也读取失败 ({tsv_error})。无法加载文件: {file_name}", "ERROR")
-            return None
-
-    if df is not None:
-        cleaned_columns = [re.sub(r'[^\w\s\.-]', '', str(col)).strip() for col in df.columns]
-        df.columns = cleaned_columns
-        log(f"文件加载成功，净化后的列名为: {list(df.columns)}", "DEBUG")
-        return df
-
-    log(f"所有尝试均失败，无法加载文件: {file_name}", "ERROR")
-    return None
-
 
 def _update_config_from_overrides(config_obj: Any, overrides: Optional[Dict[str, Any]]):
     if not overrides:
@@ -166,20 +100,6 @@ def _update_config_from_overrides(config_obj: Any, overrides: Optional[Dict[str,
             else:
                 logger.warning(f"配置覆盖警告：在对象 {type(config_obj).__name__} 中找不到键 '{key}'。")
 
-
-def _update_criteria_from_cli(base_criteria: HomologySelectionCriteria,
-                              cli_overrides: Optional[Dict[str, Any]]) -> HomologySelectionCriteria:
-    if not cli_overrides:
-        return base_criteria
-
-    updated_criteria_dict = asdict(base_criteria)
-    for key, value in cli_overrides.items():
-        if value is not None and key in updated_criteria_dict:
-            if key == 'prioritize_subgenome' and isinstance(value, bool):
-                updated_criteria_dict[key] = value
-            elif value:
-                updated_criteria_dict[key] = value
-    return HomologySelectionCriteria(**updated_criteria_dict)
 
 
 def run_homology_mapping(
@@ -643,8 +563,6 @@ def run_functional_annotation(
             progress(100, _("任务终止：缺少同源文件。"))
             return
 
-        # 为了避免重复加载，这里假设 create_homology_df 已经处理了加载并返回DataFrame
-        # 如果不是，则需要在此处调用
         progress(25, _("正在解析源到桥梁的同源文件..."))
         source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file,
                                                           progress_callback=lambda p, m: progress(25 + int(p * 0.1),
@@ -938,9 +856,6 @@ def run_download_pipeline(
                 proxies=proxies_to_use,
                 status_callback=log,
                 cancel_event=cancel_event,
-                # 将 progress_callback 传递给 download_genome_data，它将处理单个文件的进度
-                # 但在这里，我们关注的是总体任务的进度
-                progress_callback=None  # download_genome_data 内部可能有自己的 progress_callback，这里不映射，只关注外部总进度
             ): task for task in all_download_tasks
         }
 
@@ -1158,32 +1073,6 @@ def run_enrichment_pipeline(
 
 
 
-def _preprocess_single_annotation_excel(excel_path: str, output_csv_path: str, log: Callable) -> bool:
-    try:
-        all_sheets_dict = pd.read_excel(excel_path, sheet_name=None, header=None, engine='openpyxl')
-        all_dfs = [df for df in all_sheets_dict.values() if not df.empty and df.dropna(how='all').shape[0] > 0]
-
-        if not all_dfs:
-            log(f"WARNING: 文件 {os.path.basename(excel_path)} 中没有找到有效数据。", "WARNING")
-            return False
-
-        concatenated_df = pd.concat(all_dfs, ignore_index=True)
-
-        num_cols = len(concatenated_df.columns)
-        new_columns = []
-        if num_cols > 0: new_columns.append('Query')
-        if num_cols > 1: new_columns.append('Match')
-        if num_cols > 2: new_columns.append('Description')
-        if num_cols > 3:
-            for i in range(3, num_cols): new_columns.append(f'Extra_Col_{i + 1}')
-        concatenated_df.columns = new_columns
-
-        concatenated_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
-        return True
-    except Exception as e:
-        log(f"ERROR: 预处理注释文件 {os.path.basename(excel_path)} 时发生错误: {e}", "ERROR")
-        return False
-
 
 def run_preprocess_annotation_files(
         config: MainConfig,
@@ -1244,6 +1133,34 @@ def run_preprocess_annotation_files(
     log(f"预处理完成。成功转换 {success_count}/{total_tasks} 个文件。", "INFO")
     progress(100, _("预处理完成。"))
     return True
+
+
+def run_xlsx_to_csv(
+        excel_path: str,
+        output_csv_path: str,
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        cancel_event: Optional[threading.Event] = None,
+        **kwargs) -> bool:
+    """
+    流水线函数：将一个Excel文件转换为标准的CSV文件。
+    """
+    log = status_callback if status_callback else lambda msg, level="INFO": print(f"[{level}] {msg}")
+    try:
+        log(f"开始将 '{os.path.basename(excel_path)}' 转换为CSV...", "INFO")
+        success = convert_excel_to_standard_csv(
+            excel_path=excel_path,
+            output_csv_path=output_csv_path,
+            status_callback=log,
+            cancel_event=cancel_event
+        )
+        if success:
+            log(f"成功将文件转换为CSV格式: {output_csv_path}", "INFO")
+        else:
+            log(f"转换文件时失败。", "ERROR")
+        return success
+    except Exception as e:
+        log(f"执行Excel到CSV转换流水线时发生错误: {e}", "ERROR")
+        return False
 
 
 

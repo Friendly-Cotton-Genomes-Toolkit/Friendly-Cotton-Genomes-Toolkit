@@ -19,18 +19,18 @@ class MessageDialog(ttkb.Toplevel):
     """
 
     def __init__(self, parent, title: str, message: str, icon_type: str = "info",
-                 buttons: Optional[List[str]] = None, style=None):  # style 参数是为了兼容，但未使用
+                 buttons: Optional[List[str]] = None, style=None):
         super().__init__(parent)
         self.title(_(title))
         self.transient(parent)
         self.grab_set()
+        self.focus_set()  # <-- 核心修改：立即获取焦点
         self.result = None
         self.resizable(False, False)
 
         if buttons is None:
             buttons = [_("确定")]
 
-        # --- 修复：使用兼容性更强的Unicode字符作为图标 ---
         icon_map = {"info": "ℹ", "warning": "⚠", "error": "❌", "question": "❓"}
         icon_char = icon_map.get(icon_type, "ℹ")
 
@@ -42,12 +42,10 @@ class MessageDialog(ttkb.Toplevel):
         }
         color_name = bootstyle_map.get(icon_type, "info")
 
-        # --- 布局 ---
-        main_frame = ttkb.Frame(self, padding=20)
+        main_frame = ttkb.Frame(self, padding=(30, 25))
         main_frame.pack(expand=True, fill=BOTH)
         main_frame.grid_columnconfigure(1, weight=1)
 
-        # 使用一个Label来显示Unicode字符图标，通过字体大小来控制图标大小
         icon_label = ttkb.Label(main_frame, text=icon_char, bootstyle=color_name, font=("-size", 28))
         icon_label.grid(row=0, column=0, rowspan=2, sticky="n", padx=(0, 20), pady=5)
 
@@ -58,12 +56,12 @@ class MessageDialog(ttkb.Toplevel):
         button_frame.grid(row=1, column=1, sticky="e", pady=(20, 0))
 
         for i, text in enumerate(buttons):
-            # 主按钮（通常是第一个）使用实心样式，其他使用线框样式
             style = color_name if i == 0 else f"{color_name}-outline"
             btn = ttkb.Button(button_frame, text=text, bootstyle=style, command=lambda t=text: self.on_button_click(t))
             btn.pack(side=LEFT, padx=(0, 10))
 
-        # --- 窗口居中 ---
+        self.bind("<Escape>", self._on_escape)
+
         self.update_idletasks()
         try:
             parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
@@ -71,11 +69,15 @@ class MessageDialog(ttkb.Toplevel):
             w, h = self.winfo_width(), self.winfo_height()
             x, y = parent_x + (parent_w - w) // 2, parent_y + (parent_h - h) // 2
             self.geometry(f"+{x}+{y}")
-        except tk.TclError:  # 如果父窗口已关闭
+        except tk.TclError:
             pass
 
     def on_button_click(self, result: str):
         self.result = result
+        self.destroy()
+
+    def _on_escape(self, event=None):
+        """响应ESC键，直接关闭窗口。"""
         self.destroy()
 
 
@@ -87,6 +89,7 @@ class ProgressDialog(ttkb.Toplevel):
         self.title(_(title))
         self.transient(parent)
         self.grab_set()
+        self.focus_set()  # <-- 核心修改：立即获取焦点
         self.resizable(False, False)
         self.on_cancel_callback = on_cancel
         self.creation_time = time.time()
@@ -109,6 +112,8 @@ class ProgressDialog(ttkb.Toplevel):
 
         self.protocol("WM_DELETE_WINDOW", self.on_close_button)
 
+        self.bind("<Escape>", self._on_escape)
+
         self.update_idletasks()
         try:
             parent_x, parent_y, parent_w, parent_h = parent.winfo_x(), parent.winfo_y(), parent.winfo_width(), parent.winfo_height()
@@ -130,7 +135,12 @@ class ProgressDialog(ttkb.Toplevel):
     def on_close_button(self):
         if self.on_cancel_callback:
             self.on_cancel_callback()
-        self.destroy()
+            self.destroy()
+
+    def _on_escape(self, event=None):
+        """响应ESC键，仅当窗口可取消时才关闭。"""
+        if self.on_cancel_callback:
+            self.on_close_button()
 
     def close(self):
         if self.winfo_exists():

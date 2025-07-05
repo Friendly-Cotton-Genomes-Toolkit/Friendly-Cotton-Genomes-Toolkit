@@ -76,7 +76,7 @@ class AIAssistantTab(BaseTab):
                                                                                                      padx=5)
         ttk.Label(prompt_card, text=_("提示词模板:"), font=self.app.app_font_bold).grid(row=1, column=0, padx=10,
                                                                                         pady=(5, 0), sticky="w")
-        self.prompt_textbox = tk.Text(prompt_card, height=8, font=self.app.app_font_mono, wrap="word", relief="flat",
+        self.prompt_textbox = tk.Text(prompt_card, height=8, font=self.app.app_font, wrap="word", relief="flat",
                                       background=self.app.style.lookup('TFrame', 'background'),
                                       foreground=self.app.style.lookup('TLabel', 'foreground'),
                                       insertbackground=self.app.style.lookup('TLabel', 'foreground'))
