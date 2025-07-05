@@ -1,4 +1,5 @@
 ﻿# 文件路径: ui/gui_app.py
+
 import logging
 import os
 import queue
@@ -18,6 +19,7 @@ from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
 from ui.tabs.ai_assistant_tab import AIAssistantTab
 from ui.tabs.data_download_tab import DataDownloadTab
+from ui.tabs.annotation_tab import AnnotationTab
 from ui.tabs.genome_identifier_tab import GenomeIdentifierTab
 from ui.tabs.gff_query_tab import GFFQueryTab
 from ui.tabs.homology_tab import HomologyTab
@@ -36,10 +38,14 @@ class CottonToolkitApp(ttkb.Window):
                     "siliconflow": {"name": "SiliconFlow (硅基流动)"}, "grok": {"name": "Grok (xAI)"},
                     "openai_compatible": {"name": _("通用OpenAI兼容接口")}}
 
-    TOOL_TAB_ORDER = ["download", "xlsx_to_csv", "genome_identifier", "homology", "locus_conversion", "gff_query",
+    # 【修改】在 TOOL_TAB_ORDER 中添加 "annotation"
+    TOOL_TAB_ORDER = ["download", "annotation", "xlsx_to_csv", "genome_identifier", "homology", "locus_conversion", "gff_query",
                       "ai_assistant"]
     TAB_TITLE_KEYS = {
-        "download": "数据下载", "xlsx_to_csv": "XLSX转CSV", "genome_identifier": "基因组鉴定",
+        "download": "数据下载",
+        # 【新增】添加 "annotation" 的标题
+        "annotation": "功能注释与富集分析",
+        "xlsx_to_csv": "XLSX转CSV", "genome_identifier": "基因组鉴定",
         "homology": "同源转换", "locus_conversion": "位点转换", "gff_query": "GFF查询",
         "ai_assistant": "AI助手",
     }
@@ -377,7 +383,9 @@ class CottonToolkitApp(ttkb.Window):
         self.tool_tab_instances.clear()
         tab_map = {"download": DataDownloadTab, "xlsx_to_csv": XlsxConverterTab,
                    "genome_identifier": GenomeIdentifierTab, "homology": HomologyTab,
-                   "locus_conversion": LocusConversionTab, "gff_query": GFFQueryTab, "ai_assistant": AIAssistantTab}
+                   "locus_conversion": LocusConversionTab, "gff_query": GFFQueryTab, "ai_assistant": AIAssistantTab,
+                   # 【新增】添加 "annotation" 到 tab_map
+                   "annotation": AnnotationTab}
         for key in self.TOOL_TAB_ORDER:
             if TabClass := tab_map.get(key):
                 tab_frame = ttkb.Frame(self.tools_notebook)

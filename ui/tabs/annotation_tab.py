@@ -173,7 +173,8 @@ class AnnotationTab(BaseTab):
         if not anno_types: self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。")); return
         task_kwargs = {'config': self.app.current_config, 'gene_ids': gene_ids, 'source_genome': assembly_id,
                        'target_genome': assembly_id,
-                       'bridge_species': self.app.current_config.integration_pipeline.bridge_species_name,
+                       # 【修改】将 bridge_species 设置为 assembly_id，因为移除了 integration_pipeline
+                       'bridge_species': assembly_id,
                        'annotation_types': anno_types, 'output_path': output_path,
                        'output_dir': os.path.join(os.getcwd(), "annotation_results")}
         self.app.event_handler._start_task(task_name=_("功能注释"), target_func=run_functional_annotation,
@@ -182,7 +183,8 @@ class AnnotationTab(BaseTab):
     def start_enrichment_task(self):
         if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),
                                                                                _("请先加载配置文件。")); return
-        gene_ids_text = self.annotation_genes_textbox.get("1.Tcl.END").strip()
+        # 【修改】将 "1.Tcl.END" 更正为 tk.END
+        gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
         is_placeholder = (gene_ids_text == _(self.app.placeholders.get("genes_input", "")))
         lines = gene_ids_text.splitlines()
         assembly_id = self.selected_annotation_assembly.get()
