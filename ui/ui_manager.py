@@ -1,9 +1,10 @@
 ﻿# 文件路径: ui/ui_manager.py
+
 import json
 import os
 import time
 import tkinter as tk
-from typing import TYPE_CHECKING, Optional, Callable, Any, List
+from typing import TYPE_CHECKING, Optional, Callable, Any, List, Dict
 
 import ttkbootstrap as ttkb
 from PIL import Image, ImageTk
@@ -28,23 +29,16 @@ class UIManager:
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
-        # 初始设置主题，会从ui_settings加载
         self._set_ttk_theme_from_app_mode(self.app.selected_appearance_var.get())
 
     def _set_ttk_theme_from_app_mode(self, mode: str):
-        # 根据 ui_settings.json 中的设置调整主题加载逻辑
-        # 假设 app.ui_settings 包含了 dark_mode_theme 和 light_mode_theme
         if mode in (_("深色"), "Dark"):
-            # 从设置中获取深色主题，如果未设置则默认为 'darkly'
             theme_name = self.app.ui_settings.get("dark_mode_theme", "darkly")
-        else: # 浅色或系统模式
-            # 从设置中获取浅色主题，如果未设置则默认为 'flatly'
+        else:
             theme_name = self.app.ui_settings.get("light_mode_theme", "flatly")
 
         self.style.theme_use(theme_name)
-        # 重新应用自定义字体设置，确保跨主题的尺寸一致性
         self.app._setup_fonts()
-        # 此外，更新依赖于主题的日志标签颜色
         self._update_log_tag_colors()
 
     def setup_initial_ui(self):
@@ -66,7 +60,6 @@ class UIManager:
         app.log_viewer_frame = ttkb.Frame(app)
         app.log_viewer_frame.pack(side="bottom", fill="x", padx=10, pady=5)
 
-        # 在日志区域上方添加分隔线
         app.log_separator = ttkb.Separator(app, orient='horizontal', bootstyle="secondary")
         app.log_separator.pack(side="bottom", fill="x", padx=10, pady=(5, 5))
 
@@ -122,7 +115,6 @@ class UIManager:
         if not app.log_viewer_visible:
             app.log_textbox.grid_remove()
         self._update_log_tag_colors()
-        # 添加新的日志显示区域
         app.status_label = ttkb.Label(app.status_bar_frame, textvariable=app.latest_log_message_var,
                                       font=app.app_font, bootstyle="secondary")
         app.status_label.pack(side="left", padx=10, fill="x", expand=True)
@@ -140,15 +132,13 @@ class UIManager:
             app.log_textbox.see("end")
             app.log_textbox.configure(state="disabled")
 
-            # 更新最新的日志消息和颜色
             app.latest_log_message_var.set(full_message)
             is_dark = self.style.theme.type == 'dark'
             color_map = {
                 "error": "#e57373" if is_dark else "#d9534f",
                 "warning": "#ffb74d" if is_dark else "#f0ad4e",
-                "info": self.style.lookup('TLabel', 'foreground') # INFO级别使用默认前景色
+                "info": self.style.lookup('TLabel', 'foreground')
             }
-            # 如果是其他级别或者没有特殊颜色，使用默认前景色
             display_color = color_map.get(level.lower(), self.style.lookup('TLabel', 'foreground'))
             app.status_label.configure(foreground=display_color)
 
@@ -168,7 +158,6 @@ class UIManager:
         header_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
         if app.logo_image_path:
             try:
-                # 修正图片加载方式
                 img = Image.open(app.logo_image_path).resize((60, 60), Image.LANCZOS)
                 self.icon_cache["logo"] = ImageTk.PhotoImage(img)
                 ttkb.Label(header_frame, image=self.icon_cache["logo"], style='Transparent.TLabel').pack(pady=(0, 10))
@@ -178,7 +167,6 @@ class UIManager:
 
         def load_icon(name):
             try:
-                # 修正图片加载方式
                 img = Image.open(getattr(app, f"{name}_icon_path")).resize((20, 20), Image.LANCZOS)
                 self.icon_cache[name] = ImageTk.PhotoImage(img)
                 return self.icon_cache[name]
@@ -189,17 +177,16 @@ class UIManager:
                        ("editor", _("配置编辑器"), load_icon("settings")),
                        ("tools", _("数据工具"), load_icon("tools"))]
         for i, (name, text, icon) in enumerate(button_defs):
+            # 【修改】将 bootstyle 从 "secondary-outline" 改为 "primary-outline"
             btn = ttkb.Button(app.navigation_frame, text=text, command=lambda n=name: self.select_frame_by_name(n),
-                              image=icon, compound="left", bootstyle="secondary-outline") # 【修改】将 outline 改为 secondary-outline
+                              image=icon, compound="left", bootstyle="primary-outline")
             btn.grid(row=i + 1, column=0, sticky="ew", padx=15, pady=5)
             setattr(app, f"{name}_button", btn)
 
+        # 【新增】定义 Selected.Outline 样式的背景色为主题的 primary 颜色
         self.style.configure('Selected.Outline.TButton', background=self.style.colors.primary,
                              foreground=self.style.colors.light)
 
-        # 移除此处的分隔线
-        # separator = ttkb.Separator(app.navigation_frame, orient='horizontal') #
-        # separator.grid(row=3, column=0, sticky='ew', padx=15, pady=(15, 10)) #
 
         settings_frame = ttkb.Frame(app.navigation_frame)
         settings_frame.grid(row=5, column=0, padx=10, pady=10, sticky="s")
@@ -213,7 +200,6 @@ class UIManager:
             lbl.grid(row=i * 2, column=0, padx=5, pady=(5, 0), sticky="w")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_label", lbl)
 
-            # 【最终修改】使用 primary-outline 样式，确保清晰可见
             menu = ttkb.OptionMenu(settings_frame, var, var.get(), *values, command=cmd,
                                    bootstyle="primary-outline")
 
@@ -251,8 +237,9 @@ class UIManager:
     def select_frame_by_name(self, name):
         app = self.app
         for btn_name in ["home", "editor", "tools"]:
-            # 【修改】这里也改为 secondary-outline 作为默认未选中样式
-            if btn := getattr(app, f"{btn_name}_button", None): btn.config(bootstyle="secondary-outline")
+            # 【修改】使用 "primary-outline" 作为默认未选中样式
+            if btn := getattr(app, f"{btn_name}_button", None): btn.config(bootstyle="primary-outline")
+        # 选中按钮使用 "Selected.Outline" 样式
         if btn_to_select := getattr(app, f"{name}_button", None): btn_to_select.config(bootstyle="Selected.Outline")
         for frame_name in ["home_frame", "editor_frame", "tools_frame"]:
             if frame := getattr(app, frame_name, None): frame.grid_remove()
@@ -267,8 +254,13 @@ class UIManager:
     def show_warning_message(self, title: str, message: str):
         MessageDialog(self.app, _(title), _(message), icon_type="warning").wait_window()
 
-    def _show_progress_dialog(self, title: str, message: str, on_cancel: Optional[Callable] = None):
-        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
+    def _show_progress_dialog(self, data: Dict[str, Any]):
+        title = data.get("title", "")
+        message = data.get("message", "")
+        on_cancel = data.get("on_cancel")
+
+        if self.progress_dialog and self.progress_dialog.winfo_exists():
+            self.progress_dialog.close()
         self.progress_dialog = ProgressDialog(self.app, title, on_cancel)
         self.progress_dialog.update_progress(0, message)
 
@@ -315,7 +307,6 @@ class UIManager:
         app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
         for i, key in enumerate(app.TOOL_TAB_ORDER):
             if i < len(app.tools_notebook.tabs()):
-                # 【修复】访问 TAB_TITLE_KEYS 属性需要通过 self.app
                 app.tools_notebook.tab(i, text=_(self.app.TAB_TITLE_KEYS[key]))
         for widget, options in list(app.translatable_widgets.items()):
             if not (widget and widget.winfo_exists()): continue

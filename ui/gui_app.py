@@ -20,6 +20,7 @@ from ui.event_handler import EventHandler
 from ui.tabs.ai_assistant_tab import AIAssistantTab
 from ui.tabs.data_download_tab import DataDownloadTab
 from ui.tabs.annotation_tab import AnnotationTab
+from ui.tabs.enrichment_tab import EnrichmentTab # 新增：导入 EnrichmentTab
 from ui.tabs.genome_identifier_tab import GenomeIdentifierTab
 from ui.tabs.gff_query_tab import GFFQueryTab
 from ui.tabs.homology_tab import HomologyTab
@@ -38,15 +39,27 @@ class CottonToolkitApp(ttkb.Window):
                     "siliconflow": {"name": "SiliconFlow (硅基流动)"}, "grok": {"name": "Grok (xAI)"},
                     "openai_compatible": {"name": _("通用OpenAI兼容接口")}}
 
-    # 【修改】在 TOOL_TAB_ORDER 中添加 "annotation"
-    TOOL_TAB_ORDER = ["download", "annotation", "xlsx_to_csv", "genome_identifier", "homology", "locus_conversion", "gff_query",
-                      "ai_assistant"]
+    # 【修改】更新 TOOL_TAB_ORDER，将 annotation 和 enrichment 分开
+    TOOL_TAB_ORDER = [
+        "download",
+        "annotation",
+        "enrichment", # 新增富集分析标签页
+        "xlsx_to_csv",
+        "genome_identifier",
+        "homology",
+        "locus_conversion",
+        "gff_query",
+        "ai_assistant"
+    ]
     TAB_TITLE_KEYS = {
         "download": "数据下载",
-        # 【新增】添加 "annotation" 的标题
-        "annotation": "功能注释与富集分析",
-        "xlsx_to_csv": "XLSX转CSV", "genome_identifier": "基因组鉴定",
-        "homology": "同源转换", "locus_conversion": "位点转换", "gff_query": "GFF查询",
+        "annotation": "功能注释", # 修改标题
+        "enrichment": "富集分析与绘图", # 新增富集分析标题
+        "xlsx_to_csv": "XLSX转CSV",
+        "genome_identifier": "基因组鉴定",
+        "homology": "同源转换",
+        "locus_conversion": "位点转换",
+        "gff_query": "GFF查询",
         "ai_assistant": "AI助手",
     }
 
@@ -67,7 +80,10 @@ class CottonToolkitApp(ttkb.Window):
             "homology_genes": _("在此处粘贴基因ID，每行一个..."),
             "gff_genes": _("在此处粘贴基因ID，每行一个..."),
             "gff_region": _("例如: Gh_A01:1-100000"),
+            "genes_input": _("在此处粘贴要注释的基因ID，每行一个。"), # 为功能注释添加placeholder
+            "enrichment_genes_input": _("在此处粘贴要进行富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\\tLog2FC。") # 为富集分析添加placeholder
         }
+
 
         self.current_config: Optional[MainConfig] = None
         self.config_path: Optional[str] = None
@@ -81,8 +97,8 @@ class CottonToolkitApp(ttkb.Window):
         self.log_viewer_visible = False
         self.editor_ui_built = False
         self.tool_tab_instances = {}
-        self.latest_log_message_var = tk.StringVar(value="") # 新增：用于显示最新日志信息
-        self.editor_canvas: Optional[tk.Canvas] = None # 【新增】声明 editor_canvas 实例变量
+        self.latest_log_message_var = tk.StringVar(value="")
+        self.editor_canvas: Optional[tk.Canvas] = None
 
 
         self.config_path_display_var = tk.StringVar(value=_("未加载配置"))
@@ -354,9 +370,9 @@ class CottonToolkitApp(ttkb.Window):
             for i, (text_key, cmd, style) in enumerate(buttons):
                 # 更改主页按钮样式为填充样式
                 if style == "outline":
-                    style = "primary" # 将 "outline" 更改为 "primary" 填充样式
+                    style = "primary"
                 elif style == "info-outline":
-                    style = "info" # 将 "info-outline" 更改为 "info" 填充样式
+                    style = "info"
                 btn = ttkb.Button(card, text=_(text_key), command=cmd, bootstyle=style);
                 btn.grid(row=i, column=0, sticky="ew", padx=20, pady=10);
                 self.translatable_widgets[btn] = text_key
@@ -381,11 +397,17 @@ class CottonToolkitApp(ttkb.Window):
 
     def _populate_tools_notebook(self):
         self.tool_tab_instances.clear()
-        tab_map = {"download": DataDownloadTab, "xlsx_to_csv": XlsxConverterTab,
-                   "genome_identifier": GenomeIdentifierTab, "homology": HomologyTab,
-                   "locus_conversion": LocusConversionTab, "gff_query": GFFQueryTab, "ai_assistant": AIAssistantTab,
-                   # 【新增】添加 "annotation" 到 tab_map
-                   "annotation": AnnotationTab}
+        tab_map = {
+            "download": DataDownloadTab,
+            "xlsx_to_csv": XlsxConverterTab,
+            "genome_identifier": GenomeIdentifierTab,
+            "homology": HomologyTab,
+            "locus_conversion": LocusConversionTab,
+            "gff_query": GFFQueryTab,
+            "ai_assistant": AIAssistantTab,
+            "annotation": AnnotationTab, # 功能注释
+            "enrichment": EnrichmentTab # 富集分析
+        }
         for key in self.TOOL_TAB_ORDER:
             if TabClass := tab_map.get(key):
                 tab_frame = ttkb.Frame(self.tools_notebook)
@@ -403,44 +425,89 @@ class CottonToolkitApp(ttkb.Window):
             self.logger.warning(f"加载主窗口图标失败: {e}。")
 
     def _create_editor_frame(self, parent):
-        page = ttkb.Frame(parent);
-        page.grid_columnconfigure(0, weight=1);
+        page = ttkb.Frame(parent)
+        page.grid_columnconfigure(0, weight=1)
         page.grid_rowconfigure(1, weight=1)
-        top_frame = ttkb.Frame(page);
-        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0));
+
+        top_frame = ttkb.Frame(page)
+        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
         top_frame.grid_columnconfigure(0, weight=1)
         ttkb.Label(top_frame, text=_("!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"), font=self.app_font_bold,
                    bootstyle="danger").grid(row=0, column=0, sticky="w", padx=5)
         self.save_editor_button = ttkb.Button(top_frame, text=_("应用并保存"), command=self._save_config_from_editor,
-                                              bootstyle='success');
+                                              bootstyle='success')
         self.save_editor_button.grid(row=0, column=1, sticky="e", padx=5)
-        # 【修改开始】将 canvas 定义为实例变量
-        self.editor_canvas = tk.Canvas(page, highlightthickness=0, background=self.style.lookup('TFrame', 'background'));
+
+        # 创建Canvas来承载可滚动的内容
+        self.editor_canvas = tk.Canvas(page, highlightthickness=0, bd=0,
+                                       background=self.style.lookup('TFrame', 'background'))
         self.editor_canvas.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        # 【修改结束】
-        scrollbar = ttkb.Scrollbar(page, orient="vertical", command=self.editor_canvas.yview, bootstyle="round");
+
+        # 创建滚动条
+        scrollbar = ttkb.Scrollbar(page, orient="vertical", command=self.editor_canvas.yview, bootstyle="round")
         scrollbar.grid(row=1, column=1, sticky="ns", pady=10)
+
+        # 配置Canvas和滚动条的关联
         self.editor_canvas.configure(yscrollcommand=scrollbar.set)
+
+        # 创建一个Frame在Canvas内部，实际的编辑器控件会放在这个Frame里
         self.editor_scroll_frame = ttkb.Frame(self.editor_canvas)
+        # 将这个Frame放到Canvas上
         window_id = self.editor_canvas.create_window((0, 0), window=self.editor_scroll_frame, anchor="nw")
 
-        def on_configure(event): self.editor_canvas.configure(scrollregion=self.editor_canvas.bbox("all")); self.editor_canvas.itemconfig(window_id,
-                                                                                                      width=event.width)
+        # 绑定事件以调整滚动区域和Canvas内部窗口的宽度
+        def on_frame_configure(event):
+            # 更新Canvas的滚动区域以匹配内部Frame的大小
+            self.editor_canvas.configure(scrollregion=self.editor_canvas.bbox("all"))
+            # 确保内部Frame的宽度与Canvas的宽度一致
+            self.editor_canvas.itemconfig(window_id, width=self.editor_canvas.winfo_width())
 
-        self.editor_canvas.bind("<Configure>", on_configure)
-        # 【注意】这里的 bind_all 需要在 event_handler.py 中处理，因为它在 traceback 中显示在那里
-        # self.editor_canvas.bind_all("<MouseWheel>", lambda e: self.editor_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
+
+        def on_canvas_resize(event):
+            # 当Canvas大小改变时，调整内部Frame的宽度
+            self.editor_canvas.itemconfig(window_id, width=event.width)
+            # 重新配置滚动区域
+            self.editor_canvas.configure(scrollregion=self.editor_canvas.bbox("all"))
+
+
+        self.editor_scroll_frame.bind("<Configure>", on_frame_configure)
+        self.editor_canvas.bind("<Configure>", on_canvas_resize)
+
+        def _on_mousewheel(event):
+
+            # 确保滚轮事件发生在Canvas或其子组件上
+            # 检查event.widget是否是Canvas本身或者Canvas的子组件
+            if self.editor_canvas.winfo_exists():
+                # 检查事件的源头是否在editor_canvas或editor_scroll_frame内部
+                # 这种检查比 winfo_containing 更直接，因为事件可能已经在子组件上触发了
+                if event.widget == self.editor_canvas or self.editor_scroll_frame.winfo_exists() and self.editor_scroll_frame.winfo_containing(event.x_root, event.y_root) == self.editor_scroll_frame:
+                    if event.num == 5 or event.delta == -120:  # 滚轮向下
+                        self.editor_canvas.yview_scroll(1, "units")
+                    if event.num == 4 or event.delta == 120:   # 滚轮向上
+                        self.editor_canvas.yview_scroll(-1, "units")
+                    return "break" # 阻止事件进一步传播，防止父级组件也滚动
+
+        # 绑定鼠标滚轮事件到 Canvas 和内部的 Frame
+        # 绑定到 Canvas，处理鼠标在 Canvas 本身（非内部 Frame）时的滚动
+        self.editor_canvas.bind("<MouseWheel>", _on_mousewheel) # Windows/macOS
+        self.editor_canvas.bind("<Button-4>", _on_mousewheel) # Linux 滚轮向上
+        self.editor_canvas.bind("<Button-5>", _on_mousewheel) # Linux 滚轮向下
+
+        # 绑定到 editor_scroll_frame，处理鼠标在内部控件上时的滚动
+        self.editor_scroll_frame.bind("<MouseWheel>", _on_mousewheel) # Windows/macOS
+        self.editor_scroll_frame.bind("<Button-4>", _on_mousewheel) # Linux 滚轮向上
+        self.editor_scroll_frame.bind("<Button-5>", _on_mousewheel) # Linux 滚轮向下
+
         self.editor_no_config_label = ttkb.Label(page, text=_("请先从“主页”加载或生成一个配置文件。"),
-                                                 font=self.app_subtitle_font, bootstyle="secondary");
+                                                 font=self.app_subtitle_font, bootstyle="secondary")
         self.editor_no_config_label.grid(row=1, column=0, sticky="nsew", columnspan=2)
         return page
 
     def _handle_editor_ui_update(self):
         if not self.editor_ui_built: return
         has_config = bool(self.current_config)
-        # 【修改】使用 self.editor_canvas
         if self.editor_canvas and self.editor_canvas.winfo_exists():
-            slaves = self.editor_canvas.master.grid_slaves(row=1, column=1) # 这里可能需要调整，确保拿到正确的滚动条
+            slaves = self.editor_canvas.master.grid_slaves(row=1, column=1)
             if slaves:
                 scrollbar = slaves[0]
                 if has_config:
