@@ -10,6 +10,14 @@ import os
 import textwrap
 import re  # 【新增】导入re模块
 
+try:
+    import builtins
+
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
+
 
 # ------------------- 通用绘图函数 -------------------
 
@@ -24,7 +32,7 @@ def plot_enrichment_bubble(
         height: float = 8
 ) -> Optional[str]:
     if enrichment_df.empty:
-        print("Warning: Enrichment DataFrame is empty for bubble plot.")
+        print(_("Warning: Enrichment DataFrame is empty for bubble plot."))
         return None
 
     df = enrichment_df.copy()
@@ -60,27 +68,29 @@ def plot_enrichment_bubble(
                 actual_sort_by_col = 'PValue'
             else:
                 print(
-                    f"Error: Neither '{sort_by}' nor common alternatives found in DataFrame columns for sorting. Available columns: {df.columns.tolist()}")
+                    _("Error: Neither '{}' nor common alternatives found in DataFrame columns for sorting. Available columns: {}").format(
+                        sort_by, df.columns.tolist()))
                 return None
 
         required_cols = [actual_sort_by_col, 'Description', 'GeneNumber', 'RichFactor']
         if not all(col in df.columns for col in required_cols):
             missing_cols = [col for col in required_cols if col not in df.columns]
-            print(
-                f"Error: Missing required columns for bubble plot: {missing_cols}. Available columns: {df.columns.tolist()}")
+            print(_("Error: Missing required columns for bubble plot: {}. Available columns: {}").format(missing_cols,
+                                                                                                         df.columns.tolist()))
+
             return None
 
         df = df.sort_values(by=actual_sort_by_col).head(top_n).copy()
 
         if df.empty:
-            print("Warning: DataFrame is empty after sorting and head for bubble plot.")
+            print(_("Warning: DataFrame is empty after sorting and head for cnet plot."))
             return None
 
         df['GeneNumber'] = pd.to_numeric(df['GeneNumber'], errors='coerce')
         df[actual_sort_by_col] = pd.to_numeric(df[actual_sort_by_col], errors='coerce')
         df.dropna(subset=['GeneNumber', actual_sort_by_col, 'Description', 'RichFactor'], inplace=True)
         if df.empty:
-            print("Warning: DataFrame is empty after dropping NA for bubble plot.")
+            print(_("Warning: DataFrame is empty after dropping NA for bubble plot."))
             return None
 
         df = df.iloc[::-1]
@@ -117,7 +127,7 @@ def plot_enrichment_bubble(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(f"Error plotting bubble chart: {e}")
+        print(_("Error plotting bubble chart: {}").format(e))
         return None
     finally:  # 确保在任何情况下都关闭图形
         if fig is not None:
@@ -136,7 +146,7 @@ def plot_enrichment_bar(
         gene_log2fc_map: Optional[Dict[str, float]] = None
 ) -> Optional[str]:
     if enrichment_df is None or enrichment_df.empty:
-        print("Warning: Enrichment DataFrame is empty for bar plot.")
+        print(_("Warning: Enrichment DataFrame is empty for bar plot."))
         return None
     fig, ax = None, None  # 初始化 fig 和 ax
     try:
@@ -171,22 +181,24 @@ def plot_enrichment_bar(
                 actual_sort_by_col = 'PValue'
             else:
                 print(
-                    f"Error: Neither '{sort_by}' nor common alternatives found in DataFrame columns for sorting. Available columns: {df_plot.columns.tolist()}")
+                    _("Error: Neither '{}' nor common alternatives found in DataFrame columns for sorting. Available columns: {}").format(
+                        sort_by, df_plot.columns.tolist()))
                 return None
 
         df_plot = df_plot.sort_values(by=actual_sort_by_col).head(top_n).copy()
 
         if df_plot.empty:
-            print("Warning: DataFrame is empty after sorting and head for bar plot.")
+            print(_("Warning: DataFrame is empty after sorting and head for bar plot."))
             return None
 
         if 'FDR' not in df_plot.columns:
-            print("Error: 'FDR' column is required for bar plot but not found.")
+            print(_("Error: 'FDR' column is required for bar plot but not found."))
             return None
+
         df_plot['FDR'] = pd.to_numeric(df_plot['FDR'], errors='coerce')
         df_plot.dropna(subset=['FDR', 'Description'], inplace=True)
         if df_plot.empty:
-            print("Warning: DataFrame is empty after dropping NA for bar plot.")
+            print(_("Warning: DataFrame is empty after dropping NA for bar plot."))
             return None
 
         df_plot['Description'] = df_plot['Description'].apply(
@@ -238,7 +250,7 @@ def plot_enrichment_bar(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(f"Error plotting bar chart: {e}")
+        print(_("Error plotting bar chart: {}").format(e))
         return None
     finally:  # 确保在任何情况下都关闭图形
         if fig is not None:
@@ -251,21 +263,22 @@ def plot_enrichment_upset(
         top_n: int = 10
 ) -> Optional[str]:
     if enrichment_df is None or enrichment_df.empty:
-        print("Warning: Enrichment DataFrame is empty for upset plot.")
+        print(_("Warning: Enrichment DataFrame is empty for upset plot."))
         return None
     fig = None  # 初始化 fig
     try:
         required_cols = ['FDR', 'Description', 'Genes']
         if not all(col in enrichment_df.columns for col in required_cols):
             missing_cols = [col for col in required_cols if col not in enrichment_df.columns]
-            print(
-                f"Error: Missing required columns for upset plot: {missing_cols}. Available columns: {enrichment_df.columns.tolist()}")
+            print(_("Error: Missing required columns for upset plot: {}. Available columns: {}").format(missing_cols,
+                                                                                                        enrichment_df.columns.tolist()))
+
             return None
 
         df_plot = enrichment_df.sort_values(by='FDR').head(top_n)
 
         if df_plot.empty:
-            print("Warning: DataFrame is empty after sorting and head for upset plot.")
+            print(_("Warning: DataFrame is empty after sorting and head for upset plot."))
             return None
 
         gene_sets = {row['Description']: set(row['Genes'].split(';')) for index, row in df_plot.iterrows()}
@@ -283,7 +296,7 @@ def plot_enrichment_upset(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(f"Error plotting upset chart: {e}")
+        print(_("Error plotting upset chart: {}").format(e))
         return None
     finally:  # 确保在任何情况下都关闭图形
         if fig is not None:
@@ -297,15 +310,15 @@ def plot_enrichment_cnet(
         gene_log2fc_map: Optional[Dict[str, float]] = None
 ) -> Optional[str]:
     if enrichment_df is None or enrichment_df.empty:
-        print("Warning: Enrichment DataFrame is empty for cnet plot.")
+        print(_("Warning: Enrichment DataFrame is empty for cnet plot."))
         return None
     fig, ax = None, None  # 初始化 fig 和 ax
     try:
         required_cols = ['FDR', 'Description', 'Genes']
         if not all(col in enrichment_df.columns for col in required_cols):
             missing_cols = [col for col in required_cols if col not in enrichment_df.columns]
-            print(
-                f"Error: Missing required columns for cnet plot: {missing_cols}. Available columns: {enrichment_df.columns.tolist()}")
+            print(_("Error: Missing required columns for cnet plot: {}. Available columns: {}").format(missing_cols,
+                                                                                                       enrichment_df.columns.tolist()))
             return None
 
         df_plot = enrichment_df.sort_values(by='FDR').head(top_n)
@@ -317,7 +330,7 @@ def plot_enrichment_cnet(
         G = nx.Graph()
         gene_nodes = set()
 
-        for _, row in df_plot.iterrows():
+        for _c, row in df_plot.iterrows():
             term_id = row['Description']
             genes = str(row['Genes']).split(';')
             G.add_node(term_id, node_type='term')
@@ -368,7 +381,7 @@ def plot_enrichment_cnet(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(f"Error plotting cnet chart: {e}")
+        print(_("Error plotting cnet chart: {}").format(e))
         return None
     finally:  # 确保在任何情况下都关闭图形
         if fig is not None:

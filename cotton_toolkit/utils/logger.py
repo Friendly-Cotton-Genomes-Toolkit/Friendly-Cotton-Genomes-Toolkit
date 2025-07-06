@@ -5,6 +5,13 @@ import queue
 import sys
 from typing import Optional
 
+try:
+    import builtins
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
+
 
 # --- 自定义日志处理器和流重定向 ---
 
@@ -76,7 +83,7 @@ def setup_global_logger(
         sys.stdout = StreamToQueue(log_queue, "INFO")
         sys.stderr = StreamToQueue(log_queue, "ERROR")
 
-    logging.info(f"全局日志系统已初始化，级别设置为: {log_level_str}")
+    logging.info(_("全局日志系统已初始化，级别设置为: {}").format(log_level_str))
 
 
 def set_log_level(log_level_str: str):
@@ -85,4 +92,4 @@ def set_log_level(log_level_str: str):
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
         handler.setLevel(log_level)
-    logging.info(f"全局日志级别已更新为: {log_level_str}")
+    logging.info(_("全局日志级别已更新为: {}").format(log_level_str))

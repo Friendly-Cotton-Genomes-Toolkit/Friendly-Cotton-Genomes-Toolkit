@@ -2,6 +2,7 @@
 
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
+from gettext import gettext as _
 
 # --- 配置子模型 (所有都继承 BaseModel) ---
 
@@ -48,8 +49,8 @@ class AIServicesConfig(BaseModel):
         }
 
 class AIPromptsConfig(BaseModel):
-    translation_prompt: str = "请将以下生物学领域的文本翻译成中文：\n\n{text}\n\n请只返回翻译结果，不要包含任何额外的解释或说明。"
-    analysis_prompt: str = "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并提供一个简洁的总结。基因功能描述：\n\n{text}\n"
+    translation_prompt: str = _("请将以下生物学领域的文本翻译成中文：\n\n{text}\n\n请只返回翻译结果，不要包含任何额外的解释或说明。")
+    analysis_prompt: str = _("我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并提供一个简洁的总结。基因功能描述：\n\n{text}\n")
     custom_prompt: str = ""
 
 class AnnotationToolConfig(BaseModel):

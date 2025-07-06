@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import sys
+import textwrap
 import threading
 from typing import Callable
 
@@ -27,7 +28,6 @@ from ui.utils.gui_helpers import identify_genome_from_gene_ids
 
 
 cancel_event = threading.Event()
-_ = lambda s: str(s)
 logger = logging.getLogger("cotton_toolkit.gui")
 
 
@@ -36,14 +36,14 @@ def get_config(config_path: str) -> MainConfig:
     try:
         config_obj = load_config(config_path)
         if not config_obj:
-            click.echo(f"错误: 无法从 '{config_path}' 加载配置。文件可能为空或格式不正确。", err=True)
+            click.echo(_("错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。").format(config_path), err=True)
             raise click.Abort()
         return config_obj
     except FileNotFoundError:
-        click.echo(f"错误: 配置文件 '{config_path}' 未找到。请检查路径或运行 'init' 命令。", err=True)
+        click.echo(_("错误: 配置文件 '{}' 未找到。请检查路径或运行 'init' 命令。").format(config_path), err=True)
         raise click.Abort()
     except Exception as e:
-        click.echo(f"错误: 加载配置文件时发生意外错误: {e}", err=True)
+        click.echo(_("错误: 加载配置文件时发生意外错误: {}").format(e), err=True)
         raise click.Abort()
 
 
@@ -70,6 +70,8 @@ class AppContext:
 def cli(ctx, config, lang, verbose):
     """棉花基因组分析工具包 (Cotton Toolkit) - 一个现代化的命令行工具。"""
     builtins._ = setup_localization(language_code=lang)
+    global _
+    _ = builtins._  # 确保 _ 是全局可用的
 
     if ctx.invoked_subcommand == 'init':
         ctx.obj = AppContext(config=MainConfig(), verbose=verbose)
@@ -471,6 +473,74 @@ def test_ai(ctx, provider):
         click.secho(f"✅ {message}", fg='green')
     else:
         click.secho(f"❌ {message}", fg='red')
+
+
+@cli.command('about')
+@click.pass_context
+def about(ctx):
+    """显示关于本软件的全面信息，包括简介、致谢和完整的引文。"""
+    # cli 主函数已经根据 --lang 参数设置了 builtins._，所以这里直接使用即可
+
+
+    # 使用 _() 来翻译标题和许可证，VERSION 是直接导入的变量
+    click.secho(f"--- {_('友好棉花基因组工具包 (FCGT)')} ---", fg='cyan', bold=True)
+    click.echo(f"Version: {VERSION}")
+    click.echo(_('本软件遵守 Apache-2.0 license 开源协议'))
+    click.echo("")
+
+    # --- GitHub 开源地址 ---
+    click.secho(_('about_cli.repo_link_text') + " ", fg='yellow', nl=False)
+    click.secho("https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit", fg='bright_blue', underline=True)
+    click.echo("")
+
+    # --- 数据来源与引文 ---
+    click.secho(f"--- {_('about_cli.data_source_title')} ---", fg='cyan', bold=True)
+    click.echo(_('about_cli.cottongen_credit'))
+
+    click.echo(f"\n{_('about_cli.cottongen_papers_title')}")
+    # CottonGen文章的引文是固定的参考文献，保持英文原文
+    click.echo(
+        "  - Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.")
+    click.echo(
+        "  - Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.")
+
+    click.echo(f"\n{_('about_cli.genome_papers_title')}")
+
+    # --- 完整的、硬编码的英文参考文献列表 ---
+    full_genome_citations = [
+        ("NAU-NBI_v1.1",
+         "Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015"),
+        ("UTX-JGI-Interim-release_v1.1",
+         "Haas, B.J., Delcher, A.L., Mount, S.M., Wortman, J.R., Smith Jr, R.K., Jr., Hannick, L.I., Maiti, R., Ronning, C.M., Rusch, D.B., Town, C.D. et al. (2003) Improving the Arabidopsis genome annotation using maximal transcript alignment assemblies. http://nar.oupjournals.org/cgi/content/full/31/19/5654 [Nucleic Acids Res, 31, 5654-5666].\n"
+         "Smit, AFA, Hubley, R & Green, P. RepeatMasker Open-3.0. 1996-2011 .\n"
+         "Yeh, R.-F., Lim, L. P., and Burge, C. B. (2001) Computational inference of homologous gene structures in the human genome. Genome Res. 11: 803-816.\n"
+         "Salamov, A. A. and Solovyev, V. V. (2000). Ab initio gene finding in Drosophila genomic DNA. Genome Res 10, 516-22."),
+        ("HAU_v1 / v1.1",
+         "Wang et al. Reference genome sequences of two cultivated allotetraploid cottons, Gossypium hirsutum and Gossypium barbadense. Nature genetics. 2018 Dec 03"),
+        ("ZJU-improved_v2.1_a1",
+         "Hu et al. Gossypium barbadense and Gossypium hirsutum genomes provide insights into the origin and evolution of allotetraploid cotton. Nature genetics. 2019 Jan;51(1):164."),
+        ("CRI_v1",
+         "Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989."),
+        ("WHU_v1",
+         "Huang, G. et al., Genome sequence of Gossypium herbaceum and genome updates of Gossypium arboreum and Gossypium hirsutum provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4"),
+        ("UTX_v2.1",
+         "Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20."),
+        ("HAU_v2.0",
+         "Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. \"High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres.\" Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722")
+    ]
+
+    for name, citation_text in full_genome_citations:
+        click.echo(f"  - {click.style(name, fg='green')}:")
+        # 使用textwrap自动换行并保持缩进，确保长文本显示美观
+        wrapped_text = textwrap.indent(citation_text, '    ')
+        click.echo(wrapped_text)
+
+    click.echo("")
+
+    # --- 致谢与许可 ---
+    click.secho(f"--- {_('about_cli.thanks_title')} ---", fg='cyan', bold=True)
+    click.echo(_('about_cli.thanks_text'))
+
 
 if __name__ == '__main__':
     cli()

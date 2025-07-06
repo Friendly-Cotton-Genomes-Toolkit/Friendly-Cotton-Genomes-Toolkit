@@ -11,7 +11,14 @@ from ..config.loader import get_local_downloaded_file_path
 from ..utils.file_utils import smart_load_file
 
 logger = logging.getLogger("cotton_toolkit.annotator")
-_ = lambda text: text
+
+
+try:
+    import builtins
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
 
 
 class Annotator:
@@ -39,7 +46,8 @@ class Annotator:
         self.db_cache: Dict[str, pd.DataFrame] = {}
         self.custom_db_dir = custom_db_dir
         if self.custom_db_dir:
-            self.log(f"INFO: 将优先使用自定义注释数据库目录: {self.custom_db_dir}")
+            self.log(_("INFO: 将优先使用自定义注释数据库目录: {}").format(self.custom_db_dir))
+
 
     # --- 以下函数是本次修改的核心 ---
     def _load_annotation_db(self, db_key: str) -> Optional[pd.DataFrame]:
@@ -51,7 +59,7 @@ class Annotator:
 
         original_path = get_local_downloaded_file_path(self.config, self.genome_info, db_key)
         if not original_path:
-            self.log(f"警告: 在配置中未找到 {db_key} 的下载信息。", "WARNING")
+            self.log(_("警告: 在配置中未找到 {} 的下载信息。").format(db_key), "WARNING")
             return None
 
         # 准确地推断出预处理后的CSV文件路径
@@ -60,27 +68,27 @@ class Annotator:
 
         # 只检查 .csv 文件是否存在
         if not os.path.exists(processed_csv_path):
-            self.log(f"错误: 未找到预处理好的注释文件 '{os.path.basename(processed_csv_path)}'。", "ERROR")
-            self.log("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。", "ERROR")
+            self.log(_("错误: 未找到预处理好的注释文件 '{}'。").format(os.path.basename(processed_csv_path)), "ERROR")
+            self.log(_("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"), "ERROR")
             return None
 
-        self.log(f"INFO: 正在加载预处理的注释文件: {os.path.basename(processed_csv_path)}", "INFO")
+        self.log(_("INFO: 正在加载预处理的注释文件: {}").format(os.path.basename(processed_csv_path)), "INFO")
         df = smart_load_file(processed_csv_path, logger_func=self.log)
 
         if df is not None and not df.empty:
             # --- 最终解决方案：无论CSV表头是什么，都强制在内存中重命名 ---
-            self.log(f"DEBUG: 从CSV加载的原始列名: {df.columns.tolist()}", "DEBUG")
+            self.log(_("DEBUG: 从CSV加载的原始列名: {}").format(df.columns.tolist()), "DEBUG")
             rename_map = {}
             if len(df.columns) > 0: rename_map[df.columns[0]] = 'Query'
             if len(df.columns) > 1: rename_map[df.columns[1]] = 'Match'
             if len(df.columns) > 2: rename_map[df.columns[2]] = 'Description'
             df.rename(columns=rename_map, inplace=True)
-            self.log(f"DEBUG: 强制重命名后的列名: {df.columns.tolist()}", "DEBUG")
+            self.log(_("DEBUG: 强制重命名后的列名: {}").format(df.columns.tolist()), "DEBUG")
 
             self.db_cache[db_key] = df
             return df
         else:
-            self.log(f"ERROR: 无法加载文件或文件为空: {processed_csv_path}。", "ERROR")
+            self.log(_("ERROR: 无法加载文件或文件为空: {}。").format(processed_csv_path), "ERROR")
             return None
 
     # annotate_genes 方法保持不变，因为它已经是最终形态
@@ -94,10 +102,10 @@ class Annotator:
 
         regex = self.genome_info.gene_id_regex
         if not regex:
-            self.log(f"错误: 基因组 {self.genome_id} 未在配置中定义 'gene_id_regex'。", "ERROR")
-            return pd.DataFrame([{'Gene_ID': gid, 'Error': 'No regex defined for genome'} for gid in gene_ids])
+            self.log(_("错误: 基因组 {} 未在配置中定义 'gene_id_regex'。").format(self.genome_id), "ERROR")
+            return pd.DataFrame([{'Gene_ID': gid, 'Error': _('No regex defined for genome')} for gid in gene_ids])
 
-        self.log(f"INFO: 使用正则表达式进行匹配: {regex}", "INFO")
+        self.log(_("INFO: 使用正则表达式进行匹配: {}").format(regex), "INFO")
 
         input_id_map = {}
         for original_id in gene_ids:
@@ -107,8 +115,10 @@ class Annotator:
                 if core_id not in input_id_map:
                     input_id_map[core_id] = original_id
             else:
-                self.log(f"警告: 输入的基因ID '{original_id}' 不符合基因组 {self.genome_id} 的格式，将被忽略。",
-                         "WARNING")
+                self.log(
+                    _("警告: 输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。").format(original_id, self.genome_id),
+                    "WARNING")
+
 
         final_results = {original_id: {'Gene_ID': original_id} for original_id in gene_ids}
 

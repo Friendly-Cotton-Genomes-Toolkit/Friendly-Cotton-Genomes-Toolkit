@@ -34,10 +34,10 @@ def decompress_gz_to_temp_file(gz_filepath: str, temp_output_filepath: str, log:
     try:
         with gzip.open(gz_filepath, 'rb') as f_in, open(temp_output_filepath, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
-        log(f"DEBUG: Successfully decompressed '{os.path.basename(gz_filepath)}' to temporary file.")
+        log(_("DEBUG: Successfully decompressed '{}' to temporary file.").format(os.path.basename(gz_filepath)))
         return True
     except Exception as e:
-        log(f"ERROR: Failed to decompress file '{gz_filepath}': {e}")
+        log(_("ERROR: Failed to decompress file '{}': {}").format(gz_filepath, e))
         return False
 
 
@@ -121,32 +121,33 @@ def download_genome_data(
     log = status_callback
 
     if cancel_event and cancel_event.is_set():
-        log(f"INFO: Task cancelled before downloading {version_id}_{file_key}.")
+        log(_("INFO: Task cancelled before downloading {}.").format(f"{version_id}_{file_key}"))
         return False
 
     base_dir = downloader_config.download_output_base_dir
     version_identifier = getattr(genome_info, 'version_id', None)
     if not version_identifier:
-        log(f"WARNING: GenomeSourceItem for '{genome_info.species_name}' is missing 'version_id'. Falling back to species name for directory.",
-            "WARNING")
+        log(_(
+            "WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back to species name for directory.").format(
+            genome_info.species_name), "WARNING")
         version_identifier = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_")
     version_output_dir = os.path.join(base_dir, version_identifier)
 
     try:
         os.makedirs(version_output_dir, exist_ok=True)
     except OSError as e:
-        log(f"ERROR: Failed to create directory {version_output_dir}. Reason: {e}")
+        log(_("ERROR: Failed to create directory {}. Reason: {}").format(version_output_dir, e))
         return False
 
     filename = os.path.basename(urlparse(url).path)
     local_path = os.path.join(version_output_dir, filename)
 
     if not force and os.path.exists(local_path):
-        log(f"INFO: 文件已存在，跳过下载: {os.path.basename(local_path)}")
+        log(_("INFO: 文件已存在，跳过下载: {}").format(os.path.basename(local_path)))
         is_download_successful = True
     else:
         description = f"{version_id}_{file_key}"
-        log(f"INFO: 开始下载: {description}...")
+        log(_("INFO: 开始下载: {}...").format(description))
         is_download_successful = _download_file_with_progress(url, local_path, description, proxies, log, cancel_event)
 
     if cancel_event and cancel_event.is_set():
@@ -154,21 +155,21 @@ def download_genome_data(
 
     if is_download_successful and file_key == 'homology_ath' and local_path.lower().endswith(".xlsx.gz"):
         gz_excel_path = local_path
-        base_name, _ = os.path.splitext(os.path.basename(gz_excel_path))
+        base_name, _V = os.path.splitext(os.path.basename(gz_excel_path))
         csv_filename = os.path.splitext(base_name)[0] + ".csv"
         final_csv_path = os.path.join(os.path.dirname(gz_excel_path), csv_filename)
 
         if not force and os.path.exists(final_csv_path):
-            log(f"INFO: 对应的CSV文件已存在，跳过转换: {csv_filename}")
+            log(_("INFO: 对应的CSV文件已存在，跳过转换: {}").format(csv_filename))
         else:
             if cancel_event and cancel_event.is_set(): return False
-            log(f"INFO: 尝试将 {os.path.basename(gz_excel_path)} 转换为 CSV...")
+            log(_("INFO: 尝试将 {} 转换为 CSV...").format(os.path.basename(gz_excel_path)))
             temp_xlsx_path = os.path.splitext(gz_excel_path)[0]
             if decompress_gz_to_temp_file(gz_excel_path, temp_xlsx_path, log):
                 try:
                     convert_excel_to_standard_csv(temp_xlsx_path, final_csv_path)
                 except Exception as e:
-                    log(f"ERROR: 转换Excel到CSV时发生错误: {e}")
+                    log(_("ERROR: 转换Excel到CSV时发生错误: {}").format(e))
                 finally:
                     if os.path.exists(temp_xlsx_path):
                         for i in range(3):
@@ -178,7 +179,7 @@ def download_genome_data(
                             except PermissionError:
                                 time.sleep(0.5)
                             except Exception as e:
-                                log(f"ERROR: 删除临时文件 {temp_xlsx_path} 失败: {e}")
+                                log(_("ERROR: 删除临时文件 {} 失败: {}").format(temp_xlsx_path, e))
                                 break
     return is_download_successful
 
@@ -205,7 +206,7 @@ def _download_file_with_progress(
                 with open(local_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         if cancel_event and cancel_event.is_set():
-                            log(f"INFO: Download for {description} was cancelled by user.")
+                            log(_("INFO: Download for {} was cancelled by user.").format(description))
                             return False
 
                         if chunk:
@@ -213,18 +214,19 @@ def _download_file_with_progress(
                             pbar.update(len(chunk))
 
             if total_size != 0 and os.path.getsize(local_path) < total_size:
-                log(f"WARNING: Downloaded size for {description} is less than expected. The file might be incomplete.")
+                log(_("WARNING: Downloaded size for {} is less than expected. The file might be incomplete.").format(
+                    description))
                 return False
             return True
 
     except requests.exceptions.RequestException as e:
         if cancel_event and cancel_event.is_set():
-            log(f"INFO: Download for {description} was cancelled during request setup.")
+            log(_("INFO: Download for {} was cancelled during request setup.").format(description))
         else:
-            log(f"ERROR: Failed to download {description} from {url}. Network error: {e}")
+            log(_("ERROR: Failed to download {} from {}. Network error: {}").format(description, url, e))
         if os.path.exists(local_path): os.remove(local_path)
         return False
     except Exception as e:
-        log(f"ERROR: An unexpected error occurred while downloading {description}: {e}")
+        log(_("ERROR: An unexpected error occurred while downloading {}: {}").format(description, e))
         if os.path.exists(local_path): os.remove(local_path)
         return False

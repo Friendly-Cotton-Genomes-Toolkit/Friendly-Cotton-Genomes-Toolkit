@@ -67,17 +67,17 @@ def save_config(config: MainConfig, path: str) -> bool:
 
         with open(path, 'w', encoding='utf-8') as f:
             yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False, indent=2)
-        logger.info(f"配置文件已成功保存到: {path}")
+        logger.info(_("配置文件已成功保存到: {}").format(path))
         return True
     except Exception as e:
-        logger.error(f"保存配置文件到 '{path}' 时发生错误: {e}")
+        logger.error(_("保存配置文件到 '{}' 时发生错误: {}").format(path, e))
         return False
 
 
 def load_config(path: str) -> MainConfig:
     """从指定路径加载主配置文件并进行验证。"""
     abs_path = os.path.abspath(path)
-    logger.info(f"正在从 '{abs_path}' 加载主配置文件...")
+    logger.info(_("正在从 '{}' 加载主配置文件...").format(abs_path))
     try:
         with open(abs_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
@@ -87,19 +87,19 @@ def load_config(path: str) -> MainConfig:
         # 更新设置字段的名称
         setattr(config_obj, 'config_file_abs_path_', abs_path) # 更新设置字段的名称
 
-        logger.info("主配置文件加载并验证成功。")
+        logger.info(_("主配置文件加载并验证成功。"))
         return config_obj
     except FileNotFoundError:
-        logger.error(f"配置文件未找到: {abs_path}")
+        logger.error(_("配置文件未找到: {}").format(abs_path))
         raise
     except yaml.YAMLError as e:
-        logger.error(f"解析YAML文件时发生错误 '{abs_path}': {e}")
+        logger.error(_("解析YAML文件时发生错误 '{}': {}").format(abs_path, e))
         raise
     except ValidationError as e:  # Pydantic 的 ValidationError 会捕获所有验证失败
-        logger.error(f"配置文件验证失败 '{abs_path}':\n{e}")
+        logger.error(_("配置文件验证失败 '{}':\n{}").format(abs_path, e))
         raise
     except Exception as e:
-        logger.error(f"加载配置文件时发生未知错误 '{abs_path}': {e}")
+        logger.error(_("加载配置文件时发生未知错误 '{}': {}").format(abs_path, e))
         raise
 
 
@@ -107,14 +107,14 @@ def get_genome_data_sources(config: MainConfig, logger_func=None) -> Dict[str, G
     """从主配置中指定的基因组源文件加载数据。"""
     # config 现在是 MainConfig 实例，访问 config.downloader 是安全的
     if not config.downloader.genome_sources_file:
-        if logger_func: logger_func("警告: 配置文件中未指定基因组源文件。", "WARNING")
+        if logger_func: logger_func(_("警告: 配置文件中未指定基因组源文件。"), "WARNING")
         return {}
 
     config_dir = os.path.dirname(getattr(config, 'config_file_abs_path_', '.')) # 更新访问字段的名称
     sources_path = os.path.join(config_dir, config.downloader.genome_sources_file)
 
     if not os.path.exists(sources_path):
-        if logger_func: logger_func(f"警告: 基因组源文件未找到: '{sources_path}'", "WARNING")
+        if logger_func: logger_func(_("警告: 基因组源文件未找到: '{}'").format(sources_path), "WARNING")
         return {}
 
     try:
@@ -137,13 +137,13 @@ def get_genome_data_sources(config: MainConfig, logger_func=None) -> Dict[str, G
 
             genome_sources_dict[version_id] = item_data
 
-        if logger_func: logger_func(f"已成功加载 {len(genome_sources_dict)} 个基因组源。")
+        if logger_func: logger_func(_("已成功加载 {} 个基因组源。").format(len(genome_sources_dict)))
         return genome_sources_dict
     except ValidationError as e:  # 捕获 Pydantic 验证错误
-        if logger_func: logger_func(f"加载基因组源文件时验证出错 '{sources_path}':\n{e}", "ERROR")
+        if logger_func: logger_func(_("加载基因组源文件时验证出错 '{}':\n{}").format(sources_path, e), "ERROR")
         return {}
     except Exception as e:
-        if logger_func: logger_func(f"加载基因组源文件时发生错误 '{sources_path}': {e}", "ERROR")
+        if logger_func: logger_func(_("加载基因组源文件时发生错误 '{}': {}").format(sources_path, e), "ERROR")
         return {}
 
 
@@ -157,7 +157,7 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
         sources_path = os.path.join(output_dir, sources_filename)
 
         if not overwrite and (os.path.exists(main_config_path) or os.path.exists(sources_path)):
-            logger.warning("一个或多个默认配置文件已存在且不允许覆盖。操作已取消。")
+            logger.warning(_("一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"))
             return False, None, None
 
         # 创建并保存默认主配置 (MainConfig 现在是 Pydantic BaseModel)
@@ -175,7 +175,7 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
         return True, main_config_path, sources_path
 
     except Exception as e:
-        logger.error(f"生成默认配置文件时发生错误: {e}", exc_info=True)
+        logger.error(_("生成默认配置文件时发生错误: {}").format(e), exc_info=True)
         return False, None, None
 
 

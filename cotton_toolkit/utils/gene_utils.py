@@ -4,6 +4,13 @@ import re
 import pandas as pd
 from typing import List, Union, Optional, Tuple
 
+try:
+    import builtins
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
+
 
 def parse_gene_id(gene_id: str) -> Optional[Tuple[str, str]]:
     """
@@ -54,7 +61,7 @@ def normalize_gene_ids(gene_ids: pd.Series, pattern: str) -> pd.Series:
         # --- 修改结束 ---
     except Exception as e:
         # 如果模式无效或出现其他错误，打印警告并返回原始数据
-        print(f"Warning: Failed to apply regex for gene ID normalization. Reason: {e}")
+        print(_("Warning: Failed to apply regex for gene ID normalization. Reason: {}").format(e))
         return gene_ids
 
 def map_transcripts_to_genes(gene_ids: List[str]) -> List[str]:

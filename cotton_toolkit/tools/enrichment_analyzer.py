@@ -74,10 +74,10 @@ def _perform_hypergeometric_test(
             orig_ids = ";".join(norm_to_orig_df[norm_to_orig_df['Normalized_ID'] == norm_gene]['Original_ID'])
             annotations = "N/A"
             if norm_gene in study_genes_in_pop:
-                status, reason = "匹配成功 (Matched)", "在背景中找到，已用于分析"
-                annotations = gene_to_terms_map.get(norm_gene, "在背景中但无注释条目")
+                status, reason = _("匹配成功 (Matched)"), _("在背景中找到，已用于分析")
+                annotations = gene_to_terms_map.get(norm_gene, _("在背景中但无注释条目"))
             else:
-                status, reason = "匹配失败 (Failed)", "基因ID不在背景注释中"
+                status, reason = _("匹配失败 (Failed)"), _("基因ID不在背景注释中")
             report_data.append({'Original_ID': orig_ids, 'Normalized_ID': norm_gene, 'Status': status, 'Reason': reason,
                                 'Annotations': annotations})
 
@@ -90,12 +90,12 @@ def _perform_hypergeometric_test(
         report_path = os.path.join(output_dir, "gene_matching_report.csv")
         report_df.to_csv(report_path, index=False, encoding='utf-8-sig')
 
-        log(f"INFO: 详细注释报告已保存至: {os.path.basename(report_path)}")
+        log(_("INFO: 详细注释报告已保存至: {}").format(os.path.basename(report_path)))
     except Exception as e:
-        log(f"WARNING: 创建基因匹配报告时发生错误: {e}")
+        log(_("WARNING: 创建基因匹配报告时发生错误: {}").format(e))
 
     if N == 0:
-        log("WARNING: 经过标准化和背景过滤后，没有有效的基因用于富集分析。")
+        log(_("WARNING: 经过标准化和背景过滤后，没有有效的基因用于富集分析。"))
         progress(100, _("任务终止：无有效基因。"))
         return None
 
@@ -124,7 +124,7 @@ def _perform_hypergeometric_test(
                             'Genes': ";".join(sorted(list(k_genes_norm))), 'GeneNumber': k, 'RichFactor': rich_factor})
 
     if not results:
-        log("WARNING: 分析未产生任何结果。")
+        log(_("WARNING: 分析未产生任何结果。"))
         progress(100, _("任务完成：无结果。"))
         return None
 
@@ -133,7 +133,7 @@ def _perform_hypergeometric_test(
     progress(85, _("正在进行多重检验校正..."))
     p_values = results_df['p_value'].dropna()
     if p_values.empty:
-        log("WARNING: 所有Term的p-value计算失败。")
+        log(_("WARNING: 所有Term的p-value计算失败。"))
         progress(100, _("任务终止：p-value计算失败。"))
         return None
 
@@ -144,16 +144,16 @@ def _perform_hypergeometric_test(
     try:
         full_results_path = os.path.join(output_dir, "enrichment_results_all.csv")
         results_df.sort_values(by='p_value').to_csv(full_results_path, index=False, encoding='utf-8-sig')
-        log(f"INFO: 完整的富集结果清单已保存至: {os.path.basename(full_results_path)}")
+        log(_("INFO: 完整的富集结果清单已保存至: {}").format(os.path.basename(full_results_path)))
     except Exception as e:
-        log(f"WARNING: 保存完整富集结果时出错: {e}")
+        log(_("WARNING: 保存完整富集结果时出错: {}").format(e))
 
     if results_df.empty:
-        log("WARNING: 富集分析未发现任何结果。")
+        log(_("WARNING: 富集分析未发现任何结果。"))
         progress(100, _("任务完成：无结果。"))
         return None
 
-    log(f"SUCCESS: 富集分析完成，共计算出 {len(results_df)} 个Term的结果。")
+    log(_("SUCCESS: 富集分析完成，共计算出 {} 个Term的结果。").format(len(results_df)))
     progress(100, _("富集分析完成。"))
     return results_df.sort_values(by='FDR')
 
@@ -177,12 +177,12 @@ def run_go_enrichment(
     prepared_go_path = prepare_input_file(go_annotation_path, status_callback, cache_dir)
 
     if not prepared_go_path:
-        log("GO注释文件准备失败，富集分析终止。", "ERROR")
+        log(_("GO注释文件准备失败，富集分析终止。"), "ERROR")
         progress(100, _("任务终止：GO文件准备失败。"))
         return None
 
     progress(10, _("加载GO背景数据..."))
-    log("正在加载处理后的GO注释背景数据...", "INFO")
+    log(_("正在加载处理后的GO注释背景数据..."), "INFO")
     try:
         background_df = pd.read_csv(prepared_go_path)
         if not background_df.empty:
@@ -195,7 +195,7 @@ def run_go_enrichment(
             if 'Namespace' not in background_df.columns:
                 background_df['Namespace'] = 'GO'
     except Exception as e:
-        log(f"读取或重命名GO背景文件失败: {e}", "ERROR")
+        log(_("读取或重命名GO背景文件失败: {}").format(e), "ERROR")
         progress(100, _("任务终止：读取GO背景失败。"))
         return None
 
@@ -230,12 +230,12 @@ def run_kegg_enrichment(
         prepared_kegg_path = prepare_input_file(kegg_pathways_path, log, cache_dir)
 
         if not prepared_kegg_path:
-            raise ValueError("KEGG注释文件准备失败。")
+            raise ValueError(_("KEGG注释文件准备失败。"))
 
         progress(10, _("加载KEGG背景数据..."))
         background_df = pd.read_csv(prepared_kegg_path)
         if background_df is None or background_df.empty:
-            raise ValueError("加载的KEGG注释文件为空或格式不正确。")
+            raise ValueError(_("加载的KEGG注释文件为空或格式不正确。"))
 
         rename_map = {}
         if len(background_df.columns) > 0: rename_map[background_df.columns[0]] = 'GeneID'
@@ -247,7 +247,7 @@ def run_kegg_enrichment(
             background_df['Namespace'] = 'KEGG'
 
     except Exception as e:
-        log(f"ERROR: 准备KEGG背景文件时出错: {e}")
+        log(_("ERROR: 准备KEGG背景文件时出错: {}").format(e))
         progress(100, _("任务终止：准备KEGG背景失败。"))
         return None
 

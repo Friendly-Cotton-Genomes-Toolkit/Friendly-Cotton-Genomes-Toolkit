@@ -8,6 +8,14 @@ import os
 import threading
 from typing import Callable, Optional, List
 
+# 国际化函数占位符
+try:
+    import builtins
+
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
 
 def _find_header_row(sheet_df: pd.DataFrame, keywords: List[str]) -> Optional[int]:
     """在一个工作表中寻找包含指定关键字的表头行，检查前3行。"""
@@ -36,11 +44,10 @@ def convert_excel_to_standard_csv(
     header_keywords = ['Query', 'Match', 'Score', 'Exp', 'PID', 'evalue', 'identity']  # 用于识别表头的关键字
 
     try:
-        log(f"INFO: Starting intelligent conversion for: {os.path.basename(excel_path)}", "INFO")
+        log(_("INFO: Starting intelligent conversion for: {}").format(os.path.basename(excel_path)), "INFO")
 
         if cancel_event and cancel_event.is_set():
-            log("INFO: Conversion cancelled before starting.", "INFO");
-            return False
+            log(_("INFO: Conversion cancelled before starting."), "INFO")
 
         open_func = gzip.open if excel_path.lower().endswith('.gz') else open
         with open_func(excel_path, 'rb') as f:
@@ -59,19 +66,21 @@ def convert_excel_to_standard_csv(
                 header_row_index = _find_header_row(preview_df, header_keywords)
 
                 if header_row_index is not None:
-                    log(f"DEBUG: Header found in sheet '{sheet_name}' at row {header_row_index + 1}.", "DEBUG")
+                    log(_("DEBUG: Header found in sheet '{}' at row {}.").format(sheet_name, header_row_index + 1),
+                        "DEBUG")
                     # 找到表头后，从表头行开始重新读取整个sheet
                     sheet_df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index)
                     # 清理完全是空值的行
                     sheet_df.dropna(how='all', inplace=True)
                     all_data_frames.append(sheet_df)
                 else:
-                    log(f"WARNING: No valid header found in sheet '{sheet_name}'. Skipping this sheet.", "WARNING")
+                    log(_("WARNING: No valid header found in sheet '{}'. Skipping this sheet.").format(sheet_name),
+                        "WARNING")
             except Exception as e:
-                log(f"ERROR: Failed to process sheet '{sheet_name}'. Reason: {e}", "ERROR")
+                log(_("ERROR: Failed to process sheet '{}'. Reason: {}").format(sheet_name, e), "ERROR")
 
         if not all_data_frames:
-            log("ERROR: No data could be extracted from any sheet in the Excel file.", "ERROR")
+            log(_("ERROR: No data could be extracted from any sheet in the Excel file."), "ERROR")
             return False
 
         # 合并所有找到的数据
@@ -80,14 +89,14 @@ def convert_excel_to_standard_csv(
         combined_df.dropna(how='all', inplace=True)
 
         if cancel_event and cancel_event.is_set():
-            log("INFO: Conversion cancelled before writing file.", "INFO");
+            log(_("INFO: Conversion cancelled before writing file."), "INFO")
             return False
 
         combined_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
-        log(f"SUCCESS: Successfully converted and saved to: {os.path.basename(output_csv_path)}", "INFO")
+        log(_("SUCCESS: Successfully converted and saved to: {}").format(os.path.basename(output_csv_path)), "INFO")
         return True
 
     except Exception as e:
-        log(f"ERROR: A critical error occurred during Excel to CSV conversion. Reason: {e}", "ERROR")
+        log(_("ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}").format(e), "ERROR")
         traceback.print_exc()
         return False

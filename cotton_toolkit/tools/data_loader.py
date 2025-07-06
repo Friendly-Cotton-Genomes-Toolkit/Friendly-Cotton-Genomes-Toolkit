@@ -4,6 +4,13 @@ import pandas as pd
 import os
 from typing import Callable, Optional
 
+try:
+    import builtins
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
+
 
 def load_annotation_data(
         file_path: str,
@@ -14,7 +21,7 @@ def load_annotation_data(
     此函数假定输入的CSV文件第一行是表头。
     """
     if not os.path.exists(file_path):
-        status_callback(f"ERROR: Annotation file not found at: {file_path}")
+        status_callback(_("ERROR: Annotation file not found at: {}").format(file_path))
         return None
 
     try:
@@ -22,7 +29,7 @@ def load_annotation_data(
         df = pd.read_csv(file_path, header=0, sep=',')
 
         if df.empty:
-            status_callback(f"WARNING: Annotation file '{os.path.basename(file_path)}' is empty.")
+            status_callback(_("WARNING: Annotation file '{}' is empty.").format(os.path.basename(file_path)))
             return None
 
         # 基本的数据清洗
@@ -40,5 +47,5 @@ def load_annotation_data(
         return df
 
     except Exception as e:
-        status_callback(f"ERROR: Failed to load and process standardized file {file_path}. Reason: {e}")
+        status_callback(_("ERROR: Failed to load and process standardized file {}. Reason: {}").format(file_path, e))
         return None

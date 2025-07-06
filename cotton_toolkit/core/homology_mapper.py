@@ -8,7 +8,13 @@ from .gff_parser import _apply_regex_to_id
 from ..config.models import GenomeSourceItem  # 确保导入了 GenomeSourceItem
 from ..utils.gene_utils import parse_gene_id  # 确保导入了 parse_gene_id
 
-_ = lambda text: text
+try:
+    import builtins
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
+
 logger = logging.getLogger("cotton_toolkit.homology_mapper")
 
 
@@ -65,9 +71,11 @@ def load_and_map_homology(
     match_col = homology_columns.get('match')
 
     if query_col not in homology_df.columns:
-        raise ValueError(f"配置错误: 在同源文件中找不到查询列 '{query_col}'。可用列: {list(homology_df.columns)}")
+        raise ValueError(
+            _("配置错误: 在同源文件中找不到查询列 '{}'。可用列: {}").format(query_col, list(homology_df.columns)))
     if match_col not in homology_df.columns:
-        raise ValueError(f"配置错误: 在同源文件中找不到匹配列 '{match_col}'。可用列: {list(homology_df.columns)}")
+        raise ValueError(
+            _("配置错误: 在同源文件中找不到匹配列 '{}'。可用列: {}").format(match_col, list(homology_df.columns)))
 
     df_copy = homology_df.copy()
     df_copy[query_col] = df_copy[query_col].astype(str).apply(lambda x: _apply_regex_to_id(x, query_id_regex))
@@ -85,7 +93,7 @@ def load_and_map_homology(
     best_hits_df = select_best_homologs(filtered_df, query_col, match_col, criteria)
 
     homology_map: Dict[str, List[Dict[str, Any]]] = {}
-    for _, row in best_hits_df.iterrows():
+    for _A, row in best_hits_df.iterrows():
         query_id = row[query_col]
         homology_map.setdefault(query_id, []).append(row.to_dict())
 
@@ -99,7 +107,7 @@ def create_homology_df(file_path: str) -> pd.DataFrame:
     这个函数是为了满足 pipelines.py 中对 create_homology_df 的调用而添加的。
     """
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"同源文件未找到: {file_path}")
+        raise FileNotFoundError(_("同源文件未找到: {}").format(file_path))
 
     if file_path.lower().endswith(".csv"):
         return pd.read_csv(file_path)
@@ -107,7 +115,7 @@ def create_homology_df(file_path: str) -> pd.DataFrame:
         # 如果是Excel，用pandas读取
         return pd.read_excel(file_path, engine='openpyxl')
     else:
-        raise ValueError(f"不支持的同源文件格式: {os.path.basename(file_path)}")
+        raise ValueError(_("不支持的同源文件格式: {}").format(os.path.basename(file_path)))
 
 
 def map_genes_via_bridge(
@@ -149,7 +157,7 @@ def map_genes_via_bridge(
     temp_s2b_criteria = {**selection_criteria_s_to_b, 'top_n': 0}
     temp_b2t_criteria = {**selection_criteria_b_to_t, 'top_n': 0}
 
-    progress(base_progress + 5, "正在映射: 源 -> 桥梁...")
+    progress(base_progress + 5, _("正在映射: 源 -> 桥梁..."))
     s2b_map = load_and_map_homology(source_to_bridge_homology_df, homology_columns, temp_s2b_criteria, source_gene_ids,
                                     source_genome_info.gene_id_regex, bridge_id_regex)
     if not s2b_map:
@@ -158,7 +166,7 @@ def map_genes_via_bridge(
     s2b_hits_df = pd.DataFrame([match for matches in s2b_map.values() for match in matches])
     bridge_gene_ids = s2b_hits_df[homology_columns.get('match')].unique().tolist()
 
-    progress(base_progress + 15, "正在映射: 桥梁 -> 目标...")
+    progress(base_progress + 15, _("正在映射: 桥梁 -> 目标..."))
     b2t_homology_cols = {'query': homology_columns.get('match'), 'match': homology_columns.get('query'),
                          **{k: v for k, v in homology_columns.items() if k not in ['query', 'match']}}
     b2t_map = load_and_map_homology(bridge_to_target_homology_df, b2t_homology_cols, temp_b2t_criteria, bridge_gene_ids,
@@ -168,7 +176,7 @@ def map_genes_via_bridge(
 
     b2t_hits_df = pd.DataFrame([match for matches in b2t_map.values() for match in matches])
 
-    progress(base_progress + 25, "正在合并映射结果...")
+    progress(base_progress + 25, _("正在合并映射结果..."))
     df1 = s2b_hits_df.rename(
         columns={homology_columns.get('query'): "Source_Gene_ID", homology_columns.get('match'): "Bridge_Gene_ID"})
     df2 = b2t_hits_df.rename(
@@ -178,7 +186,7 @@ def map_genes_via_bridge(
         return pd.DataFrame(), source_gene_ids
 
     # --- 步骤 3: 根据模式进行筛选和排序 ---
-    progress(base_progress + 35, "正在根据模式筛选和排序...")
+    progress(base_progress + 35, _("正在根据模式筛选和排序..."))
     is_cotton_to_cotton = source_genome_info.is_cotton() and target_genome_info.is_cotton()
     # 使用新的开关，并默认开启
     strict_mode = selection_criteria_s_to_b.get('strict_subgenome_priority', True)
@@ -193,7 +201,7 @@ def map_genes_via_bridge(
     ascending_flags = [False, False]
 
     if strict_mode and is_cotton_to_cotton:
-        log("已启用严格模式：仅保留同亚组、同染色体编号的匹配。", "INFO")
+        log(_("已启用严格模式：仅保留同亚组、同染色体编号的匹配。"), "INFO")
 
         merged_df['Source_Parsed'] = merged_df['Source_Gene_ID'].apply(parse_gene_id)
         merged_df['Target_Parsed'] = merged_df['Target_Gene_ID'].apply(parse_gene_id)
@@ -209,11 +217,11 @@ def map_genes_via_bridge(
         sorted_df = merged_df[condition].sort_values(by=secondary_sort_cols, ascending=ascending_flags)
     else:
         # 关闭严格模式时，执行常规的、基于分数的排序
-        log("严格模式已关闭，使用常规双分数排序规则。", "INFO")
+        log(_("严格模式已关闭，使用常规双分数排序规则。"), "INFO")
         sorted_df = merged_df.sort_values(by=secondary_sort_cols, ascending=ascending_flags)
 
     # --- 步骤 4: 应用Top N并找出匹配失败的基因 ---
-    progress(base_progress + 40, "正在筛选 Top N 结果...")
+    progress(base_progress + 40, _("正在筛选 Top N 结果..."))
     final_df = sorted_df
     if user_top_n is not None and user_top_n > 0:
         final_df = sorted_df.groupby('Source_Gene_ID', sort=False).head(user_top_n)
@@ -221,7 +229,7 @@ def map_genes_via_bridge(
     successfully_mapped_genes = set(final_df['Source_Gene_ID'].unique())
     failed_genes = [gid for gid in source_gene_ids if gid not in successfully_mapped_genes]
     if failed_genes:
-        log(f"信息: {len(failed_genes)} 个源基因未能找到符合条件的同源匹配。", "INFO")
+        log(_("信息: {} 个源基因未能找到符合条件的同源匹配。").format(len(failed_genes)), "INFO")
 
     # 清理辅助列并返回
     final_df = final_df.drop(columns=['Source_Parsed', 'Target_Parsed'], errors='ignore')

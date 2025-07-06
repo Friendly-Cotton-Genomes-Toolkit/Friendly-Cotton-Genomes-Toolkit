@@ -30,21 +30,22 @@ def _find_full_seqid(db: gffutils.FeatureDB, chrom_part: str, log: Callable) -> 
 
     for seqid in all_seqids:
         if seqid.lower() == chrom_part.lower():
-            log(f"精确匹配成功: '{chrom_part}' -> '{seqid}'", "INFO")
+            log(_("精确匹配成功: '{}' -> '{}'").format(chrom_part, seqid), "INFO")
             return seqid
 
     pattern = re.compile(f".*[^a-zA-Z0-9]{re.escape(chrom_part)}$|^{re.escape(chrom_part)}$", re.IGNORECASE)
     matches = [seqid for seqid in all_seqids if pattern.match(seqid)]
 
     if len(matches) == 1:
-        log(f"模糊匹配成功: '{chrom_part}' -> '{matches[0]}'", "INFO")
+        log(_("模糊匹配成功: '{}' -> '{}'").format(chrom_part, matches[0]), "INFO")
         return matches[0]
 
     if len(matches) > 1:
-        log(f"警告: 发现多个可能的匹配项 for '{chrom_part}': {matches}。将使用第一个: {matches[0]}", "WARNING")
+        log(_("警告: 发现多个可能的匹配项 for '{}': {}。将使用第一个: {}").format(chrom_part, matches, matches[0]),
+            "WARNING")
         return matches[0]
 
-    log(f"错误: 无法在数据库中找到与 '{chrom_part}' 匹配的序列ID。", "ERROR")
+    log(_("错误: 无法在数据库中找到与 '{}' 匹配的序列ID。").format(chrom_part), "ERROR")
     return None
 
 
@@ -56,7 +57,7 @@ def _gff_gene_filter(gff_filepath: str) -> Iterator[Union[gffutils.feature.Featu
     opener = gzip.open if is_gzipped else open
     mode = 'rt' if is_gzipped else 'r'
 
-    logger.debug(f"Opening {'gzipped ' if is_gzipped else ''}file for parsing: {gff_filepath}")
+    logger.debug(_("Opening {}{}file for parsing: {}").format('gzipped ' if is_gzipped else '', '', gff_filepath))
 
     with opener(gff_filepath, mode, encoding='utf-8', errors='ignore') as gff_file:
         for line in gff_file:
@@ -68,8 +69,7 @@ def _gff_gene_filter(gff_filepath: str) -> Iterator[Union[gffutils.feature.Featu
                     feature_obj = gffutils.feature.feature_from_line(line)
                     yield feature_obj
                 except Exception as e:
-                    logger.warning(f"Skipping malformed GFF line: {line.strip()} | Error: {e}")
-
+                    logger.warning(_("Skipping malformed GFF line: {} | Error: {}").format(line.strip(), e))
 
 def create_gff_database(
         gff_filepath: str,
@@ -84,14 +84,15 @@ def create_gff_database(
     log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
 
     if os.path.exists(db_path) and os.path.getsize(db_path) > 0 and not force:
-        log(f"数据库 '{os.path.basename(db_path)}' 已存在且有效，直接使用。", "DEBUG")
+        log(_("数据库 '{}' 已存在且有效，直接使用。").format(os.path.basename(db_path)), "DEBUG")
         return db_path
 
     db_dir = os.path.dirname(db_path)
     if not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
-    log(f"正在创建GFF数据库(仅包含基因)：{os.path.basename(db_path)} 从 {os.path.basename(gff_filepath)}", "INFO")
+    log(_("正在创建GFF数据库(仅包含基因)：{} 从 {}").format(os.path.basename(db_path), os.path.basename(gff_filepath)),
+        "INFO")
 
     try:
         def id_spec_func(feature):
@@ -113,10 +114,11 @@ def create_gff_database(
             disable_infer_transcripts=True,
             disable_infer_genes=True,
         )
-        log(f"成功创建GFF数据库: {os.path.basename(db_path)}", "INFO")
+        log(_("成功创建GFF数据库: {}").format(os.path.basename(db_path)), "INFO")
         return db_path
+
     except Exception as e:
-        log(f"错误: 创建GFF数据库 '{os.path.basename(db_path)}' 失败: {e}", "ERROR")
+        log(_("错误: 创建GFF数据库 '{}' 失败: {}").format(os.path.basename(db_path), e), "ERROR")
         if os.path.exists(db_path):
             try:
                 os.remove(db_path)
@@ -176,7 +178,7 @@ def get_genes_in_region(
         created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback,
                                               id_regex=gene_id_regex)
         if not created_db_path:
-            raise RuntimeError("无法获取或创建GFF数据库，无法查询区域基因。")
+            raise RuntimeError(_("无法获取或创建GFF数据库，无法查询区域基因。"))
 
         progress(40, _("正在打开数据库并查找序列ID..."))
         db = gffutils.FeatureDB(created_db_path, keep_order=True)
@@ -191,13 +193,13 @@ def get_genes_in_region(
 
         progress(80, _("正在提取基因详细信息..."))
         results = [extract_gene_details(gene) for gene in genes_in_region]
-        log(f"在区域内共找到 {len(results)} 个基因。", "INFO")
+        log(_("在区域内共找到 {} 个基因。").format(len(results)), "INFO")
         progress(100, _("区域基因提取完成。"))
         return results
 
     except Exception as e:
-        log(f"查询GFF区域时发生错误: {e}", "ERROR")
-        logger.exception("GFF区域查询失败的完整堆栈跟踪:")
+        log(_("查询GFF区域时发生错误: {}").format(e), "ERROR")
+        logger.exception(_("GFF区域查询失败的完整堆栈跟踪:"))
         progress(100, _("查询时发生错误。"))
         return []
 
@@ -223,12 +225,12 @@ def get_gene_info_by_ids(
         created_db_path = create_gff_database(gff_filepath, db_path, force_db_creation, status_callback,
                                               id_regex=gene_id_regex)
         if not created_db_path:
-            raise RuntimeError("无法获取或创建GFF数据库，无法查询基因ID。")
+            raise RuntimeError(_("无法获取或创建GFF数据库，无法查询基因ID。"))
 
         progress(40, _("正在打开数据库..."))
         db = gffutils.FeatureDB(created_db_path, keep_order=True)
 
-        log(f"正在根据 {len(gene_ids)} 个ID查询基因信息...", "INFO")
+        log(_("正在根据 {} 个ID查询基因信息...").format(len(gene_ids)), "INFO")
         found_genes = []
         not_found_ids = []
         total_ids = len(gene_ids)
@@ -246,7 +248,8 @@ def get_gene_info_by_ids(
                 not_found_ids.append(gene_id)
 
         if not_found_ids:
-            log(f"警告: {len(not_found_ids)} 个基因ID未在GFF数据库中找到: {', '.join(not_found_ids[:5])}{'...' if len(not_found_ids) > 5 else ''}",
+            log(_("警告: {} 个基因ID未在GFF数据库中找到: {}{}").format(len(not_found_ids), ', '.join(not_found_ids[:5]),
+                                                                       '...' if len(not_found_ids) > 5 else ''),
                 "WARNING")
 
         if not found_genes:
@@ -254,12 +257,12 @@ def get_gene_info_by_ids(
             return pd.DataFrame()
 
         result_df = pd.DataFrame(found_genes)
-        log(f"成功查询到 {len(found_genes)} 个基因的详细信息。", "INFO")
+        log(_("成功查询到 {} 个基因的详细信息。").format(len(found_genes)), "INFO")
         progress(100, _("基因查询完成。"))
         return result_df
 
     except Exception as e:
-        log(f"根据ID查询GFF时发生错误: {e}", "ERROR")
-        logger.exception("GFF ID查询失败的完整堆栈跟踪:")
+        log(_("根据ID查询GFF时发生错误: {}").format(e), "ERROR")
+        logger.exception(_("GFF ID查询失败的完整堆栈跟踪:"))
         progress(100, _("查询时发生错误。"))
         return pd.DataFrame()

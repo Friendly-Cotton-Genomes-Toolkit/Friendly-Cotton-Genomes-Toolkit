@@ -8,6 +8,14 @@ from typing import Callable, Optional
 
 from cotton_toolkit.core.file_normalizer import normalize_to_csv
 
+try:
+    import builtins
+    _ = builtins._
+except (AttributeError, ImportError):
+    def _(text: str) -> str:
+        return text
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +34,7 @@ def prepare_input_file(
     :return: 标准化后的CSV文件路径，如果失败则返回None
     """
     if not os.path.exists(original_path):
-        status_callback(f"ERROR: 输入文件不存在: {original_path}", "ERROR")
+        status_callback(_("ERROR: 输入文件不存在: {}").format(original_path), "ERROR")
         return None
 
     os.makedirs(temp_dir, exist_ok=True)
@@ -42,25 +50,28 @@ def prepare_input_file(
             original_mtime = os.path.getmtime(original_path)
             cached_mtime = os.path.getmtime(cached_csv_path)
             if cached_mtime >= original_mtime:
-                status_callback(f"发现有效的缓存文件，将直接使用: {os.path.basename(cached_csv_path)}", "INFO")
+                status_callback(_("发现有效的缓存文件，将直接使用: {}").format(os.path.basename(cached_csv_path)),
+                                "INFO")
                 return cached_csv_path
-        except OSError as e:
-            status_callback(f"无法检查文件时间戳: {e}", "WARNING")
 
-    status_callback(f"正在处理新文件或已更新的文件: {base_name}", "INFO")
+        except OSError as e:
+            status_callback(_("无法检查文件时间戳: {}").format(e), "WARNING")
+
+    status_callback(_("正在处理新文件或已更新的文件: {}").format(base_name), "INFO")
 
     # --- 调用核心规范器进行转换 ---
     try:
         # 这里直接调用我们刚刚创建的强大函数
         result_path = normalize_to_csv(original_path, cached_csv_path)
         if result_path:
-            status_callback(f"文件已成功转换为标准CSV并缓存: {os.path.basename(cached_csv_path)}", "INFO")
+            status_callback(_("文件已成功转换为标准CSV并缓存: {}").format(os.path.basename(cached_csv_path)), "INFO")
             return result_path
+
         else:
-            status_callback(f"文件规范化失败: {base_name}", "ERROR")
+            status_callback(_("文件规范化失败: {}").format(base_name), "ERROR")
             return None
     except Exception as e:
-        status_callback(f"处理文件 {base_name} 时发生严重错误: {e}", "ERROR")
+        status_callback(_("处理文件 {} 时发生严重错误: {}").format(base_name, e), "ERROR")
         return None
 
 
@@ -81,7 +92,7 @@ def smart_load_file(file_path: str, logger_func: Optional[Callable] = None) -> O
 
     # 1. 检查文件是否存在
     if not file_path or not os.path.exists(file_path):
-        logger_func(f"错误: 文件不存在 -> {file_path}", "ERROR")
+        logger_func(_("错误: 文件不存在 -> {}").format(file_path), "ERROR")
         return None
 
     file_name_for_log = os.path.basename(file_path)
@@ -95,7 +106,7 @@ def smart_load_file(file_path: str, logger_func: Optional[Callable] = None) -> O
         uncompressed_path = file_path.lower().replace('.gz', '') if is_gzipped else file_path.lower()
         file_ext = os.path.splitext(uncompressed_path)[1]
 
-        logger_func(f"正在读取文件: {file_name_for_log} (类型: {file_ext}, 压缩: {is_gzipped})", "DEBUG")
+        logger_func(_("正在读取文件: {} (类型: {}, 压缩: {})").format(file_name_for_log, file_ext, is_gzipped), "DEBUG")
 
         with open_func(file_path, 'rb') as f:
             content_bytes = f.read()
@@ -112,29 +123,29 @@ def smart_load_file(file_path: str, logger_func: Optional[Callable] = None) -> O
             try:
                 content_str = content_bytes.decode('utf-8')
             except UnicodeDecodeError:
-                logger_func(f"文件 {file_name_for_log} 使用UTF-8解码失败，尝试latin-1编码。", "WARNING")
+                logger_func(_("文件 {} 使用UTF-8解码失败，尝试latin-1编码。").format(file_name_for_log), "WARNING")
                 content_str = content_bytes.decode('latin-1', errors='ignore')
 
             # 自动检测分隔符 (制表符优先)
             first_line = content_str.splitlines()[0] if content_str else ""
             if '\t' in first_line:
                 separator = '\t'
-                logger_func(f"检测到制表符(Tab)分隔符: {file_name_for_log}", "DEBUG")
+                logger_func(_("检测到制表符(Tab)分隔符: {}").format(file_name_for_log), "DEBUG")
             else:
                 separator = ','
-                logger_func(f"默认使用逗号(Comma)分隔符: {file_name_for_log}", "DEBUG")
+                logger_func(_("默认使用逗号(Comma)分隔符: {}").format(file_name_for_log), "DEBUG")
 
             df = pd.read_csv(io.StringIO(content_str), sep=separator, engine='python')
 
         else:
-            logger_func(f"警告: 不支持的文件扩展名 '{file_ext}' 来自文件: {file_name_for_log}", "WARNING")
+            logger_func(_("警告: 不支持的文件扩展名 '{}' 来自文件: {}").format(file_ext, file_name_for_log), "WARNING")
             return None
 
-        logger_func(f"文件 {file_name_for_log} 加载成功，共 {len(df)} 行。", "INFO")
+        logger_func(_("文件 {} 加载成功，共 {} 行。").format(file_name_for_log, len(df)), "INFO")
         return df
 
     except Exception as e:
-        logger_func(f"加载或解析文件 {file_name_for_log} 时发生严重错误: {e}", "ERROR")
+        logger_func(_("加载或解析文件 {} 时发生严重错误: {}").format(file_name_for_log, e), "ERROR")
         return None
 
 
@@ -167,15 +178,16 @@ def save_dataframe_as(df: pd.DataFrame, output_path: str, logger_func: Optional[
         if file_ext == '.csv':
             # 使用 utf-8-sig 编码以确保Excel能正确打开包含中文的CSV
             df.to_csv(output_path, index=False, encoding='utf-8-sig')
-            logger_func(f"DataFrame 已成功保存为CSV文件: {output_path}", "INFO")
+            logger_func(_("DataFrame 已成功保存为CSV文件: {}").format(output_path), "INFO")
         elif file_ext == '.xlsx':
             df.to_excel(output_path, index=False, engine='openpyxl')
-            logger_func(f"DataFrame 已成功保存为Excel文件: {output_path}", "INFO")
+            logger_func(_("DataFrame 已成功保存为Excel文件: {}").format(output_path), "INFO")
         else:
-            logger_func(f"错误: 不支持的文件格式 '{file_ext}'。请使用 '.csv' 或 '.xlsx'。", "ERROR")
+            logger_func(_("错误: 不支持的文件格式 '{}'。请使用 '.csv' 或 '.xlsx'。").format(file_ext), "ERROR")
             return False
+
         return True
     except Exception as e:
-        logger_func(f"保存DataFrame到 {output_path} 时发生错误: {e}", "ERROR")
+        logger_func(_("保存DataFrame到 {} 时发生错误: {}").format(output_path, e), "ERROR")
         return False
 

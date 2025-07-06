@@ -67,7 +67,7 @@ class CottonToolkitApp(ttkb.Window):
         super().__init__(themename="flatly")
         self.logger = logging.getLogger(__name__)
 
-        self.title_text_key = "友好棉花基因组工具包 - FCGT"
+        self.title_text_key = _("友好棉花基因组工具包 - FCGT")
         self.title(_(self.title_text_key))
         self.geometry("1100x750")
         self.minsize(900, 700)
@@ -79,9 +79,9 @@ class CottonToolkitApp(ttkb.Window):
         self.placeholders = {
             "homology_genes": _("在此处粘贴基因ID，每行一个..."),
             "gff_genes": _("在此处粘贴基因ID，每行一个..."),
-            "gff_region": _("例如: Gh_A01:1-100000"),
+            "gff_region": _("例如: A01:1-100000"),
             "genes_input": _("在此处粘贴要注释的基因ID，每行一个。"), # 为功能注释添加placeholder
-            "enrichment_genes_input": _("在此处粘贴要进行富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\\tLog2FC。") # 为富集分析添加placeholder
+            "enrichment_genes_input": _("在此处粘贴要进行富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意为制表符。从excel直接复制，列与列之间既为制表符）。") # 为富集分析添加placeholder
         }
 
 
@@ -128,9 +128,9 @@ class CottonToolkitApp(ttkb.Window):
             base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(__file__)
             image_path = os.path.join(base_path, "assets", file_name)
             if os.path.exists(image_path): return image_path
-            self.logger.warning(f"图片资源未找到: '{image_path}'")
+            self.logger.warning(_("图片资源未找到: '{}'").format(image_path))
         except Exception as e:
-            self.logger.error(f"获取图片资源 '{file_name}' 路径时发生错误: {e}")
+            self.logger.error(_("获取图片资源 '{}' 路径时发生错误: {}").format(file_name, e))
         return None
 
     def _create_editor_widgets(self, parent):
@@ -302,11 +302,11 @@ class CottonToolkitApp(ttkb.Window):
 
         set_val(self.ai_translation_prompt_textbox, cfg.ai_prompts.translation_prompt)
         set_val(self.ai_analysis_prompt_textbox, cfg.ai_prompts.analysis_prompt)
-        self.logger.info("配置已应用到编辑器UI。")
+        self.logger.info(_("配置已应用到编辑器UI。"))
 
     def _save_config_from_editor(self):
         if not self.current_config or not self.config_path:
-            self.ui_manager.show_error_message("错误", "没有加载配置文件，无法保存。")
+            self.ui_manager.show_error_message(_("错误"), _("没有加载配置文件，无法保存。"))
             return
         try:
             cfg = self.current_config
@@ -326,7 +326,7 @@ class CottonToolkitApp(ttkb.Window):
                 cfg.batch_ai_processor.max_workers = max_workers_val
             except (ValueError, TypeError):
                 cfg.batch_ai_processor.max_workers = 4  # 如果输入无效，则恢复为默认值
-                self.logger.warning("无效的最大工作线程数值，已重置为默认值 4。")
+                self.logger.warning(_("无效的最大工作线程数值，已重置为默认值 4。"))
 
             cfg.ai_services.default_provider = next(
                 (k for k, v in self.AI_PROVIDERS.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
@@ -346,12 +346,15 @@ class CottonToolkitApp(ttkb.Window):
             cfg.ai_prompts.analysis_prompt = self.ai_analysis_prompt_textbox.get("1.0", tk.END).strip()
 
             if save_config(cfg, self.config_path):
-                self.ui_manager.show_info_message("保存成功", "配置文件已更新。")
+                self.ui_manager.show_info_message(_("保存成功"), _("配置文件已更新。"))
                 self.ui_manager.update_ui_from_config()
             else:
-                self.ui_manager.show_error_message("保存失败", "写入文件时发生未知错误。")
+                self.ui_manager.show_error_message(_("保存失败"), _("写入文件时发生未知错误。"))
         except Exception as e:
-            self.ui_manager.show_error_message("保存错误", f"保存配置时发生错误:\n{traceback.format_exc()}")
+            self.ui_manager.show_error_message(_("保存错误"),
+                                               _("保存配置时发生错误:\n{}").format(traceback.format_exc()))
+
+
 
     def _create_home_frame(self, parent):
         page = ttkb.Frame(parent);
@@ -422,7 +425,7 @@ class CottonToolkitApp(ttkb.Window):
             icon_path = os.path.join(base_path, "icon.ico")
             if os.path.exists(icon_path): self.iconbitmap(icon_path)
         except Exception as e:
-            self.logger.warning(f"加载主窗口图标失败: {e}。")
+            self.logger.warning(_("加载主窗口图标失败: {}。").format(e))
 
     def _create_editor_frame(self, parent):
         page = ttkb.Frame(parent)
@@ -527,7 +530,7 @@ class CottonToolkitApp(ttkb.Window):
         mono_stack = ["Consolas", "Courier New", "monospace"]
         self.font_family = next((f for f in font_stack if f in tkfont.families()), "sans-serif")
         self.mono_font_family = next((f for f in mono_stack if f in tkfont.families()), "monospace")
-        self.logger.info(f"UI font set to: {self.font_family}, Monospace font to: {self.mono_font_family}")
+        self.logger.info(_("UI font set to: {}, Monospace font to: {}").format(self.font_family, self.mono_font_family))
         self.app_font = tkfont.Font(family=self.font_family, size=12);
         self.app_font_italic = tkfont.Font(family=self.font_family, size=12, slant="italic");
         self.app_font_bold = tkfont.Font(family=self.font_family, size=13, weight="bold");
@@ -561,7 +564,7 @@ class CottonToolkitApp(ttkb.Window):
         except queue.Empty:
             pass
         except Exception as e:
-            self.logger.critical(f"处理消息队列时出错: {e}", exc_info=True)
+            self.logger.critical(_("处理消息队列时出错: {}").format(e), exc_info=True)
         self.after(100, self.check_queue_periodic)
 
     def reconfigure_logging(self, log_level_str: str):
@@ -570,9 +573,9 @@ class CottonToolkitApp(ttkb.Window):
                 if (root := logging.getLogger()).getEffectiveLevel() != new_level:
                     root.setLevel(new_level)
                     for handler in root.handlers: handler.setLevel(new_level)
-                    self.logger.info(f"全局日志级别已更新为: {log_level_str}")
+                    self.logger.info(_("全局日志级别已更新为: {}").format(log_level_str))
         except Exception as e:
-            self.logger.error(f"配置日志级别时出错: {e}")
+            self.logger.error(_("配置日志级别时出错: {}").format(e))
 
 
 if __name__ == "__main__":

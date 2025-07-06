@@ -16,3 +16,5 @@ networkx~=3.5
 upsetplot~=0.9.0
 ttkbootstrap~=1.13.12
 scipy~=1.16.0
+setuptools~=78.1.1
+babel~=2.17.0

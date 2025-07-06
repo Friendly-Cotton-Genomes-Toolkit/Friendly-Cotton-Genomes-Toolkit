@@ -5,6 +5,12 @@ import os
 import sys
 from typing import Callable
 
+try:
+    from builtins import _
+except ImportError:
+    _ = lambda s: str(s)
+
+
 # 将应用名称常量移到这里，方便管理
 APP_NAME_FOR_I18N = "cotton_toolkit"
 
@@ -29,8 +35,10 @@ def setup_localization(language_code: str = 'zh-hans', app_name: str = APP_NAME_
             locales_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'locales')
 
         if not os.path.isdir(locales_dir):
-            print(f"Warning: Locales directory not found at '{locales_dir}'. Using fallback.", file=sys.stderr)
+            print(_("Warning: Locales directory not found at '{}'. Using fallback.").format(locales_dir),
+                  file=sys.stderr)
             return lambda text: text
+
 
         lang_translation = gettext.translation(
             app_name,
@@ -40,5 +48,6 @@ def setup_localization(language_code: str = 'zh-hans', app_name: str = APP_NAME_
         )
         return lang_translation.gettext
     except Exception as e:
-        print(f"Warning: Could not set up language translation for '{language_code}'. Reason: {e}", file=sys.stderr)
+        print(_("Warning: Could not set up language translation for '{}'. Reason: {}").format(language_code, e),
+              file=sys.stderr)
         return lambda text: text

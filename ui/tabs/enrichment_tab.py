@@ -118,7 +118,7 @@ class EnrichmentTab(BaseTab):
             row=2, column=0, columnspan=2, sticky="w", padx=15, pady=5)
         # 添加注释 Label
         ttkb.Label(format_card, text=_(
-            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"),
+            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"),
                    font=self.app.app_comment_font, bootstyle="info").grid(row=3, column=0, columnspan=2, sticky="w",
                                                                           padx=15, pady=(0, 5))
 

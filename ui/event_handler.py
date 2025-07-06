@@ -1,6 +1,4 @@
-﻿# 文件路径: ui/event_handler.py
-import json
-import logging
+﻿import logging
 import os
 import threading
 import traceback
@@ -9,17 +7,14 @@ import tkinter as tk
 from tkinter import filedialog
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Any
 import requests
-
+import re
 import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
-from PIL import Image, ImageTk
+
 
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
-from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.ai_wrapper import AIWrapper
-from cotton_toolkit.pipelines import run_preprocess_annotation_files
 from .dialogs import MessageDialog
 from .utils.gui_helpers import identify_genome_from_gene_ids
 
@@ -370,69 +365,210 @@ class EventHandler:
         about_window.transient(self.app)
         about_window.grab_set()
 
-        canvas = tk.Canvas(about_window, highlightthickness=0, bd=0,
-                           background=self.app.style.lookup('TFrame', 'background'))
-        canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        # 使用 ttkb.Frame 作为 Canvas 的直接父容器，方便布局和样式继承
+        # 主框架，包含 Canvas 和 Scrollbar
+        main_content_frame = ttkb.Frame(about_window)
+        main_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        main_content_frame.grid_columnconfigure(0, weight=1)
+        main_content_frame.grid_rowconfigure(0, weight=1)
 
-        scrollbar = ttkb.Scrollbar(about_window, orient="vertical", command=canvas.yview, bootstyle="round")
-        scrollbar.pack(side="right", fill="y")
+        canvas = tk.Canvas(main_content_frame, highlightthickness=0, bd=0,
+                           background=self.app.style.lookup('TFrame', 'background'))
+        canvas.grid(row=0, column=0, sticky="nsew")
+
+        scrollbar = ttkb.Scrollbar(main_content_frame, orient="vertical", command=canvas.yview, bootstyle="round")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        scrollable_frame = ttkb.Frame(canvas)
-        window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        # 实际内容将放置在这个 Frame 中，它在 Canvas 上
+        scrollable_content_frame = ttkb.Frame(canvas)
+        # 将这个 Frame 放到 Canvas 上
+        canvas_window_id = canvas.create_window((0, 0), window=scrollable_content_frame, anchor="nw",
+                                                width=canvas.winfo_width())
 
-        def configure_scroll_region(event):
+        # 绑定事件以调整滚动区域和Canvas内部窗口的宽度
+        def _on_frame_configure(event):
+            # 更新Canvas的滚动区域以匹配内部Frame的大小
             canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig(window_id, width=event.width)
+            # 确保内部Frame的宽度与Canvas的宽度一致
+            canvas.itemconfig(canvas_window_id, width=canvas.winfo_width())
 
-        scrollable_frame.bind("<Configure>", configure_scroll_region)
-        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-e.delta / 120), "units"), add="+")
-        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"), add="+")
-        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"), add="+")
+        def _on_canvas_resize(event):
+            # 当Canvas大小改变时，调整内部Frame的宽度
+            canvas.itemconfig(canvas_window_id, width=event.width)
+            # 重新配置滚动区域
+            canvas.configure(scrollregion=canvas.bbox("all"))
 
-        scrollable_frame.grid_columnconfigure(0, weight=1)
+        scrollable_content_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_resize)  # Bind to canvas resize
 
-        header_frame = ttkb.Frame(scrollable_frame)
+        # Mouse wheel binding for the canvas (Windows/macOS)
+        def _on_mousewheel(event):
+            if event.num == 5 or event.delta == -120:  # Scroll down
+                canvas.yview_scroll(1, "units")
+            if event.num == 4 or event.delta == 120:  # Scroll up
+                canvas.yview_scroll(-1, "units")
+            return "break"  # Prevent event propagation
+
+        canvas.bind_all("<MouseWheel>", _on_mousewheel, add="+")
+        canvas.bind_all("<Button-4>", _on_mousewheel, add="+")  # Linux scroll up
+        canvas.bind_all("<Button-5>", _on_mousewheel, add="+")  # Linux scroll down
+
+        scrollable_content_frame.grid_columnconfigure(0, weight=1)
+
+        # --- Header Section (Logo, Title, Version, License) ---
+        header_frame = ttkb.Frame(scrollable_content_frame)
         header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
 
         if logo := self.app.ui_manager.icon_cache.get("logo"):
             ttkb.Label(header_frame, image=logo).pack(side="left", padx=(0, 15))
 
-        title_frame = ttkb.Frame(header_frame)
-        title_frame.pack(side="left", fill="x", expand=True)
+        title_version_frame = ttkb.Frame(header_frame)
+        title_version_frame.pack(side="left", fill="x", expand=True)
 
-        ttkb.Label(title_frame, text=_("友好棉花基因组工具包 (FCGT)"), font=self.app.app_title_font).pack(anchor="w")
-        ttkb.Label(title_frame, text=f"Version: {PKG_VERSION}", bootstyle="secondary").pack(anchor="w")
-        ttkb.Label(title_frame, text=_('本软件遵守 Apache-2.0 license 开源协议'), bootstyle="secondary").pack(
+        ttkb.Label(title_version_frame, text=_("友好棉花基因组工具包 (FCGT)"), font=self.app.app_title_font).pack(
+            anchor="w")
+        ttkb.Label(title_version_frame, text=f"Version: {PKG_VERSION}", bootstyle="secondary").pack(anchor="w")
+        ttkb.Label(title_version_frame, text=_('本软件遵守 Apache-2.0 license 开源协议'), bootstyle="secondary").pack(
             anchor="w")
 
-        import re
-        about_text_content = """
-        <p><strong>FCGT (Friendly Cotton Genomes Toolkit)</strong> 是一款专为棉花研究者，特别是<strong>非生物信息专业背景</strong>的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可<strong>开箱即用</strong>。</p>
-        <p>本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的得力助手。</p>
+        # --- About Text Widget (tk.Text for rich formatting) ---
+        text_bg = self.app.style.lookup('TFrame', 'background')
+        text_fg = self.app.style.lookup('TLabel', 'foreground')
+        link_color = self.app.style.colors.info
 
-        <h3>核心亮点与功能</h3>
-        <ul>
-            <li><strong>极致友好，开箱即用</strong>: 图形界面优先，无需复杂配置，多语言支持。</li>
-            <li><strong>高效的自动化与批量处理</strong>: 多线程加速，命令行支持。</li>
-            <li><strong>精准的基因组工具集</strong>: 棉花版 Liftover，一站式数据工具，标准化数据下载。</li>
-            <li><strong>跨平台，随处可用</strong>: 为Windows提供预编译可执行文件。</li>
-        </ul>
-        <p>数据来源主要依赖 <a href="https://www.cottongen.org/">CottonGen</a>，感谢其团队。</p>
-        <p>此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。</p>
-        """
-        clean_text = re.sub(r'<[^>]+>', '', about_text_content)
-        clean_text = clean_text.replace('&bull;', '•').replace('&nbsp;', ' ').replace('&mdash;', '—')
-        clean_text = re.sub(r'\n\s*\n', '\n\n', clean_text).strip()
+        about_text_widget = tk.Text(scrollable_content_frame,
+                                    wrap="word", relief="flat",
+                                    background=text_bg, foreground=text_fg, insertbackground=text_fg,
+                                    font=self.app.app_font,
+                                    height=25,  # Set a reasonable initial height for visibility
+                                    borderwidth=0, highlightthickness=0)
+        about_text_widget.grid(row=1, column=0, padx=20, pady=10, sticky="nsew")  # Make it expandable
 
-        about_label = ttkb.Label(scrollable_frame, text=clean_text, wraplength=750, justify="left",
-                                 font=self.app.app_font)
-        about_label.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        # Configure tags for various styles
+        about_text_widget.tag_configure("h3", font=self.app.app_font_bold, foreground=self.app.style.colors.primary,
+                                        spacing3=10)
+        about_text_widget.tag_configure("h4", font=self.app.app_font_bold, spacing3=5)
+        about_text_widget.tag_configure("bold", font=self.app.app_font_bold)
+        about_text_widget.tag_configure("link", foreground=link_color, underline=1)
 
-        ttkb.Button(scrollable_frame, text=_("关闭"), command=about_window.destroy, bootstyle='info').grid(row=2,
-                                                                                                           column=0,
-                                                                                                           pady=30)
+        # Link callback function
+        def _open_github_link(event):
+            webbrowser.open_new(PKG_PUBLISH_URL)
+
+        about_text_widget.tag_bind("link", "<Button-1>", _open_github_link)
+        about_text_widget.tag_bind("link", "<Enter>", lambda e: about_text_widget.config(cursor="hand2"))
+        about_text_widget.tag_bind("link", "<Leave>", lambda e: about_text_widget.config(cursor=""))
+        about_text_widget.tag_configure("list", lmargin1=20, lmargin2=40, spacing1=5)
+        about_text_widget.tag_configure("bullet", offset=-5)  # For bullet point indent
+
+        # Make widget editable to insert text
+        about_text_widget.config(state="normal")
+
+        # --- Populate Text Widget ---
+        about_text_widget.insert(tk.END, "FCGT (Friendly Cotton Genomes Toolkit)", "bold")
+        about_text_widget.insert(tk.END, _(" 是一款专为棉花研究者，特别是"), "")
+        about_text_widget.insert(tk.END, _("非生物信息专业背景"), "bold")
+        about_text_widget.insert(tk.END,
+                                 _("的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可"),
+                                 "")
+        about_text_widget.insert(tk.END, _("开箱即用"), "bold")
+        about_text_widget.insert(tk.END, _("。\n\n"), "")
+
+        about_text_widget.insert(tk.END,
+                                 _("本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的得力助手。\n\n"),
+                                 "")
+
+        # --- Core Features and Highlights ---
+        about_text_widget.insert(tk.END, _("核心亮点与功能\n"), "h3")
+        about_text_widget.insert(tk.END, "• ", "bullet")
+        about_text_widget.insert(tk.END, _("极致友好，开箱即用"), "bold")
+        about_text_widget.insert(tk.END, _(": 图形界面优先，无需复杂配置，多语言支持。\n"), "")
+        about_text_widget.insert(tk.END, "• ", "bullet")
+        about_text_widget.insert(tk.END, _("高效的自动化与批量处理"), "bold")
+        about_text_widget.insert(tk.END, _(": 多线程加速，命令行支持。\n"), "")
+        about_text_widget.insert(tk.END, "• ", "bullet")
+        about_text_widget.insert(tk.END, _("精准的基因组工具集"), "bold")
+        about_text_widget.insert(tk.END, _(": 棉花版 Liftover，一站式数据工具，标准化数据下载。\n"), "")
+        about_text_widget.insert(tk.END, "• ", "bullet")
+        about_text_widget.insert(tk.END, _("跨平台，随处可用"), "bold")
+        about_text_widget.insert(tk.END, _(": 为Windows提供预编译可执行文件。\n\n"), "")
+
+        about_text_widget.insert(tk.END, _("项目开源地址：\n"), "")
+        about_text_widget.insert(tk.END, PKG_PUBLISH_URL, "link")  # Display the URL and make it clickable
+        about_text_widget.insert(tk.END, _("\n此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。\n\n"), "")
+
+        # --- Data Sources & Citations ---
+        about_text_widget.insert(tk.END, _("数据来源与引文\n"), "h3")
+        about_text_widget.insert(tk.END, _("本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。\n\n"), "")
+
+        about_text_widget.insert(tk.END, _("CottonGen 文章\n"), "h4")
+        about_text_widget.insert(tk.END,
+                                 "• Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.\n",
+                                 "")
+        about_text_widget.insert(tk.END,
+                                 "• Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.\n\n",
+                                 "")
+
+        about_text_widget.insert(tk.END, _("基因组引用文献\n"), "h4")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "NAU-NBI_v1.1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "UTX-JGI-Interim-release_v1.1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Haas, B.J., Delcher, A.L., Mount, S.M., Wortman, J.R., Smith Jr, R.K., Jr., Hannick, L.I., Maiti, R., Ronning, C.M., Rusch, D.B., Town, C.D. et al. (2003) Improving the Arabidopsis genome annotation using maximal transcript alignment assemblies. http://nar.oupjournals.org/cgi/content/full/31/19/5654 [Nucleic Acids Res, 31, 5654-5666].\n  Smit, AFA, Hubley, R & Green, P. RepeatMasker Open-3.0. 1996-2011 .\n  Yeh, R.-F., Lim, L. P., and Burge, C. B. (2001) Computational inference of homologous gene structures in the human genome. Genome Res. 11: 803-816.\n  Salamov, A. A. and Solovyev, V. V. (2000). Ab initio gene finding in Drosophila genomic DNA. Genome Res 10, 516-22.\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "HAU_v1 / v1.1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Wang et al. Reference genome sequences of two cultivated allotetraploid cottons, Gossypium hirsutum and Gossypium barbadense. Nature genetics. 2018 Dec 03\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "ZJU-improved_v2.1_a1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Hu et al. Gossypium barbadense and Gossypium hirsutum genomes provide insights into the origin and evolution of allotetraploid cotton. Nature genetics. 2019 Jan;51(1):164.\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "CRI_v1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "WHU_v1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Huang, G. et al., Genome sequence of Gossypium herbaceum and genome updates of Gossypium arboreum and Gossypium hirsutum provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "UTX_v2.1: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.\n\n",
+                                 "")
+        about_text_widget.insert(tk.END, "• ", "")
+        about_text_widget.insert(tk.END, "HAU_v2.0: ", "bold")
+        about_text_widget.insert(tk.END,
+                                 "Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. \"High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres.\" Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722\n\n",
+                                 "")
+
+        # --- Acknowledgements ---
+        about_text_widget.insert(tk.END, _("致谢与许可\n"), "h3")
+        about_text_widget.insert(tk.END, _("感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。\n"), "")
+
+        # Set text widget to disabled (read-only)
+        about_text_widget.config(state="disabled")
+
+        # --- Close Button ---
+        # Position this button at the bottom of the main_content_frame
+        close_button_frame = ttkb.Frame(main_content_frame)
+        close_button_frame.grid(row=1, column=0, columnspan=2, pady=10)  # row 1 is below canvas+scrollbar
+        close_button_frame.grid_columnconfigure(0, weight=1)
+
+        ttkb.Button(close_button_frame, text=_("关闭"), command=about_window.destroy, bootstyle='info').grid(row=0,
+                                                                                                             column=0,
+                                                                                                             pady=5)
 
         about_window.update_idletasks()
         self.app.update_idletasks()
