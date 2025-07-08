@@ -16,76 +16,110 @@ from .dialogs import MessageDialog, ProgressDialog
 if TYPE_CHECKING:
     from .gui_app import CottonToolkitApp
 
-try:
-    from builtins import _
-except ImportError:
-    _ = lambda s: str(s)
-
 
 class UIManager:
     """负责所有UI控件的创建、布局和更新。"""
 
-    def __init__(self, app: "CottonToolkitApp"):
+    # 【修改】__init__ 接收 translator 参数
+    def __init__(self, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.app = app
+        # 【修改】直接使用传入的 translator
+        self.translator_func = translator
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
+
+        # 【修改】初始化逻辑简化，不再自行设置翻译器
         self._load_ui_settings()
-        setup_localization(language_code=app.ui_settings.get("language", "zh_CN"))
         self._set_ttk_theme_from_app_mode(self.app.ui_settings.get("appearance_mode", "System"))
 
     def update_language_ui(self, lang_code: str):
         app = self.app
+        # setup_localization 现在由外部主程序在切换语言时调用，
+        # UIManager 只接收新的 translator 函数来更新UI
         new_translator = setup_localization(language_code=lang_code)
+        self.translator_func = new_translator
+        # builtins._ 也应该由主程序逻辑或 setup_localization 自身更新
+        # 这里我们确保 UIManager 内部的 translator_func 是最新的
+
+        self._update_placeholders_dictionary(new_translator)
 
         for component_name, component_instance in app.tool_tab_instances.items():
             if hasattr(component_instance, 'retranslate_ui'):
                 component_instance.retranslate_ui(translator=new_translator)
 
-        app.home_button.config(text=new_translator("主页"))
-        app.editor_button.config(text=new_translator("配置编辑器"))
-        app.tools_button.config(text=new_translator("数据工具"))
-        app.language_label.config(text=new_translator("语言"))
-        app.appearance_mode_label.config(text=new_translator("外观模式"))
-        app.log_viewer_label_widget.config(text=new_translator("操作日志"))
-        app.clear_log_button.config(text=new_translator("清空日志"))
+        self._retranslate_managed_widgets(new_translator)
 
-        toggle_log_text = new_translator("隐藏日志") if app.log_viewer_visible else new_translator("显示日志")
-        app.toggle_log_button.config(text=toggle_log_text)
-
-        if app.config_path:
-            app.config_path_display_var.set(new_translator("当前配置: {}").format(os.path.basename(app.config_path)))
-        else:
-            app.config_path_display_var.set(new_translator("未加载配置"))
-
-        appearance_menu = getattr(app, 'appearance_mode_optionmenu', None)
-        if appearance_menu:
-            menu = appearance_menu['menu']
-            menu.delete(0, 'end')
-
-            translated_values = [new_translator("浅色"), new_translator("深色"), new_translator("跟随系统")]
-            display_to_key = {
-                new_translator("浅色"): "Light",
-                new_translator("深色"): "Dark",
-                new_translator("跟随系统"): "System"
-            }
-            for display_val in translated_values:
-                key_val = display_to_key[display_val]
-                menu.add_command(label=display_val,
-                                 command=lambda v=key_val: app.event_handler.change_appearance_mode_event(v))
-
-            current_mode_key = app.ui_settings.get("appearance_mode", "System")
-            key_to_display = {
-                "Light": new_translator("浅色"),
-                "Dark": new_translator("深色"),
-                "System": new_translator("跟随系统")
-            }
-            app.selected_appearance_var.set(key_to_display.get(current_mode_key))
-
-        self._update_placeholders(new_translator)
         app.logger.info(f"UI language updated to {lang_code}")
 
-    def _update_placeholders(self, translator: Callable[[str], str]):
+    def _retranslate_managed_widgets(self, new_translator: Callable[[str], str]):
+        """更新由 UIManager 直接管理的、非 Tab 内的 UI 组件。"""
+        app = self.app
+        _ = new_translator  # 在这个方法作用域内，用 _ 指代新的翻译函数
+
+        # --- 1. 更新主窗口标题 ---
+        if hasattr(app, 'title_text_key'):
+            app.title(_(app.title_text_key))
+
+        # --- 2. 更新左侧导航栏和底部设置 ---
+        if hasattr(app, 'home_button'): app.home_button.config(text=_("主页"))
+        if hasattr(app, 'editor_button'): app.editor_button.config(text=_("配置编辑器"))
+        if hasattr(app, 'tools_button'): app.tools_button.config(text=_("数据工具"))
+        if hasattr(app, 'language_label'): app.language_label.config(text=_("语言"))
+        if hasattr(app, 'appearance_mode_label'): app.appearance_mode_label.config(text=_("外观模式"))
+        if hasattr(app, 'log_viewer_label_widget'): app.log_viewer_label_widget.config(text=_("操作日志"))
+        if hasattr(app, 'clear_log_button'): app.clear_log_button.config(text=_("清空日志"))
+
+        # --- 3. 更新日志切换按钮 ---
+        if hasattr(app, 'toggle_log_button'):
+            toggle_log_text = _("隐藏日志") if app.log_viewer_visible else _("显示日志")
+            app.toggle_log_button.config(text=toggle_log_text)
+
+        # --- 4. 更新配置路径显示 ---
+        if hasattr(app, 'config_path_display_var') and app.config_path_display_var is not None:
+            if app.config_path:
+                app.config_path_display_var.set(_("当前配置: {}").format(os.path.basename(app.config_path)))
+            else:
+                app.config_path_display_var.set(_("未加载配置"))
+        else:
+            app.logger.warning(
+                self.translator_func("config_path_display_var 在 _retranslate_managed_widgets 中未就绪。"))
+
+        # --- 5. 更新外观模式下拉菜单 ---
+        if hasattr(app, 'appearance_mode_optionmenu'):
+            appearance_menu = getattr(app, 'appearance_mode_optionmenu', None)
+            if appearance_menu:
+                menu = appearance_menu['menu']
+                menu.delete(0, 'end')
+                translated_values = [_("浅色"), _("深色"), _("跟随系统")]
+                display_to_key = {_("浅色"): "Light", _("深色"): "Dark", _("跟随系统"): "System"}
+                for display_val in translated_values:
+                    key_val = display_to_key.get(display_val, "System")
+                    menu.add_command(label=display_val,
+                                     command=lambda v=key_val: app.event_handler.change_appearance_mode_event(v))
+                current_mode_key = app.ui_settings.get("appearance_mode", "System")
+                key_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
+                if app.selected_appearance_var is not None:
+                    app.selected_appearance_var.set(key_to_display.get(current_mode_key))
+                else:
+                    app.logger.warning(
+                        self.translator_func("selected_appearance_var 在 _retranslate_managed_widgets 中未就绪。"))
+
+
+        # --- 7. 【新增】更新主页上通过字典追踪的组件 ---
+        if hasattr(app, 'translatable_widgets'):
+            for widget, text_key in app.translatable_widgets.items():
+                if widget and widget.winfo_exists():
+                    widget.configure(text=_(text_key))
+
+        # --- 8. 【新增】更新工具栏 Notebook 的标签页标题 ---
+        if hasattr(app, 'tools_notebook') and app.tools_notebook.tabs():
+            for i, key in enumerate(app.TOOL_TAB_ORDER):
+                if i < len(app.tools_notebook.tabs()):
+                    tab_title = _(app.TAB_TITLE_KEYS.get(key, key))
+                    app.tools_notebook.tab(i, text=tab_title)
+
+    def _update_placeholders_dictionary(self, translator: Callable[[str], str]):
         self.app.placeholders = {
             "homology_genes": translator("粘贴基因ID，每行一个..."),
             "gff_genes": translator("粘贴基因ID，每行一个..."),
@@ -94,11 +128,35 @@ class UIManager:
             "enrichment_genes_input": translator(
                 "在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"),
             "custom_prompt": translator(
-                "在此输入您的自定义提示词模板，必须包含 {text} 占位符...")
+                "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
+            "default_prompt_empty": translator("Default prompt is empty, please set it in the configuration editor.")
         }
-        for tab in self.app.tool_tab_instances.values():
-            if hasattr(tab, 'refresh_placeholders'):
-                tab.refresh_placeholders()
+
+    def add_placeholder(self, widget, text):
+        if not widget or not widget.winfo_exists(): return
+        is_dark = self.style.theme.type == 'dark'
+        ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
+        widget.configure(state="normal")
+        if isinstance(widget, (tk.Entry, ttkb.Entry)):
+            widget.delete(0, tk.END)
+            widget.insert(0, text)
+            widget.configure(foreground=ph_color)
+        elif isinstance(widget, tk.Text):
+            widget.delete("1.0", tk.END)
+            widget.insert("1.0", text)
+            widget.configure(font=self.app.app_font_italic, foreground=ph_color)
+        widget.is_placeholder = True
+
+    def refresh_single_placeholder(self, widget, key):
+        if not widget or not widget.winfo_exists(): return
+        current_text = ""
+        if isinstance(widget, tk.Text):
+            current_text = widget.get("1.0", "end-1c").strip()
+        elif isinstance(widget, (tk.Entry, ttkb.Entry)):
+            current_text = widget.get().strip()
+        is_placeholder_state = str(widget.cget("foreground")) in [str(c) for c in self.app.placeholder_color]
+        if not current_text or is_placeholder_state:
+            self.add_placeholder(widget, key)
 
     def _set_ttk_theme_from_app_mode(self, mode: str):
         if mode == "Dark":
@@ -107,13 +165,17 @@ class UIManager:
             theme_name = self.app.ui_settings.get("light_mode_theme", "flatly")
         self.style.theme_use(theme_name)
         self.app._setup_fonts()
+        self.app.default_text_color = self.style.lookup('TLabel', 'foreground')
         self._update_log_tag_colors()
 
     def setup_initial_ui(self):
         app = self.app
         self.create_main_layout()
         self.init_pages()
-        self.update_language_ui(self.app.ui_settings.get("language", "zh_CN"))
+        # 【修改】调用 retranslate_ui 替代 update_language_ui
+        # 因为 translator 已经从外部注入，我们只需用它来翻译UI
+        self._retranslate_managed_widgets(self.translator_func)
+        self.update_ui_from_config()
 
     def _bind_mouse_wheel_to_scrollable(self, widget):
         if widget and hasattr(widget, 'focus_set'): widget.bind("<Enter>", lambda event, w=widget: w.focus_set())
@@ -149,6 +211,7 @@ class UIManager:
 
     def _create_log_viewer_widgets(self):
         app = self.app
+        _ = self.translator_func
         app.log_viewer_frame.grid_columnconfigure(0, weight=1)
         header_frame = ttkb.Frame(app.log_viewer_frame);
         header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(5, 5));
@@ -196,6 +259,7 @@ class UIManager:
 
     def _create_navigation_frame(self, parent):
         app = self.app
+        _ = self.translator_func
         app.navigation_frame = ttkb.Frame(parent);
         app.navigation_frame.grid(row=0, column=0, sticky="nsew")
         app.navigation_frame.grid_rowconfigure(4, weight=1)
@@ -235,11 +299,12 @@ class UIManager:
         settings_frame.grid(row=5, column=0, padx=10, pady=10, sticky="s");
         settings_frame.grid_columnconfigure(0, weight=1)
 
+        appearance_modes_display = [_("浅色"), _("深色"), _("跟随系统")]
         for i, (label_key, var, values, cmd) in enumerate(
                 [
                     ("语言", app.selected_language_var, list(app.LANG_CODE_TO_NAME.values()),
                      app.event_handler.on_language_change),
-                    ("外观模式", app.selected_appearance_var, [_("浅色"), _("深色"), _("跟随系统")],
+                    ("外观模式", app.selected_appearance_var, appearance_modes_display,
                      app.event_handler.change_appearance_mode_event)
                 ]):
             lbl = ttkb.Label(settings_frame, text=_(label_key), font=app.app_font, style='Transparent.TLabel');
@@ -250,7 +315,12 @@ class UIManager:
             setattr(app, f"{'language_optionmenu' if i == 0 else 'appearance_mode_optionmenu'}", menu)
 
     def _get_settings_path(self):
-        return "ui_settings.json"
+        # 修正路径问题，确保 .fcgt 目录在用户主目录下创建
+        home_dir = os.path.expanduser("~")
+        settings_dir = os.path.join(home_dir, ".fcgt")
+        os.makedirs(settings_dir, exist_ok=True)
+        return os.path.join(settings_dir, "ui_settings.json")
+
 
     def _load_ui_settings(self):
         app = self.app
@@ -258,14 +328,16 @@ class UIManager:
             with open(self._get_settings_path(), 'r', encoding='utf-8') as f:
                 settings = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            settings = {"appearance_mode": "System", "language": "zh_CN"}
+            settings = {"appearance_mode": "System", "language": "zh-hans"}
         app.ui_settings = settings
 
-        lang_code = app.ui_settings.get("language", "zh_CN")
-        app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "中文"))
+        lang_code = app.ui_settings.get("language", "zh-hans")
+        app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
 
         mode_key = app.ui_settings.get("appearance_mode", "System")
-        app.selected_appearance_var.set(mode_key)
+        key_to_display = {"Light": "浅色", "Dark": "深色", "System": "跟随系统"}
+        app.selected_appearance_var.set(key_to_display.get(mode_key, "跟随系统"))
+
 
     def _save_ui_settings(self):
         try:
@@ -290,17 +362,20 @@ class UIManager:
         if frame_to_show := getattr(app, f"{name}_frame", None): frame_to_show.grid(row=0, column=0, sticky="nsew")
 
     def show_info_message(self, title: str, message: str):
-        MessageDialog(self.app, _(title), _(message), icon_type="info").wait_window()
+        MessageDialog(self.app, self.translator_func(title), self.translator_func(message), icon_type="info").wait_window()
 
     def show_error_message(self, title: str, message: str):
-        MessageDialog(self.app, _(title), message, icon_type="error").wait_window()
+        # 注意: 传入的 message 可能已经包含格式化内容，不应再次翻译
+        MessageDialog(self.app, self.translator_func(title), message, icon_type="error").wait_window()
 
     def show_warning_message(self, title: str, message: str):
-        MessageDialog(self.app, _(title), message, icon_type="warning").wait_window()
+        # 注意: 传入的 message 可能已经包含格式化内容，不应再次翻译
+        MessageDialog(self.app, self.translator_func(title), message, icon_type="warning").wait_window()
 
     def _show_progress_dialog(self, data: Dict[str, Any]):
-        title = data.get("title", "");
-        message = data.get("message", "");
+        _ = self.translator_func
+        title = data.get("title", "")
+        message = data.get("message", "")
         on_cancel = data.get("on_cancel")
         if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
         self.progress_dialog = ProgressDialog(self.app, _(title), on_cancel);
@@ -311,10 +386,10 @@ class UIManager:
         self.progress_dialog = None
 
     def _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
+        _ = self.translator_func
         self._hide_progress_dialog();
         self.update_button_states(is_task_running=False);
         self.app.active_task_name = None
-        # 【修复】使用可翻译的格式化字符串
         if result_data == "CANCELLED":
             status_msg = _("{} 已被用户取消。").format(_(task_display_name))
         else:
@@ -335,61 +410,67 @@ class UIManager:
 
     def update_ui_from_config(self):
         app = self.app
-        app.config_path_display_var.set(
-            _("当前配置: {}").format(os.path.basename(app.config_path)) if app.config_path else _(
-                "未加载配置"))
+        _ = self.translator_func
+        if hasattr(app, 'config_path_display_var') and app.config_path_display_var is not None:
+            app.config_path_display_var.set(
+                _("当前配置: {}").format(os.path.basename(app.config_path)) if app.config_path else _(
+                    "未加载配置"))
+        else:
+            app.logger.warning(_("无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"))
+
         app._handle_editor_ui_update()
         self._update_assembly_id_dropdowns(list(app.genome_sources_data.keys()) if app.genome_sources_data else [])
-        for tab in app.tool_tab_instances.values():
-            if hasattr(tab, 'update_from_config'): tab.update_from_config()
+        for tab_key, tab_instance in app.tool_tab_instances.items():
+            if hasattr(tab_instance, 'update_from_config'):
+                tab_instance.update_from_config()
+            if hasattr(tab_instance, 'retranslate_ui'):
+                tab_instance.retranslate_ui(translator=self.translator_func)
         if app.current_config: app.reconfigure_logging(app.current_config.log_level)
         self.update_button_states()
         app._log_to_viewer(_("UI已根据当前配置刷新。"))
-
-    def add_placeholder(self, widget, key):
-        if not widget.winfo_exists(): return
-        placeholder_text = self.app.placeholders.get(key, "")
-        if not placeholder_text: return
-        is_dark = self.style.theme.type == 'dark'
-        ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
-        if isinstance(widget, (tk.Entry, ttkb.Entry)):
-            widget.delete(0, tk.END);
-            widget.insert(0, placeholder_text);
-            widget.configure(foreground=ph_color)
-        elif isinstance(widget, tk.Text):
-            widget.delete("1.0", tk.END);
-            widget.insert("1.0", placeholder_text);
-            widget.configure(font=self.app.app_font_italic, foreground=ph_color)
 
     def _remove_placeholder(self, widget):
         if not widget.winfo_exists(): return
         widget.config(foreground=self.app.style.lookup('TLabel', 'foreground'))
 
     def _clear_placeholder(self, widget, key):
-        if not widget.winfo_exists(): return
-        placeholder_text = self.app.placeholders.get(key, "")
-        current_text = widget.get() if isinstance(widget, (tk.Entry, ttkb.Entry)) else widget.get("1.0", tk.END).strip()
-        if current_text == placeholder_text:
+        if not widget or not widget.winfo_exists(): return
+        if getattr(widget, 'is_placeholder', False):
             if isinstance(widget, (tk.Entry, ttkb.Entry)):
-                widget.delete(0, tk.END);
-                widget.configure(foreground=self.app.style.lookup('TLabel', 'foreground'))
+                widget.delete(0, tk.END)
             elif isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END);
-                widget.configure(font=self.app.app_font, foreground=self.app.style.lookup('TLabel', 'foreground'))
+                widget.delete("1.0", tk.END)
+            widget.configure(foreground=self.app.default_text_color)
+            if isinstance(widget, tk.Text):
+                widget.configure(font=self.app.app_font_mono)
+            widget.is_placeholder = False
 
     def _handle_focus_in(self, event, widget, key):
         self._clear_placeholder(widget, key)
 
     def _handle_focus_out(self, event, widget, key):
-        current_text = widget.get() if isinstance(widget, (tk.Entry, ttkb.Entry)) else widget.get("1.0", tk.END).strip()
-        if not current_text: self.add_placeholder(widget, key)
+        _ = self.translator_func
+        current_text = ""
+        if isinstance(widget, (tk.Entry, ttkb.Entry)):
+            current_text = widget.get().strip()
+        elif isinstance(widget, tk.Text):
+            if not getattr(widget, 'is_placeholder', False):
+                 current_text = widget.get("1.0", "end-1c").strip()
+            else:
+                 current_text = ""
+
+        if not current_text:
+            placeholder_text = self.app.placeholders.get(key, self.app.placeholders.get("default_prompt_empty", _("Default prompt is empty, please set it in the configuration editor.")))
+            self.add_placeholder(widget, placeholder_text)
 
     def _update_assembly_id_dropdowns(self, ids: List[str]):
+        _ = self.translator_func
         ids = ids or [_("无可用基因组")]
         for tab in self.app.tool_tab_instances.values():
             if hasattr(tab, 'update_assembly_dropdowns'): tab.update_assembly_dropdowns(ids)
 
     def update_ai_model_dropdown(self, provider_key: str, models: List[str]):
+        _ = self.translator_func
         selector = getattr(self.app, f'ai_{provider_key.replace("-", "_")}_model_selector', None)
         if not selector: return
         dropdown, var = selector
@@ -410,11 +491,20 @@ class UIManager:
         for model in models: menu.add_command(label=model, command=lambda v=model: var.set(v))
 
     def update_option_menu(self, dropdown: ttkb.OptionMenu, string_var: tk.StringVar, new_values: List[str],
-                           default_text: str = "无可用选项"):
+                           default_text: str = "无可用选项", command: Optional[Callable[[str], Any]] = None):
         if not (dropdown and dropdown.winfo_exists()): return
-        final_values = new_values if new_values else [_(default_text)]
+        final_values = new_values if new_values else [self.translator_func(default_text)]
         menu = dropdown['menu'];
         menu.delete(0, 'end')
-        for value in final_values: menu.add_command(label=value, command=tk._setit(string_var, value))
+        for value in final_values:
+            if command:
+                menu.add_command(label=value, command=tk._setit(string_var, value, command))
+            else:
+                menu.add_command(label=value, command=tk._setit(string_var, value))
         current_val = string_var.get()
-        if current_val not in final_values: string_var.set(final_values[0])
+        if current_val not in final_values and final_values:
+            string_var.set(final_values[0])
+        elif not final_values:
+            string_var.set(self.translator_func(default_text))
+            if command:
+                command(self.translator_func(default_text))

@@ -3,8 +3,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk
-import traceback  # 汇入 traceback 模组
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, List
 
 import ttkbootstrap as ttkb
 
@@ -21,40 +20,19 @@ except ImportError:
 
 
 class AnnotationTab(BaseTab):
-    # ... (__init__ 和 _create_widgets 方法保持原样, 请直接复制粘贴整个档案) ...
-
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        """
-        【核心修改】此方法现在使用明确传入的 `translator` 函式来更新 UI 文本。
-        """
-        # --- 使用传入的 translator，而不是全域的 `_` ---
-        self.title_label.configure(text=translator("功能注释"))
-        self.input_card.configure(text=translator("输入数据"))
-        self.genome_version_label.configure(text=translator("基因组版本:"))
-        self.gene_id_label.configure(text=translator("基因ID列表:"))
-        self.anno_card.configure(text=translator("注释类型"))
-
-        self.output_label.configure(text=translator("输出文件 (可选):"))
-        self.browse_button.configure(text=translator("浏览..."))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始功能注释"))
-
-        # Placeholder 的更新也需要修改 UIManager 中的 add_placeholder 方法
-        # 为了简化，我们暂时假设 UIManager 会处理它
-        self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, "genes_input")
-
-    # ... (其他所有方法都保持原样，请直接用新档案覆盖旧档案)
-    def __init__(self, parent, app: "CottonToolkitApp"):
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.selected_annotation_assembly = tk.StringVar()
         self.go_anno_var = tk.BooleanVar(value=True)
         self.ipr_anno_var = tk.BooleanVar(value=True)
         self.kegg_ortho_anno_var = tk.BooleanVar(value=True)
         self.kegg_path_anno_var = tk.BooleanVar(value=True)
-        super().__init__(parent, app)
+        # 2. 将 translator 传递给父类的构造函数
+        super().__init__(parent, app, translator=translator)
         if self.action_button:
+            # 【可选优化】这里的 _ 应该使用父类中保存的 self._，不过它在 super().__init__ 后已经可用
             self.action_button.configure(text=_("开始功能注释"), command=self.start_annotation_task)
         self.update_from_config()
+
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
@@ -78,7 +56,11 @@ class AnnotationTab(BaseTab):
                                                 relief="flat", background=text_bg, foreground=text_fg,
                                                 insertbackground=text_fg)
         self.annotation_genes_textbox.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
-        self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, "genes_input")
+
+        # 【修正】在创建时就正确地从字典获取文本
+        initial_placeholder_text = self.app.placeholders.get("genes_input", "...")
+        self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, initial_placeholder_text)
+
         self.annotation_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                        self.annotation_genes_textbox,
                                                                                                        "genes_input"))
@@ -86,6 +68,7 @@ class AnnotationTab(BaseTab):
                                                                                                          self.annotation_genes_textbox,
                                                                                                          "genes_input"))
         self.annotation_genes_textbox.bind("<KeyRelease>", self._on_gene_input_change)
+
         self.anno_card = ttkb.LabelFrame(parent_frame, text=_("注释类型"), bootstyle="secondary")
         self.anno_card.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         self.anno_card.grid_columnconfigure(1, weight=1)
@@ -112,7 +95,29 @@ class AnnotationTab(BaseTab):
                                              [("CSV files", "*.csv"), ("All files", "*.*")]), bootstyle="info-outline")
         self.browse_button.grid(row=1, column=2, padx=(0, 10), pady=5)
 
-    def update_assembly_dropdowns(self, assembly_ids: list):
+    def retranslate_ui(self, translator: Callable[[str], str]):
+        self.title_label.configure(text=translator("功能注释"))
+        self.input_card.configure(text=translator("输入数据"))
+        self.genome_version_label.configure(text=translator("基因组版本:"))
+        self.gene_id_label.configure(text=translator("基因ID列表:"))
+        self.anno_card.configure(text=translator("注释类型"))
+        self.output_label.configure(text=translator("输出文件 (可选):"))
+        self.browse_button.configure(text=translator("浏览..."))
+
+        if self.action_button:
+            self.action_button.configure(text=translator("开始功能注释"))
+
+        # 【修正】调用独立的刷新方法
+        self.refresh_placeholders()
+
+    def refresh_placeholders(self):
+        """【新增】此方法由 UIManager 统一调用，以确保占位符被刷新。"""
+        if hasattr(self, 'annotation_genes_textbox') and self.annotation_genes_textbox:
+            # 【修正】从中央字典获取翻译好的文本，再传递
+            placeholder_text = self.app.placeholders.get("genes_input", "")
+            self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, placeholder_text)
+
+    def update_assembly_dropdowns(self, assembly_ids: List[str]):
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.selected_annotation_assembly, assembly_ids)
 
     def update_from_config(self):
@@ -131,10 +136,16 @@ class AnnotationTab(BaseTab):
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
-        gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
-        is_placeholder = (gene_ids_text == self.app.placeholders.get("genes_input", ""))
-        gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if
-                    gene.strip() and not is_placeholder]
+
+        gene_ids_text = ""
+        # 检查占位符状态
+        if getattr(self.annotation_genes_textbox, 'is_placeholder', False):
+            gene_ids_text = ""
+        else:
+            gene_ids_text = self.annotation_genes_textbox.get("1.0", tk.END).strip()
+
+        gene_ids = [gene.strip() for gene in gene_ids_text.replace(",", "\n").splitlines() if gene.strip()]
+
         assembly_id = self.selected_annotation_assembly.get()
         anno_types = [name for var, name in [(self.go_anno_var, 'go'), (self.ipr_anno_var, 'ipr'),
                                              (self.kegg_ortho_anno_var, 'kegg_orthologs'),

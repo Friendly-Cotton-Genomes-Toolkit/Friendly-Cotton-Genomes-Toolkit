@@ -18,10 +18,13 @@ except ImportError:
 
 
 class GenomeIdentifierTab(BaseTab):
-    def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, app)
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
+        # 将 translator 传递给父类
+        super().__init__(parent, app, translator=translator)
+
         if self.action_button:
-            self.action_button.configure(text=_("开始鉴定"), command=self.start_identification_task)
+            # self._ 属性在 super().__init__ 后才可用
+            self.action_button.configure(text=self._("开始鉴定"), command=self.start_identification_task)
 
             # 获取按钮所在的父容器
             action_frame = self.action_button.master
@@ -29,7 +32,7 @@ class GenomeIdentifierTab(BaseTab):
             action_frame.grid_columnconfigure(1, weight=0)
 
             # --- 初始化并储存结果标签 ---
-            self.result_var = tk.StringVar(value=_("鉴定结果将显示在这里。"))
+            self.result_var = tk.StringVar(value=self._("鉴定结果将显示在这里。"))
             self.result_label = ttkb.Label(action_frame, textvariable=self.result_var, anchor="w",
                                            font=self.app.app_font_italic, bootstyle="secondary")
             self.result_label.grid(row=0, column=0, sticky="ew", padx=(10, 10))

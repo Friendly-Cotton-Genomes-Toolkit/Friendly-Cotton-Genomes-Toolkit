@@ -21,14 +21,17 @@ except ImportError:
 class GFFQueryTab(BaseTab):
     """ “基因/区域位点查询”选项卡 """
 
-    def __init__(self, parent, app: "CottonToolkitApp"):
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         # --- 初始化 GUI 相关的 Tkinter 变量 ---
         self.selected_gff_query_assembly = tk.StringVar()
         self.output_path_var = tk.StringVar()
 
-        super().__init__(parent, app)
+        # 将 translator 传递给父类
+        super().__init__(parent, app, translator=translator)
+
         if self.action_button:
-            self.action_button.configure(text=_("开始基因查询"), command=self.start_gff_query_task)
+            # self._ 属性在 super().__init__ 后才可用
+            self.action_button.configure(text=self._("开始基因查询"), command=self.start_gff_query_task)
         self.update_from_config()
 
     def _create_widgets(self):

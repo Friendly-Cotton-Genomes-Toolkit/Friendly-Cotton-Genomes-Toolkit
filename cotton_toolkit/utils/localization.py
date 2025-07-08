@@ -44,7 +44,6 @@ def setup_localization(language_code: str = 'zh-hans') -> Callable[[str], str]:
             fallback=True  # 如果找不到语言，则退回到原始文本
         )
 
-        # 【核心修正】
         # 1. 全局安装 `_` 函式，供所有模组隐性使用
         lang_translation.install()
 

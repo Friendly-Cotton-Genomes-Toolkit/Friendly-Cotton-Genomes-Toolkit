@@ -2,16 +2,11 @@
 
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING,  Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 import ttkbootstrap as ttkb
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
-
-try:
-    from builtins import _
-except ImportError:
-    _ = lambda s: str(s)
 
 
 class BaseTab(ttk.Frame):
@@ -20,9 +15,12 @@ class BaseTab(ttk.Frame):
     它定义了一个上下布局：上部为可滚动内容区，下部为固定的操作按钮区。
     """
 
-    def __init__(self, parent, app: "CottonToolkitApp"):
+    # 【修改】构造函数接收 translator
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         super().__init__(parent)
         self.app = app
+        # 【修改】保存 translator 为实例属性
+        self._ = translator
         self.scrollable_frame: Optional[ttk.Frame] = None
         self.action_button: Optional[ttkb.Button] = None
 
@@ -81,10 +79,9 @@ class BaseTab(ttk.Frame):
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_rowconfigure(0, weight=1)
 
-        # 【修复】将写死的中文按钮文本替换为可翻译的 key
-        self.action_button = ttkb.Button(action_frame, text=_("执行操作"), bootstyle="success")
+        # 【修改】按钮文本使用 self._ 进行翻译
+        self.action_button = ttkb.Button(action_frame, text=self._("执行操作"), bootstyle="success")
         self.action_button.grid(row=0, column=0, sticky="e", padx=15, pady=10)
-
 
     def get_primary_action(self) -> Optional[Callable]:
         """返回此选项卡的主要操作函数，用于绑定回车键。"""
@@ -103,7 +100,6 @@ class BaseTab(ttk.Frame):
         基类中只是一个占位符，真正的实作在每个子分页中。
         """
         raise NotImplementedError("Each tab must implement retranslate_ui")
-
 
     def update_assembly_dropdowns(self, assembly_ids: list):
         """子类可以重写此方法以更新其特有的下拉菜单。"""

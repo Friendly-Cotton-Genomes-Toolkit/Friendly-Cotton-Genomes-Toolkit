@@ -142,8 +142,13 @@ class EventHandler:
 
     def _handle_startup_complete(self, data: dict):
         app = self.app
-        # UI_Manager负责隐藏进度弹窗，这里不再直接调用
-        # app.ui_manager._hide_progress_dialog()
+
+        self.app._log_to_viewer(_("应用程序启动完成。"), "INFO")
+        # 确保 UI Manager 存在且 app.config_path_display_var 已初始化
+        if self.app.ui_manager and hasattr(self.app, 'config_path_display_var'):
+            self.app.ui_manager.update_ui_from_config()
+        else:
+            self.app.logger.warning(_("无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"))
 
         app.genome_sources_data = data.get("genome_sources")
         config_data = data.get("config")
@@ -242,14 +247,20 @@ class EventHandler:
     # --- 用户界面事件处理 ---
 
     def on_language_change(self, selected_display_name: str):
+        """
+        处理语言切换的核心逻辑。
+        """
         app = self.app
+        # 1. 从显示名称 (如 "English") 获取语言代码 (如 "en")
         new_lang_code = app.LANG_NAME_TO_CODE.get(selected_display_name, "zh-hans")
-        if app.current_config and app.config_path:
-            app.current_config.i18n_language = new_lang_code
-            try:
-                save_config(app.current_config, app.config_path)
-            except Exception as e:
-                app.ui_manager.show_error_message(_("保存失败"), _("无法保存语言设置: {}").format(e))
+
+        # 2. 更新 UI 设置字典 (而不是项目配置文件)
+        app.ui_settings['language'] = new_lang_code
+
+        # 3. 调用 UI 管理器的方法来保存 UI 设置 (到 ui_settings.json)
+        app.ui_manager._save_ui_settings()
+
+        # 4. 通知 UI 管理器使用新语言代码更新整个界面
         app.ui_manager.update_language_ui(new_lang_code)
 
     def change_appearance_mode_event(self, new_mode_display: str):
@@ -474,7 +485,7 @@ class EventHandler:
                                  _("的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可"),
                                  "")
         about_text_widget.insert(tk.END, _("开箱即用"), "bold")
-        about_text_widget.insert(tk.END, _("。\n\n"), "")
+        about_text_widget.insert(tk.END, "。\n\n", "")
 
         about_text_widget.insert(tk.END,
                                  _("本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的得力助手。\n\n"),

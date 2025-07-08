@@ -24,7 +24,7 @@ except ImportError:
 
 
 class AIAssistantTab(BaseTab):
-    def __init__(self, parent, app: "CottonToolkitApp"):
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         # --- 初始化 GUI 相关的 Tkinter 变量 ---
         self.ai_proxy_var = tk.BooleanVar(value=False)
         self.ai_selected_provider_var = tk.StringVar()
@@ -34,12 +34,15 @@ class AIAssistantTab(BaseTab):
         self.save_as_new_var = tk.BooleanVar(value=True)
         self._prompt_save_timer = None
 
-        super().__init__(parent, app)
-        if self.action_button:
-            self.action_button.configure(text=_("开始处理CSV文件"), command=self.start_ai_csv_processing_task)
+        # 将 translator 传递给父类
+        super().__init__(parent, app, translator=translator)
 
-        self.app.placeholders["custom_prompt"] = _("在此处输入您的自定义提示词模板，必须包含 {text} 占位符...")
+        if self.action_button:
+            # self._ 属性在 super().__init__ 后才可用
+            self.action_button.configure(text=self._("开始处理CSV文件"), command=self.start_ai_csv_processing_task)
+
         self.update_from_config()
+
 
     def _create_widgets(self):
         """
@@ -84,19 +87,20 @@ class AIAssistantTab(BaseTab):
         self.task_label.pack(side="left", padx=(5, 10))
 
         # 将 Radiobutton 也存为属性
+        # 注意：这里 Radiobutton 的 value 应该使用英文键，方便内部逻辑判断
         self.translation_radio = ttkb.Radiobutton(task_header_frame, text=_("翻译"), variable=self.prompt_type_var,
-                                                  value=_("翻译"), command=self._on_task_type_change,
+                                                  value="translate", command=self._on_task_type_change,
                                                   bootstyle="toolbutton-success")
         self.translation_radio.pack(side="left", padx=5)
         self.analysis_radio = ttkb.Radiobutton(task_header_frame, text=_("分析"), variable=self.prompt_type_var,
-                                               value=_("分析"), command=self._on_task_type_change,
+                                               value="analyze", command=self._on_task_type_change,
                                                bootstyle="toolbutton-success")
         self.analysis_radio.pack(side="left", padx=5)
         self.custom_radio = ttkb.Radiobutton(task_header_frame, text=_("自定义"), variable=self.prompt_type_var,
-                                             value=_("自定义"), command=self._on_task_type_change,
+                                             value="custom", command=self._on_task_type_change,
                                              bootstyle="toolbutton-success")
         self.custom_radio.pack(side="left", padx=5)
-        self.prompt_type_var.set(_("翻译"))  # 设定初始值
+        self.prompt_type_var.set("translate")  # 设定初始值，使用英文键
 
         self.prompt_template_label = ttk.Label(self.prompt_card, text=_("提示词模板:"), font=self.app.app_font_bold)
         self.prompt_template_label.grid(row=1, column=0, padx=10, pady=(5, 0), sticky="w")
@@ -106,6 +110,11 @@ class AIAssistantTab(BaseTab):
                                       insertbackground=self.app.style.lookup('TLabel', 'foreground'))
         self.prompt_textbox.grid(row=2, column=0, sticky="nsew", padx=10, pady=(5, 10))
         self.prompt_textbox.bind("<KeyRelease>", self._on_prompt_change_debounced)
+        # 绑定焦点事件，以便 UIManager 管理占位符
+        self.prompt_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e, self.prompt_textbox,
+                                                                                             self.prompt_type_var.get()))
+        self.prompt_textbox.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.prompt_textbox,
+                                                                                               self.prompt_type_var.get()))
 
         self.csv_card = ttkb.LabelFrame(parent_frame, text=_("CSV文件处理"), bootstyle="secondary")
         self.csv_card.grid(row=3, column=0, sticky="nsew", padx=10, pady=10)
@@ -152,24 +161,10 @@ class AIAssistantTab(BaseTab):
         self.prompt_card.configure(text=translator("处理任务与提示词"))
         self.task_label.configure(text=translator("处理任务:"))
 
-        # Radiobutton 的 text 和 value 都需要更新，以确保逻辑正确
-        # 先储存旧的值
-        old_value = self.prompt_type_var.get()
-
-        # 更新每个 Radiobutton 的文字和它代表的值
-        self.translation_radio.configure(text=translator("翻译"), value=translator("翻译"))
-        self.analysis_radio.configure(text=translator("分析"), value=translator("分析"))
-        self.custom_radio.configure(text=translator("自定义"), value=translator("自定义"))
-
-        # 根据旧的值，设定新的翻译后的值
-        if old_value in [_("翻译"), _("Translation")]:
-            self.prompt_type_var.set(translator("翻译"))
-        elif old_value in [_("分析"), _("Analysis")]:
-            self.prompt_type_var.set(translator("分析"))
-        elif old_value in [_("自定义"), _("Custom")]:
-            self.prompt_type_var.set(translator("自定义"))
-        else:
-            self.prompt_type_var.set(translator("翻译"))  # 默认值
+        # Radiobutton 的 text 需要更新，value 保持英文键不变
+        self.translation_radio.configure(text=translator("翻译"))
+        self.analysis_radio.configure(text=translator("分析"))
+        self.custom_radio.configure(text=translator("自定义"))
 
         self.prompt_template_label.configure(text=translator("提示词模板:"))
 
@@ -191,9 +186,7 @@ class AIAssistantTab(BaseTab):
         self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [],
                                                translator("请先选择CSV文件"))
 
-        # 更新 placeholder 文本
-        self.app.placeholders["custom_prompt"] = translator("在此处输入您的自定义提示词模板，必须包含 {text} 占位符...")
-        # 强制刷新当前显示的提示词
+        # 强制刷新当前显示的提示词，确保其翻译正确
         self._on_task_type_change()
 
     def _on_prompt_change_debounced(self, event=None):
@@ -202,22 +195,31 @@ class AIAssistantTab(BaseTab):
 
     def _save_prompt_to_config(self):
         if not self.app.current_config or not self.app.config_path: return
-        current_task = self.prompt_type_var.get()
+
+        # 获取当前 prompt_type_var 的英文值
+        current_task_key = self.prompt_type_var.get()
         current_prompt = self.prompt_textbox.get("1.0", tk.END).strip()
-        is_placeholder = (current_prompt == self.app.placeholders.get("custom_prompt", ""))
-        if not current_prompt or is_placeholder: return
+
+        # 检查是否是占位符文本，如果是则不保存
+        # 这里的判断逻辑需要更精确，因为 _on_task_type_change 可能会直接设置 config 中的值
+        # 最好是判断 widget.is_placeholder 标志
+        if getattr(self.prompt_textbox, 'is_placeholder', False) or not current_prompt:
+            return
+
         config_changed = False
         prompts_cfg = self.app.current_config.ai_prompts
-        if current_task == _("翻译") and prompts_cfg.translation_prompt != current_prompt:
-            prompts_cfg.translation_prompt = current_prompt;
+
+        if current_task_key == "translate" and prompts_cfg.translation_prompt != current_prompt:
+            prompts_cfg.translation_prompt = current_prompt
             config_changed = True
-        elif current_task == _("分析") and prompts_cfg.analysis_prompt != current_prompt:
-            prompts_cfg.analysis_prompt = current_prompt;
+        elif current_task_key == "analyze" and prompts_cfg.analysis_prompt != current_prompt:
+            prompts_cfg.analysis_prompt = current_prompt
             config_changed = True
-        elif current_task == _("自定义") and hasattr(prompts_cfg,
-                                                     'custom_prompt') and prompts_cfg.custom_prompt != current_prompt:
-            prompts_cfg.custom_prompt = current_prompt;
+        elif current_task_key == "custom" and hasattr(prompts_cfg,
+                                                      'custom_prompt') and prompts_cfg.custom_prompt != current_prompt:
+            prompts_cfg.custom_prompt = current_prompt
             config_changed = True
+
         if config_changed:
             self.app._log_to_viewer(_("提示词已更新，正在后台保存配置..."), "DEBUG")
             config_to_save = copy.deepcopy(self.app.current_config)
@@ -225,36 +227,44 @@ class AIAssistantTab(BaseTab):
             # threading.Thread(target=self.app.event_handler.save_config_file_non_blocking, args=(config_to_save, self.app.config_path), daemon=True).start()
 
     def _on_task_type_change(self, choice=None):
-        current_choice = self.prompt_type_var.get()
-        if not self.app.current_config:
-            self.prompt_textbox.delete("1.0", tk.END)
-            self.prompt_textbox.insert("1.0", _("请先加载配置文件。"))
-            return
-
-        if self._prompt_save_timer is not None:
-            self.after_cancel(self._prompt_save_timer)
-            self._save_prompt_to_config()
-
-        prompts_cfg = self.app.current_config.ai_prompts
-        self.prompt_textbox.delete("1.0", tk.END)
+        """
+        【修改】直接从配置对象读取提示词，而不是从编辑器UI组件。
+        并确保清除旧的占位符状态或设置新的占位符。
+        """
+        task_type = self.prompt_type_var.get()  # 获取英文键 (translate, analyze, custom)
         prompt_text = ""
 
-        if current_choice == _("翻译"):
-            prompt_text = prompts_cfg.translation_prompt
-        elif current_choice == _("分析"):
-            prompt_text = prompts_cfg.analysis_prompt
-        elif current_choice == _("自定义"):
-            custom_prompt_text = getattr(prompts_cfg, 'custom_prompt', '') or ""
-            if not custom_prompt_text:
-                self.app.ui_manager.add_placeholder(self.prompt_textbox, "custom_prompt")
-            else:
-                prompt_text = custom_prompt_text
+        # 确保 config 已经加载并且存在 ai_prompts 属性
+        if self.app.current_config and hasattr(self.app.current_config, 'ai_prompts'):
+            ai_prompts = self.app.current_config.ai_prompts
+            if task_type == "translate":  # 使用英文键进行比较
+                prompt_text = ai_prompts.translation_prompt
+            elif task_type == "analyze":  # 使用英文键进行比较
+                prompt_text = ai_prompts.analysis_prompt
+            elif task_type == "custom":  # 使用英文键进行比较
+                # 确保 custom_prompt 属性存在，兼容旧配置
+                prompt_text = getattr(ai_prompts, 'custom_prompt', '')
+
+        # 清空当前提示框的内容和占位符状态
+        self.app.ui_manager._clear_placeholder(self.prompt_textbox, task_type)  # clear_placeholder 现在会检查 is_placeholder
+        self.prompt_textbox.delete("1.0", tk.END)  # 彻底清空
 
         if prompt_text:
             self.prompt_textbox.insert("1.0", prompt_text)
+            # 确保恢复到正常字体和颜色，并清除占位符标志
+            self.prompt_textbox.configure(font=self.app.app_font_mono, foreground=self.app.default_text_color)
+            setattr(self.prompt_textbox, 'is_placeholder', False)
+        else:
+            # 如果配置中没有对应提示词，则显示占位符
+            # 根据当前选择的任务类型确定占位符文本
+            placeholder_text_key = "default_prompt_empty"
+            if task_type == "custom":
+                placeholder_text_key = "custom_prompt"  # 使用 UIManager 中已翻译的 custom_prompt 键
 
-        if current_choice != _("自定义") or prompt_text:
-            self.app.ui_manager._remove_placeholder(self.prompt_textbox)
+            # 从 UIManager 维护的 placeholers 字典中获取翻译后的文本
+            placeholder_text = self.app.placeholders.get(placeholder_text_key,
+                                                         _("Default prompt is empty, please set it in the configuration editor."))
+            self.app.ui_manager.add_placeholder(self.prompt_textbox, placeholder_text)
 
     def _on_provider_change(self, provider_display_name: str):
         self.update_model_dropdown()
@@ -311,7 +321,7 @@ class AIAssistantTab(BaseTab):
         default_provider_name = self.app.AI_PROVIDERS.get(default_provider_key, {}).get('name', '')
         if default_provider_name: self.ai_selected_provider_var.set(default_provider_name)
         self.update_model_dropdown()
-        self._on_task_type_change()
+        self._on_task_type_change()  # 触发从配置加载提示词
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def start_ai_csv_processing_task(self):

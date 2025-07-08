@@ -1,15 +1,14 @@
 ﻿# 文件路径: ui/tabs/enrichment_tab.py
 
 import os
+import re
 import tkinter as tk
 from tkinter import ttk, filedialog
 from typing import TYPE_CHECKING, Callable, Optional, List
 
 import ttkbootstrap as ttkb
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
-from cotton_toolkit.tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
+from cotton_toolkit.pipelines import run_enrichment_pipeline
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:
@@ -23,326 +22,300 @@ except ImportError:
 
 class EnrichmentTab(BaseTab):
     """
-    负责GO和KEGG富集分析的UI界面。
+    负责GO和KEGG富集分析及可视化的UI界面。
     """
 
-    def __init__(self, parent, app: "CottonToolkitApp"):
-        # --- 初始化变量 ---
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.app = app
-        self.analysis_type_var = tk.StringVar(value=_("GO 富集分析"))
         self.assembly_id_var = tk.StringVar()
+        self.has_header_var = tk.BooleanVar(value=False)
+        self.has_log2fc_var = tk.BooleanVar(value=False)
+        self.analysis_type_var = tk.StringVar(value="go")
+        self.collapse_transcripts_var = tk.BooleanVar(value=False)
+        self.bubble_plot_var = tk.BooleanVar(value=True)
+        self.bar_plot_var = tk.BooleanVar(value=True)
+        self.upset_plot_var = tk.BooleanVar(value=False)
+        self.cnet_plot_var = tk.BooleanVar(value=False)
         self.top_n_var = tk.IntVar(value=20)
-        self.p_value_cutoff_var = tk.DoubleVar(value=0.05)
         self.sort_by_var = tk.StringVar(value="FDR")
+        self.show_title_var = tk.BooleanVar(value=True)
+        self.width_var = tk.DoubleVar(value=10.0)
+        self.height_var = tk.DoubleVar(value=8.0)
+        self.file_format_var = tk.StringVar(value="png")
 
-        self.results_df = None
-        self.figure: Optional[Figure] = None
-        self.canvas: Optional[FigureCanvasTkAgg] = None
-        self.toolbar: Optional[NavigationToolbar2Tk] = None
+        # 将 translator 传递给父类
+        super().__init__(parent, app, translator=translator)
 
-        super().__init__(parent, app)
-
-        # 重置基类创建的按钮
         if self.action_button:
-            self.action_button.configure(text=_("开始分析"), command=self.start_analysis_task)
-            self.action_button.grid(row=0, column=2, sticky="e", padx=15, pady=10)
-
-        # 添加额外的操作按钮
-        action_frame = self.action_button.master
-        self.save_chart_button = ttkb.Button(action_frame, text=_("保存图表"), command=self.save_chart,
-                                             state="disabled")
-        self.save_chart_button.grid(row=0, column=0, sticky="e", padx=(0, 10), pady=10)
-        self.save_results_button = ttkb.Button(action_frame, text=_("保存结果"), command=self.save_results,
-                                               state="disabled")
-        self.save_results_button.grid(row=0, column=1, sticky="e", padx=(0, 10), pady=10)
-
+            # self._ 属性在 super().__init__ 后才可用
+            self.action_button.configure(text=self._("开始富集分析"), command=self.start_enrichment_task)
         self.update_from_config()
 
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
-        parent_frame.grid_rowconfigure(2, weight=1)
 
-        # --- 1. 设置区域 ---
-        settings_frame = ttkb.Frame(parent_frame)
-        settings_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
-        settings_frame.grid_columnconfigure(1, weight=1)
-
-        # 标题
-        self.title_label = ttkb.Label(settings_frame, text=_("GO/KEGG 富集分析"), font=self.app.app_title_font,
+        self.title_label = ttkb.Label(parent_frame, text=_("富集分析与绘图"), font=self.app.app_title_font,
                                       bootstyle="primary")
-        self.title_label.grid(row=0, column=0, columnspan=4, pady=(0, 15))
+        self.title_label.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 
-        # 分析类型
-        self.analysis_type_label = ttkb.Label(settings_frame, text=_("分析类型:"), font=self.app.app_font_bold)
-        self.analysis_type_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        analysis_types = [_("GO 富集分析"), _("KEGG 富集分析")]
-        self.analysis_type_menu = ttkb.OptionMenu(settings_frame, self.analysis_type_var, self.analysis_type_var.get(),
-                                                  *analysis_types)
-        self.analysis_type_menu.grid(row=1, column=1, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.input_card = ttkb.LabelFrame(parent_frame, text=_("输入数据"), bootstyle="secondary")
+        self.input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        self.input_card.grid_columnconfigure(1, weight=1)
 
-        # 基因组版本
-        self.assembly_id_label = ttkb.Label(settings_frame, text=_("基因组版本:"), font=self.app.app_font_bold)
-        self.assembly_id_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-        self.assembly_id_menu = ttkb.OptionMenu(settings_frame, self.assembly_id_var, _("无可用基因组"))
-        self.assembly_id_menu.grid(row=2, column=1, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.assembly_id_label = ttk.Label(self.input_card, text=_("基因组版本:"), font=self.app.app_font_bold)
+        self.assembly_id_label.grid(row=0, column=0, sticky="w", padx=(10, 5), pady=10)
+        self.assembly_dropdown = ttkb.OptionMenu(self.input_card, self.assembly_id_var, _("加载中..."),
+                                                 bootstyle="info")
+        self.assembly_dropdown.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
-        # --- 2. 基因输入区域 ---
-        input_card = ttkb.LabelFrame(parent_frame, text=_("输入基因列表"), bootstyle="secondary")
-        input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        input_card.grid_columnconfigure(0, weight=1)
-        input_card.grid_rowconfigure(0, weight=1)
+        self.gene_list_label = ttk.Label(self.input_card, text=_("基因ID列表 (或基因ID,Log2FC):"),
+                                         font=self.app.app_font_bold)
+        self.gene_list_label.grid(row=1, column=0, sticky="nw", padx=(10, 5), pady=10)
 
-        self.gene_input_text = tk.Text(input_card, height=12, wrap="word", font=self.app.app_font)
-        self.gene_input_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        self.app.ui_manager.add_placeholder(self.gene_input_text, "enrichment_genes_input")
+        text_bg = self.app.style.lookup('TFrame', 'background')
+        text_fg = self.app.style.lookup('TLabel', 'foreground')
+        self.gene_input_text = tk.Text(self.input_card, height=10, font=self.app.app_font_mono, wrap="word",
+                                       relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg)
+        self.gene_input_text.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
+        self.app.ui_manager.add_placeholder(self.gene_input_text,
+                                            self.app.placeholders.get("enrichment_genes_input", "..."))
         self.gene_input_text.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e, self.gene_input_text,
                                                                                               "enrichment_genes_input"))
         self.gene_input_text.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.gene_input_text,
                                                                                                 "enrichment_genes_input"))
 
-        # --- 3. 结果和绘图区域 ---
-        results_card = ttkb.LabelFrame(parent_frame, text=_("富集结果"), bootstyle="secondary")
-        results_card.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-        results_card.grid_columnconfigure(0, weight=1)
-        results_card.grid_rowconfigure(1, weight=1)
+        self.format_card = ttkb.LabelFrame(parent_frame, text=_("输入格式与分析类型"), bootstyle="secondary")
+        self.format_card.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+        self.format_card.grid_columnconfigure(1, weight=1)
 
-        # 绘图设置
-        plot_options_frame = ttkb.Frame(results_card)
-        plot_options_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        self.input_format_label = ttk.Label(self.format_card, text=_("输入格式:"), font=self.app.app_font_bold)
+        self.input_format_label.grid(row=0, column=0, padx=15, pady=5, sticky="w")
+        input_format_frame = ttk.Frame(self.format_card)
+        input_format_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
+        self.has_header_check = ttkb.Checkbutton(input_format_frame, text=_("包含表头"), variable=self.has_header_var,
+                                                 bootstyle="round-toggle")
+        self.has_header_check.pack(side="left", padx=(0, 15))
+        self.has_log2fc_check = ttkb.Checkbutton(input_format_frame, text=_("包含Log2FC"), variable=self.has_log2fc_var,
+                                                 bootstyle="round-toggle")
+        self.has_log2fc_check.pack(side="left")
 
-        self.top_n_label = ttkb.Label(plot_options_frame, text=_("显示 Top N:"))
-        self.top_n_label.pack(side="left", padx=(0, 5))
-        top_n_spinbox = ttkb.Spinbox(plot_options_frame, from_=5, to=50, textvariable=self.top_n_var, width=5)
-        top_n_spinbox.pack(side="left", padx=5)
+        self.analysis_type_label = ttk.Label(self.format_card, text=_("分析类型:"), font=self.app.app_font_bold)
+        self.analysis_type_label.grid(row=1, column=0, padx=15, pady=5, sticky="w")
+        radio_frame = ttk.Frame(self.format_card)
+        radio_frame.grid(row=1, column=1, sticky="ew", padx=10, pady=5)
+        self.go_radio = ttkb.Radiobutton(radio_frame, text="GO", variable=self.analysis_type_var, value="go",
+                                         bootstyle="toolbutton-success")
+        self.go_radio.pack(side="left", padx=5)
+        self.kegg_radio = ttkb.Radiobutton(radio_frame, text="KEGG", variable=self.analysis_type_var, value="kegg",
+                                           bootstyle="toolbutton-success")
+        self.kegg_radio.pack(side="left", padx=5)
 
-        self.p_value_label = ttkb.Label(plot_options_frame, text=_("P值阈值:"))
-        self.p_value_label.pack(side="left", padx=(15, 5))
-        p_value_spinbox = ttkb.Spinbox(plot_options_frame, from_=0.0, to=1.0, increment=0.01,
-                                       textvariable=self.p_value_cutoff_var, width=6)
-        p_value_spinbox.pack(side="left", padx=5)
+        self.collapse_check = ttkb.Checkbutton(self.format_card, text=_("合并转录本到基因"),
+                                               variable=self.collapse_transcripts_var, bootstyle="round-toggle")
+        self.collapse_check.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=5)
+        self.collapse_note_label = ttkb.Label(self.format_card, text=_(
+            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"),
+                                              font=self.app.app_comment_font, bootstyle="info")
+        self.collapse_note_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 5))
 
-        self.sort_by_label = ttkb.Label(plot_options_frame, text=_("排序依据:"))
-        self.sort_by_label.pack(side="left", padx=(15, 5))
-        sort_by_menu = ttkb.OptionMenu(plot_options_frame, self.sort_by_var, self.sort_by_var.get(),
-                                       *["FDR", "p_value"])
-        sort_by_menu.pack(side="left", padx=5)
+        self.plot_config_card = ttkb.LabelFrame(parent_frame, text=_("绘图设置"), bootstyle="secondary")
+        self.plot_config_card.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
+        self.plot_config_card.grid_columnconfigure(1, weight=1)
 
-        update_plot_button = ttkb.Button(plot_options_frame, text=_("更新图表"), command=self.update_plot,
-                                         state="disabled")
-        update_plot_button.pack(side="left", padx=15)
-        self.update_plot_button = update_plot_button
+        self.plot_type_label = ttk.Label(self.plot_config_card, text=_("绘图类型:"), font=self.app.app_font_bold)
+        self.plot_type_label.grid(row=0, column=0, padx=15, pady=5, sticky="w")
+        plot_type_frame = ttk.Frame(self.plot_config_card)
+        plot_type_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
+        self.bubble_check = ttkb.Checkbutton(plot_type_frame, text=_("气泡图"), variable=self.bubble_plot_var,
+                                             bootstyle="round-toggle")
+        self.bubble_check.pack(side="left", padx=(0, 15))
+        self.bar_check = ttkb.Checkbutton(plot_type_frame, text=_("条形图"), variable=self.bar_plot_var,
+                                          bootstyle="round-toggle")
+        self.bar_check.pack(side="left", padx=(0, 15))
+        self.upset_check = ttkb.Checkbutton(plot_type_frame, text=_("Upset图"), variable=self.upset_plot_var,
+                                            bootstyle="round-toggle")
+        self.upset_check.pack(side="left", padx=(0, 15))
+        self.cnet_check = ttkb.Checkbutton(plot_type_frame, text=_("网络图(Cnet)"), variable=self.cnet_plot_var,
+                                           bootstyle="round-toggle")
+        self.cnet_check.pack(side="left")
 
-        # 绘图区域
-        self.plot_frame = ttkb.Frame(results_card, bootstyle="light")
-        self.plot_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-        self.plot_frame.grid_columnconfigure(0, weight=1)
-        self.plot_frame.grid_rowconfigure(0, weight=1)
+        self.top_n_label = ttk.Label(self.plot_config_card, text=_("显示前N项:"), font=self.app.app_font_bold)
+        self.top_n_label.grid(row=1, column=0, padx=15, pady=5, sticky="w")
+        self.top_n_entry = ttk.Entry(self.plot_config_card, textvariable=self.top_n_var, width=10)
+        self.top_n_entry.grid(row=1, column=1, sticky="w", padx=10, pady=5)
+
+        self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
+        self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
+        self.sort_by_dropdown = ttkb.OptionMenu(self.plot_config_card, self.sort_by_var, "FDR", "FDR", "PValue",
+                                                "FoldEnrichment", bootstyle="info")
+        self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
+
+        self.show_title_check = ttkb.Checkbutton(self.plot_config_card, text=_("显示图表标题"),
+                                                 variable=self.show_title_var, bootstyle="round-toggle")
+        self.show_title_check.grid(row=3, column=0, columnspan=2, sticky="w", padx=15, pady=5)
+
+        self.width_label = ttk.Label(self.plot_config_card, text=_("图表宽度 (英寸):"), font=self.app.app_font_bold)
+        self.width_label.grid(row=4, column=0, padx=15, pady=5, sticky="w")
+        self.width_entry = ttk.Entry(self.plot_config_card, textvariable=self.width_var, width=10)
+        self.width_entry.grid(row=4, column=1, sticky="w", padx=10, pady=5)
+
+        self.height_label = ttk.Label(self.plot_config_card, text=_("图表高度 (英寸):"), font=self.app.app_font_bold)
+        self.height_label.grid(row=5, column=0, padx=15, pady=5, sticky="w")
+        self.height_entry = ttk.Entry(self.plot_config_card, textvariable=self.height_var, width=10)
+        self.height_entry.grid(row=5, column=1, sticky="w", padx=10, pady=5)
+
+        self.file_format_label = ttk.Label(self.plot_config_card, text=_("文件格式:"), font=self.app.app_font_bold)
+        self.file_format_label.grid(row=6, column=0, padx=15, pady=5, sticky="w")
+        self.file_format_dropdown = ttkb.OptionMenu(self.plot_config_card, self.file_format_var, "png", "png", "svg",
+                                                    "pdf", "jpeg", bootstyle="info")
+        self.file_format_dropdown.grid(row=6, column=1, sticky="ew", padx=10, pady=5)
+
+        self.output_dir_card = ttkb.LabelFrame(parent_frame, text=_("输出设置"), bootstyle="secondary")
+        self.output_dir_card.grid(row=5, column=0, sticky="ew", padx=10, pady=5)
+        self.output_dir_card.grid_columnconfigure(1, weight=1)
+
+        self.output_dir_label = ttk.Label(self.output_dir_card, text=_("输出目录:"), font=self.app.app_font_bold)
+        self.output_dir_label.grid(row=0, column=0, padx=15, pady=5, sticky="w")
+        self.enrichment_output_dir_entry = ttk.Entry(self.output_dir_card)
+        self.enrichment_output_dir_entry.grid(row=0, column=1, sticky="ew", padx=(10, 5), pady=5)
+        self.browse_button = ttkb.Button(self.output_dir_card, text=_("浏览..."), width=12,
+                                         command=lambda: self.app.event_handler._browse_directory(
+                                             self.enrichment_output_dir_entry), bootstyle="info-outline")
+        self.browse_button.grid(row=0, column=2, padx=(0, 10), pady=5)
 
     def retranslate_ui(self, translator: Callable[[str], str]):
-        """在语言切换后更新此选项卡中的所有UI文本。"""
-        self.title_label.config(text=translator("GO/KEGG 富集分析"))
-        self.analysis_type_label.config(text=translator("分析类型:"))
+        # --- 更新所有静态文本 ---
+        self.title_label.config(text=translator("富集分析与绘图"))
+        self.input_card.config(text=translator("输入数据"))
         self.assembly_id_label.config(text=translator("基因组版本:"))
-        self.input_card.config(text=translator("输入基因列表"))
-        self.results_card.config(text=translator("富集结果"))
-        self.top_n_label.config(text=translator("显示 Top N:"))
-        self.p_value_label.config(text=translator("P值阈值:"))
-        self.sort_by_label.config(text=translator("排序依据:"))
-        self.update_plot_button.config(text=translator("更新图表"))
+        self.gene_list_label.config(text=translator("基因ID列表 (或基因ID,Log2FC):"))
+        self.format_card.config(text=translator("输入格式与分析类型"))
+        self.input_format_label.config(text=translator("输入格式:"))
+        self.has_header_check.config(text=translator("包含表头"))
+        self.has_log2fc_check.config(text=translator("包含Log2FC"))
+        self.analysis_type_label.config(text=translator("分析类型:"))
+        self.collapse_check.config(text=translator("合并转录本到基因"))
+        self.collapse_note_label.config(text=translator(
+            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"))
+        self.plot_config_card.configure(text=translator("绘图设置"))
+        self.plot_type_label.configure(text=translator("绘图类型:"))
+        self.bubble_check.configure(text=translator("气泡图"))
+        self.bar_check.configure(text=translator("条形图"))
+        self.upset_check.configure(text=translator("Upset图"))
+        self.cnet_check.configure(text=translator("网络图(Cnet)"))
+        self.top_n_label.configure(text=translator("显示前N项:"))
+        self.sort_by_label.configure(text=translator("排序依据:"))
+        self.show_title_check.configure(text=translator("显示图表标题"))
+        self.width_label.configure(text=translator("图表宽度 (英寸):"))
+        self.height_label.configure(text=translator("图表高度 (英寸):"))
+        self.file_format_label.configure(text=translator("文件格式:"))
+        self.output_dir_card.configure(text=translator("输出设置"))
+        self.output_dir_label.configure(text=translator("输出目录:"))
+        self.browse_button.configure(text=translator("浏览..."))
 
-        # 更新 Action Buttons
-        self.action_button.config(text=translator("开始分析"))
-        self.save_chart_button.config(text=translator("保存图表"))
-        self.save_results_button.config(text=translator("保存结果"))
+        if self.action_button:
+            self.action_button.configure(text=translator("开始富集分析"))
 
-        # 更新分析类型下拉菜单
-        self.analysis_type_var.set(translator(self.analysis_type_var.get()))
-        menu = self.analysis_type_menu["menu"]
-        menu.delete(0, "end")
-        analysis_types = [translator("GO 富集分析"), translator("KEGG 富集分析")]
-        for t in analysis_types:
-            menu.add_command(label=t, command=tk._setit(self.analysis_type_var, t))
+            # 【最终修正】直接调用 UIManager 的方法来设置占位符
+            # UIManager 的 _update_placeholders 已经更新了 self.app.placeholders 字典
+        new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
+        self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
 
-        # 刷新占位符和图表
-        self.refresh_placeholders()
-        self.update_plot(translator)
 
     def refresh_placeholders(self):
-        """刷新输入框的占位符"""
-        text_widget = self.gene_input_text
-        if text_widget.get("1.0", tk.END).strip() == "" or text_widget.cget("foreground") != self.app.style.lookup(
-                'TLabel', 'foreground'):
-            self.app.ui_manager.add_placeholder(text_widget, "enrichment_genes_input")
+        """【新增】此方法现在由UIManager统一调用，以确保占位符被刷新。"""
+        if hasattr(self, 'gene_input_text') and self.gene_input_text:
+            new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
+            self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
+
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        self.app.ui_manager.update_option_menu(
-            self.assembly_id_menu, self.assembly_id_var, assembly_ids
-        )
+        self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.assembly_id_var, assembly_ids,
+                                               _("无可用基因组"))
 
     def update_from_config(self):
-        if self.app.genome_sources_data:
-            self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
+        self.update_assembly_dropdowns(
+            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
+        default_dir = os.path.join(os.getcwd(), "enrichment_results")
+        self.enrichment_output_dir_entry.delete(0, tk.END)
+        self.enrichment_output_dir_entry.insert(0, default_dir)
+        self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
-    def update_button_state(self, is_running: bool, has_config: bool):
-        super().update_button_state(is_running, has_config)
-        state = "disabled" if is_running or not has_config else "normal"
-        self.save_chart_button.config(state="disabled" if is_running else self.save_chart_button.cget('state'))
-        self.save_results_button.config(state="disabled" if is_running else self.save_results_button.cget('state'))
-        self.update_plot_button.config(state="disabled" if is_running else self.update_plot_button.cget('state'))
-
-    def start_analysis_task(self):
+    def start_enrichment_task(self):
+        # ... [此方法的逻辑与上一版相同] ...
         if not self.app.current_config:
-            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
 
-        gene_list_str = self.gene_input_text.get("1.0", tk.END).strip()
-        if not gene_list_str or gene_list_str == self.app.placeholders.get("enrichment_genes_input"):
-            self.app.ui_manager.show_error_message(_("输入错误"), _("请输入基因列表。"))
-            return
+        gene_ids_text = self.gene_input_text.get("1.0", tk.END).strip()
+        is_placeholder = (gene_ids_text == self.app.placeholders.get("enrichment_genes_input", ""))
+        lines = [] if is_placeholder else gene_ids_text.splitlines()
 
-        # 解析基因列表，支持 GeneID 和 GeneID\tLog2FC 格式
-        study_genes = [line.split('\t')[0] for line in gene_list_str.split('\n') if line]
+        if not lines:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要分析的基因ID。"));
+            return
 
         assembly_id = self.assembly_id_var.get()
-        if not assembly_id or assembly_id == _("无可用基因组"):
-            self.app.ui_manager.show_error_message(_("选择错误"), _("请选择一个有效的基因组版本。"))
+        if not assembly_id or assembly_id in [_("加载中..."), _("无可用基因组")]:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"));
             return
 
-        output_dir = os.path.join(self.app.current_config.enrichment.output_dir, assembly_id)
-        os.makedirs(output_dir, exist_ok=True)
-
-        task_name_key, target_func, kwargs = None, None, {}
-
-        analysis_type = self.analysis_type_var.get()
-
-        genome_source_info = self.app.genome_sources_data.get(assembly_id)
-        if not genome_source_info:
-            self.app.ui_manager.show_error_message(_("错误"),
-                                                   _("找不到选中基因组 '{}' 的配置信息。").format(assembly_id))
+        output_dir = self.enrichment_output_dir_entry.get().strip()
+        if not output_dir:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择图表的输出目录。"));
             return
 
-        if analysis_type == _("GO 富集分析"):
-            task_name_key = "GO 富集分析"
-            target_func = run_go_enrichment
-            go_path = self.app.get_annotation_filepath(assembly_id, 'GO')
-            if not go_path: return
-            kwargs = {'study_gene_ids': study_genes, 'go_annotation_path': go_path, 'output_dir': output_dir,
-                      'gene_id_regex': genome_source_info.gene_id_regex}
-
-        elif analysis_type == _("KEGG 富集分析"):
-            task_name_key = "KEGG 富集分析"
-            target_func = run_kegg_enrichment
-            kegg_path = self.app.get_annotation_filepath(assembly_id, 'KEGG_pathways')
-            if not kegg_path: return
-            kwargs = {'study_gene_ids': study_genes, 'kegg_pathways_path': kegg_path, 'output_dir': output_dir,
-                      'gene_id_regex': genome_source_info.gene_id_regex}
-
-        if task_name_key and target_func:
-            self.app.event_handler._start_task(
-                task_name=_(task_name_key),
-                target_func=target_func,
-                kwargs=kwargs,
-                on_success=self.on_analysis_complete
-            )
-        else:
-            self.app.ui_manager.show_error_message(_("错误"), _("未知的分析类型: {}").format(analysis_type))
-
-    def on_analysis_complete(self, results_df: Optional[pd.DataFrame]):
-        if results_df is None or results_df.empty:
-            self.app.ui_manager.show_info_message(_("无结果"), _("富集分析未发现任何显著结果。"))
-            self.results_df = None
-            self.save_chart_button.config(state="disabled")
-            self.save_results_button.config(state="disabled")
-            self.update_plot_button.config(state="disabled")
-            self.clear_plot()
+        plot_types = [name for var, name in
+                      [(self.bubble_plot_var, 'bubble'), (self.bar_plot_var, 'bar'), (self.upset_plot_var, 'upset'),
+                       (self.cnet_plot_var, 'cnet')] if var.get()]
+        if not plot_types:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种图表类型。"));
             return
 
-        self.results_df = results_df
-        self.save_chart_button.config(state="normal")
-        self.save_results_button.config(state="normal")
-        self.update_plot_button.config(state="normal")
-        self.update_plot()
-        self.app.ui_manager.show_info_message(_("分析完成"), _("富集分析已成功完成。"))
+        study_gene_ids = []
+        gene_log2fc_map = {} if self.has_log2fc_var.get() else None
 
-    def update_plot(self, translator: Callable[[str], str] = _):
-        if self.results_df is None:
+        try:
+            effective_lines = lines[1:] if self.has_header_var.get() and len(lines) > 1 else lines
+            if self.has_log2fc_var.get():
+                for i, line in enumerate(effective_lines):
+                    if not line.strip(): continue
+                    parts = re.split(r'[\s\t,;]+', line.strip())
+                    if len(parts) >= 2:
+                        gene_id, log2fc_str = parts[0], parts[1]
+                        try:
+                            gene_log2fc_map[gene_id] = float(log2fc_str)
+                            study_gene_ids.append(gene_id)
+                        except ValueError:
+                            raise ValueError(_("第 {i + 1} 行Log2FC值无效:").format(i=i) + f" '{log2fc_str}'")
+                    else:
+                        raise ValueError(_("第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):").format(i=i) + f" '{line}'")
+            else:
+                for line in effective_lines:
+                    if not line.strip(): continue
+                    parts = re.split(r'[\s\t,;]+', line.strip())
+                    study_gene_ids.extend([p for p in parts if p])
+        except ValueError as e:
+            self.app.ui_manager.show_error_message(_("输入格式错误"), str(e));
             return
 
-        self.clear_plot()
-
-        df = self.results_df.copy()
-        df = df[df['p_value'] <= self.p_value_cutoff_var.get()]
-
-        if df.empty:
-            self.app.logger.warning(_("根据当前P值阈值，没有可供显示的数据。"))
+        study_gene_ids = sorted(list(set(study_gene_ids)))
+        if not study_gene_ids:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("解析后未发现有效基因ID。"));
             return
 
-        sort_by = self.sort_by_var.get()
-        plot_df = df.sort_values(by=sort_by, ascending=True).head(self.top_n_var.get())
-        plot_df = plot_df.sort_values(by='RichFactor', ascending=True)
+        task_kwargs = {
+            'config': self.app.current_config, 'assembly_id': assembly_id,
+            'study_gene_ids': study_gene_ids, 'analysis_type': self.analysis_type_var.get(),
+            'plot_types': plot_types, 'output_dir': output_dir,
+            'gene_log2fc_map': gene_log2fc_map, 'top_n': self.top_n_var.get(),
+            'sort_by': self.sort_by_var.get(), 'show_title': self.show_title_var.get(),
+            'width': self.width_var.get(), 'height': self.height_var.get(),
+            'file_format': self.file_format_var.get(), 'collapse_transcripts': self.collapse_transcripts_var.get()
+        }
 
-        self.figure = Figure(figsize=(10, 8), dpi=100)
-        ax = self.figure.add_subplot(111)
-
-        # 绘图
-        sc = ax.scatter(plot_df['RichFactor'], plot_df['Description'],
-                        s=plot_df['GeneNumber'] * 15, c=plot_df['FDR'],
-                        cmap='viridis_r', alpha=0.7)
-
-        self.figure.colorbar(sc, label=translator('FDR'))
-
-        # 使用 translator 来设置图表文本
-        ax.set_title(translator('富集分析气泡图'), fontsize=16)
-        ax.set_xlabel(translator('Rich Factor (富集因子)'), fontsize=12)
-        ax.set_ylabel(translator('Term Description (描述)'), fontsize=12)
-        ax.grid(True, linestyle='--', alpha=0.6)
-        self.figure.tight_layout()
-
-        # 将图表嵌入到Tkinter窗口
-        self.canvas = FigureCanvasTkAgg(self.figure, master=self.plot_frame)
-        self.canvas.draw()
-
-        self.toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame, pack_toolbar=False)
-        self.toolbar.update()
-        self.toolbar.pack(side=tk.BOTTOM, fill=tk.X)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-    def clear_plot(self):
-        if self.canvas:
-            self.canvas.get_tk_widget().destroy()
-            self.canvas = None
-        if self.toolbar:
-            self.toolbar.destroy()
-            self.toolbar = None
-        if self.figure:
-            self.figure.clear()
-            self.figure = None
-
-    def save_chart(self):
-        if not self.figure:
-            self.app.ui_manager.show_warning_message(_("无图表"), _("没有可供保存的图表。"))
-            return
-
-        file_path = filedialog.asksaveasfilename(
-            title=_("保存图表"),
-            filetypes=[(_("PNG 图像"), "*.png"), (_("PDF 文件"), "*.pdf"), (_("SVG 文件"), "*.svg")],
-            defaultextension=".png"
+        self.app.event_handler._start_task(
+            task_name=_("{} 富集分析").format(self.analysis_type_var.get().upper()),
+            target_func=run_enrichment_pipeline, kwargs=task_kwargs
         )
-        if file_path:
-            self.figure.savefig(file_path, bbox_inches='tight', dpi=300)
-            self.app.ui_manager.show_info_message(_("成功"), _("图表已成功保存至 {}").format(file_path))
-
-    def save_results(self):
-        if self.results_df is None or self.results_df.empty:
-            self.app.ui_manager.show_warning_message(_("无结果"), _("没有可供保存的结果。"))
-            return
-
-        file_path = filedialog.asksaveasfilename(
-            title=_("保存富集结果"),
-            filetypes=[(_("CSV 文件"), "*.csv")],
-            defaultextension=".csv"
-        )
-        if file_path:
-            self.results_df.to_csv(file_path, index=False, encoding='utf-8-sig')
-            self.app.ui_manager.show_info_message(_("成功"), _("结果已成功保存至 {}").format(file_path))

@@ -19,10 +19,13 @@ except ImportError:
 
 
 class XlsxConverterTab(BaseTab):
-    def __init__(self, parent, app: "CottonToolkitApp"):
-        super().__init__(parent, app)
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
+        # 将 translator 传递给父类
+        super().__init__(parent, app, translator=translator)
+
         if self.action_button:
-            self.action_button.configure(text=_("开始转换"), command=self.start_xlsx_to_csv_conversion)
+            # self._ 属性在 super().__init__ 后才可用
+            self.action_button.configure(text=self._("开始转换"), command=self.start_xlsx_to_csv_conversion)
         self.update_from_config()
 
     def _create_widgets(self):
@@ -86,6 +89,7 @@ class XlsxConverterTab(BaseTab):
         super().update_button_state(is_task_running, True)
 
     def start_xlsx_to_csv_conversion(self):
+        # ... (此方法逻辑保持不变) ...
         input_path = self.xlsx_input_entry.get().strip()
         output_path = self.csv_output_entry.get().strip()
         if not input_path or not os.path.exists(input_path):

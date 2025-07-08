@@ -17,16 +17,19 @@ except ImportError:
 
 
 class LocusConversionTab(BaseTab):
-    def __init__(self, parent, app: "CottonToolkitApp"):
+    def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         # --- 初始化 GUI 相关的 Tkinter 变量 ---
         self.selected_source_assembly = tk.StringVar()
         self.selected_target_assembly = tk.StringVar()
         self.region_entry_var = tk.StringVar()
         self.output_path_var = tk.StringVar()
 
-        super().__init__(parent, app)
+        # 将 translator 传递给父类
+        super().__init__(parent, app, translator=translator)
+
         if self.action_button:
-            self.action_button.configure(text=_("开始转换"), command=self.start_locus_conversion_task)
+            # self._ 属性在 super().__init__ 后才可用
+            self.action_button.configure(text=self._("开始转换"), command=self.start_locus_conversion_task)
         self.update_from_config()
 
     def _create_widgets(self):
