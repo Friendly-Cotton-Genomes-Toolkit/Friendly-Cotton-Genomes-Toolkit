@@ -11,7 +11,7 @@ from typing import Callable
 import pandas as pd
 import click
 
-from . import VERSION
+from . import VERSION, PUBLISH_URL
 from .pipelines import (
     run_download_pipeline,
     run_homology_mapping,
@@ -479,34 +479,47 @@ def test_ai(ctx, provider):
 @click.pass_context
 def about(ctx):
     """显示关于本软件的全面信息，包括简介、致谢和完整的引文。"""
-    # cli 主函数已经根据 --lang 参数设置了 builtins._，所以这里直接使用即可
-
-
-    # 使用 _() 来翻译标题和许可证，VERSION 是直接导入的变量
+    # --- Header ---
     click.secho(f"--- {_('友好棉花基因组工具包 (FCGT)')} ---", fg='cyan', bold=True)
     click.echo(f"Version: {VERSION}")
     click.echo(_('本软件遵守 Apache-2.0 license 开源协议'))
     click.echo("")
 
-    # --- GitHub 开源地址 ---
-    click.secho(_('about_cli.repo_link_text') + " ", fg='yellow', nl=False)
-    click.secho("https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit", fg='bright_blue', underline=True)
+    # --- Introduction ---
+    click.secho(f"--- {_('软件简介')} ---", fg='cyan', bold=True)
+    intro_text = _(
+        "FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、功能注释、富集分析和AI助手等。")
+    click.echo(textwrap.fill(intro_text, width=80))
     click.echo("")
 
-    # --- 数据来源与引文 ---
-    click.secho(f"--- {_('about_cli.data_source_title')} ---", fg='cyan', bold=True)
-    click.echo(_('about_cli.cottongen_credit'))
+    # --- Core Features ---
+    click.secho(f"--- {_('核心亮点')} ---", fg='cyan', bold=True)
+    click.echo(_("  • {feature}: 图形界面优先，无需复杂配置，多语言支持。").format(
+        feature=click.style(_('极致友好，开箱即用'), bold=True)))
+    click.echo(_("  • {feature}: 多线程加速，支持复杂的批量任务。").format(
+        feature=click.style(_('高效的自动化与批量处理'), bold=True)))
+    click.echo(_("  • {feature}: 棉花版 Liftover，一站式数据工具，标准化数据下载。").format(
+        feature=click.style(_('精准的基因组工具集'), bold=True)))
+    click.echo(_("  • {feature}: 为Windows/macOS提供预编译可执行文件，随处可用。").format(
+        feature=click.style(_('跨平台，易于分发'), bold=True)))
+    click.echo("")
 
-    click.echo(f"\n{_('about_cli.cottongen_papers_title')}")
-    # CottonGen文章的引文是固定的参考文献，保持英文原文
+    # --- Project Link ---
+    click.secho(f"--- {_('获取更多信息')} ---", fg='cyan', bold=True)
+    click.echo(_('项目开源地址: ') + click.style(PUBLISH_URL, fg='bright_blue', underline=True))
+    click.echo("")
+
+    # --- Data Sources & Citations ---
+    click.secho(f"--- {_('数据来源与引文')} ---", fg='cyan', bold=True)
+    click.echo(_("本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"))
+
+    click.echo(f"\n{_('CottonGen 主要引文:')}")
     click.echo(
         "  - Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.")
     click.echo(
         "  - Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.")
 
-    click.echo(f"\n{_('about_cli.genome_papers_title')}")
-
-    # --- 完整的、硬编码的英文参考文献列表 ---
+    click.echo(f"\n{_('基因组引用文献:')}")
     full_genome_citations = [
         ("NAU-NBI_v1.1",
          "Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015"),
@@ -531,15 +544,16 @@ def about(ctx):
 
     for name, citation_text in full_genome_citations:
         click.echo(f"  - {click.style(name, fg='green')}:")
-        # 使用textwrap自动换行并保持缩进，确保长文本显示美观
-        wrapped_text = textwrap.indent(citation_text, '    ')
+        # Wrap long citation text and keep indentation for readability
+        wrapped_text = textwrap.indent(textwrap.fill(citation_text, width=76), '    ')
         click.echo(wrapped_text)
-
     click.echo("")
 
-    # --- 致谢与许可 ---
-    click.secho(f"--- {_('about_cli.thanks_title')} ---", fg='cyan', bold=True)
-    click.echo(_('about_cli.thanks_text'))
+    # --- Acknowledgements ---
+    click.secho(f"--- {_('致谢')} ---", fg='cyan', bold=True)
+    thanks_text = _(
+        "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。")
+    click.echo(textwrap.fill(thanks_text, width=80))
 
 
 if __name__ == '__main__':
