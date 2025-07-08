@@ -6,7 +6,7 @@ import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 from typing import Optional, List, Callable
 
-# 全局翻译函数占位符
+# 全局翻译函数占位符，它会由主应用程式在启动时设定
 try:
     from builtins import _
 except ImportError:
@@ -21,25 +21,23 @@ class MessageDialog(ttkb.Toplevel):
     def __init__(self, parent, title: str, message: str, icon_type: str = "info",
                  buttons: Optional[List[str]] = None, style=None):
         super().__init__(parent)
-        self.title(_(title))
+
+        self.title(title)
+
         self.transient(parent)
         self.grab_set()
-        self.focus_set()  # <-- 核心修改：立即获取焦点
+        self.focus_set()
         self.result = None
         self.resizable(False, False)
 
+        # 【修复】将默认按钮的中文文本改为可翻译的 key
         if buttons is None:
             buttons = [_("确定")]
 
         icon_map = {"info": "ℹ", "warning": "⚠", "error": "❌", "question": "❓"}
         icon_char = icon_map.get(icon_type, "ℹ")
 
-        bootstyle_map = {
-            "info": "info",
-            "warning": "warning",
-            "error": "danger",
-            "question": "primary"
-        }
+        bootstyle_map = {"info": "info", "warning": "warning", "error": "danger", "question": "primary"}
         color_name = bootstyle_map.get(icon_type, "info")
 
         main_frame = ttkb.Frame(self, padding=(30, 25))
@@ -77,7 +75,6 @@ class MessageDialog(ttkb.Toplevel):
         self.destroy()
 
     def _on_escape(self, event=None):
-        """响应ESC键，直接关闭窗口。"""
         self.destroy()
 
 
@@ -86,10 +83,12 @@ class ProgressDialog(ttkb.Toplevel):
 
     def __init__(self, parent, title: str, on_cancel: Optional[Callable] = None, style=None):
         super().__init__(parent)
-        self.title(_(title))
+
+        self.title(title)
+
         self.transient(parent)
         self.grab_set()
-        self.focus_set()  # <-- 核心修改：立即获取焦点
+        self.focus_set()
         self.resizable(False, False)
         self.on_cancel_callback = on_cancel
         self.creation_time = time.time()
@@ -98,6 +97,7 @@ class ProgressDialog(ttkb.Toplevel):
         main_frame.pack(expand=True, fill=BOTH)
         main_frame.grid_columnconfigure(0, weight=1)
 
+        # 【修复】将默认消息和按钮文本改为可翻译的中文 key
         self.message_var = tk.StringVar(value=_("正在准备任务..."))
         ttkb.Label(main_frame, textvariable=self.message_var, wraplength=350, justify="center").grid(row=0, column=0,
                                                                                                      pady=10, padx=10)
@@ -111,7 +111,6 @@ class ProgressDialog(ttkb.Toplevel):
             cancel_button.grid(row=2, column=0, pady=(10, 0))
 
         self.protocol("WM_DELETE_WINDOW", self.on_close_button)
-
         self.bind("<Escape>", self._on_escape)
 
         self.update_idletasks()
@@ -124,6 +123,7 @@ class ProgressDialog(ttkb.Toplevel):
             pass
 
     def update_progress(self, percentage: float, text: str):
+        """更新进度条和显示的讯息。"""
         try:
             if self.winfo_exists():
                 self.message_var.set(_(text))
@@ -138,7 +138,6 @@ class ProgressDialog(ttkb.Toplevel):
             self.destroy()
 
     def _on_escape(self, event=None):
-        """响应ESC键，仅当窗口可取消时才关闭。"""
         if self.on_cancel_callback:
             self.on_close_button()
 

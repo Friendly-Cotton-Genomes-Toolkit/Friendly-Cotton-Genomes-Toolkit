@@ -2,7 +2,7 @@
 
 import tkinter as tk
 import ttkbootstrap as ttkb
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Callable
 
 from .base_tab import BaseTab
 from cotton_toolkit.pipelines import run_locus_conversion
@@ -18,6 +18,7 @@ except ImportError:
 
 class LocusConversionTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp"):
+        # --- 初始化 GUI 相关的 Tkinter 变量 ---
         self.selected_source_assembly = tk.StringVar()
         self.selected_target_assembly = tk.StringVar()
         self.region_entry_var = tk.StringVar()
@@ -29,50 +30,69 @@ class LocusConversionTab(BaseTab):
         self.update_from_config()
 
     def _create_widgets(self):
+        """
+        创建此选项卡内的所有 UI 元件。
+        【修改】将所有需要翻译的元件都储存为 self 的属性。
+        """
         parent = self.scrollable_frame
         parent.grid_columnconfigure(0, weight=1)
 
-        ttkb.Label(parent, text=_("位点坐标转换"), font=self.app.app_title_font, bootstyle="primary").grid(row=0,
-                                                                                                           column=0,
-                                                                                                           padx=10,
-                                                                                                           pady=(10,
-                                                                                                                 15),
-                                                                                                           sticky="n")
+        # --- 储存 UI 元件 ---
+        self.title_label = ttkb.Label(parent, text=_("位点坐标转换"), font=self.app.app_title_font, bootstyle="primary")
+        self.title_label.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 
-        # --- 输入卡片 ---
-        input_card = ttkb.LabelFrame(parent, text=_("输入参数"), bootstyle="secondary")
-        input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
-        input_card.grid_columnconfigure(1, weight=1)
+        self.input_card = ttkb.LabelFrame(parent, text=_("输入参数"), bootstyle="secondary")
+        self.input_card.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        self.input_card.grid_columnconfigure(1, weight=1)
 
-        ttkb.Label(input_card, text=_("源基因组:")).grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
-        self.source_assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_source_assembly, _("加载中..."),
+        self.source_genome_label = ttkb.Label(self.input_card, text=_("源基因组:"))
+        self.source_genome_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.source_assembly_dropdown = ttkb.OptionMenu(self.input_card, self.selected_source_assembly, _("加载中..."),
                                                         bootstyle="info")
         self.source_assembly_dropdown.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        ttkb.Label(input_card, text=_("目标基因组:")).grid(row=1, column=0, padx=(10, 5), pady=10, sticky="w")
-        self.target_assembly_dropdown = ttkb.OptionMenu(input_card, self.selected_target_assembly, _("加载中..."),
+        self.target_genome_label = ttkb.Label(self.input_card, text=_("目标基因组:"))
+        self.target_genome_label.grid(row=1, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.target_assembly_dropdown = ttkb.OptionMenu(self.input_card, self.selected_target_assembly, _("加载中..."),
                                                         bootstyle="info")
         self.target_assembly_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-        ttkb.Label(input_card, text=_("输入区域 (Chr:Start-End):")).grid(row=2, column=0, padx=(10, 5), pady=10,
-                                                                         sticky="w")
-        self.region_entry = ttkb.Entry(input_card, textvariable=self.region_entry_var)
+        self.region_label = ttkb.Label(self.input_card, text=_("输入区域 (Chr:Start-End):"))
+        self.region_label.grid(row=2, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.region_entry = ttkb.Entry(self.input_card, textvariable=self.region_entry_var)
         self.region_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
-        # 【核心修改】将结果文本框替换为输出文件路径选择
-        output_card = ttkb.LabelFrame(parent, text=_("输出设置"), bootstyle="secondary")
-        output_card.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
-        output_card.grid_columnconfigure(1, weight=1)
+        self.output_card = ttkb.LabelFrame(parent, text=_("输出设置"), bootstyle="secondary")
+        self.output_card.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        self.output_card.grid_columnconfigure(1, weight=1)
 
-        ttkb.Label(output_card, text=_("结果输出CSV文件:")).grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
-        self.output_entry = ttkb.Entry(output_card, textvariable=self.output_path_var)
+        self.output_label = ttkb.Label(self.output_card, text=_("结果输出CSV文件:"))
+        self.output_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
+        self.output_entry = ttkb.Entry(self.output_card, textvariable=self.output_path_var)
         self.output_entry.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
-        ttkb.Button(output_card, text=_("浏览..."), width=12, bootstyle="info-outline",
-                    command=lambda: self.app.event_handler._browse_save_file(self.output_entry,
-                                                                             [("CSV 文件", "*.csv")])).grid(row=0,
-                                                                                                            column=2,
-                                                                                                            padx=(5,
-                                                                                                                  10))
+
+        self.browse_button = ttkb.Button(self.output_card, text=_("浏览..."), width=12, bootstyle="info-outline",
+                                         command=lambda: self.app.event_handler._browse_save_file(self.output_entry,
+                                                                                                  [("CSV 文件",
+                                                                                                    "*.csv")]))
+        self.browse_button.grid(row=0, column=2, padx=(5, 10))
+
+    def retranslate_ui(self, translator: Callable[[str], str]):
+        """
+        【新增】当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
+        """
+        self.title_label.configure(text=translator("位点坐标转换"))
+        self.input_card.configure(text=translator("输入参数"))
+        self.source_genome_label.configure(text=translator("源基因组:"))
+        self.target_genome_label.configure(text=translator("目标基因组:"))
+        self.region_label.configure(text=translator("输入区域 (Chr:Start-End):"))
+
+        self.output_card.configure(text=translator("输出设置"))
+        self.output_label.configure(text=translator("结果输出CSV文件:"))
+        self.browse_button.configure(text=translator("浏览..."))
+
+        if self.action_button:
+            self.action_button.configure(text=translator("开始转换"))
 
     def update_from_config(self):
         self.update_assembly_dropdowns(

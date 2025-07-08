@@ -76,14 +76,13 @@ class BaseTab(ttk.Frame):
         self.bind_all("<Button-5>", _on_mousewheel, add="+")
 
         # --- 下部：固定操作区 ---
-        # 【核心修改】移除 bootstyle="light"，让这个Frame背景透明
         action_frame = ttkb.Frame(self)
-        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 5)) # 微调了边距
+        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 5))
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_rowconfigure(0, weight=1)
 
+        # 【修复】将写死的中文按钮文本替换为可翻译的 key
         self.action_button = ttkb.Button(action_frame, text=_("执行操作"), bootstyle="success")
-        # 注意：这里的 .grid() 只是一个占位，子类会重新布局它
         self.action_button.grid(row=0, column=0, sticky="e", padx=15, pady=10)
 
 
@@ -97,6 +96,14 @@ class BaseTab(ttk.Frame):
     def _create_widgets(self):
         """此方法旨在被子类重写，以填充 scrollable_frame。"""
         raise NotImplementedError("Each tab must implement _create_widgets")
+
+    def retranslate_ui(self, translator: Callable[[str], str]):
+        """
+        一个由子类重写的方法，用于在语言切换后更新其内部所有元件的文字。
+        基类中只是一个占位符，真正的实作在每个子分页中。
+        """
+        raise NotImplementedError("Each tab must implement retranslate_ui")
+
 
     def update_assembly_dropdowns(self, assembly_ids: list):
         """子类可以重写此方法以更新其特有的下拉菜单。"""

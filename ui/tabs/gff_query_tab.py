@@ -2,7 +2,7 @@
 
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Callable
 
 import ttkbootstrap as ttkb
 
@@ -22,8 +22,9 @@ class GFFQueryTab(BaseTab):
     """ “基因/区域位点查询”选项卡 """
 
     def __init__(self, parent, app: "CottonToolkitApp"):
+        # --- 初始化 GUI 相关的 Tkinter 变量 ---
         self.selected_gff_query_assembly = tk.StringVar()
-        self.output_path_var = tk.StringVar()  # 用于绑定输出路径输入框
+        self.output_path_var = tk.StringVar()
 
         super().__init__(parent, app)
         if self.action_button:
@@ -31,49 +32,52 @@ class GFFQueryTab(BaseTab):
         self.update_from_config()
 
     def _create_widgets(self):
+        """
+        创建此选项卡内的所有 UI 元件。
+        【修改】将所有需要翻译的元件都储存为 self 的属性。
+        """
         parent = self.scrollable_frame
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_rowconfigure(1, weight=1)
 
-        ttkb.Label(parent, text=_("基因/区域位点查询"), font=self.app.app_title_font, bootstyle="primary").grid(
-            row=0, column=0, padx=10, pady=(10, 15), sticky="n")
+        # --- 储存 UI 元件 ---
+        self.title_label = ttkb.Label(parent, text=_("基因/区域位点查询"), font=self.app.app_title_font,
+                                      bootstyle="primary")
+        self.title_label.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 
         main_frame = ttk.Frame(parent)
         main_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=0)
-        main_frame.grid_columnconfigure((0, 1), weight=1, uniform="group1")  # 让左右两栏等宽
+        main_frame.grid_columnconfigure((0, 1), weight=1, uniform="group1")
         main_frame.grid_rowconfigure(0, weight=1)
 
         # --- 左侧：输入卡片 ---
-        input_frame = ttkb.LabelFrame(main_frame, text=_("输入参数"), bootstyle="secondary") # 标签文本更通用
-        input_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=10)
-        input_frame.grid_columnconfigure(0, weight=1)
-        input_frame.grid_rowconfigure(1, weight=1)  # 让文本框可以扩展
+        self.input_frame = ttkb.LabelFrame(main_frame, text=_("输入参数"), bootstyle="secondary")
+        self.input_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=10)
+        self.input_frame.grid_columnconfigure(0, weight=1)
+        self.input_frame.grid_rowconfigure(1, weight=1)
 
-        ttkb.Label(input_frame, text=_("输入基因ID (多行或逗号分隔):"), font=self.app.app_font_bold).grid(row=0,
-                                                                                                          column=0,
-                                                                                                          sticky="w",
-                                                                                                          padx=10,
-                                                                                                          pady=(10, 0))
+        self.gene_id_label = ttkb.Label(self.input_frame, text=_("输入基因ID (多行或逗号分隔):"),
+                                        font=self.app.app_font_bold)
+        self.gene_id_label.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 0))
+
         text_bg = self.app.style.lookup('TFrame', 'background')
         text_fg = self.app.style.lookup('TLabel', 'foreground')
-        self.gff_query_genes_textbox = tk.Text(input_frame, wrap="word", height=10, font=self.app.app_font_mono,
-                                               relief="flat", background=text_bg, foreground=text_fg, # 【保留】foreground
-                                               insertbackground=text_fg) # 【保留】insertbackground
+        self.gff_query_genes_textbox = tk.Text(self.input_frame, wrap="word", height=10, font=self.app.app_font_mono,
+                                               relief="flat", background=text_bg, foreground=text_fg,
+                                               insertbackground=text_fg)
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
         self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
         self.gff_query_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                       self.gff_query_genes_textbox,
                                                                                                       "gff_genes"))
         self.gff_query_genes_textbox.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e,
-                                                                                                         self.gff_query_genes_textbox,
-                                                                                                         "gff_genes"))
+                                                                                                        self.gff_query_genes_textbox,
+                                                                                                        "gff_genes"))
         self.gff_query_genes_textbox.bind("<KeyRelease>", self._on_gff_query_gene_input_change)
 
-        ttkb.Label(input_frame, text=_("或 输入染色体区域:"), font=self.app.app_font_bold).grid(row=2, column=0,
-                                                                                                sticky="w", padx=10,
-                                                                                                pady=(10, 0))
-        self.gff_query_region_entry = ttkb.Entry(input_frame, font=self.app.app_font_mono, # 【修复】移除 insertbackground
-                                                 foreground=text_fg) # 【保留】foreground
+        self.region_label = ttkb.Label(self.input_frame, text=_("或 输入染色体区域:"), font=self.app.app_font_bold)
+        self.region_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
+        self.gff_query_region_entry = ttkb.Entry(self.input_frame, font=self.app.app_font_mono, foreground=text_fg)
         self.gff_query_region_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 10))
         self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
         self.gff_query_region_entry.bind("<FocusIn>",
@@ -84,29 +88,48 @@ class GFFQueryTab(BaseTab):
                                                                                          "gff_region"))
 
         # --- 右侧：配置与输出卡片 ---
-        config_frame = ttkb.LabelFrame(main_frame, text=_("配置与输出"), bootstyle="secondary")
-        config_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=10)
-        config_frame.grid_columnconfigure(0, weight=1)
+        self.config_frame = ttkb.LabelFrame(main_frame, text=_("配置与输出"), bootstyle="secondary")
+        self.config_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=10)
+        self.config_frame.grid_columnconfigure(0, weight=1)
 
-        ttkb.Label(config_frame, text=_("选择基因组版本:"), font=self.app.app_font_bold).grid(row=0, column=0,
-                                                                                              sticky="w", padx=10,
-                                                                                              pady=(10, 0))
-        self.gff_query_assembly_dropdown = ttkb.OptionMenu(config_frame, self.selected_gff_query_assembly,
+        self.genome_version_label = ttkb.Label(self.config_frame, text=_("选择基因组版本:"),
+                                               font=self.app.app_font_bold)
+        self.genome_version_label.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 0))
+        self.gff_query_assembly_dropdown = ttkb.OptionMenu(self.config_frame, self.selected_gff_query_assembly,
                                                            _("加载中..."), bootstyle="info")
         self.gff_query_assembly_dropdown.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
-        # 【核心修改】这里是新增的输出路径选择功能
-        ttkb.Label(config_frame, text=_("结果输出CSV文件:"), font=self.app.app_font_bold).grid(row=2, column=0,
-                                                                                               sticky="w", padx=10,
-                                                                                               pady=(10, 0))
-        self.gff_query_output_csv_entry = ttkb.Entry(config_frame, textvariable=self.output_path_var, font=self.app.app_font_mono, # 【修复】移除 insertbackground
-                                                     foreground=text_fg) # 【保留】foreground
+        self.output_path_label = ttkb.Label(self.config_frame, text=_("结果输出CSV文件:"), font=self.app.app_font_bold)
+        self.output_path_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
+        self.gff_query_output_csv_entry = ttkb.Entry(self.config_frame, textvariable=self.output_path_var,
+                                                     font=self.app.app_font_mono, foreground=text_fg)
         self.gff_query_output_csv_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
 
-        browse_btn = ttkb.Button(config_frame, text=_("浏览..."), width=12, bootstyle="info-outline",
-                                 command=lambda: self.app.event_handler._browse_save_file(
-                                     self.gff_query_output_csv_entry, [(_("CSV 文件"), "*.csv")]))
-        browse_btn.grid(row=4, column=0, sticky='e', padx=10, pady=5)
+        self.browse_button = ttkb.Button(self.config_frame, text=_("浏览..."), width=12, bootstyle="info-outline",
+                                         command=lambda: self.app.event_handler._browse_save_file(
+                                             self.gff_query_output_csv_entry, [(_("CSV 文件"), "*.csv")]))
+        self.browse_button.grid(row=4, column=0, sticky='e', padx=10, pady=5)
+
+    def retranslate_ui(self, translator: Callable[[str], str]):
+        """
+        【新增】当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
+        """
+        self.title_label.configure(text=translator("基因/区域位点查询"))
+        self.input_frame.configure(text=translator("输入参数"))
+        self.gene_id_label.configure(text=translator("输入基因ID (多行或逗号分隔):"))
+        self.region_label.configure(text=translator("或 输入染色体区域:"))
+
+        self.config_frame.configure(text=translator("配置与输出"))
+        self.genome_version_label.configure(text=translator("选择基因组版本:"))
+        self.output_path_label.configure(text=translator("结果输出CSV文件:"))
+        self.browse_button.configure(text=translator("浏览..."))
+
+        if self.action_button:
+            self.action_button.configure(text=translator("开始基因查询"))
+
+        # 刷新占位符
+        self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
+        self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
 
     def update_from_config(self):
         self.update_assembly_dropdowns(
@@ -137,8 +160,6 @@ class GFFQueryTab(BaseTab):
         assembly_id = self.selected_gff_query_assembly.get()
         gene_ids_text = self.gff_query_genes_textbox.get("1.0", tk.END).strip()
         region_str = self.gff_query_region_entry.get().strip()
-
-        # 获取并校验输出路径
         output_path = self.output_path_var.get().strip()
         if not output_path:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定结果文件的保存路径。"))
