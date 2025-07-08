@@ -284,38 +284,54 @@ class CottonToolkitApp(ttkb.Window):
         if not self.current_config or not self.editor_ui_built: return
         cfg = self.current_config
 
+        # 这是一个内部帮助函数，用于设置输入框的值
         def set_val(widget, value):
             if not widget: return
             if isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END); widget.insert("1.0", str(value or ""))
+                widget.delete("1.0", tk.END);
+                widget.insert("1.0", str(value or ""))
             elif isinstance(widget, ttkb.Entry):
-                widget.delete(0, tk.END); widget.insert(0, str(value or ""))
+                widget.delete(0, tk.END);
+                widget.insert(0, str(value or ""))
 
+        # --- 常规设置 ---
         self.general_log_level_var.set(cfg.log_level)
         set_val(self.proxy_http_entry, cfg.proxies.http)
         set_val(self.proxy_https_entry, cfg.proxies.https)
+
+        # --- 下载器配置 ---
         set_val(self.downloader_sources_file_entry, cfg.downloader.genome_sources_file)
         set_val(self.downloader_output_dir_entry, cfg.downloader.download_output_base_dir)
         self.downloader_force_download_var.set(cfg.downloader.force_download)
         set_val(self.downloader_max_workers_entry, cfg.downloader.max_workers)
         self.downloader_use_proxy_var.set(cfg.downloader.use_proxy_for_download)
+
+        # --- AI 服务配置 ---
         set_val(self.batch_ai_max_workers_entry, cfg.batch_ai_processor.max_workers)
         self.ai_default_provider_var.set(self.AI_PROVIDERS.get(cfg.ai_services.default_provider, {}).get('name', ''))
         self.ai_use_proxy_var.set(cfg.ai_services.use_proxy_for_ai)
 
+        # --- AI 服务商具体设置【已修正】---
         for p_key, p_cfg in cfg.ai_services.providers.items():
             safe_key = p_key.replace('-', '_')
-            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry",
-                                            None): p_cfg.api_key = apikey_widget.get()
-            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry",
-                                             None): p_cfg.base_url = baseurl_widget.get() or None
+
+            # 【修正】从 "p_cfg" 读取值，并设置到 "widget" 中
+            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry", None):
+                set_val(apikey_widget, p_cfg.api_key)  # <-- 已修正
+
+            # 【修正】从 "p_cfg" 读取值，并设置到 "widget" 中
+            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry", None):
+                set_val(baseurl_widget, p_cfg.base_url)  # <-- 已修正
+
             if model_selector := getattr(self, f"ai_{safe_key}_model_selector", None):
                 _dropdown, var = model_selector
+                # 这里的模型下拉菜单逻辑是正确的
                 var.set(p_cfg.model or "")
 
+        # --- AI 提示词模板 ---
         set_val(self.ai_translation_prompt_textbox, cfg.ai_prompts.translation_prompt)
         set_val(self.ai_analysis_prompt_textbox, cfg.ai_prompts.analysis_prompt)
-        # 【修改】使用 self._
+
         self.logger.info(self._("配置已应用到编辑器UI。"))
 
     def _save_config_from_editor(self):

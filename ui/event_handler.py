@@ -172,21 +172,51 @@ class EventHandler:
 
     def _handle_config_load_task_done(self, data: tuple):
         app = self.app
-        # UI_Manager负责隐藏进度弹窗，这里不再直接调用
-        # app.ui_manager._hide_progress_dialog()
-        success, result_data, filepath = data
-        if success:
-            app.current_config = result_data
-            app.config_path = os.path.abspath(filepath)
-            app.ui_manager.show_info_message(_("加载完成"), _("配置文件已成功加载并应用。"))
+        success, loaded_config, original_filepath = data  # 重命名变量以便理解
+
+        if not success:
+            app.ui_manager.show_error_message(_("加载失败"), str(loaded_config))
+            return
+
+        # 1. 定义程序根目录下的 config.yml 的绝对路径作为唯一目标
+        root_config_path = os.path.abspath("config.yml")
+
+        try:
+            # 2. 将从外部文件加载的配置内容(loaded_config)，保存到根目录的 config.yml
+            save_config(loaded_config, root_config_path)
+
+            # 3. 更新应用的内部状态，使其指向根目录的 config.yml
+            app.current_config = loaded_config
+            app.config_path = root_config_path  # 关键修改：将程序配置路径固定为根目录文件
+
+            # 4. 通知用户操作完成，并明确告知源和目标
+            app.ui_manager.show_info_message(
+                _("加载并覆盖成功"),
+                _("已将 '{}' 的内容加载并保存至 '{}'。").format(os.path.basename(original_filepath), os.path.basename(root_config_path))
+            )
+
+            # 5. 像以前一样，根据新加载的配置刷新整个UI
             app.genome_sources_data = get_genome_data_sources(app.current_config, logger_func=logger.info)
             app.ui_manager.update_ui_from_config()
-        else:
-            app.ui_manager.show_error_message(_("加载失败"), str(result_data))
+
+        except Exception as e:
+            # 处理在保存到根目录 config.yml 时可能发生的错误
+            error_msg = _("无法将加载的配置保存到根目录 'config.yml'。\n错误: {}").format(e)
+            app.ui_manager.show_error_message(_("保存失败"), error_msg)
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+
 
     def _handle_task_done(self, data: tuple):
         app = self.app
         success, task_display_name, result_data = data
+
+        # 【新增】专门处理“生成默认配置”任务完成后的情况
+        if task_display_name == _("生成默认配置"):
+            app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
+            self._handle_generate_default_configs_done(data) # 调用专用处理函数来弹窗询问
+            return # 在这里结束，不执行下面的通用逻辑
+
+        # --- 以下是原有的通用任务完成处理逻辑 ---
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
 
         if task_display_name in [_("数据下载"), _("预处理注释文件")]:
@@ -314,22 +344,45 @@ class EventHandler:
             self.app.message_queue.put(("hide_progress_dialog", None))
 
     def _generate_default_configs_gui(self):
-        if not (output_dir := filedialog.askdirectory(title=_("选择生成默认配置文件的目录"))): return
-        main_config_path = os.path.join(output_dir, "config.yml")
+        # 1. 不再询问目录，直接定义根目录为目标
+        root_dir = os.path.abspath(".")
+        main_config_path = os.path.join(root_dir, "config.yml")
+        sources_config_path = os.path.join(root_dir, "genome_sources.yml")
+
+        # 2. 检查两个目标文件是否已存在，并构建一个列表
+        existing_files = []
         if os.path.exists(main_config_path):
-            dialog = MessageDialog(self.app, _("文件已存在"), _("配置文件 'config.yml' 已存在，是否覆盖?"), "question",
-                                   [_("是"), _("否")])
-            if dialog.wait_window() or dialog.result != _("是"):
+            existing_files.append("'config.yml'")
+        if os.path.exists(sources_config_path):
+            existing_files.append("'genome_sources.yml'")
+
+        # 3. 如果有文件存在，弹出一个统一的对话框询问是否覆盖
+        if existing_files:
+            # 将存在的文件列表格式化成 " 'config.yml' 和 'genome_sources.yml' " 的形式
+            files_str = _(" 和 ").join(existing_files)
+
+            dialog = MessageDialog(self.app,
+                                   _("文件已存在"),
+                                   _("文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?").format(files_str),
+                                   "question",
+                                   [_("是，覆盖"), _("否，取消")])
+
+            # 如果用户选择不覆盖或关闭了对话框，则取消整个操作
+            # .wait_window() 会阻塞直到窗口关闭，如果用户点击了按钮，dialog.result 会有值
+            if dialog.wait_window() or dialog.result != _("是，覆盖"):
+                self.app._log_to_viewer(_("用户取消了生成默认配置文件的操作。"), "INFO")
                 return
 
-        # 显示进度弹窗，这里是生成文件，不需要取消按钮
+        # 4. 如果用户同意覆盖，或者文件本不存在，则继续执行生成操作
         self.app.message_queue.put(("show_progress_dialog", {
             "title": _("生成配置文件中..."),
-            "message": _("正在生成默认配置文件，请稍候..."),
+            "message": _("正在根目录生成默认配置文件，请稍候..."),
             "on_cancel": None
         }))
 
-        threading.Thread(target=self._generate_default_configs_thread, args=(output_dir,), daemon=True).start()
+        # 5. 在后台线程中执行生成，将根目录作为参数传入
+        threading.Thread(target=self._generate_default_configs_thread, args=(root_dir,), daemon=True).start()
+
 
     def _generate_default_configs_thread(self, output_dir: str):
         try:
