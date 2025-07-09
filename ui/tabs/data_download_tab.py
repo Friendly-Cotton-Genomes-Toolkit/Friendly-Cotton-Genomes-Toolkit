@@ -14,6 +14,15 @@ from .base_tab import BaseTab
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
 
+try:
+    import builtins
+
+    _ = builtins._  # type: ignore
+except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins失败
+    # 如果在测试或独立运行此模块时，_ 可能未设置
+    def _(text: str) -> str:
+        return text
+
 
 class DataDownloadTab(BaseTab):
     # 【修改】构造函数接收 translator 并传递给父类
@@ -25,12 +34,12 @@ class DataDownloadTab(BaseTab):
         self.file_type_vars: Dict[str, tk.BooleanVar] = {}
 
         self.FILE_TYPE_DISPLAY_NAMES_KEYS = {
-            "gff3": "注释 (gff3)",
+            "gff3": _("注释 (gff3)"),
             "GO": "GO",
             "IPR": "IPR",
-            "KEGG_pathways": "KEGG 通路",
-            "KEGG_orthologs": "KEGG 直系同源",
-            "homology_ath": "同源关系 (拟南芥)",
+            "KEGG_pathways": _("KEGG 通路"),
+            "KEGG_orthologs": _("KEGG 直系同源"),
+            "homology_ath": _("同源关系 (拟南芥)"),
         }
         self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED: Dict[str, str] = {}
 
@@ -106,7 +115,7 @@ class DataDownloadTab(BaseTab):
 
         self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.clear()
         for key, display_name_key in self.FILE_TYPE_DISPLAY_NAMES_KEYS.items():
-            self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED[key] = self._(display_name_key)
+            self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED[key] = display_name_key
 
         self.app.ui_manager.update_option_menu(
             self.genome_option_menu,

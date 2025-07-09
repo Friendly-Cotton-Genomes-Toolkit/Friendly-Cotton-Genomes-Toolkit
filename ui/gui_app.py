@@ -706,27 +706,42 @@ class CottonToolkitApp(ttkb.Window):
         self.editor_canvas.bind("<Configure>", on_canvas_resize)
 
         def _on_mousewheel(event):
-            if self.editor_canvas.winfo_exists():
-                is_on_canvas_or_frame = event.widget == self.editor_canvas or \
-                                        self.editor_scroll_frame.winfo_exists() and \
-                                        self.editor_scroll_frame.winfo_toplevel() == event.widget.winfo_toplevel() and \
-                                        self.editor_scroll_frame.winfo_containing(event.x_root,
-                                                                                  event.y_root) is not None
+            if not self.editor_canvas.winfo_exists():
+                return
 
-                if event.widget == self.editor_canvas or event.widget.master == self.editor_scroll_frame or event.widget == self.editor_scroll_frame:
-                    if event.num == 5 or event.delta == -120:
-                        self.editor_canvas.yview_scroll(1, "units")
-                    if event.num == 4 or event.delta == 120:
-                        self.editor_canvas.yview_scroll(-1, "units")
-                    return "break"
+            # event.delta 在 Windows/macOS 上有值，通常是 +/-120 的倍数
+            # event.num 在 Linux 上有值，通常是 4 (上) 或 5 (下)
+            if event.delta:
+                # 根据 delta 值计算滚动单位数，实现平滑滚动
+                scroll_units = int(-1 * (event.delta / 120))
+                self.editor_canvas.yview_scroll(scroll_units, "units")
+            else:
+                # 兼容 Linux
+                if event.num == 5:  # 向下滚动
+                    self.editor_canvas.yview_scroll(3, "units")  # 增加滚动单位
+                elif event.num == 4:  # 向上滚动
+                    self.editor_canvas.yview_scroll(-3, "units")  # 增加滚动单位
+            return "break"  # 阻止事件继续传播
 
-        self.editor_canvas.bind("<MouseWheel>", _on_mousewheel)
-        self.editor_canvas.bind("<Button-4>", _on_mousewheel)
-        self.editor_canvas.bind("<Button-5>", _on_mousewheel)
+        # 将事件绑定到 Canvas 和其内部的 Frame 上
+        widgets_to_bind = [self.editor_canvas, self.editor_scroll_frame]
 
-        self.editor_scroll_frame.bind("<MouseWheel>", _on_mousewheel)
-        self.editor_scroll_frame.bind("<Button-4>", _on_mousewheel)
-        self.editor_scroll_frame.bind("<Button-5>", _on_mousewheel)
+        # 递归地为内部Frame的所有子控件也绑定滚轮事件
+        # 这确保了无论鼠标悬停在哪个控件上，滚动都有效
+        def bind_all_children(parent_widget):
+            for child in parent_widget.winfo_children():
+                child.bind("<MouseWheel>", _on_mousewheel, add="+")
+                child.bind("<Button-4>", _on_mousewheel, add="+")
+                child.bind("<Button-5>", _on_mousewheel, add="+")
+                bind_all_children(child)
+
+        bind_all_children(self.editor_scroll_frame)
+
+        # 主控件也进行绑定
+        for widget in widgets_to_bind:
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            widget.bind("<Button-4>", _on_mousewheel)  # 兼容 Linux
+            widget.bind("<Button-5>", _on_mousewheel)  # 兼容 Linux
 
         self.editor_no_config_label = ttkb.Label(page, text=self._("请先从“主页”加载或生成一个配置文件。"),
                                                  font=self.app_subtitle_font, bootstyle="secondary")
@@ -809,4 +824,15 @@ class CottonToolkitApp(ttkb.Window):
             # 【修改】使用 self._
             self.logger.error(self._("配置日志级别时出错: {}").format(e))
 
+    def restart_app(self):
+        """重启当前应用程序。"""
+        self.logger.info("Application restart requested by user.")
+        try:
+            # 尝试优雅地关闭窗口
+            self.destroy()
+        except Exception as e:
+            self.logger.error(f"Error during pre-restart cleanup: {e}")
 
+        # 使用 os.execv 替换当前进程
+        python = sys.executable
+        os.execv(python, [python] + sys.argv)

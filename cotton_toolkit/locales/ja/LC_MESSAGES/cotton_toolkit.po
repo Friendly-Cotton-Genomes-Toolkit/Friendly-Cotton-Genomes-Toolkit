@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-07-08 09:52+0800\n"
-"PO-Revision-Date: 2025-07-08 10:08+0800\n"
+"POT-Creation-Date: 2025-07-09 19:37+0800\n"
+"PO-Revision-Date: 2025-07-09 22:24+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Gemini 2.5 Pro\n"
 "Language: ja_JP\n"
@@ -405,11 +405,11 @@ msgstr "プロバイダーをテストしています: {}..."
 msgid "错误: 在配置文件中未找到服务商 '{}' 的配置。"
 msgstr "エラー: プロバイダー '{}' の設定が設定ファイルに見つかりません。"
 
-#: cotton_toolkit/cli.py:483 ui/event_handler.py:430
+#: cotton_toolkit/cli.py:483
 msgid "友好棉花基因组工具包 (FCGT)"
 msgstr "フレンドリーコットンゲノムツールキット (FCGT)"
 
-#: cotton_toolkit/cli.py:485 ui/event_handler.py:433
+#: cotton_toolkit/cli.py:485
 msgid "本软件遵守 Apache-2.0 license 开源协议"
 msgstr "このソフトウェアはApache-2.0ライセンスの下でライセンスされています"
 
@@ -443,7 +443,7 @@ msgstr "主なハイライト"
 msgid "  • {feature}: 图形界面优先，无需复杂配置，多语言支持。"
 msgstr "  • {feature}: GUI優先、複雑な設定不要、多言語対応。"
 
-#: cotton_toolkit/cli.py:498 ui/event_handler.py:486
+#: cotton_toolkit/cli.py:498
 msgid "极致友好，开箱即用"
 msgstr "非常にフレンドリー、すぐに使える"
 
@@ -452,7 +452,7 @@ msgstr "非常にフレンドリー、すぐに使える"
 msgid "  • {feature}: 多线程加速，支持复杂的批量任务。"
 msgstr "  • {feature}: マルチスレッド高速化、複雑なバッチタスクをサポート。"
 
-#: cotton_toolkit/cli.py:500 ui/event_handler.py:489
+#: cotton_toolkit/cli.py:500
 msgid "高效的自动化与批量处理"
 msgstr "効率的な自動化とバッチ処理"
 
@@ -463,7 +463,7 @@ msgstr ""
 "  • {feature}: 綿特化Liftover、ワンストップデータツール、標準化されたデータダ"
 "ウンロード。"
 
-#: cotton_toolkit/cli.py:502 ui/event_handler.py:492
+#: cotton_toolkit/cli.py:502
 msgid "精准的基因组工具集"
 msgstr "精密なゲノムツールセット"
 
@@ -575,8 +575,9 @@ msgstr ""
 "{}"
 
 #: cotton_toolkit/config/loader.py:146
-msgid "加载基因组源文件时发生错误 '{}': {}"
-msgstr "ゲノムソースファイル '{}' の読み込み中にエラーが発生しました: {}"
+#, python-format
+msgid "加载基因组源文件时发生错误 '%s': %s"
+msgstr "基因組源ファイルの読み込み時にエラーが発生しました：'%s' %s"
 
 #: cotton_toolkit/config/loader.py:160
 msgid "一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"
@@ -587,35 +588,6 @@ msgstr ""
 #: cotton_toolkit/config/loader.py:178
 msgid "生成默认配置文件时发生错误: {}"
 msgstr "デフォルト設定ファイルの生成中にエラーが発生しました: {}"
-
-#: cotton_toolkit/config/models.py:52
-#, python-brace-format
-msgid ""
-"请将以下生物学领域的文本翻译成中文：\n"
-"\n"
-"{text}\n"
-"\n"
-"请只返回翻译结果，不要包含任何额外的解释或说明。"
-msgstr ""
-"以下の生物学テキストを日本語に翻訳してください:\n"
-"\n"
-"{text}\n"
-"\n"
-"翻訳結果のみを返し、余分な説明や注釈は含めないでください。"
-
-#: cotton_toolkit/config/models.py:53
-#, python-brace-format
-msgid ""
-"我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并"
-"提供一个简洁的总结。基因功能描述：\n"
-"\n"
-"{text}\n"
-msgstr ""
-"私は生物学の分野で研究をしています。以下の遺伝子機能の説明が私の研究方向とど"
-"のように関連しているかを分析し、簡潔な要約を提供してください。遺伝子機能の説"
-"明:\n"
-"\n"
-"{text}\n"
 
 #: cotton_toolkit/core/ai_wrapper.py:65
 msgid "AI服务商、API Key和模型名称不能为空。"
@@ -1386,7 +1358,7 @@ msgstr "CSVファイルを処理し、AIサービスを呼び出しています.
 msgid "AI处理: {}"
 msgstr "AI処理: {}"
 
-#: cotton_toolkit/pipelines.py:492 ui/event_handler.py:138
+#: cotton_toolkit/pipelines.py:492 ui/event_handler.py:181
 msgid "任务完成。"
 msgstr "タスクが完了しました。"
 
@@ -1841,7 +1813,7 @@ msgstr "プロセスが完了しました。'{}' に{}個のプロットが正�
 msgid "开始预处理注释文件（转换为CSV）..."
 msgstr "アノテーションファイルの前処理を開始しています（CSVに変換）..."
 
-#: cotton_toolkit/pipelines.py:1090 ui/event_handler.py:80
+#: cotton_toolkit/pipelines.py:1090 ui/event_handler.py:140
 msgid "正在加载基因组源数据..."
 msgstr "ゲノムソースデータを読み込んでいます..."
 
@@ -2352,718 +2324,671 @@ msgstr "DataFrameを {} に保存中にエラーが発生しました: {}"
 msgid "Warning: Failed to apply regex for gene ID normalization. Reason: {}"
 msgstr "警告: 遺伝子IDの正規化に正規表現を適用できませんでした。理由: {}"
 
-#: cotton_toolkit/utils/localization.py:38
-msgid "Warning: Locales directory not found at '{}'. Using fallback."
-msgstr ""
-"警告: '{}' にロケールディレクトリが見つかりませんでした。フォールバックを使用"
-"しています。"
-
-#: cotton_toolkit/utils/localization.py:51
-msgid "Warning: Could not set up language translation for '{}'. Reason: {}"
-msgstr "警告: '{}' の言語翻訳を設定できませんでした。理由: {}"
-
 #: cotton_toolkit/utils/logger.py:86
 msgid "全局日志系统已初始化，级别设置为: {}"
 msgstr ""
 "グローバルロギングシステムが初期化され、レベルが次のように設定されました: {}"
 
-#: cotton_toolkit/utils/logger.py:95 ui/gui_app.py:576
+#: cotton_toolkit/utils/logger.py:95 ui/gui_app.py:822
 msgid "全局日志级别已更新为: {}"
 msgstr "グローバルログレベルが次のように更新されました: {}"
 
-#: ui/dialogs.py:32 ui/event_handler.py:94 ui/event_handler.py:95
-msgid "确定"
-msgstr "OK"
+#: main.py:29
+msgid "程序发生致命错误 (Fatal Error)"
+msgstr "プログラムが致命的なエラーが発生しました (Fatal Error)"
 
-#: ui/dialogs.py:101
+#: main.py:31
+msgid "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
+msgstr ""
+"未処理の例外が発生し、プログラムが不意に終了しました。開発者に以下の情報をお"
+"伝えください："
+
+#: ui/dialogs.py:148
 msgid "正在准备任务..."
 msgstr "タスクを準備しています..."
 
-#: ui/dialogs.py:109 ui/event_handler.py:94
+#: ui/dialogs.py:156 ui/event_handler.py:113 ui/event_handler.py:153
 msgid "取消"
 msgstr "キャンセル"
 
-#: ui/event_handler.py:62
+#: ui/event_handler.py:83
+msgid "配置已保存"
+msgstr "配置が保存されました"
+
+#: ui/event_handler.py:83
+msgid "语言设置已同步到 {}。"
+msgstr "言語設定は {} に同期されました。"
+
+#: ui/event_handler.py:86 ui/event_handler.py:226 ui/gui_app.py:536
+msgid "保存失败"
+msgstr "保存失敗"
+
+#: ui/event_handler.py:86
+msgid "无法将语言设置写入配置文件。"
+msgstr "言語設定をコンフィグファイルに書き込めません。"
+
+#: ui/event_handler.py:95
+msgid "需要重启"
+msgstr "再起動が必要です（Restart required）"
+
+#: ui/event_handler.py:96
+msgid "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
+msgstr ""
+"言語設定が変更されました。すべての変更を完全に反映させるために、アプリケー"
+"ションを再起動することを推奨します。"
+
+#: ui/event_handler.py:97
+msgid "立即重启"
+msgstr "すぐに再起動（Restart immediately）"
+
+#: ui/event_handler.py:98
+msgid "稍后重启"
+msgstr "後で再起動（Restart later）"
+
+#: ui/event_handler.py:110
+msgid "确认退出"
+msgstr "退出確認"
+
+#: ui/event_handler.py:111
+msgid "任务'{}'正在运行中，确定要强制退出吗？"
+msgstr "タスク'{}'は実行中です。強制終了しますか？"
+
+#: ui/event_handler.py:112
+msgid "强制退出"
+msgstr "強制終了"
+
+#: ui/event_handler.py:125
 msgid "图形界面启动中..."
 msgstr "GUIを起動しています..."
 
-#: ui/event_handler.py:63
+#: ui/event_handler.py:126
 msgid "正在初始化应用程序和加载配置，请稍候..."
 msgstr ""
 "アプリケーションを初期化し、設定を読み込んでいます。しばらくお待ちください..."
 
-#: ui/event_handler.py:74 ui/event_handler.py:290
+#: ui/event_handler.py:135 ui/event_handler.py:357
 msgid "正在加载配置文件..."
 msgstr "設定ファイルを読み込んでいます..."
 
-#: ui/event_handler.py:83
+#: ui/event_handler.py:142
 msgid "启动完成准备..."
 msgstr "起動準備が完了しました..."
 
-#: ui/event_handler.py:88
+#: ui/event_handler.py:147
 msgid "应用启动失败"
 msgstr "アプリケーションの起動に失敗しました"
 
-#: ui/event_handler.py:90
+#: ui/event_handler.py:149
 msgid "初始化完成。"
 msgstr "初期化が完了しました。"
 
-#: ui/event_handler.py:94
+#: ui/event_handler.py:153
 msgid "退出程序"
 msgstr "プログラムを終了"
 
-#: ui/event_handler.py:94
+#: ui/event_handler.py:153
 msgid "您确定要退出吗?"
 msgstr "本当に終了しますか？"
 
-#: ui/event_handler.py:101 ui/event_handler.py:663
+#: ui/event_handler.py:153 ui/event_handler.py:154
+msgid "确定"
+msgstr "OK"
+
+#: ui/event_handler.py:160 ui/event_handler.py:492
 msgid "任务进行中"
 msgstr "タスク進行中"
 
-#: ui/event_handler.py:102 ui/event_handler.py:664
+#: ui/event_handler.py:161 ui/event_handler.py:493
 msgid "任务"
 msgstr "タスク"
 
-#: ui/event_handler.py:102 ui/event_handler.py:664
+#: ui/event_handler.py:161 ui/event_handler.py:493
 msgid "正在运行。"
 msgstr "が実行中です。"
 
-#: ui/event_handler.py:112
+#: ui/event_handler.py:166
 msgid "正在处理..."
 msgstr "処理中..."
 
-#: ui/event_handler.py:136 ui/event_handler.py:201
+#: ui/event_handler.py:179 ui/event_handler.py:251
 msgid "任务执行出错"
 msgstr "タスク実行エラー"
 
-#: ui/event_handler.py:156
+#: ui/event_handler.py:186
+msgid "应用程序启动完成。"
+msgstr "アプリケーションの起動が完了しました。"
+
+#: ui/event_handler.py:190
+msgid "无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"
+msgstr ""
+"起動時にUIの配置を更新できない：UIManagerやconfig_path_display_varが初期化さ"
+"れていない。"
+
+#: ui/event_handler.py:197
 msgid "默认配置文件加载成功。"
 msgstr "デフォルト設定ファイルが正常に読み込まれました。"
 
-#: ui/event_handler.py:158
+#: ui/event_handler.py:199
 msgid "未找到或无法加载默认配置文件。"
 msgstr "デフォルト設定ファイルが見つからないか、読み込めませんでした。"
 
-#: ui/event_handler.py:165
+#: ui/event_handler.py:206
 msgid "启动错误"
 msgstr "起動エラー"
 
-#: ui/event_handler.py:176
-msgid "加载完成"
-msgstr "読み込み完了"
-
-#: ui/event_handler.py:176
-msgid "配置文件已成功加载并应用。"
-msgstr "設定ファイルは正常に読み込まれ、適用されました。"
-
-#: ui/event_handler.py:180
+#: ui/event_handler.py:213
 msgid "加载失败"
 msgstr "読み込み失敗"
 
-#: ui/event_handler.py:187 ui/tabs/data_download_tab.py:196
-msgid "数据下载"
-msgstr "データダウンロード"
+#: ui/event_handler.py:220
+msgid "加载并覆盖成功"
+msgstr "ロードして上書き成功"
 
-#: ui/event_handler.py:187 ui/tabs/data_download_tab.py:49
-#: ui/tabs/data_download_tab.py:231
-msgid "预处理注释文件"
-msgstr "アノテーションファイルの前処理"
-
-#: ui/event_handler.py:192
-msgid "数据下载选项卡状态已在任务完成后自动刷新。"
-msgstr "データダウンロードタブの状態はタスク完了後に自動的に更新されました。"
-
-#: ui/event_handler.py:193 ui/tabs/locus_conversion_tab.py:122
-msgid "位点转换"
-msgstr "座位変換"
-
-#: ui/event_handler.py:195
-msgid "转换成功"
-msgstr "変換成功"
-
-#: ui/event_handler.py:202
-msgid "未知任务"
-msgstr "不明なタスク"
-
-#: ui/event_handler.py:217
-msgid "刷新成功"
-msgstr "更新成功"
-
-#: ui/event_handler.py:218
-msgid "已成功获取并更新"
-msgstr "正常に取得および更新されました"
-
-#: ui/event_handler.py:218
-msgid "的模型列表。"
-msgstr "モデルリスト。"
-
-#: ui/event_handler.py:221
-msgid "刷新失败"
-msgstr "更新失敗"
+#: ui/event_handler.py:220
+msgid "已将 '{}' 的内容加载并保存至 '{}'。"
+msgstr "{} の内容を {} に読み込み保存しました。"
 
 #: ui/event_handler.py:225
-msgid "测试成功"
-msgstr "テスト成功"
+msgid ""
+"无法将加载的配置保存到根目录 'config.yml'。\n"
+"错误: {}"
+msgstr ""
+"ロードした配置をルートディレクトリ 'config.yml' に保存できません。\n"
+"エラー: {}"
 
-#: ui/event_handler.py:227
-msgid "测试失败"
-msgstr "テスト失敗"
-
-#: ui/event_handler.py:238
-msgid "代理测试成功"
-msgstr "プロキシテスト成功"
-
-#: ui/event_handler.py:240
-msgid "代理测试失败"
-msgstr "プロキシテスト失敗"
-
-#: ui/event_handler.py:252 ui/gui_app.py:352
-msgid "保存失败"
-msgstr "保存失敗"
-
-#: ui/event_handler.py:252
-msgid "无法保存语言设置: {}"
-msgstr "言語設定を保存できませんでした: {}"
-
-#: ui/event_handler.py:270 ui/ui_manager.py:105
-msgid "隐藏日志"
-msgstr "ログを非表示"
-
-#: ui/event_handler.py:270 ui/ui_manager.py:102 ui/ui_manager.py:105
-msgid "显示日志"
-msgstr "ログを表示"
-
-#: ui/event_handler.py:277
-msgid "操作日志已清除。"
-msgstr "操作ログがクリアされました。"
-
-#: ui/event_handler.py:281
-msgid "选择配置文件"
-msgstr "設定ファイルを選択"
-
-#: ui/event_handler.py:289 ui/tabs/annotation_tab.py:50
-#: ui/tabs/annotation_tab.py:135 ui/tabs/enrichment_tab.py:66
-#: ui/tabs/enrichment_tab.py:274 ui/tabs/gff_query_tab.py:95
-#: ui/tabs/gff_query_tab.py:172 ui/tabs/homology_tab.py:43
-#: ui/tabs/homology_tab.py:46 ui/tabs/homology_tab.py:94
-#: ui/tabs/locus_conversion_tab.py:48 ui/tabs/locus_conversion_tab.py:53
-#: ui/tabs/locus_conversion_tab.py:107
-msgid "加载中..."
-msgstr "読み込み中..."
-
-#: ui/event_handler.py:302
-msgid "加载完成。"
-msgstr "読み込みが完了しました。"
-
-#: ui/event_handler.py:306
-msgid "选择生成默认配置文件的目录"
-msgstr "デフォルト設定ファイルを生成するディレクトリを選択"
-
-#: ui/event_handler.py:309
-msgid "文件已存在"
-msgstr "ファイルが存在します"
-
-#: ui/event_handler.py:309
-msgid "配置文件 'config.yml' 已存在，是否覆盖?"
-msgstr "設定ファイル 'config.yml' は既に存在します。上書きしますか？"
-
-#: ui/event_handler.py:310 ui/event_handler.py:311 ui/event_handler.py:350
-#: ui/event_handler.py:351
-msgid "是"
-msgstr "はい"
-
-#: ui/event_handler.py:310 ui/event_handler.py:350
-msgid "否"
-msgstr "いいえ"
-
-#: ui/event_handler.py:316
-msgid "生成配置文件中..."
-msgstr "設定ファイルを生成しています..."
-
-#: ui/event_handler.py:317
-msgid "正在生成默认配置文件，请稍候..."
-msgstr "デフォルト設定ファイルを生成しています。しばらくお待ちください..."
-
-#: ui/event_handler.py:326
-msgid "正在生成主配置文件..."
-msgstr "メイン設定ファイルを生成しています..."
-
-#: ui/event_handler.py:328
-msgid "生成其他配置文件..."
-msgstr "他の設定ファイルを生成しています..."
-
-#: ui/event_handler.py:330
-msgid "配置文件生成完成。"
-msgstr "設定ファイルの生成が完了しました。"
-
-#: ui/event_handler.py:333
+#: ui/event_handler.py:232 ui/event_handler.py:400
 msgid "生成默认配置"
 msgstr "デフォルト設定を生成"
 
-#: ui/event_handler.py:336
+#: ui/event_handler.py:237 ui/gui_app.py:51 ui/tabs/data_download_tab.py:269
+msgid "数据下载"
+msgstr "データダウンロード"
+
+#: ui/event_handler.py:237 ui/tabs/data_download_tab.py:59
+#: ui/tabs/data_download_tab.py:133 ui/tabs/data_download_tab.py:307
+msgid "预处理注释文件"
+msgstr "アノテーションファイルの前処理"
+
+#: ui/event_handler.py:242
+msgid "数据下载选项卡状态已在任务完成后自动刷新。"
+msgstr "データダウンロードタブの状態はタスク完了後に自動的に更新されました。"
+
+#: ui/event_handler.py:243 ui/gui_app.py:57 ui/tabs/locus_conversion_tab.py:145
+msgid "位点转换"
+msgstr "座位変換"
+
+#: ui/event_handler.py:245
+msgid "转换成功"
+msgstr "変換成功"
+
+#: ui/event_handler.py:252
+msgid "未知任务"
+msgstr "不明なタスク"
+
+#: ui/event_handler.py:266
+msgid "刷新成功"
+msgstr "更新成功"
+
+#: ui/event_handler.py:267
+msgid "已成功获取并更新"
+msgstr "正常に取得および更新されました"
+
+#: ui/event_handler.py:267
+msgid "的模型列表。"
+msgstr "モデルリスト。"
+
+#: ui/event_handler.py:270
+msgid "刷新失败"
+msgstr "更新失敗"
+
+#: ui/event_handler.py:274
+msgid "测试成功"
+msgstr "テスト成功"
+
+#: ui/event_handler.py:276
+msgid "测试失败"
+msgstr "テスト失敗"
+
+#: ui/event_handler.py:287
+msgid "代理测试成功"
+msgstr "プロキシテスト成功"
+
+#: ui/event_handler.py:289
+msgid "代理测试失败"
+msgstr "プロキシテスト失敗"
+
+#: ui/event_handler.py:301 ui/ui_manager.py:285 ui/ui_manager.py:321
+msgid "浅色"
+msgstr "薄い色"
+
+#: ui/event_handler.py:302 ui/ui_manager.py:285 ui/ui_manager.py:321
+msgid "深色"
+msgstr "濃い色"
+
+#: ui/event_handler.py:303 ui/ui_manager.py:285 ui/ui_manager.py:321
+#: ui/ui_manager.py:322
+msgid "跟随系统"
+msgstr "システムに追随する"
+
+#: ui/event_handler.py:341
+msgid "隐藏日志"
+msgstr "ログを非表示"
+
+#: ui/event_handler.py:341 ui/ui_manager.py:207
+msgid "显示日志"
+msgstr "ログを表示"
+
+#: ui/event_handler.py:348
+msgid "操作日志已清除。"
+msgstr "操作ログがクリアされました。"
+
+#: ui/event_handler.py:352
+msgid "选择配置文件"
+msgstr "設定ファイルを選択"
+
+#: ui/event_handler.py:357 ui/tabs/annotation_tab.py:48
+#: ui/tabs/annotation_tab.py:162 ui/tabs/enrichment_tab.py:68
+#: ui/tabs/enrichment_tab.py:261 ui/tabs/gff_query_tab.py:102
+#: ui/tabs/gff_query_tab.py:200 ui/tabs/homology_tab.py:55
+#: ui/tabs/homology_tab.py:61 ui/tabs/homology_tab.py:164
+#: ui/tabs/locus_conversion_tab.py:53 ui/tabs/locus_conversion_tab.py:59
+#: ui/tabs/locus_conversion_tab.py:130
+msgid "加载中..."
+msgstr "読み込み中..."
+
+#: ui/event_handler.py:367
+msgid "加载完成。"
+msgstr "読み込みが完了しました。"
+
+#: ui/event_handler.py:380
+msgid " 和 "
+msgstr "と"
+
+#: ui/event_handler.py:381
+msgid "文件已存在"
+msgstr "ファイルが存在します"
+
+#: ui/event_handler.py:382
+msgid "文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?"
+msgstr ""
+"ファイル {} は既にプログラムのルートディレクトリに存在します。これらを上書き"
+"して新しいデフォルト設定を生成しますか？"
+
+#: ui/event_handler.py:383 ui/event_handler.py:384
+msgid "是，覆盖"
+msgstr "はい、上書きします"
+
+#: ui/event_handler.py:383
+msgid "否，取消"
+msgstr "いいえ、キャンセル"
+
+#: ui/event_handler.py:385
+msgid "用户取消了生成默认配置文件的操作。"
+msgstr "ユーザーがデフォルト設定ファイルの生成をキャンセルしました。"
+
+#: ui/event_handler.py:387
+msgid "生成配置文件中..."
+msgstr "設定ファイルを生成しています..."
+
+#: ui/event_handler.py:388
+msgid "正在根目录生成默认配置文件，请稍候..."
+msgstr ""
+"現在ルートディレクトリにデフォルトの設定ファイルを生成しています、少々お待ち"
+"ください..."
+
+#: ui/event_handler.py:394
+msgid "正在生成主配置文件..."
+msgstr "メイン設定ファイルを生成しています..."
+
+#: ui/event_handler.py:396
+msgid "生成其他配置文件..."
+msgstr "他の設定ファイルを生成しています..."
+
+#: ui/event_handler.py:398
+msgid "配置文件生成完成。"
+msgstr "設定ファイルの生成が完了しました。"
+
+#: ui/event_handler.py:402
 msgid "生成默认配置文件失败。"
 msgstr "デフォルト設定ファイルの生成に失敗しました。"
 
-#: ui/event_handler.py:338
+#: ui/event_handler.py:404
 msgid "生成默认配置文件时发生错误:"
 msgstr "デフォルト設定ファイルの生成中にエラーが発生しました:"
 
-#: ui/event_handler.py:348
+#: ui/event_handler.py:412
 msgid "生成成功"
 msgstr "生成成功"
 
-#: ui/event_handler.py:349
+#: ui/event_handler.py:412
 msgid "默认配置文件已成功生成。"
 msgstr "デフォルト設定ファイルが正常に生成されました。"
 
-#: ui/event_handler.py:349
+#: ui/event_handler.py:412
 msgid "是否立即加载?"
 msgstr "今すぐ読み込みますか？"
 
-#: ui/event_handler.py:363
-msgid "关于 FCGT"
-msgstr "FCGTについて"
+#: ui/event_handler.py:413 ui/event_handler.py:414
+msgid "是"
+msgstr "はい"
 
-#: ui/event_handler.py:471
-msgid " 是一款专为棉花研究者，特别是"
-msgstr " は、綿の研究者、特に"
+#: ui/event_handler.py:413
+msgid "否"
+msgstr "いいえ"
 
-#: ui/event_handler.py:472
-msgid "非生物信息专业背景"
-msgstr "非生物情報学専門"
-
-#: ui/event_handler.py:474
-msgid ""
-"的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封"
-"装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代"
-"码编写，即可"
-msgstr ""
-"の研究者や学生向けに設計されたゲノムデータ解析ツールボックスです。複雑なデー"
-"タ処理プロセスを直感的なグラフィカルインターフェース(GUI)とコマンドライン"
-"(CLI)に集約し、面倒な環境設定やコーディング作業なしで利用できるようにしていま"
-"す。"
-
-#: ui/event_handler.py:476
-msgid "开箱即用"
-msgstr "すぐに使える"
-
-#: ui/event_handler.py:477
-msgid ""
-"。\n"
-"\n"
-msgstr ""
-"ようにすることに尽力しています。\n"
-"\n"
-
-#: ui/event_handler.py:480
-msgid ""
-"本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射"
-"（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它"
-"旨在成为您日常科研工作中不可或缺的得力助手。\n"
-"\n"
-msgstr ""
-"このツールキットは、異なるバージョン間のホモログ遺伝子マッピング"
-"（Liftover）、遺伝子機能アノテーション、遺伝子座位クエリ、エンリッチメント解"
-"析、AI支援バッチデータ処理など、一連の強力な綿ゲノムデータ処理ツールを提供し"
-"ます。日常の研究業務に不可欠なアシスタントになることを目指しています。\n"
-"\n"
-
-#: ui/event_handler.py:484
-msgid "核心亮点与功能\n"
-msgstr "主なハイライトと機能\n"
-
-#: ui/event_handler.py:487
-msgid ": 图形界面优先，无需复杂配置，多语言支持。\n"
-msgstr ": GUI優先、複雑な設定不要、多言語対応。\n"
-
-#: ui/event_handler.py:490
-msgid ": 多线程加速，命令行支持。\n"
-msgstr ": マルチスレッド高速化、コマンドライン対応。\n"
-
-#: ui/event_handler.py:493
-msgid ": 棉花版 Liftover，一站式数据工具，标准化数据下载。\n"
-msgstr ""
-": 綿特化Liftover、ワンストップデータツール、標準化されたデータダウンロー"
-"ド。\n"
-
-#: ui/event_handler.py:495
-msgid "跨平台，随处可用"
-msgstr "クロスプラットフォーム、どこでも使える"
-
-#: ui/event_handler.py:496
-msgid ""
-": 为Windows提供预编译可执行文件。\n"
-"\n"
-msgstr ""
-": Windows用のコンパイル済み実行ファイルを提供。\n"
-"\n"
-
-#: ui/event_handler.py:498
-msgid "项目开源地址：\n"
-msgstr "プロジェクトのオープンソースアドレス:\n"
-
-#: ui/event_handler.py:500
-msgid ""
-"\n"
-"此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。\n"
-"\n"
-msgstr ""
-"\n"
-"このソフトウェアはGemini AIの支援を受けて開発されました。機能は継続的に改良さ"
-"れています。学術交流と貢献を歓迎します。\n"
-"\n"
-
-#: ui/event_handler.py:503
-msgid "数据来源与引文\n"
-msgstr "データソースと引用\n"
-
-#: ui/event_handler.py:504
-msgid ""
-"本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。\n"
-"\n"
-msgstr ""
-"このツールはCottonGenの信頼できるデータに依存しています。彼らのチームの継続的"
-"な公開とメンテナンスに感謝します。\n"
-"\n"
-
-#: ui/event_handler.py:506
-msgid "CottonGen 文章\n"
-msgstr "CottonGenの記事\n"
-
-#: ui/event_handler.py:514
-msgid "基因组引用文献\n"
-msgstr "ゲノム参照引用\n"
-
-#: ui/event_handler.py:557
-msgid "致谢与许可\n"
-msgstr "謝辞とライセンス\n"
-
-#: ui/event_handler.py:558
-msgid "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。\n"
-msgstr ""
-"このプロジェクトにデータ、アルゴリズム、インスピレーションを提供してくださっ"
-"たすべての研究者とオープンソースコミュニティに感謝します。\n"
-
-#: ui/event_handler.py:569
-msgid "关闭"
-msgstr "閉じる"
-
-#: ui/event_handler.py:592 ui/gui_app.py:309 ui/tabs/ai_assistant_tab.py:219
-#: ui/tabs/annotation_tab.py:120 ui/tabs/data_download_tab.py:182
-#: ui/tabs/data_download_tab.py:202 ui/tabs/enrichment_tab.py:214
-#: ui/tabs/genome_identifier_tab.py:75 ui/tabs/genome_identifier_tab.py:78
-#: ui/tabs/gff_query_tab.py:134 ui/tabs/homology_tab.py:90
-#: ui/tabs/locus_conversion_tab.py:99
+#: ui/event_handler.py:427 ui/gui_app.py:490 ui/tabs/ai_assistant_tab.py:328
+#: ui/tabs/annotation_tab.py:139 ui/tabs/data_download_tab.py:252
+#: ui/tabs/data_download_tab.py:275 ui/tabs/data_download_tab.py:284
+#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:95
+#: ui/tabs/genome_identifier_tab.py:98 ui/tabs/gff_query_tab.py:164
+#: ui/tabs/homology_tab.py:155 ui/tabs/locus_conversion_tab.py:122
 msgid "错误"
 msgstr "エラー"
 
-#: ui/event_handler.py:592
+#: ui/event_handler.py:427
 msgid "无法打开帮助链接: {}"
 msgstr "ヘルプリンクを開けません: {}"
 
-#: ui/event_handler.py:596
+#: ui/event_handler.py:430
 msgid "选择文件"
 msgstr "ファイルを選択"
 
-#: ui/event_handler.py:602
+#: ui/event_handler.py:435
 msgid "保存文件为"
 msgstr "名前を付けてファイルを保存"
 
-#: ui/event_handler.py:609
+#: ui/event_handler.py:441
 msgid "选择目录"
 msgstr "ディレクトリを選択"
 
-#: ui/event_handler.py:632
+#: ui/event_handler.py:464
 msgid "信息"
 msgstr "情報"
 
-#: ui/event_handler.py:632
+#: ui/event_handler.py:464
 msgid "请先填写HTTP或HTTPS代理地址。"
 msgstr "最初にHTTPまたはHTTPSプロキシアドレスを入力してください。"
 
-#: ui/event_handler.py:637
+#: ui/event_handler.py:468
 msgid "正在测试代理..."
 msgstr "プロキシをテストしています..."
 
-#: ui/event_handler.py:638
+#: ui/event_handler.py:468
 msgid "尝试通过代理连接到测试站点..."
 msgstr "プロキシ経由でテストサイトに接続しようとしています..."
 
-#: ui/event_handler.py:646
+#: ui/event_handler.py:475
 msgid "发送请求..."
 msgstr "リクエストを送信しています..."
 
-#: ui/event_handler.py:650
+#: ui/event_handler.py:479
 msgid "连接成功！"
 msgstr "接続に成功しました！"
 
-#: ui/event_handler.py:650
+#: ui/event_handler.py:479
 msgid "测试站点报告的IP地址是:"
 msgstr "テストサイトから報告されたIPアドレスは次のとおりです:"
 
-#: ui/event_handler.py:652
+#: ui/event_handler.py:481
 msgid "测试完成。"
 msgstr "テストが完了しました。"
 
-#: ui/event_handler.py:654
+#: ui/event_handler.py:483
 msgid "连接失败。"
 msgstr "接続に失敗しました。"
 
-#: ui/event_handler.py:654
+#: ui/event_handler.py:483
 msgid "错误详情:"
 msgstr "エラーの詳細:"
 
-#: ui/event_handler.py:655
+#: ui/event_handler.py:484
 msgid "测试失败。"
 msgstr "テストに失敗しました。"
 
-#: ui/event_handler.py:671
+#: ui/event_handler.py:500
 msgid "UI错误"
 msgstr "UIエラー"
 
-#: ui/event_handler.py:671
+#: ui/event_handler.py:500
 msgid "配置编辑器UI尚未完全加载。"
 msgstr "設定エディタのUIがまだ完全に読み込まれていません。"
 
-#: ui/event_handler.py:674
+#: ui/event_handler.py:503
 msgid "缺少API Key"
 msgstr "APIキーがありません"
 
-#: ui/event_handler.py:675
+#: ui/event_handler.py:504
 msgid "请先在编辑器中为 '{}' 填写有效的API Key。"
 msgstr "最初にエディタで '{}' に有効なAPIキーを入力してください。"
 
-#: ui/event_handler.py:682
+#: ui/event_handler.py:510
 msgid "刷新模型列表"
 msgstr "モデルリストを更新"
 
-#: ui/event_handler.py:686
+#: ui/event_handler.py:513
 msgid "正在获取模型..."
 msgstr "モデルを取得しています..."
 
-#: ui/event_handler.py:687
+#: ui/event_handler.py:513
 msgid "连接到 {}..."
 msgstr "{} に接続しています..."
 
-#: ui/event_handler.py:705
+#: ui/event_handler.py:527
 msgid "开始连接AI服务..."
 msgstr "AIサービスへの接続を開始しています..."
 
-#: ui/event_handler.py:719
+#: ui/event_handler.py:535
 msgid "数据处理中..."
 msgstr "データ処理中..."
 
-#: ui/event_handler.py:724
+#: ui/event_handler.py:540
 msgid "刷新完成。"
 msgstr "更新が完了しました。"
 
-#: ui/gui_app.py:40
+#: ui/gui_app.py:37
 msgid "通用OpenAI兼容接口"
 msgstr "汎用OpenAI互換インターフェース"
 
-#: ui/gui_app.py:70
-msgid "友好棉花基因组工具包 - FCGT"
-msgstr "フレンドリーコットンゲノムツールキット - FCGT"
+#: ui/gui_app.py:52 ui/tabs/annotation_tab.py:40 ui/tabs/annotation_tab.py:179
+msgid "功能注释"
+msgstr "機能アノテーション"
 
-#: ui/gui_app.py:80 ui/gui_app.py:81
-msgid "在此处粘贴基因ID，每行一个..."
-msgstr "ここに遺伝子IDを1行に1つずつ貼り付けてください..."
+#: ui/gui_app.py:53 ui/tabs/enrichment_tab.py:58
+msgid "富集分析与绘图"
+msgstr "エンリッチメント解析とプロット"
 
-#: ui/gui_app.py:82
-msgid "例如: A01:1-100000"
-msgstr "例: A01:1-100000"
+#: ui/gui_app.py:54 ui/tabs/xlsx_converter_tab.py:106
+msgid "XLSX转CSV"
+msgstr "XLSXをCSVに変換"
 
-#: ui/gui_app.py:83
-msgid "在此处粘贴要注释的基因ID，每行一个。"
-msgstr "ここにアノテーションする遺伝子IDを1行に1つずつ貼り付けてください。"
+#: ui/gui_app.py:55
+msgid "基因组鉴定"
+msgstr "ゲノム鑑定"
 
-#: ui/gui_app.py:84
-msgid ""
-"在此处粘贴要进行富集分析的基因ID，每行一个。\n"
-"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
-"（注意为制表符。从excel直接复制，列与列之间既为制表符）。"
-msgstr ""
-"ここにエンリッチメント解析用の遺伝子IDを1行に1つずつ貼り付けてください。\n"
-"Log2FCが含まれる場合、フォーマットは次のとおりです: 遺伝子ID\tLog2FC\n"
-"（注: タブ区切りを使用してください。Excelから直接コピーすると、列はタブで区切"
-"られます）。"
+#: ui/gui_app.py:56
+msgid "同源转换"
+msgstr "同源変換"
 
-#: ui/gui_app.py:104 ui/ui_manager.py:293
-msgid "未加载配置"
-msgstr "設定が読み込まれていません"
+#: ui/gui_app.py:58
+msgid "GFF查询"
+msgstr "GFF 検索"
 
-#: ui/gui_app.py:131
+#: ui/gui_app.py:59
+msgid "AI助手"
+msgstr "AIアシスタント"
+
+#: ui/gui_app.py:139
 msgid "图片资源未找到: '{}'"
 msgstr "画像リソースが見つかりません: '{}'"
 
-#: ui/gui_app.py:133
+#: ui/gui_app.py:142
 msgid "获取图片资源 '{}' 路径时发生错误: {}"
 msgstr "画像リソース '{}' のパス取得中にエラーが発生しました: {}"
 
-#: ui/gui_app.py:182
+#: ui/gui_app.py:157
 msgid "通用设置"
 msgstr "一般設定"
 
-#: ui/gui_app.py:184
+#: ui/gui_app.py:166
 msgid "日志级别"
 msgstr "ログレベル"
 
-#: ui/gui_app.py:186
+#: ui/gui_app.py:173
 msgid "设置应用程序的日志详细程度。"
 msgstr "アプリケーションのログの詳細度を設定します。"
 
-#: ui/gui_app.py:188
+#: ui/gui_app.py:182
 msgid "HTTP代理"
 msgstr "HTTPプロキシ"
 
-#: ui/gui_app.py:188
+#: ui/gui_app.py:187
 msgid "例如: http://127.0.0.1:7890"
 msgstr "例: http://127.0.0.1:7890"
 
-#: ui/gui_app.py:189
+#: ui/gui_app.py:196
 msgid "HTTPS代理"
 msgstr "HTTPSプロキシ"
 
-#: ui/gui_app.py:189
+#: ui/gui_app.py:201
 msgid "例如: https://127.0.0.1:7890"
 msgstr "例: https://127.0.0.1:7890"
 
-#: ui/gui_app.py:193
+#: ui/gui_app.py:209
 msgid "测试代理连接"
 msgstr "プロキシ接続をテスト"
 
-#: ui/gui_app.py:198
+#: ui/gui_app.py:216
 msgid "数据下载器配置"
 msgstr "データダウンローダー設定"
 
-#: ui/gui_app.py:199
+#: ui/gui_app.py:225
 msgid "基因组源文件"
 msgstr "ゲノムソースファイル"
 
-#: ui/gui_app.py:199
+#: ui/gui_app.py:230
 msgid "定义基因组下载链接的YAML文件。"
 msgstr "ゲノムダウンロードリンクを定義するYAMLファイル。"
 
-#: ui/gui_app.py:200
+#: ui/gui_app.py:239
 msgid "下载输出根目录"
 msgstr "ダウンロード出力ルートディレクトリ"
 
-#: ui/gui_app.py:200
+#: ui/gui_app.py:244
 msgid "所有下载文件存放的基准目录。"
 msgstr "すべてのダウンロード済みファイルが保存されるベースディレクトリ。"
 
-#: ui/gui_app.py:201
+#: ui/gui_app.py:253
 msgid "强制重新下载"
 msgstr "強制再ダウンロード"
 
-#: ui/gui_app.py:202
+#: ui/gui_app.py:260
 msgid "如果文件已存在，是否覆盖。"
 msgstr "ファイルが既に存在する場合に上書きするかどうか。"
 
-#: ui/gui_app.py:203
+#: ui/gui_app.py:269
 msgid "最大下载线程数"
 msgstr "最大ダウンロードスレッド数"
 
-#: ui/gui_app.py:203
+#: ui/gui_app.py:274
 msgid "多线程下载时使用的最大线程数。"
 msgstr "マルチスレッドダウンロードに使用する最大スレッド数。"
 
-#: ui/gui_app.py:204
+#: ui/gui_app.py:283
 msgid "为下载使用代理"
 msgstr "ダウンロードにプロキシを使用"
 
-#: ui/gui_app.py:205
+#: ui/gui_app.py:290
 msgid "是否为数据下载启用代理。"
 msgstr "データダウンロードでプロキシを有効にするかどうか。"
 
-#: ui/gui_app.py:207
+#: ui/gui_app.py:296
 msgid "AI 服务配置"
 msgstr "AIサービス設定"
 
-#: ui/gui_app.py:209
+#: ui/gui_app.py:305
 msgid "默认AI服务商"
 msgstr "デフォルトのAIプロバイダー"
 
-#: ui/gui_app.py:212
+#: ui/gui_app.py:314
 msgid "选择默认使用的AI模型提供商。"
 msgstr "使用するデフォルトのAIモデルプロバイダーを選択します。"
 
-#: ui/gui_app.py:213
+#: ui/gui_app.py:323
 msgid "最大并行AI任务数"
 msgstr "最大並列AIタスク数"
 
-#: ui/gui_app.py:213
+#: ui/gui_app.py:328
 msgid "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 msgstr ""
 "AIタスクの最大並列処理数。CPUコア数とネットワーク状況に基づいて設定することを"
 "お勧めします。"
 
-#: ui/gui_app.py:214
+#: ui/gui_app.py:337
 msgid "为AI服务使用代理"
 msgstr "AIサービスにプロキシを使用"
 
-#: ui/gui_app.py:215
+#: ui/gui_app.py:343
 msgid "是否为连接AI模型API启用代理。"
 msgstr "AIモデルAPIへの接続でプロキシを有効にするかどうか。"
 
-#: ui/gui_app.py:232 ui/ui_manager.py:373
+#: ui/gui_app.py:372 ui/ui_manager.py:470
 msgid "点击刷新获取列表"
 msgstr "更新をクリックしてリストを取得"
 
-#: ui/gui_app.py:233
+#: ui/gui_app.py:373
 msgid "点击刷新..."
 msgstr "クリックして更新..."
 
-#: ui/gui_app.py:238
+#: ui/gui_app.py:382
 msgid "刷新"
 msgstr "更新"
 
-#: ui/gui_app.py:241
+#: ui/gui_app.py:388
 msgid "代理刷新"
 msgstr "プロキシで更新"
 
-#: ui/gui_app.py:251
+#: ui/gui_app.py:404
 msgid "AI 提示词模板"
 msgstr "AIプロンプトテンプレート"
 
-#: ui/gui_app.py:255
+#: ui/gui_app.py:413
 msgid "翻译提示词"
 msgstr "翻訳プロンプト"
 
-#: ui/gui_app.py:265
+#: ui/gui_app.py:426
 msgid "分析提示词"
 msgstr "分析プロンプト"
 
-#: ui/gui_app.py:305
+#: ui/gui_app.py:485
 msgid "配置已应用到编辑器UI。"
 msgstr "設定がエディタUIに適用されました。"
 
-#: ui/gui_app.py:309
+#: ui/gui_app.py:490
 msgid "没有加载配置文件，无法保存。"
 msgstr "設定ファイルが読み込まれていないため、保存できません。"
 
-#: ui/gui_app.py:329
+#: ui/gui_app.py:511
 msgid "无效的最大工作线程数值，已重置为默认值 4。"
 msgstr ""
 "最大ワーカースレッドの値が無効です。デフォルト値の4にリセットされました。"
 
-#: ui/gui_app.py:349
+#: ui/gui_app.py:532
 msgid "保存成功"
 msgstr "保存成功"
 
-#: ui/gui_app.py:349
+#: ui/gui_app.py:532
 msgid "配置文件已更新。"
 msgstr "設定ファイルが更新されました。"
 
-#: ui/gui_app.py:352
+#: ui/gui_app.py:536
 msgid "写入文件时发生未知错误。"
 msgstr "ファイルへの書き込み中に不明なエラーが発生しました。"
 
-#: ui/gui_app.py:354
+#: ui/gui_app.py:539
 msgid "保存错误"
 msgstr "保存エラー"
 
-#: ui/gui_app.py:355
+#: ui/gui_app.py:540
 msgid ""
 "保存配置时发生错误:\n"
 "{}"
@@ -3071,421 +2996,445 @@ msgstr ""
 "設定の保存中にエラーが発生しました:\n"
 "{}"
 
-#: ui/gui_app.py:428
+#: ui/gui_app.py:563
+msgid "配置文件"
+msgstr "設定ファイル"
+
+#: ui/gui_app.py:568
+msgid "加载配置文件..."
+msgstr "設定ファイルを読み込み中..."
+
+#: ui/gui_app.py:573
+msgid "生成默认配置..."
+msgstr "デフォルトの設定を生成中..."
+
+#: ui/gui_app.py:579
+msgid "帮助与支持"
+msgstr "支援とサポート"
+
+#: ui/gui_app.py:584
+msgid "在线帮助文档"
+msgstr "オンラインヘルプドキュメント"
+
+#: ui/gui_app.py:589
+msgid "关于本软件"
+msgstr "本ソフトウェアについて"
+
+#: ui/gui_app.py:648
 msgid "加载主窗口图标失败: {}。"
 msgstr "メインウィンドウアイコンの読み込みに失敗しました: {}。"
 
-#: ui/gui_app.py:438
+#: ui/gui_app.py:670
 msgid "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 msgstr ""
 "!! 警告: 設定ファイルには機密情報が含まれている可能性があります。軽々しく共有"
 "しないでください。"
 
-#: ui/gui_app.py:440
+#: ui/gui_app.py:677
 msgid "应用并保存"
 msgstr "適用して保存"
 
-#: ui/gui_app.py:504
+#: ui/gui_app.py:746
 msgid "请先从“主页”加载或生成一个配置文件。"
 msgstr "最初に「ホーム」ページから設定ファイルを読み込むか生成してください。"
 
-#: ui/gui_app.py:533
+#: ui/gui_app.py:777
 msgid "UI font set to: {}, Monospace font to: {}"
 msgstr ""
 "UIフォントが次のように設定されました: {}, 等幅フォントが次のように設定されま"
 "した: {}"
 
-#: ui/gui_app.py:567
+#: ui/gui_app.py:812
 msgid "处理消息队列时出错: {}"
 msgstr "メッセージキューの処理中にエラーが発生しました: {}"
 
-#: ui/gui_app.py:578
+#: ui/gui_app.py:825
 msgid "配置日志级别时出错: {}"
 msgstr "ログレベルの設定中にエラーが発生しました: {}"
 
-#: ui/tabs/ai_assistant_tab.py:37
+#: ui/tabs/ai_assistant_tab.py:42
 msgid "开始处理CSV文件"
 msgstr "CSVファイルの処理を開始"
 
-#: ui/tabs/ai_assistant_tab.py:38
-#, python-brace-format
-msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
-msgstr ""
-"ここにカスタムプロンプトテンプレートを入力してください。{text} プレースホル"
-"ダーを含める必要があります..."
-
-#: ui/tabs/ai_assistant_tab.py:45
+#: ui/tabs/ai_assistant_tab.py:56
 msgid "AI 助手"
 msgstr "AIアシスタント"
 
-#: ui/tabs/ai_assistant_tab.py:48
+#: ui/tabs/ai_assistant_tab.py:60
 msgid "AI服务与模型"
 msgstr "AIサービスとモデル"
 
-#: ui/tabs/ai_assistant_tab.py:51
+#: ui/tabs/ai_assistant_tab.py:64
 msgid "AI服务商:"
 msgstr "AIプロバイダー:"
 
-#: ui/tabs/ai_assistant_tab.py:58
+#: ui/tabs/ai_assistant_tab.py:73
 msgid "选择模型:"
 msgstr "モデルを選択:"
 
-#: ui/tabs/ai_assistant_tab.py:60 ui/tabs/ai_assistant_tab.py:61
+#: ui/tabs/ai_assistant_tab.py:75 ui/tabs/ai_assistant_tab.py:76
 msgid "请先选择服务商"
 msgstr "最初にプロバイダーを選択してください"
 
-#: ui/tabs/ai_assistant_tab.py:64
+#: ui/tabs/ai_assistant_tab.py:79
 msgid "处理任务与提示词"
 msgstr "処理タスクとプロンプト"
 
-#: ui/tabs/ai_assistant_tab.py:70
+#: ui/tabs/ai_assistant_tab.py:86
 msgid "处理任务:"
 msgstr "処理タスク:"
 
-#: ui/tabs/ai_assistant_tab.py:71 ui/tabs/ai_assistant_tab.py:72
-#: ui/tabs/ai_assistant_tab.py:123 ui/tabs/ai_assistant_tab.py:145
+#: ui/tabs/ai_assistant_tab.py:91
 msgid "翻译"
 msgstr "翻訳"
 
-#: ui/tabs/ai_assistant_tab.py:72 ui/tabs/ai_assistant_tab.py:125
-#: ui/tabs/ai_assistant_tab.py:147
+#: ui/tabs/ai_assistant_tab.py:95
 msgid "分析"
 msgstr "分析"
 
-#: ui/tabs/ai_assistant_tab.py:72 ui/tabs/ai_assistant_tab.py:127
-#: ui/tabs/ai_assistant_tab.py:149 ui/tabs/ai_assistant_tab.py:156
+#: ui/tabs/ai_assistant_tab.py:99
 msgid "自定义"
 msgstr "カスタム"
 
-#: ui/tabs/ai_assistant_tab.py:77
+#: ui/tabs/ai_assistant_tab.py:105
 msgid "提示词模板:"
 msgstr "プロンプトテンプレート:"
 
-#: ui/tabs/ai_assistant_tab.py:86
+#: ui/tabs/ai_assistant_tab.py:119
 msgid "CSV文件处理"
 msgstr "CSVファイル処理"
 
-#: ui/tabs/ai_assistant_tab.py:89
+#: ui/tabs/ai_assistant_tab.py:123
 msgid "CSV文件路径:"
 msgstr "CSVファイルパス:"
 
-#: ui/tabs/ai_assistant_tab.py:93 ui/tabs/annotation_tab.py:88
-#: ui/tabs/enrichment_tab.py:192 ui/tabs/gff_query_tab.py:106
-#: ui/tabs/homology_tab.py:85 ui/tabs/locus_conversion_tab.py:70
-#: ui/tabs/xlsx_converter_tab.py:40
+#: ui/tabs/ai_assistant_tab.py:127 ui/tabs/annotation_tab.py:92
+#: ui/tabs/enrichment_tab.py:182 ui/tabs/gff_query_tab.py:111
+#: ui/tabs/homology_tab.py:115 ui/tabs/locus_conversion_tab.py:77
+#: ui/tabs/xlsx_converter_tab.py:57
 msgid "浏览..."
 msgstr "参照..."
 
-#: ui/tabs/ai_assistant_tab.py:95
+#: ui/tabs/ai_assistant_tab.py:131
 msgid "待处理列:"
 msgstr "処理する列:"
 
-#: ui/tabs/ai_assistant_tab.py:97 ui/tabs/ai_assistant_tab.py:98
-#: ui/tabs/ai_assistant_tab.py:233
+#: ui/tabs/ai_assistant_tab.py:133 ui/tabs/ai_assistant_tab.py:134
+#: ui/tabs/ai_assistant_tab.py:342
 msgid "请先选择CSV文件"
 msgstr "最初にCSVファイルを選択してください"
 
-#: ui/tabs/ai_assistant_tab.py:100
+#: ui/tabs/ai_assistant_tab.py:137
 msgid "新列名称:"
 msgstr "新しい列名:"
 
-#: ui/tabs/ai_assistant_tab.py:106
+#: ui/tabs/ai_assistant_tab.py:144
 msgid "另存为新文件 (否则在原文件上修改)"
 msgstr "新しいファイルとして保存（そうしないと元のファイルが変更されます）"
 
-#: ui/tabs/ai_assistant_tab.py:108
+#: ui/tabs/ai_assistant_tab.py:147
 msgid "为AI服务使用HTTP/HTTPS代理"
 msgstr "AIサービスにHTTP/HTTPSプロキシを使用"
 
-#: ui/tabs/ai_assistant_tab.py:130
+#: ui/tabs/ai_assistant_tab.py:224
 msgid "提示词已更新，正在后台保存配置..."
 msgstr "プロンプトが更新されました。バックグラウンドで設定を保存しています..."
 
-#: ui/tabs/ai_assistant_tab.py:138 ui/tabs/ai_assistant_tab.py:220
-#: ui/tabs/annotation_tab.py:120 ui/tabs/data_download_tab.py:183
-#: ui/tabs/data_download_tab.py:202 ui/tabs/enrichment_tab.py:214
-#: ui/tabs/genome_identifier_tab.py:75 ui/tabs/gff_query_tab.py:134
-#: ui/tabs/homology_tab.py:90 ui/tabs/locus_conversion_tab.py:99
-msgid "请先加载配置文件。"
-msgstr "最初に設定ファイルを読み込んでください。"
+#: ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:98 ui/ui_manager.py:446
+msgid "Default prompt is empty, please set it in the configuration editor."
+msgstr "デフォルトのプロンプトは空です、設定編集子で設定してください。"
 
-#: ui/tabs/ai_assistant_tab.py:172
+#: ui/tabs/ai_assistant_tab.py:284
 msgid "请先选择有效的CSV文件"
 msgstr "最初に有効なCSVファイルを選択してください"
 
-#: ui/tabs/ai_assistant_tab.py:175 ui/tabs/ai_assistant_tab.py:233
+#: ui/tabs/ai_assistant_tab.py:286 ui/tabs/ai_assistant_tab.py:342
 msgid "读取中..."
 msgstr "読み込み中..."
 
-#: ui/tabs/ai_assistant_tab.py:183
+#: ui/tabs/ai_assistant_tab.py:294
 msgid "无法读取CSV列名"
 msgstr "CSVの列名を読み取れません"
 
-#: ui/tabs/ai_assistant_tab.py:192 ui/tabs/ai_assistant_tab.py:193
-#: ui/tabs/ai_assistant_tab.py:233
+#: ui/tabs/ai_assistant_tab.py:301 ui/tabs/ai_assistant_tab.py:302
+#: ui/tabs/ai_assistant_tab.py:342
 msgid "读取失败"
 msgstr "読み込み失敗"
 
-#: ui/tabs/ai_assistant_tab.py:196 ui/tabs/ai_assistant_tab.py:233
+#: ui/tabs/ai_assistant_tab.py:305 ui/tabs/ai_assistant_tab.py:342
 msgid "无可用列"
 msgstr "利用可能な列がありません"
 
-#: ui/tabs/ai_assistant_tab.py:206
+#: ui/tabs/ai_assistant_tab.py:315
 msgid "无可用模型"
 msgstr "利用可能なモデルがありません"
 
-#: ui/tabs/ai_assistant_tab.py:231 ui/tabs/ai_assistant_tab.py:234
-#: ui/tabs/annotation_tab.py:134 ui/tabs/annotation_tab.py:137
-#: ui/tabs/annotation_tab.py:139 ui/tabs/enrichment_tab.py:272
-#: ui/tabs/enrichment_tab.py:275 ui/tabs/enrichment_tab.py:278
-#: ui/tabs/enrichment_tab.py:281 ui/tabs/genome_identifier_tab.py:83
-#: ui/tabs/gff_query_tab.py:144 ui/tabs/gff_query_tab.py:153
-#: ui/tabs/gff_query_tab.py:173 ui/tabs/homology_tab.py:92
-#: ui/tabs/homology_tab.py:94 ui/tabs/locus_conversion_tab.py:110
+#: ui/tabs/ai_assistant_tab.py:329 ui/tabs/annotation_tab.py:139
+#: ui/tabs/data_download_tab.py:253 ui/tabs/data_download_tab.py:275
+#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:95
+#: ui/tabs/gff_query_tab.py:164 ui/tabs/homology_tab.py:156
+#: ui/tabs/locus_conversion_tab.py:122
+msgid "请先加载配置文件。"
+msgstr "最初に設定ファイルを読み込んでください。"
+
+#: ui/tabs/ai_assistant_tab.py:340 ui/tabs/ai_assistant_tab.py:343
+#: ui/tabs/annotation_tab.py:160 ui/tabs/annotation_tab.py:163
+#: ui/tabs/annotation_tab.py:166 ui/tabs/enrichment_tab.py:257
+#: ui/tabs/enrichment_tab.py:262 ui/tabs/enrichment_tab.py:267
+#: ui/tabs/enrichment_tab.py:274 ui/tabs/enrichment_tab.py:306
+#: ui/tabs/genome_identifier_tab.py:103 ui/tabs/gff_query_tab.py:172
+#: ui/tabs/gff_query_tab.py:181 ui/tabs/gff_query_tab.py:201
+#: ui/tabs/homology_tab.py:159 ui/tabs/homology_tab.py:165
+#: ui/tabs/locus_conversion_tab.py:133
 msgid "输入缺失"
 msgstr "入力がありません"
 
-#: ui/tabs/ai_assistant_tab.py:231
+#: ui/tabs/ai_assistant_tab.py:340
 msgid "请确保所有必填项都已填写。"
 msgstr "すべての必須フィールドが入力されていることを確認してください。"
 
-#: ui/tabs/ai_assistant_tab.py:234
+#: ui/tabs/ai_assistant_tab.py:343
 msgid "请选择一个有效的“待处理列”。"
 msgstr "有効な「処理する列」を選択してください。"
 
-#: ui/tabs/ai_assistant_tab.py:237
+#: ui/tabs/ai_assistant_tab.py:346
 msgid "文件错误"
 msgstr "ファイルエラー"
 
-#: ui/tabs/ai_assistant_tab.py:237
+#: ui/tabs/ai_assistant_tab.py:346
 msgid "指定的CSV文件不存在。"
 msgstr "指定されたCSVファイルが存在しません。"
 
-#: ui/tabs/ai_assistant_tab.py:240
+#: ui/tabs/ai_assistant_tab.py:349
 msgid "模板错误"
 msgstr "テンプレートエラー"
 
-#: ui/tabs/ai_assistant_tab.py:240
+#: ui/tabs/ai_assistant_tab.py:349
 #, python-brace-format
 msgid "提示词模板必须包含 {text} 占位符。"
 msgstr ""
 "プロンプトテンプレートには {text} プレースホルダーを含める必要があります。"
 
-#: ui/tabs/ai_assistant_tab.py:253
+#: ui/tabs/ai_assistant_tab.py:362
 msgid "AI批量处理CSV"
 msgstr "AIバッチ処理CSV"
 
-#: ui/tabs/ai_assistant_tab.py:267
+#: ui/tabs/ai_assistant_tab.py:372
 msgid "任务启动失败"
 msgstr "タスク開始失敗"
 
-#: ui/tabs/ai_assistant_tab.py:268
+#: ui/tabs/ai_assistant_tab.py:373
 msgid "准备AI处理任务时发生错误:"
 msgstr "AI処理タスクの準備中にエラーが発生しました:"
 
-#: ui/tabs/annotation_tab.py:34
+#: ui/tabs/annotation_tab.py:33
 msgid "开始功能注释"
 msgstr "機能アノテーションを開始"
 
-#: ui/tabs/annotation_tab.py:42 ui/tabs/annotation_tab.py:151
-msgid "功能注释"
-msgstr "機能アノテーション"
-
-#: ui/tabs/annotation_tab.py:45 ui/tabs/enrichment_tab.py:60
+#: ui/tabs/annotation_tab.py:43 ui/tabs/enrichment_tab.py:62
 msgid "输入数据"
 msgstr "入力データ"
 
-#: ui/tabs/annotation_tab.py:48 ui/tabs/data_download_tab.py:72
-#: ui/tabs/enrichment_tab.py:64
+#: ui/tabs/annotation_tab.py:46 ui/tabs/data_download_tab.py:79
+#: ui/tabs/data_download_tab.py:110 ui/tabs/enrichment_tab.py:66
 msgid "基因组版本:"
 msgstr "ゲノムバージョン:"
 
-#: ui/tabs/annotation_tab.py:53 ui/tabs/homology_tab.py:48
+#: ui/tabs/annotation_tab.py:51 ui/tabs/homology_tab.py:64
 msgid "基因ID列表:"
 msgstr "遺伝子IDリスト:"
 
-#: ui/tabs/annotation_tab.py:70
+#: ui/tabs/annotation_tab.py:72
 msgid "注释类型"
 msgstr "アノテーションタイプ"
 
-#: ui/tabs/annotation_tab.py:83
+#: ui/tabs/annotation_tab.py:88
 msgid "输出文件 (可选):"
 msgstr "出力ファイル（オプション）:"
 
-#: ui/tabs/annotation_tab.py:134
+#: ui/tabs/annotation_tab.py:160
 msgid "请输入要注释的基因ID。"
 msgstr "アノテーションする遺伝子IDを入力してください。"
 
-#: ui/tabs/annotation_tab.py:136 ui/tabs/data_download_tab.py:154
-#: ui/tabs/data_download_tab.py:186 ui/tabs/data_download_tab.py:205
-#: ui/tabs/enrichment_tab.py:274 ui/tabs/gff_query_tab.py:117
-#: ui/tabs/gff_query_tab.py:172 ui/tabs/homology_tab.py:94
-#: ui/tabs/homology_tab.py:123 ui/tabs/locus_conversion_tab.py:83
-#: ui/tabs/locus_conversion_tab.py:109 ui/ui_manager.py:354
+#: ui/tabs/annotation_tab.py:162 ui/tabs/data_download_tab.py:124
+#: ui/tabs/data_download_tab.py:215 ui/tabs/data_download_tab.py:223
+#: ui/tabs/data_download_tab.py:255 ui/tabs/data_download_tab.py:278
+#: ui/tabs/enrichment_tab.py:236 ui/tabs/enrichment_tab.py:261
+#: ui/tabs/gff_query_tab.py:147 ui/tabs/gff_query_tab.py:200
+#: ui/tabs/homology_tab.py:165 ui/tabs/homology_tab.py:199
+#: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:132
+#: ui/ui_manager.py:451
 msgid "无可用基因组"
 msgstr "利用可能なゲノムがありません"
 
-#: ui/tabs/annotation_tab.py:137 ui/tabs/enrichment_tab.py:275
-#: ui/tabs/gff_query_tab.py:173
+#: ui/tabs/annotation_tab.py:163 ui/tabs/enrichment_tab.py:262
+#: ui/tabs/gff_query_tab.py:201
 msgid "请选择一个基因组版本。"
 msgstr "ゲノムバージョンを選択してください。"
 
-#: ui/tabs/annotation_tab.py:139
+#: ui/tabs/annotation_tab.py:166
 msgid "请至少选择一种注释类型。"
 msgstr "少なくとも1つのアノテーションタイプを選択してください。"
 
-#: ui/tabs/base_tab.py:85
+#: ui/tabs/base_tab.py:83
 msgid "执行操作"
 msgstr "アクションを実行"
 
-#: ui/tabs/data_download_tab.py:33
-msgid "同源关系 (homology)"
-msgstr "ホモロジー"
+#: ui/tabs/data_download_tab.py:37
+msgid "注释 (gff3)"
+msgstr "注釈 (gff3)"
 
-#: ui/tabs/data_download_tab.py:43
+#: ui/tabs/data_download_tab.py:40
+msgid "KEGG 通路"
+msgstr "KEGG パスウェイ"
+
+#: ui/tabs/data_download_tab.py:41
+msgid "KEGG 直系同源"
+msgstr "KEGG オーソログ"
+
+#: ui/tabs/data_download_tab.py:42
+msgid "同源关系 (拟南芥)"
+msgstr "相同遺伝子関係 (Arabidopsis thaliana)"
+
+#: ui/tabs/data_download_tab.py:55 ui/tabs/data_download_tab.py:131
 msgid "开始下载"
 msgstr "ダウンロードを開始"
 
-#: ui/tabs/data_download_tab.py:64
+#: ui/tabs/data_download_tab.py:71 ui/tabs/data_download_tab.py:108
 msgid "数据下载与预处理"
 msgstr "データダウンロードと前処理"
 
-#: ui/tabs/data_download_tab.py:67
+#: ui/tabs/data_download_tab.py:75 ui/tabs/data_download_tab.py:109
 msgid "选择基因组"
 msgstr "ゲノムを選択"
 
-#: ui/tabs/data_download_tab.py:70 ui/tabs/data_download_tab.py:185
-#: ui/tabs/data_download_tab.py:205
+#: ui/tabs/data_download_tab.py:83 ui/tabs/data_download_tab.py:255
+#: ui/tabs/data_download_tab.py:278
 msgid "配置未加载"
 msgstr "設定が読み込まれていません"
 
-#: ui/tabs/data_download_tab.py:79
+#: ui/tabs/data_download_tab.py:89 ui/tabs/data_download_tab.py:111
 msgid "文件类型与状态"
 msgstr "ファイルタイプとステータス"
 
-#: ui/tabs/data_download_tab.py:83
+#: ui/tabs/data_download_tab.py:93 ui/tabs/data_download_tab.py:112
 msgid "下载选项"
 msgstr "ダウンロードオプション"
 
-#: ui/tabs/data_download_tab.py:86
+#: ui/tabs/data_download_tab.py:98 ui/tabs/data_download_tab.py:113
 msgid "强制重新下载 (覆盖本地已存在文件)"
 msgstr "強制再ダウンロード（ローカルの既存ファイルを上書き）"
 
-#: ui/tabs/data_download_tab.py:88
+#: ui/tabs/data_download_tab.py:102 ui/tabs/data_download_tab.py:114
 msgid "对数据下载使用网络代理 (请在配置编辑器中设置)"
 msgstr ""
 "データダウンロードにネットワークプロキシを使用（設定エディタで設定してくださ"
 "い）"
 
-#: ui/tabs/data_download_tab.py:100
+#: ui/tabs/data_download_tab.py:144
 msgid "选择文件类型"
 msgstr "ファイルタイプを選択"
 
-#: ui/tabs/data_download_tab.py:103
+#: ui/tabs/data_download_tab.py:148
 msgid "文件状态"
 msgstr "ファイルステータス"
 
-#: ui/tabs/data_download_tab.py:107
+#: ui/tabs/data_download_tab.py:153
 msgid "刷新状态"
 msgstr "ステータスを更新"
 
-#: ui/tabs/data_download_tab.py:112
+#: ui/tabs/data_download_tab.py:160
 msgid "未下载"
 msgstr "ダウンロードされていません"
 
-#: ui/tabs/data_download_tab.py:113
+#: ui/tabs/data_download_tab.py:161
 msgid "已下载 (待处理)"
 msgstr "ダウンロード済み（保留中）"
 
-#: ui/tabs/data_download_tab.py:114
+#: ui/tabs/data_download_tab.py:162
 msgid "已就绪"
 msgstr "準備完了"
 
-#: ui/tabs/data_download_tab.py:145
+#: ui/tabs/data_download_tab.py:204
 msgid "当前基因组版本在配置文件中没有可供下载的URL链接。"
 msgstr ""
 "現在のゲノムバージョンには、設定ファイルにダウンロード可能なURLリンクがありま"
 "せん。"
 
-#: ui/tabs/data_download_tab.py:187 ui/tabs/data_download_tab.py:189
-#: ui/tabs/data_download_tab.py:206
+#: ui/tabs/data_download_tab.py:256 ui/tabs/data_download_tab.py:260
+#: ui/tabs/data_download_tab.py:279
 msgid "选择错误"
 msgstr "選択エラー"
 
-#: ui/tabs/data_download_tab.py:187
+#: ui/tabs/data_download_tab.py:256
 msgid "请选择一个有效的基因组进行下载。"
 msgstr "ダウンロードする有効なゲノムを選択してください。"
 
-#: ui/tabs/data_download_tab.py:190
+#: ui/tabs/data_download_tab.py:260
 msgid "请至少选择一种要下载的文件类型。"
 msgstr "ダウンロードするファイルタイプを少なくとも1つ選択してください。"
 
-#: ui/tabs/data_download_tab.py:206
+#: ui/tabs/data_download_tab.py:279
 msgid "请选择一个有效的基因组进行预处理。"
 msgstr "前処理する有効なゲノムを選択してください。"
 
-#: ui/tabs/data_download_tab.py:224
+#: ui/tabs/data_download_tab.py:283
+msgid "找不到基因组 '{}' 的信息。"
+msgstr "ゲノム '{}' の情報が見つかりません。"
+
+#: ui/tabs/data_download_tab.py:300
+#, python-brace-format
 msgid ""
 "无法开始预处理，以下必需的注释文件尚未下载：\n"
 "\n"
-"- "
-msgstr ""
-"前処理を開始できません。次の必要なアノテーションファイルがダウンロードされて"
-"いません:\n"
-"\n"
-"- "
-
-#: ui/tabs/data_download_tab.py:225
-msgid ""
-"\n"
+"- {file_list}\n"
 "\n"
 "请先下载它们。"
 msgstr ""
+"プレプロセッシングを開始できません。以下の必須コメントファイルがまだダウン"
+"ロードされていません：\n"
 "\n"
+"- {file_list}\n"
 "\n"
 "ダウンロードしてください。"
 
-#: ui/tabs/data_download_tab.py:226
+#: ui/tabs/data_download_tab.py:303
 msgid "缺少文件"
 msgstr "ファイルがありません"
 
-#: ui/tabs/enrichment_tab.py:47
+#: ui/tabs/enrichment_tab.py:51
 msgid "开始富集分析"
 msgstr "エンリッチメント解析を開始"
 
-#: ui/tabs/enrichment_tab.py:56
-msgid "富集分析与绘图"
-msgstr "エンリッチメント解析とプロット"
-
-#: ui/tabs/enrichment_tab.py:70
+#: ui/tabs/enrichment_tab.py:72
 msgid "基因ID列表 (或基因ID,Log2FC):"
 msgstr "遺伝子IDリスト（または遺伝子ID,Log2FC）:"
 
-#: ui/tabs/enrichment_tab.py:91
+#: ui/tabs/enrichment_tab.py:88
 msgid "输入格式与分析类型"
 msgstr "入力形式と解析タイプ"
 
-#: ui/tabs/enrichment_tab.py:95
+#: ui/tabs/enrichment_tab.py:92
 msgid "输入格式:"
 msgstr "入力形式:"
 
-#: ui/tabs/enrichment_tab.py:100
+#: ui/tabs/enrichment_tab.py:96
 msgid "包含表头"
 msgstr "ヘッダーを含む"
 
-#: ui/tabs/enrichment_tab.py:102
+#: ui/tabs/enrichment_tab.py:99
 msgid "包含Log2FC"
 msgstr "Log2FCを含む"
 
-#: ui/tabs/enrichment_tab.py:105
+#: ui/tabs/enrichment_tab.py:103
 msgid "分析类型:"
 msgstr "解析タイプ:"
 
-#: ui/tabs/enrichment_tab.py:116
+#: ui/tabs/enrichment_tab.py:114
 msgid "合并转录本到基因"
 msgstr "転写産物を遺伝子にまとめる"
 
-#: ui/tabs/enrichment_tab.py:121
+#: ui/tabs/enrichment_tab.py:118
 msgid ""
 "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n"
 "例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"
@@ -3495,96 +3444,100 @@ msgstr ""
 "例: Ghir_D02G021470.1 / Ghir_D02G021470.2 は両方とも Ghir_D02G021470 として扱"
 "われます。"
 
-#: ui/tabs/enrichment_tab.py:126
+#: ui/tabs/enrichment_tab.py:122
 msgid "绘图设置"
 msgstr "プロット設定"
 
-#: ui/tabs/enrichment_tab.py:130
+#: ui/tabs/enrichment_tab.py:126
 msgid "绘图类型:"
 msgstr "プロットタイプ:"
 
-#: ui/tabs/enrichment_tab.py:135
+#: ui/tabs/enrichment_tab.py:130
 msgid "气泡图"
 msgstr "バブルプロット"
 
-#: ui/tabs/enrichment_tab.py:137
+#: ui/tabs/enrichment_tab.py:133
 msgid "条形图"
 msgstr "棒グラフ"
 
-#: ui/tabs/enrichment_tab.py:139
+#: ui/tabs/enrichment_tab.py:136
 msgid "Upset图"
 msgstr "Upsetプロット"
 
-#: ui/tabs/enrichment_tab.py:141
+#: ui/tabs/enrichment_tab.py:139
 msgid "网络图(Cnet)"
 msgstr "Cnetプロット"
 
-#: ui/tabs/enrichment_tab.py:145
+#: ui/tabs/enrichment_tab.py:143
 msgid "显示前N项:"
 msgstr "上位N件を表示:"
 
-#: ui/tabs/enrichment_tab.py:151
+#: ui/tabs/enrichment_tab.py:148
 msgid "排序依据:"
 msgstr "並べ替え基準:"
 
-#: ui/tabs/enrichment_tab.py:158
+#: ui/tabs/enrichment_tab.py:154
 msgid "显示图表标题"
 msgstr "プロットタイトルを表示"
 
-#: ui/tabs/enrichment_tab.py:163
+#: ui/tabs/enrichment_tab.py:158
 msgid "图表宽度 (英寸):"
 msgstr "プロットの幅（インチ）:"
 
-#: ui/tabs/enrichment_tab.py:170
+#: ui/tabs/enrichment_tab.py:163
 msgid "图表高度 (英寸):"
 msgstr "プロットの高さ（インチ）:"
 
-#: ui/tabs/enrichment_tab.py:177
+#: ui/tabs/enrichment_tab.py:168
 msgid "文件格式:"
 msgstr "ファイル形式:"
 
-#: ui/tabs/enrichment_tab.py:184 ui/tabs/locus_conversion_tab.py:63
+#: ui/tabs/enrichment_tab.py:174 ui/tabs/locus_conversion_tab.py:68
 msgid "输出设置"
 msgstr "出力設定"
 
-#: ui/tabs/enrichment_tab.py:188
+#: ui/tabs/enrichment_tab.py:178
 msgid "输出目录:"
 msgstr "出力ディレクトリ:"
 
-#: ui/tabs/enrichment_tab.py:256
+#: ui/tabs/enrichment_tab.py:257
+msgid "请输入要分析的基因ID。"
+msgstr "解析する遺伝子IDを入力してください。"
+
+#: ui/tabs/enrichment_tab.py:267
+msgid "请选择图表的输出目录。"
+msgstr "プロットの出力ディレクトリを選択してください。"
+
+#: ui/tabs/enrichment_tab.py:274
+msgid "请至少选择一种图表类型。"
+msgstr "少なくとも1つのプロットタイプを選択してください。"
+
+#: ui/tabs/enrichment_tab.py:292
 msgid "第 {i + 1} 行Log2FC值无效:"
 msgstr "{i + 1}行目のLog2FC値が無効です:"
 
-#: ui/tabs/enrichment_tab.py:259
+#: ui/tabs/enrichment_tab.py:294
 msgid "第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):"
 msgstr ""
 "{i + 1}行目の形式が正しくありません。2つの列（遺伝子、Log2FC）が必要です:"
 
-#: ui/tabs/enrichment_tab.py:266
+#: ui/tabs/enrichment_tab.py:301
 msgid "输入格式错误"
 msgstr "入力形式エラー"
 
-#: ui/tabs/enrichment_tab.py:272
-msgid "请输入要分析的基因ID。"
-msgstr "解析する遺伝子IDを入力してください。"
+#: ui/tabs/enrichment_tab.py:306
+msgid "解析后未发现有效基因ID。"
+msgstr "有効な遺伝子 IDが見つかりませんでした。"
 
-#: ui/tabs/enrichment_tab.py:278
-msgid "请至少选择一种图表类型。"
-msgstr "少なくとも1つのプロットタイプを選択してください。"
+#: ui/tabs/enrichment_tab.py:320
+msgid "{} 富集分析"
+msgstr "{} 富集解析"
 
-#: ui/tabs/enrichment_tab.py:281
-msgid "请选择图表的输出目录。"
-msgstr "プロットの出力ディレクトリを選択してください。"
-
-#: ui/tabs/enrichment_tab.py:300
-msgid "富集分析"
-msgstr "エンリッチメント解析"
-
-#: ui/tabs/genome_identifier_tab.py:24
+#: ui/tabs/genome_identifier_tab.py:27
 msgid "开始鉴定"
 msgstr "特定を開始"
 
-#: ui/tabs/genome_identifier_tab.py:32
+#: ui/tabs/genome_identifier_tab.py:35
 msgid "鉴定结果将显示在这里。"
 msgstr "特定結果はここに表示されます。"
 
@@ -3592,197 +3545,197 @@ msgstr "特定結果はここに表示されます。"
 msgid "基因组类别鉴定工具"
 msgstr "ゲノムカテゴリ特定ツール"
 
-#: ui/tabs/genome_identifier_tab.py:56
+#: ui/tabs/genome_identifier_tab.py:57
 msgid "输入基因列表"
 msgstr "遺伝子リストを入力"
 
-#: ui/tabs/genome_identifier_tab.py:61
+#: ui/tabs/genome_identifier_tab.py:63
 msgid "在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"
 msgstr ""
 "ここに遺伝子リストを貼り付けると、ツールはそれらがどのゲノムバージョンに属す"
 "るかを特定しようとします。"
 
-#: ui/tabs/genome_identifier_tab.py:78
+#: ui/tabs/genome_identifier_tab.py:98
 msgid "基因组源数据未加载，无法进行鉴定。"
 msgstr "ゲノムソースデータが読み込まれていないため、特定を実行できません。"
 
-#: ui/tabs/genome_identifier_tab.py:83
+#: ui/tabs/genome_identifier_tab.py:103
 msgid "请输入至少一个基因ID进行鉴定。"
 msgstr "特定のために少なくとも1つの遺伝子IDを入力してください。"
 
-#: ui/tabs/genome_identifier_tab.py:89
+#: ui/tabs/genome_identifier_tab.py:108
 msgid "正在鉴定中..."
 msgstr "特定中..."
 
-#: ui/tabs/genome_identifier_tab.py:96
+#: ui/tabs/genome_identifier_tab.py:115
 msgid "鉴定结果"
 msgstr "特定結果"
 
-#: ui/tabs/genome_identifier_tab.py:100
+#: ui/tabs/genome_identifier_tab.py:119
 msgid "未能识别到匹配的基因组。"
 msgstr "一致するゲノムを特定できませんでした。"
 
-#: ui/tabs/gff_query_tab.py:30
+#: ui/tabs/gff_query_tab.py:34
 msgid "开始基因查询"
 msgstr "遺伝子クエリを開始"
 
-#: ui/tabs/gff_query_tab.py:38
+#: ui/tabs/gff_query_tab.py:47
 msgid "基因/区域位点查询"
 msgstr "遺伝子/領域座位クエリ"
 
-#: ui/tabs/gff_query_tab.py:47 ui/tabs/locus_conversion_tab.py:43
+#: ui/tabs/gff_query_tab.py:57 ui/tabs/locus_conversion_tab.py:47
 msgid "输入参数"
 msgstr "入力パラメータ"
 
-#: ui/tabs/gff_query_tab.py:52
+#: ui/tabs/gff_query_tab.py:62
 msgid "输入基因ID (多行或逗号分隔):"
 msgstr "遺伝子IDを入力（複数行またはカンマ区切り）:"
 
-#: ui/tabs/gff_query_tab.py:72
+#: ui/tabs/gff_query_tab.py:81
 msgid "或 输入染色体区域:"
 msgstr "または 染色体領域を入力:"
 
-#: ui/tabs/gff_query_tab.py:87
+#: ui/tabs/gff_query_tab.py:94
 msgid "配置与输出"
 msgstr "設定と出力"
 
-#: ui/tabs/gff_query_tab.py:91
+#: ui/tabs/gff_query_tab.py:98
 msgid "选择基因组版本:"
 msgstr "ゲノムバージョンを選択:"
 
-#: ui/tabs/gff_query_tab.py:99 ui/tabs/locus_conversion_tab.py:67
+#: ui/tabs/gff_query_tab.py:105 ui/tabs/locus_conversion_tab.py:72
 msgid "结果输出CSV文件:"
 msgstr "結果出力CSVファイル:"
 
-#: ui/tabs/gff_query_tab.py:108 ui/tabs/homology_tab.py:88
+#: ui/tabs/gff_query_tab.py:113 ui/tabs/homology_tab.py:151
 msgid "CSV 文件"
 msgstr "CSVファイル"
 
-#: ui/tabs/gff_query_tab.py:144
+#: ui/tabs/gff_query_tab.py:172
 msgid "请指定结果文件的保存路径。"
 msgstr "結果ファイルの保存パスを指定してください。"
 
-#: ui/tabs/gff_query_tab.py:153
+#: ui/tabs/gff_query_tab.py:181
 msgid "必须输入基因ID列表或染色体区域之一。"
 msgstr "遺伝子IDのリストまたは染色体領域のいずれかを入力する必要があります。"
 
-#: ui/tabs/gff_query_tab.py:156
+#: ui/tabs/gff_query_tab.py:184
 msgid "输入冲突"
 msgstr "入力の競合"
 
-#: ui/tabs/gff_query_tab.py:156
+#: ui/tabs/gff_query_tab.py:184
 msgid "将优先使用基因ID列表进行查询。"
 msgstr "クエリには遺伝子IDリストが優先されます。"
 
-#: ui/tabs/gff_query_tab.py:169 ui/tabs/homology_tab.py:102
-#: ui/tabs/locus_conversion_tab.py:118 ui/tabs/xlsx_converter_tab.py:52
+#: ui/tabs/gff_query_tab.py:197 ui/tabs/homology_tab.py:174
+#: ui/tabs/locus_conversion_tab.py:141 ui/tabs/xlsx_converter_tab.py:96
 msgid "输入错误"
 msgstr "入力エラー"
 
-#: ui/tabs/gff_query_tab.py:169
+#: ui/tabs/gff_query_tab.py:197
 msgid "区域格式不正确。请使用 'Chr:Start-End' 格式。"
 msgstr "領域の形式が正しくありません。'Chr:Start-End' 形式を使用してくだ。"
 
-#: ui/tabs/gff_query_tab.py:183
+#: ui/tabs/gff_query_tab.py:211
 msgid "GFF基因查询"
 msgstr "GFF 遺伝子検索"
 
-#: ui/tabs/homology_tab.py:29 ui/tabs/locus_conversion_tab.py:28
-#: ui/tabs/xlsx_converter_tab.py:25
+#: ui/tabs/homology_tab.py:32 ui/tabs/locus_conversion_tab.py:32
+#: ui/tabs/xlsx_converter_tab.py:28
 msgid "开始转换"
 msgstr "開始変換"
 
-#: ui/tabs/homology_tab.py:36 ui/tabs/homology_tab.py:104
+#: ui/tabs/homology_tab.py:44 ui/tabs/homology_tab.py:177
 msgid "基因同源转换"
 msgstr "遺伝子同源変換"
 
-#: ui/tabs/homology_tab.py:38
+#: ui/tabs/homology_tab.py:47
 msgid "输入"
 msgstr "入力"
 
-#: ui/tabs/homology_tab.py:42 ui/tabs/locus_conversion_tab.py:47
+#: ui/tabs/homology_tab.py:52 ui/tabs/locus_conversion_tab.py:51
 msgid "源基因组:"
 msgstr "元基因組:"
 
-#: ui/tabs/homology_tab.py:45 ui/tabs/locus_conversion_tab.py:52
+#: ui/tabs/homology_tab.py:58 ui/tabs/locus_conversion_tab.py:57
 msgid "目标基因组:"
 msgstr "目標ゲノム:"
 
-#: ui/tabs/homology_tab.py:57
+#: ui/tabs/homology_tab.py:82
 msgid "参数设置"
 msgstr "パラメータ設定"
 
-#: ui/tabs/homology_tab.py:60
+#: ui/tabs/homology_tab.py:86
 msgid "严格匹配模式 (同源亚组内优先)"
 msgstr "厳格一致モード (同源サブグループ内優先)"
 
-#: ui/tabs/homology_tab.py:73
+#: ui/tabs/homology_tab.py:90
 msgid "Top N:"
 msgstr "Top N:"
 
-#: ui/tabs/homology_tab.py:74
-msgid "E-value:"
-msgstr "E-value:"
-
-#: ui/tabs/homology_tab.py:75
+#: ui/tabs/homology_tab.py:91
 msgid "PID (%):"
 msgstr "PID (%):"
 
-#: ui/tabs/homology_tab.py:76
+#: ui/tabs/homology_tab.py:92
+msgid "E-value:"
+msgstr "E-value:"
+
+#: ui/tabs/homology_tab.py:93
 msgid "Score:"
 msgstr "Score:"
 
-#: ui/tabs/homology_tab.py:78
+#: ui/tabs/homology_tab.py:107
 msgid "输出文件 (可选)"
 msgstr "出力ファイル（任意）"
 
-#: ui/tabs/homology_tab.py:81
+#: ui/tabs/homology_tab.py:111
 msgid "输出路径:"
 msgstr "出力パス:"
 
-#: ui/tabs/homology_tab.py:88
+#: ui/tabs/homology_tab.py:151
 msgid "Excel 文件"
 msgstr "Excel ファイル"
 
-#: ui/tabs/homology_tab.py:88
+#: ui/tabs/homology_tab.py:152
 msgid "所有文件"
 msgstr "すべてのファイル"
 
-#: ui/tabs/homology_tab.py:92
+#: ui/tabs/homology_tab.py:160
 msgid "请输入要映射的源基因ID。"
 msgstr "マッピングするソース遺伝子 IDを入力してください。"
 
-#: ui/tabs/homology_tab.py:94
+#: ui/tabs/homology_tab.py:166
 msgid "请选择有效的源和目标基因组。"
 msgstr "有効な源と目標のゲノムを選択してください。"
 
-#: ui/tabs/homology_tab.py:102
+#: ui/tabs/homology_tab.py:174
 msgid "参数设置中的阈值必须是有效的数字。"
 msgstr "パラメータ設定の閾値は有効な数値でなければなりません。"
 
-#: ui/tabs/locus_conversion_tab.py:35
+#: ui/tabs/locus_conversion_tab.py:44
 msgid "位点坐标转换"
 msgstr "位点座標変換"
 
-#: ui/tabs/locus_conversion_tab.py:57
+#: ui/tabs/locus_conversion_tab.py:63
 msgid "输入区域 (Chr:Start-End):"
 msgstr "入力領域 (Chr:Start-End):"
 
-#: ui/tabs/locus_conversion_tab.py:110
+#: ui/tabs/locus_conversion_tab.py:133
 msgid "请选择源/目标基因组、输入区域并指定输出文件路径。"
 msgstr ""
 "ソース/目標ゲノムを選択し、入力区域を指定し、出力ファイルのパスを指定してくだ"
 "さい。"
 
-#: ui/tabs/locus_conversion_tab.py:118
+#: ui/tabs/locus_conversion_tab.py:141
 msgid "区域格式不正确，请使用 'Chr:Start-End' 格式。"
 msgstr "区域形式が正しくありません。'Chr:Start-End' 形式を使用してください。"
 
-#: ui/tabs/xlsx_converter_tab.py:32
+#: ui/tabs/xlsx_converter_tab.py:40
 msgid "Excel (.xlsx) 转 CSV 工具"
 msgstr "Excel (.xlsx) を CSV に変換するツール"
 
-#: ui/tabs/xlsx_converter_tab.py:33
+#: ui/tabs/xlsx_converter_tab.py:45
 msgid ""
 "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
 "适用于所有工作表表头一致的情况。"
@@ -3791,95 +3744,303 @@ msgstr ""
 "結合します。\n"
 "すべてのワークシートのヘッダーが一致している場合に適しています。"
 
-#: ui/tabs/xlsx_converter_tab.py:34
+#: ui/tabs/xlsx_converter_tab.py:49
 msgid "文件路径"
 msgstr "ファイルパス"
 
-#: ui/tabs/xlsx_converter_tab.py:37
+#: ui/tabs/xlsx_converter_tab.py:53
 msgid "输入Excel文件:"
 msgstr "入力 Excelファイル:"
 
-#: ui/tabs/xlsx_converter_tab.py:41
+#: ui/tabs/xlsx_converter_tab.py:62
 msgid "输出CSV文件:"
 msgstr "出力 CSVファイル:"
 
-#: ui/tabs/xlsx_converter_tab.py:44
+#: ui/tabs/xlsx_converter_tab.py:66
 msgid "另存为..."
 msgstr "名前を付けて保存..."
 
-#: ui/tabs/xlsx_converter_tab.py:52
+#: ui/tabs/xlsx_converter_tab.py:96
 msgid "请输入一个有效的Excel文件路径。"
 msgstr "有効なExcelファイルのパスを入力してください。"
 
-#: ui/tabs/xlsx_converter_tab.py:57
+#: ui/tabs/xlsx_converter_tab.py:103
 msgid "自动生成输出路径:"
 msgstr "自動生成出力パス:"
 
-#: ui/tabs/xlsx_converter_tab.py:59
-msgid "XLSX转CSV"
-msgstr "XLSXをCSVに変換"
-
-#: ui/tabs/xlsx_converter_tab.py:61
+#: ui/tabs/xlsx_converter_tab.py:111
 msgid "转换失败"
 msgstr "変換失敗"
 
-#: ui/tabs/xlsx_converter_tab.py:61
+#: ui/tabs/xlsx_converter_tab.py:111
 msgid "一个未预料的错误发生:"
 msgstr "予期せぬエラーが発生しました:"
 
-#: ui/ui_manager.py:35 ui/ui_manager.py:197 ui/ui_manager.py:208
-#: ui/ui_manager.py:222
-msgid "深色"
-msgstr "濃い色"
-
-#: ui/ui_manager.py:97
-msgid "操作日志"
-msgstr "操作ログ"
-
-#: ui/ui_manager.py:106
-msgid "清除日志"
-msgstr "ログを消去"
-
-#: ui/ui_manager.py:176
-msgid "主页"
-msgstr "ホーム"
-
-#: ui/ui_manager.py:177
-msgid "配置编辑器"
-msgstr "配置編集器"
-
-#: ui/ui_manager.py:178
-msgid "数据工具"
-msgstr "データツール"
-
-#: ui/ui_manager.py:197 ui/ui_manager.py:208 ui/ui_manager.py:222
-msgid "浅色"
-msgstr "薄い色"
-
-#: ui/ui_manager.py:197 ui/ui_manager.py:208 ui/ui_manager.py:222
-msgid "系统"
-msgstr "システム"
-
-#: ui/ui_manager.py:276
-msgid "完成。"
-msgstr "完了。"
-
-#: ui/ui_manager.py:277
-msgid "已被用户取消。"
-msgstr "ユーザーによりキャンセルされました。"
-
-#: ui/ui_manager.py:293
+#: ui/ui_manager.py:84 ui/ui_manager.py:399
 msgid "当前配置: {}"
 msgstr "現在の設定: {}"
 
-#: ui/ui_manager.py:300
+#: ui/ui_manager.py:86 ui/ui_manager.py:400
+msgid "未加载配置"
+msgstr "設定が読み込まれていません"
+
+#: ui/ui_manager.py:91 ui/ui_manager.py:92
+msgid "粘贴基因ID，每行一个..."
+msgstr "基因 IDを貼り付けてください...一行に一つです..."
+
+#: ui/ui_manager.py:93
+msgid "例如: A01:1-100000"
+msgstr "例: A01:1-100000"
+
+#: ui/ui_manager.py:94
+msgid "在此处粘贴要注释的基因ID，每行一个。"
+msgstr "ここにアノテーションする遺伝子IDを1行に1つずつ貼り付けてください。"
+
+#: ui/ui_manager.py:96
+msgid ""
+"在此处粘贴用于富集分析的基因ID，每行一个。\n"
+"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
+msgstr ""
+"富集分析用の基因 IDを貼り付けてください。一行に一つです。\n"
+"Log2FCが含まれている場合は、次の形式で：基因 ID Log2FC\n"
+"（注意：タブ区切りで貼り付けてください。Excelから直接コピーした列は既にタブ区"
+"切り形式です）。"
+
+#: ui/ui_manager.py:97
+#, python-brace-format
+msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
+msgstr ""
+"ここにカスタムプロンプトテンプレートを入力してください。{text} プレースホル"
+"ダーを含める必要があります..."
+
+#: ui/ui_manager.py:202
+msgid "操作日志"
+msgstr "操作ログ"
+
+#: ui/ui_manager.py:211
+msgid "清空日志"
+msgstr "ログをクリア"
+
+#: ui/ui_manager.py:271
+msgid "主页"
+msgstr "ホーム"
+
+#: ui/ui_manager.py:271
+msgid "配置编辑器"
+msgstr "配置編集器"
+
+#: ui/ui_manager.py:272
+msgid "数据工具"
+msgstr "データツール"
+
+#: ui/ui_manager.py:288
+msgid "语言"
+msgstr "言語"
+
+#: ui/ui_manager.py:290
+msgid "外观模式"
+msgstr "外観模式"
+
+#: ui/ui_manager.py:377
+msgid "{} 已被用户取消。"
+msgstr "{} はユーザーによってキャンセルされました。"
+
+#: ui/ui_manager.py:379
+msgid "完成。"
+msgstr "完了。"
+
+#: ui/ui_manager.py:379
+msgid "失败。"
+msgstr "失敗。"
+
+#: ui/ui_manager.py:402
+msgid ""
+"无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
+"动的早期阶段。"
+msgstr ""
+"config_path_display_varの設定が无法设置：変数が準備されていないかNoneです。こ"
+"れは通常、アプリケーションの初期起動段階で起こります。"
+
+#: ui/ui_manager.py:413
 msgid "UI已根据当前配置刷新。"
 msgstr "UIは現在の設定に応じて更新されました。"
 
-#: ui/ui_manager.py:365
-msgid "刷新失败或无模型"
-msgstr "刷新失敗またはモデルが存在しません"
+#: ui/ui_manager.py:462
+msgid "刷新失败或无可用模型"
+msgstr "刷新失敗または利用可能なモデルがありません"
 
-#: ui/ui_manager.py:385
-msgid "无可用选项"
-msgstr "利用可能なオプションはありません"
+#, python-brace-format
+#~ msgid ""
+#~ "请将以下生物学领域的文本翻译成中文：\n"
+#~ "\n"
+#~ "{text}\n"
+#~ "\n"
+#~ "请只返回翻译结果，不要包含任何额外的解释或说明。"
+#~ msgstr ""
+#~ "以下の生物学テキストを日本語に翻訳してください:\n"
+#~ "\n"
+#~ "{text}\n"
+#~ "\n"
+#~ "翻訳結果のみを返し、余分な説明や注釈は含めないでください。"
+
+#, python-brace-format
+#~ msgid ""
+#~ "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，"
+#~ "并提供一个简洁的总结。基因功能描述：\n"
+#~ "\n"
+#~ "{text}\n"
+#~ msgstr ""
+#~ "私は生物学の分野で研究をしています。以下の遺伝子機能の説明が私の研究方向と"
+#~ "どのように関連しているかを分析し、簡潔な要約を提供してください。遺伝子機能"
+#~ "の説明:\n"
+#~ "\n"
+#~ "{text}\n"
+
+#~ msgid "Warning: Locales directory not found at '{}'. Using fallback."
+#~ msgstr ""
+#~ "警告: '{}' にロケールディレクトリが見つかりませんでした。フォールバックを"
+#~ "使用しています。"
+
+#~ msgid "Warning: Could not set up language translation for '{}'. Reason: {}"
+#~ msgstr "警告: '{}' の言語翻訳を設定できませんでした。理由: {}"
+
+#~ msgid "加载完成"
+#~ msgstr "読み込み完了"
+
+#~ msgid "配置文件已成功加载并应用。"
+#~ msgstr "設定ファイルは正常に読み込まれ、適用されました。"
+
+#~ msgid "无法保存语言设置: {}"
+#~ msgstr "言語設定を保存できませんでした: {}"
+
+#~ msgid "配置文件 'config.yml' 已存在，是否覆盖?"
+#~ msgstr "設定ファイル 'config.yml' は既に存在します。上書きしますか？"
+
+#~ msgid "关于 FCGT"
+#~ msgstr "FCGTについて"
+
+#~ msgid " 是一款专为棉花研究者，特别是"
+#~ msgstr " は、綿の研究者、特に"
+
+#~ msgid "非生物信息专业背景"
+#~ msgstr "非生物情報学専門"
+
+#~ msgid ""
+#~ "的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程"
+#~ "封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置"
+#~ "和代码编写，即可"
+#~ msgstr ""
+#~ "の研究者や学生向けに設計されたゲノムデータ解析ツールボックスです。複雑な"
+#~ "データ処理プロセスを直感的なグラフィカルインターフェース(GUI)とコマンドラ"
+#~ "イン(CLI)に集約し、面倒な環境設定やコーディング作業なしで利用できるように"
+#~ "しています。"
+
+#~ msgid "开箱即用"
+#~ msgstr "すぐに使える"
+
+#~ msgid ""
+#~ "。\n"
+#~ "\n"
+#~ msgstr ""
+#~ "ようにすることに尽力しています。\n"
+#~ "\n"
+
+#~ msgid ""
+#~ "本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映"
+#~ "射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据"
+#~ "等。它旨在成为您日常科研工作中不可或缺的得力助手。\n"
+#~ "\n"
+#~ msgstr ""
+#~ "このツールキットは、異なるバージョン間のホモログ遺伝子マッピング"
+#~ "（Liftover）、遺伝子機能アノテーション、遺伝子座位クエリ、エンリッチメント"
+#~ "解析、AI支援バッチデータ処理など、一連の強力な綿ゲノムデータ処理ツールを提"
+#~ "供します。日常の研究業務に不可欠なアシスタントになることを目指していま"
+#~ "す。\n"
+#~ "\n"
+
+#~ msgid "核心亮点与功能\n"
+#~ msgstr "主なハイライトと機能\n"
+
+#~ msgid ": 图形界面优先，无需复杂配置，多语言支持。\n"
+#~ msgstr ": GUI優先、複雑な設定不要、多言語対応。\n"
+
+#~ msgid ": 多线程加速，命令行支持。\n"
+#~ msgstr ": マルチスレッド高速化、コマンドライン対応。\n"
+
+#~ msgid ": 棉花版 Liftover，一站式数据工具，标准化数据下载。\n"
+#~ msgstr ""
+#~ ": 綿特化Liftover、ワンストップデータツール、標準化されたデータダウンロー"
+#~ "ド。\n"
+
+#~ msgid "跨平台，随处可用"
+#~ msgstr "クロスプラットフォーム、どこでも使える"
+
+#~ msgid ""
+#~ ": 为Windows提供预编译可执行文件。\n"
+#~ "\n"
+#~ msgstr ""
+#~ ": Windows用のコンパイル済み実行ファイルを提供。\n"
+#~ "\n"
+
+#~ msgid "项目开源地址：\n"
+#~ msgstr "プロジェクトのオープンソースアドレス:\n"
+
+#~ msgid ""
+#~ "\n"
+#~ "此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。\n"
+#~ "\n"
+#~ msgstr ""
+#~ "\n"
+#~ "このソフトウェアはGemini AIの支援を受けて開発されました。機能は継続的に改"
+#~ "良されています。学術交流と貢献を歓迎します。\n"
+#~ "\n"
+
+#~ msgid "数据来源与引文\n"
+#~ msgstr "データソースと引用\n"
+
+#~ msgid ""
+#~ "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。\n"
+#~ "\n"
+#~ msgstr ""
+#~ "このツールはCottonGenの信頼できるデータに依存しています。彼らのチームの継"
+#~ "続的な公開とメンテナンスに感謝します。\n"
+#~ "\n"
+
+#~ msgid "CottonGen 文章\n"
+#~ msgstr "CottonGenの記事\n"
+
+#~ msgid "基因组引用文献\n"
+#~ msgstr "ゲノム参照引用\n"
+
+#~ msgid "致谢与许可\n"
+#~ msgstr "謝辞とライセンス\n"
+
+#~ msgid "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。\n"
+#~ msgstr ""
+#~ "このプロジェクトにデータ、アルゴリズム、インスピレーションを提供してくだ"
+#~ "さったすべての研究者とオープンソースコミュニティに感謝します。\n"
+
+#~ msgid "关闭"
+#~ msgstr "閉じる"
+
+#~ msgid "友好棉花基因组工具包 - FCGT"
+#~ msgstr "フレンドリーコットンゲノムツールキット - FCGT"
+
+#~ msgid ""
+#~ "\n"
+#~ "\n"
+#~ "请先下载它们。"
+#~ msgstr ""
+#~ "\n"
+#~ "\n"
+#~ "ダウンロードしてください。"
+
+#~ msgid "清除日志"
+#~ msgstr "ログを消去"
+
+#~ msgid "系统"
+#~ msgstr "システム"
+
+#~ msgid "无可用选项"
+#~ msgstr "利用可能なオプションはありません"

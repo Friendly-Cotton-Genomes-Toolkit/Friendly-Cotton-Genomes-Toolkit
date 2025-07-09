@@ -16,7 +16,7 @@ from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUB
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
-from .dialogs import MessageDialog
+from .dialogs import MessageDialog, ConfirmationDialog
 from .utils.gui_helpers import identify_genome_from_gene_ids
 
 if TYPE_CHECKING:
@@ -35,6 +35,7 @@ class EventHandler:
 
     def __init__(self, app: "CottonToolkitApp"):
         self.app = app
+        self.ui_manager = app.ui_manager
         self.message_handlers = self._initialize_message_handlers()
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
@@ -57,46 +58,65 @@ class EventHandler:
         }
 
     # --- 语言切换处理 ---
-    def on_language_change(self, *args):
-        """
-        【最终修正版】处理语言切换的核心逻辑。
-        直接从绑定的StringVar读取值，而不是依赖于command传参，以确保准确性。
-        同时更新主配置文件和UI设置。
-        """
+    def on_language_change(self, language_name: str):
+        """当用户从下拉菜单中选择一个新语言时触发。"""
         app = self.app
+        _ = app._  # 使用当前实例的翻译函数
 
-        # 步骤 1: 直接从StringVar获取当前选定的显示名称
-        selected_display_name = app.selected_language_var.get()
+        selected_lang_code = app.LANG_NAME_TO_CODE.get(language_name)
+        if not selected_lang_code:
+            app.logger.warning(f"Invalid language name selected: {language_name}")
+            return
 
-        # 步骤 2: 从显示名称 (如 "English") 准确获取语言代码 (如 "en")
-        new_lang_code = app.LANG_NAME_TO_CODE.get(selected_display_name, "zh-hans")
+        app.logger.info(f"Language change requested to: {language_name} ({selected_lang_code})")
 
-        # 步骤 3: 如果主配置已加载，则同步更新主配置中的语言设置并保存 (config.yml)
+        # 步骤 1: 更新并保存 UI 配置文件 (ui_settings.json)，这会影响下次启动时的默认语言
+        app.ui_settings['language'] = selected_lang_code
+        self.ui_manager._save_ui_settings()
+
+        # 步骤 2: 【关键修正】如果当前加载了主配置文件(config.yml)，则更新并保存它
         if app.current_config and app.config_path:
-            if app.current_config.i18n_language != new_lang_code:
-                app.current_config.i18n_language = new_lang_code
-                try:
-                    # 使用深拷贝以确保线程安全
-                    config_to_save = app.current_config.copy(deep=True)
-                    # 在后台线程中保存，避免UI卡顿
-                    threading.Thread(
-                        target=save_config,
-                        args=(config_to_save, app.config_path),
-                        daemon=True
-                    ).start()
-                    app._log_to_viewer(
-                        f"主配置文件 '{os.path.basename(app.config_path)}' 的语言已更新为 '{new_lang_code}'。", "INFO")
-                except Exception as e:
-                    app.logger.error(f"无法将语言设置保存到 config.yml: {e}")
-                    app.message_queue.put(("status", "无法保存语言到主配置"))
+            app.current_config.i18n_language = selected_lang_code
+            if save_config(app.current_config, app.config_path):
+                app.logger.info(f"Main config file '{os.path.basename(app.config_path)}' updated with language '{selected_lang_code}'.")
+                # 更新状态栏提示
+                app.message_queue.put(('show_info', {'title': _("配置已保存"), 'message': _("语言设置已同步到 {}。").format(os.path.basename(app.config_path))}))
+            else:
+                app.logger.error(f"Failed to save language setting to '{app.config_path}'.")
+                app.message_queue.put(('show_error', {'title': _("保存失败"), 'message': _("无法将语言设置写入配置文件。")}))
 
-        # 步骤 4: 同时更新UI设置(ui_settings.json)，用于下次快速启动
-        if app.ui_settings.get('language') != new_lang_code:
-            app.ui_settings['language'] = new_lang_code
-            app.ui_manager._save_ui_settings()
 
-        # 步骤 5: 使用正确的语言代码，强制刷新整个UI
-        app.ui_manager.update_language_ui(new_lang_code)
+        # 步骤 3: 实时更新当前界面的所有文本
+        self.ui_manager.update_language_ui(selected_lang_code)
+
+        # 步骤 4: 弹出重启提示对话框
+        dialog = ConfirmationDialog(
+            parent=app,
+            title=_("需要重启"),  # 使用更新后的翻译函数
+            message=_("语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"),
+            button1_text=_("立即重启"),
+            button2_text=_("稍后重启")
+        )
+
+        # 步骤 5: 根据用户选择决定是否重启
+        if dialog.result is True:
+            app.restart_app()
+
+    def on_closing(self):
+        """处理主窗口关闭事件。"""
+        if self.app.active_task_name:
+            dialog = ConfirmationDialog(
+                parent=self.app,
+                title=_("确认退出"),
+                message=_("任务'{}'正在运行中，确定要强制退出吗？").format(self.app.active_task_name),
+                button1_text=_("强制退出"),
+                button2_text=_("取消")
+            )
+            if dialog.result:
+                self.app.cancel_current_task_event.set()
+                self.app.destroy()
+        else:
+            self.app.destroy()
 
     # --- 其他事件处理函数保持不变 ---
     # (这里省略了其他的函数，您只需替换 on_language_change 即可，但为保险起见，提供完整文件)

@@ -16,6 +16,15 @@ from .dialogs import MessageDialog, ProgressDialog
 if TYPE_CHECKING:
     from .gui_app import CottonToolkitApp
 
+try:
+    import builtins
+
+    _ = builtins._  # type: ignore
+except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins失败
+    # 如果在测试或独立运行此模块时，_ 可能未设置
+    def _(text: str) -> str:
+        return text
+
 
 class UIManager:
     """负责所有UI控件的创建、布局和更新。"""
@@ -259,8 +268,8 @@ class UIManager:
             except:
                 return None
 
-        button_defs = [("home", "主页", load_icon("home")), ("editor", "配置编辑器", load_icon("settings")),
-                       ("tools", "数据工具", load_icon("tools"))]
+        button_defs = [("home", _("主页"), load_icon("home")), ("editor", _("配置编辑器"), load_icon("settings")),
+                       ("tools", _("数据工具"), load_icon("tools"))]
         for i, (name, text_key, icon) in enumerate(button_defs):
             btn = ttkb.Button(app.navigation_frame, text=_(text_key),
                               command=lambda n=name: self.select_frame_by_name(n), image=icon, compound="left",
@@ -276,9 +285,9 @@ class UIManager:
         appearance_modes_display = [_("浅色"), _("深色"), _("跟随系统")]
         for i, (label_key, var, values, cmd) in enumerate(
                 [
-                    ("语言", app.selected_language_var, list(app.LANG_CODE_TO_NAME.values()),
+                    (_("语言"), app.selected_language_var, list(app.LANG_CODE_TO_NAME.values()),
                      app.event_handler.on_language_change),
-                    ("外观模式", app.selected_appearance_var, appearance_modes_display,
+                    (_("外观模式"), app.selected_appearance_var, appearance_modes_display,
                      app.event_handler.change_appearance_mode_event)
                 ]):
             lbl = ttkb.Label(settings_frame, text=_(label_key), font=app.app_font, style='Transparent.TLabel');
@@ -309,8 +318,8 @@ class UIManager:
         app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
 
         mode_key = app.ui_settings.get("appearance_mode", "System")
-        key_to_display = {"Light": "浅色", "Dark": "深色", "System": "跟随系统"}
-        app.selected_appearance_var.set(key_to_display.get(mode_key, "跟随系统"))
+        key_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
+        app.selected_appearance_var.set(key_to_display.get(mode_key, _("跟随系统")))
 
 
     def _save_ui_settings(self):
