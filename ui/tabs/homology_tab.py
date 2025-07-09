@@ -143,6 +143,8 @@ class HomologyTab(BaseTab):
         # 刷新文字输入框中的占位符
         self.app.ui_manager.add_placeholder(self.homology_map_genes_textbox, "homology_genes")
 
+        self.app.ui_manager.refresh_single_placeholder(self.homology_map_genes_textbox, "homology_genes")
+
     def _browse_output_file(self):
         # ... (此方法逻辑保持不变) ...
         self.app.event_handler._browse_save_file(self.homology_output_file_entry,

@@ -134,6 +134,10 @@ class GFFQueryTab(BaseTab):
         self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
         self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
 
+        self.app.ui_manager.refresh_single_placeholder(self.gff_query_genes_textbox, "gff_genes")
+        self.app.ui_manager.refresh_single_placeholder(self.gff_query_region_entry, "gff_region")
+
+
     def update_from_config(self):
         self.update_assembly_dropdowns(
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])

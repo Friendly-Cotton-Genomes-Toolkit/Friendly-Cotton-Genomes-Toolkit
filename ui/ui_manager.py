@@ -20,117 +20,91 @@ if TYPE_CHECKING:
 class UIManager:
     """负责所有UI控件的创建、布局和更新。"""
 
-    # 【修改】__init__ 接收 translator 参数
     def __init__(self, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.app = app
-        # 【修改】直接使用传入的 translator
         self.translator_func = translator
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
 
-        # 【修改】初始化逻辑简化，不再自行设置翻译器
         self._load_ui_settings()
         self._set_ttk_theme_from_app_mode(self.app.ui_settings.get("appearance_mode", "System"))
 
+        self._update_placeholders_dictionary(translator)
+
     def update_language_ui(self, lang_code: str):
         app = self.app
-        # setup_localization 现在由外部主程序在切换语言时调用，
-        # UIManager 只接收新的 translator 函数来更新UI
         new_translator = setup_localization(language_code=lang_code)
         self.translator_func = new_translator
-        # builtins._ 也应该由主程序逻辑或 setup_localization 自身更新
-        # 这里我们确保 UIManager 内部的 translator_func 是最新的
+        app._ = new_translator # 更新app实例上的翻译函数，确保所有地方都用最新的
 
+        # 【核心修正】更新占位符字典和所有UI组件
         self._update_placeholders_dictionary(new_translator)
-
-        for component_name, component_instance in app.tool_tab_instances.items():
-            if hasattr(component_instance, 'retranslate_ui'):
-                component_instance.retranslate_ui(translator=new_translator)
-
+        self._retranslate_all_tabs(new_translator)
         self._retranslate_managed_widgets(new_translator)
 
         app.logger.info(f"UI language updated to {lang_code}")
 
+    def _retranslate_all_tabs(self, new_translator: Callable[[str], str]):
+        for tab_instance in self.app.tool_tab_instances.values():
+            if hasattr(tab_instance, 'retranslate_ui'):
+                tab_instance.retranslate_ui(translator=new_translator)
+
     def _retranslate_managed_widgets(self, new_translator: Callable[[str], str]):
         """更新由 UIManager 直接管理的、非 Tab 内的 UI 组件。"""
         app = self.app
-        _ = new_translator  # 在这个方法作用域内，用 _ 指代新的翻译函数
+        _ = new_translator
 
-        # --- 1. 更新主窗口标题 ---
-        if hasattr(app, 'title_text_key'):
-            app.title(_(app.title_text_key))
+        app.title(_(app.title_text_key))
 
-        # --- 2. 更新左侧导航栏和底部设置 ---
-        if hasattr(app, 'home_button'): app.home_button.config(text=_("主页"))
-        if hasattr(app, 'editor_button'): app.editor_button.config(text=_("配置编辑器"))
-        if hasattr(app, 'tools_button'): app.tools_button.config(text=_("数据工具"))
-        if hasattr(app, 'language_label'): app.language_label.config(text=_("语言"))
-        if hasattr(app, 'appearance_mode_label'): app.appearance_mode_label.config(text=_("外观模式"))
-        if hasattr(app, 'log_viewer_label_widget'): app.log_viewer_label_widget.config(text=_("操作日志"))
-        if hasattr(app, 'clear_log_button'): app.clear_log_button.config(text=_("清空日志"))
-
-        # --- 3. 更新日志切换按钮 ---
-        if hasattr(app, 'toggle_log_button'):
-            toggle_log_text = _("隐藏日志") if app.log_viewer_visible else _("显示日志")
-            app.toggle_log_button.config(text=toggle_log_text)
-
-        # --- 4. 更新配置路径显示 ---
-        if hasattr(app, 'config_path_display_var') and app.config_path_display_var is not None:
-            if app.config_path:
-                app.config_path_display_var.set(_("当前配置: {}").format(os.path.basename(app.config_path)))
-            else:
-                app.config_path_display_var.set(_("未加载配置"))
-        else:
-            app.logger.warning(
-                self.translator_func("config_path_display_var 在 _retranslate_managed_widgets 中未就绪。"))
-
-        # --- 5. 更新外观模式下拉菜单 ---
-        if hasattr(app, 'appearance_mode_optionmenu'):
-            appearance_menu = getattr(app, 'appearance_mode_optionmenu', None)
-            if appearance_menu:
-                menu = appearance_menu['menu']
-                menu.delete(0, 'end')
-                translated_values = [_("浅色"), _("深色"), _("跟随系统")]
-                display_to_key = {_("浅色"): "Light", _("深色"): "Dark", _("跟随系统"): "System"}
-                for display_val in translated_values:
-                    key_val = display_to_key.get(display_val, "System")
-                    menu.add_command(label=display_val,
-                                     command=lambda v=key_val: app.event_handler.change_appearance_mode_event(v))
-                current_mode_key = app.ui_settings.get("appearance_mode", "System")
-                key_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
-                if app.selected_appearance_var is not None:
-                    app.selected_appearance_var.set(key_to_display.get(current_mode_key))
-                else:
-                    app.logger.warning(
-                        self.translator_func("selected_appearance_var 在 _retranslate_managed_widgets 中未就绪。"))
-
-
-        # --- 7. 【新增】更新主页上通过字典追踪的组件 ---
+        # 【新增】更新主页上通过字典追踪的组件
         if hasattr(app, 'translatable_widgets'):
             for widget, text_key in app.translatable_widgets.items():
                 if widget and widget.winfo_exists():
                     widget.configure(text=_(text_key))
 
-        # --- 8. 【新增】更新工具栏 Notebook 的标签页标题 ---
+        # 【新增】更新工具栏 Notebook 的标签页标题
         if hasattr(app, 'tools_notebook') and app.tools_notebook.tabs():
             for i, key in enumerate(app.TOOL_TAB_ORDER):
                 if i < len(app.tools_notebook.tabs()):
-                    tab_title = _(app.TAB_TITLE_KEYS.get(key, key))
+                    tab_title = app.TAB_TITLE_KEYS.get(key, key)
                     app.tools_notebook.tab(i, text=tab_title)
 
+        if hasattr(app, 'config_path_display_var') and app.config_path_display_var is not None:
+            if app.config_path:
+                app.config_path_display_var.set(_("当前配置: {}").format(os.path.basename(app.config_path)))
+            else:
+                app.config_path_display_var.set(_("未加载配置"))
+
     def _update_placeholders_dictionary(self, translator: Callable[[str], str]):
+        _ = translator
         self.app.placeholders = {
-            "homology_genes": translator("粘贴基因ID，每行一个..."),
-            "gff_genes": translator("粘贴基因ID，每行一个..."),
-            "gff_region": translator("例如: A01:1-100000"),
-            "genes_input": translator("在此处粘贴要注释的基因ID，每行一个。"),
-            "enrichment_genes_input": translator(
+            "homology_genes": _("粘贴基因ID，每行一个..."),
+            "gff_genes": _("粘贴基因ID，每行一个..."),
+            "gff_region": _("例如: A01:1-100000"),
+            "genes_input": _("在此处粘贴要注释的基因ID，每行一个。"),
+            "enrichment_genes_input": _(
                 "在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"),
-            "custom_prompt": translator(
-                "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
-            "default_prompt_empty": translator("Default prompt is empty, please set it in the configuration editor.")
+            "custom_prompt": _("在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
+            "default_prompt_empty": _("Default prompt is empty, please set it in the configuration editor.")
         }
+
+    def refresh_single_placeholder(self, widget, key):
+        """【新增】一个更可靠的刷新占位符的函数"""
+        if not widget or not widget.winfo_exists(): return
+
+        is_placeholder_state = getattr(widget, 'is_placeholder', False)
+        current_text = ""
+        if isinstance(widget, tk.Text):
+            current_text = widget.get("1.0", "end-1c").strip()
+        elif isinstance(widget, (tk.Entry, ttkb.Entry)):
+            current_text = widget.get().strip()
+
+        # 仅当文本框为空或当前已经是占位符状态时才刷新
+        if not current_text or is_placeholder_state:
+            new_placeholder_text = self.app.placeholders.get(key, "...")
+            self.add_placeholder(widget, new_placeholder_text)
+
 
     def add_placeholder(self, widget, text):
         if not widget or not widget.winfo_exists(): return

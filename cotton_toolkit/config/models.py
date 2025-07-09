@@ -49,8 +49,25 @@ class AIServicesConfig(BaseModel):
         }
 
 class AIPromptsConfig(BaseModel):
-    translation_prompt: str = _("请将以下生物学领域的文本翻译成中文：\n\n{text}\n\n请只返回翻译结果，不要包含任何额外的解释或说明。")
-    analysis_prompt: str = _("我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并提供一个简洁的总结。基因功能描述：\n\n{text}\n")
+    translation_prompt: str = \
+        """
+        Please translate the following biology-related text into Chinese:
+
+        {text}
+
+        Please only return the translation result without any additional explanations or notes.
+        """
+
+    analysis_prompt: str = \
+        """
+        I am studying a topic in the field of biology. 
+
+        Please analyze how the following gene function description relates to my research direction and provide a concise summary. 
+
+        target description:
+
+        {text}
+        """
     custom_prompt: str = ""
 
 class AnnotationToolConfig(BaseModel):

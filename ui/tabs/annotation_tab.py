@@ -110,6 +110,8 @@ class AnnotationTab(BaseTab):
         # 【修正】调用独立的刷新方法
         self.refresh_placeholders()
 
+        self.app.ui_manager.refresh_single_placeholder(self.annotation_genes_textbox, "genes_input")
+
     def refresh_placeholders(self):
         """【新增】此方法由 UIManager 统一调用，以确保占位符被刷新。"""
         if hasattr(self, 'annotation_genes_textbox') and self.annotation_genes_textbox:

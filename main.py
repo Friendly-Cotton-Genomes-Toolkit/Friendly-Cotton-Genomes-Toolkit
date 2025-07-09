@@ -1,10 +1,12 @@
 ﻿# main.py
 # 这是应用程序的主入口文件
+import builtins
 import os
 import sys
 import traceback
-from tkinter import messagebox
 import tkinter as tk
+from tkinter import messagebox
+import json
 
 # 1. --- 全局异常处理函数 (保持不变) ---
 def show_uncaught_exception(exc_type, exc_value, exc_tb):
@@ -13,14 +15,20 @@ def show_uncaught_exception(exc_type, exc_value, exc_tb):
     这是调试闪退问题的关键。
     """
     error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
-    error_window = tk.Toplevel()
-    error_window.withdraw()
+    # 创建一个临时的根窗口来显示消息框
+    temp_root = tk.Tk()
+    temp_root.withdraw()  # 隐藏临时窗口
     messagebox.showerror(
         title="程序发生致命错误 (Fatal Error)",
-        message=f"An unhandled exception caused the program to terminate unexpectedly. Please report the following information to the developer:\n(一个未处理的异常导致程序意外终止，请将以下信息报告给开发者：)\n\n{error_message}",
-        parent=error_window
+        message=(
+            "An unhandled exception caused the program to terminate unexpectedly. "
+            "Please report the following information to the developer:\n"
+            "(一个未处理的异常导致程序意外终止，请将以下信息报告给开发者：)\n\n"
+            f"{error_message}"
+        ),
+        parent=temp_root
     )
-    error_window.destroy()
+    temp_root.destroy()
     sys.exit(1)
 
 
@@ -28,13 +36,12 @@ def show_uncaught_exception(exc_type, exc_value, exc_tb):
 sys.excepthook = show_uncaught_exception
 
 
-# 3. --- 【核心修改】修改 main 函数 ---
+# 3. --- 【核心修正】修改 main 函数 ---
 def main():
     """
     主函数，用于设置环境、创建并运行应用实例。
     """
-    # 导入所需的模块
-    from ui.gui_app import CottonToolkitApp
+    # 将模块导入移动到函数内部，以控制加载顺序
     from cotton_toolkit.config.loader import load_config
     from cotton_toolkit.utils.localization import setup_localization
 
@@ -46,8 +53,9 @@ def main():
     try:
         if os.path.exists(DEFAULT_CONFIG_PATH):
             config = load_config(DEFAULT_CONFIG_PATH)
-            lang_code = getattr(config, 'language', DEFAULT_LANGUAGE)
-            print(f"Config file loaded. Language set to '{lang_code}'.")
+            # 【修正】确保读取正确的字段名 i18n_language
+            lang_code = getattr(config, 'i18n_language', DEFAULT_LANGUAGE)
+            print(f"Config file loaded. Startup language set to '{lang_code}'.")
         else:
             print(f"Config file not found at '{DEFAULT_CONFIG_PATH}'. Using default language '{lang_code}'.")
     except Exception as e:
@@ -55,12 +63,15 @@ def main():
         lang_code = DEFAULT_LANGUAGE
 
     # --- 步骤 2: 使用获取到的语言代码，初始化翻译功能 ---
-    # setup_localization 会返回翻译函数，我们用一个变量接收它
+    # 这会设置全局的 _ 函数
     translator = setup_localization(lang_code)
+    builtins._ = translator  # 确保 _ 函数在 builtins 中可用
+
+    # --- 关键：现在才导入UI相关的类，确保它们在导入时能获得正确的翻译函数 ---
+    from ui.gui_app import CottonToolkitApp
 
     # --- 步骤 3: 启动主应用，并注入 translator ---
     try:
-        # 【关键修复】将获取到的 translator 传递给 CottonToolkitApp 的构造函数
         app = CottonToolkitApp(translator=translator)
         app.mainloop()
     except Exception:

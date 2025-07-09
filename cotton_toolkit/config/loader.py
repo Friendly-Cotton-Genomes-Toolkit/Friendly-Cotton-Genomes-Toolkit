@@ -143,7 +143,7 @@ def get_genome_data_sources(config: MainConfig, logger_func=None) -> Dict[str, G
         if logger_func: logger_func(_("加载基因组源文件时验证出错 '{}':\n{}").format(sources_path, e), "ERROR")
         return {}
     except Exception as e:
-        if logger_func: logger_func(_("加载基因组源文件时发生错误 '{}': {}").format(sources_path, e), "ERROR")
+        if logger_func: logger_func(_("加载基因组源文件时发生错误 '%s': %s"), sources_path, e)
         return {}
 
 

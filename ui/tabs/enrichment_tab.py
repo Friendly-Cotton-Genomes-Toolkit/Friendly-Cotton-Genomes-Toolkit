@@ -222,6 +222,7 @@ class EnrichmentTab(BaseTab):
         new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
         self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
 
+        self.app.ui_manager.refresh_single_placeholder(self.gene_input_text, "enrichment_genes_input")
 
     def refresh_placeholders(self):
         """【新增】此方法现在由UIManager统一调用，以确保占位符被刷新。"""
