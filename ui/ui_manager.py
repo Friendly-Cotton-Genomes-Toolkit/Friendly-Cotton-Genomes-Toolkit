@@ -31,21 +31,35 @@ class UIManager:
 
     def __init__(self, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.app = app
+        # --- 【核心修正】 ---
+        # 1. 首先，立即赋值，确保 self.translator_func 属性存在，防止后续调用崩溃。
         self.translator_func = translator
+        # --- 修正结束 ---
+
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
 
+        # 2. 此处调用 _load_ui_settings 时，self.translator_func 已存在。
         self._load_ui_settings()
+
+        # 3. 基于加载的设置（或默认设置）来确定并应用最终正确的翻译器。
+        lang_code = self.app.ui_settings.get("language", "zh-hans")
+        correct_translator = setup_localization(language_code=lang_code)
+
+        # 4. 用正确的翻译器覆盖初始的翻译器。
+        self.translator_func = correct_translator
+        self.app._ = correct_translator
+
         self._set_ttk_theme_from_app_mode(self.app.ui_settings.get("appearance_mode", "System"))
 
-        self._update_placeholders_dictionary(translator)
+        self._update_placeholders_dictionary(self.translator_func)
 
     def update_language_ui(self, lang_code: str):
         app = self.app
         new_translator = setup_localization(language_code=lang_code)
         self.translator_func = new_translator
-        app._ = new_translator # 更新app实例上的翻译函数，确保所有地方都用最新的
+        app._ = new_translator  # 更新app实例上的翻译函数，确保所有地方都用最新的
 
         # 【核心修正】更新占位符字典和所有UI组件
         self._update_placeholders_dictionary(new_translator)
@@ -70,14 +84,18 @@ class UIManager:
         if hasattr(app, 'translatable_widgets'):
             for widget, text_key in app.translatable_widgets.items():
                 if widget and widget.winfo_exists():
-                    widget.configure(text=_(text_key))
+                    # 特殊处理LabelFrame，它的text属性需要通过config修改
+                    if isinstance(widget, (ttkb.LabelFrame, ttkb.Frame)):
+                        widget.config(text=_(text_key))
+                    else:
+                        widget.configure(text=_(text_key))
 
         # 【新增】更新工具栏 Notebook 的标签页标题
         if hasattr(app, 'tools_notebook') and app.tools_notebook.tabs():
             for i, key in enumerate(app.TOOL_TAB_ORDER):
                 if i < len(app.tools_notebook.tabs()):
-                    tab_title = app.TAB_TITLE_KEYS.get(key, key)
-                    app.tools_notebook.tab(i, text=tab_title)
+                    tab_title_key = app.TAB_TITLE_KEYS.get(key, key)
+                    app.tools_notebook.tab(i, text=_(tab_title_key))
 
         if hasattr(app, 'config_path_display_var') and app.config_path_display_var is not None:
             if app.config_path:
@@ -114,7 +132,6 @@ class UIManager:
             new_placeholder_text = self.app.placeholders.get(key, "...")
             self.add_placeholder(widget, new_placeholder_text)
 
-
     def add_placeholder(self, widget, text):
         if not widget or not widget.winfo_exists(): return
         is_dark = self.style.theme.type == 'dark'
@@ -129,17 +146,6 @@ class UIManager:
             widget.insert("1.0", text)
             widget.configure(font=self.app.app_font_italic, foreground=ph_color)
         widget.is_placeholder = True
-
-    def refresh_single_placeholder(self, widget, key):
-        if not widget or not widget.winfo_exists(): return
-        current_text = ""
-        if isinstance(widget, tk.Text):
-            current_text = widget.get("1.0", "end-1c").strip()
-        elif isinstance(widget, (tk.Entry, ttkb.Entry)):
-            current_text = widget.get().strip()
-        is_placeholder_state = str(widget.cget("foreground")) in [str(c) for c in self.app.placeholder_color]
-        if not current_text or is_placeholder_state:
-            self.add_placeholder(widget, key)
 
     def _set_ttk_theme_from_app_mode(self, mode: str):
         if mode == "Dark":
@@ -270,8 +276,8 @@ class UIManager:
 
         button_defs = [("home", _("主页"), load_icon("home")), ("editor", _("配置编辑器"), load_icon("settings")),
                        ("tools", _("数据工具"), load_icon("tools"))]
-        for i, (name, text_key, icon) in enumerate(button_defs):
-            btn = ttkb.Button(app.navigation_frame, text=_(text_key),
+        for i, (name, text, icon) in enumerate(button_defs):
+            btn = ttkb.Button(app.navigation_frame, text=text,
                               command=lambda n=name: self.select_frame_by_name(n), image=icon, compound="left",
                               bootstyle="primary-outline")
             btn.grid(row=i + 1, column=0, sticky="ew", padx=15, pady=5);
@@ -283,14 +289,14 @@ class UIManager:
         settings_frame.grid_columnconfigure(0, weight=1)
 
         appearance_modes_display = [_("浅色"), _("深色"), _("跟随系统")]
-        for i, (label_key, var, values, cmd) in enumerate(
+        for i, (label, var, values, cmd) in enumerate(
                 [
                     (_("语言"), app.selected_language_var, list(app.LANG_CODE_TO_NAME.values()),
                      app.event_handler.on_language_change),
                     (_("外观模式"), app.selected_appearance_var, appearance_modes_display,
                      app.event_handler.change_appearance_mode_event)
                 ]):
-            lbl = ttkb.Label(settings_frame, text=_(label_key), font=app.app_font, style='Transparent.TLabel');
+            lbl = ttkb.Label(settings_frame, text=label, font=app.app_font, style='Transparent.TLabel');
             lbl.grid(row=i * 2, column=0, padx=5, pady=(5, 0), sticky="w")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_label", lbl)
             menu = ttkb.OptionMenu(settings_frame, var, var.get(), *values, command=cmd, bootstyle="primary-outline");
@@ -304,9 +310,10 @@ class UIManager:
         os.makedirs(settings_dir, exist_ok=True)
         return os.path.join(settings_dir, "ui_settings.json")
 
-
     def _load_ui_settings(self):
         app = self.app
+        # 在 `__init__` 中，self.translator_func 已经被安全地赋予了初始值
+        _ = self.translator_func
         try:
             with open(self._get_settings_path(), 'r', encoding='utf-8') as f:
                 settings = json.load(f)
@@ -318,9 +325,15 @@ class UIManager:
         app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
 
         mode_key = app.ui_settings.get("appearance_mode", "System")
-        key_to_display = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
-        app.selected_appearance_var.set(key_to_display.get(mode_key, _("跟随系统")))
 
+        # Note: At this point, the translator might not be the final one.
+        # We use a direct map for initialization. The display will be corrected later
+        # by re-translation if needed.
+        display_map = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
+        # Fallback to English if key is weird
+        display_text = display_map.get(mode_key, mode_key)
+
+        app.selected_appearance_var.set(display_text)
 
     def _save_ui_settings(self):
         try:
@@ -345,7 +358,8 @@ class UIManager:
         if frame_to_show := getattr(app, f"{name}_frame", None): frame_to_show.grid(row=0, column=0, sticky="nsew")
 
     def show_info_message(self, title: str, message: str):
-        MessageDialog(self.app, self.translator_func(title), self.translator_func(message), icon_type="info").wait_window()
+        MessageDialog(self.app, self.translator_func(title), self.translator_func(message),
+                      icon_type="info").wait_window()
 
     def show_error_message(self, title: str, message: str):
         # 注意: 传入的 message 可能已经包含格式化内容，不应再次翻译
@@ -399,7 +413,8 @@ class UIManager:
                 _("当前配置: {}").format(os.path.basename(app.config_path)) if app.config_path else _(
                     "未加载配置"))
         else:
-            app.logger.warning(_("无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"))
+            app.logger.warning(
+                _("无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"))
 
         app._handle_editor_ui_update()
         self._update_assembly_id_dropdowns(list(app.genome_sources_data.keys()) if app.genome_sources_data else [])
@@ -438,12 +453,13 @@ class UIManager:
             current_text = widget.get().strip()
         elif isinstance(widget, tk.Text):
             if not getattr(widget, 'is_placeholder', False):
-                 current_text = widget.get("1.0", "end-1c").strip()
+                current_text = widget.get("1.0", "end-1c").strip()
             else:
-                 current_text = ""
+                current_text = ""
 
         if not current_text:
-            placeholder_text = self.app.placeholders.get(key, self.app.placeholders.get("default_prompt_empty", _("Default prompt is empty, please set it in the configuration editor.")))
+            placeholder_text = self.app.placeholders.get(key, self.app.placeholders.get("default_prompt_empty",
+                                                                                        _("Default prompt is empty, please set it in the configuration editor.")))
             self.add_placeholder(widget, placeholder_text)
 
     def _update_assembly_id_dropdowns(self, ids: List[str]):

@@ -78,24 +78,29 @@ class EventHandler:
         if app.current_config and app.config_path:
             app.current_config.i18n_language = selected_lang_code
             if save_config(app.current_config, app.config_path):
-                app.logger.info(f"Main config file '{os.path.basename(app.config_path)}' updated with language '{selected_lang_code}'.")
+                app.logger.info(
+                    f"Main config file '{os.path.basename(app.config_path)}' updated with language '{selected_lang_code}'.")
                 # 更新状态栏提示
-                app.message_queue.put(('show_info', {'title': _("配置已保存"), 'message': _("语言设置已同步到 {}。").format(os.path.basename(app.config_path))}))
+                app.message_queue.put(('show_info', {'title': _("配置已保存"),
+                                                     'message': _("语言设置已同步到 {}。").format(
+                                                         os.path.basename(app.config_path))}))
             else:
                 app.logger.error(f"Failed to save language setting to '{app.config_path}'.")
-                app.message_queue.put(('show_error', {'title': _("保存失败"), 'message': _("无法将语言设置写入配置文件。")}))
-
+                app.message_queue.put(
+                    ('show_error', {'title': _("保存失败"), 'message': _("无法将语言设置写入配置文件。")}))
 
         # 步骤 3: 实时更新当前界面的所有文本
         self.ui_manager.update_language_ui(selected_lang_code)
 
         # 步骤 4: 弹出重启提示对话框
+        # 使用更新后的翻译函数来创建对话框
+        new_translator = self.app._
         dialog = ConfirmationDialog(
             parent=app,
-            title=_("需要重启"),  # 使用更新后的翻译函数
-            message=_("语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"),
-            button1_text=_("立即重启"),
-            button2_text=_("稍后重启")
+            title=new_translator("需要重启"),
+            message=new_translator("语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"),
+            button1_text=new_translator("立即重启"),
+            button2_text=new_translator("稍后重启")
         )
 
         # 步骤 5: 根据用户选择决定是否重启
@@ -103,8 +108,12 @@ class EventHandler:
             app.restart_app()
 
     def on_closing(self):
-        """处理主窗口关闭事件。"""
+        """
+        【已修改】处理主窗口关闭事件，增加退出确认。
+        """
+        _ = self.app._
         if self.app.active_task_name:
+            # 如果有任务在运行，弹出特定警告
             dialog = ConfirmationDialog(
                 parent=self.app,
                 title=_("确认退出"),
@@ -112,15 +121,23 @@ class EventHandler:
                 button1_text=_("强制退出"),
                 button2_text=_("取消")
             )
-            if dialog.result:
+            if dialog.result is True:
                 self.app.cancel_current_task_event.set()
                 self.app.destroy()
         else:
-            self.app.destroy()
+            # 如果程序空闲，弹出通用退出确认
+            dialog = ConfirmationDialog(
+                parent=self.app,
+                title=_("确认退出"),
+                message=_("您确定要退出吗？"),
+                button1_text=_("退出"),
+                button2_text=_("取消")
+            )
+            if dialog.result is True:
+                self.app.destroy()
 
-    # --- 其他事件处理函数保持不变 ---
-    # (这里省略了其他的函数，您只需替换 on_language_change 即可，但为保险起见，提供完整文件)
     def start_app_async_startup(self):
+        _ = self.app._
         self.app.message_queue.put(("show_progress_dialog", {
             "title": _("图形界面启动中..."),
             "message": _("正在初始化应用程序和加载配置，请稍候..."),
@@ -130,6 +147,7 @@ class EventHandler:
 
     def _initial_load_thread(self):
         app = self.app
+        _ = self.app._
         try:
             loaded_config, genome_sources, config_path_to_send = None, None, None
             app.message_queue.put(("progress", (10, _("正在加载配置文件..."))))
@@ -149,16 +167,13 @@ class EventHandler:
             app.message_queue.put(("progress", (100, _("初始化完成。"))))
             app.message_queue.put(("hide_progress_dialog", None))
 
-    def on_closing(self):
-        dialog = MessageDialog(self.app, _("退出程序"), _("您确定要退出吗?"), "question", [_("确定"), _("取消")])
-        if dialog.wait_window() or dialog.result == _("确定"):
-            self.app.destroy()
-
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any]):
         app = self.app
+        _ = self.app._
         if app.active_task_name:
             app.ui_manager.show_warning_message(_("任务进行中"),
-                                                f"{_('任务')} '{app.active_task_name}' {_('正在运行。')}")
+                                                _("任务 '{}' 正在运行中，请等待其完成后再开始新任务。").format(
+                                                    app.active_task_name))
             return
         app.ui_manager.update_button_states(is_task_running=True)
         app.active_task_name = task_name
@@ -170,6 +185,7 @@ class EventHandler:
         threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name), daemon=True).start()
 
     def _task_wrapper(self, target_func, kwargs, task_name):
+        _ = self.app._
         try:
             result = target_func(**kwargs)
             data = (False, task_name, "CANCELLED") if self.app.cancel_current_task_event.is_set() else (True, task_name,
@@ -183,6 +199,7 @@ class EventHandler:
 
     def _handle_startup_complete(self, data: dict):
         app = self.app
+        _ = self.app._
         self.app._log_to_viewer(_("应用程序启动完成。"), "INFO")
         if self.app.ui_manager and hasattr(self.app, 'config_path_display_var'):
             self.app.ui_manager.update_ui_from_config()
@@ -198,16 +215,17 @@ class EventHandler:
         else:
             logger.warning(_("未找到或无法加载默认配置文件。"))
         app.ui_manager.update_ui_from_config()
-        # Startup language is already set in main.py, no need to call update_language_ui here
         app.ui_manager.update_button_states()
 
     def _handle_startup_failed(self, data: str):
+        _ = self.app._
         self.app.ui_manager._hide_progress_dialog()
         self.app.ui_manager.show_error_message(_("启动错误"), str(data))
         self.app.ui_manager.update_button_states()
 
     def _handle_config_load_task_done(self, data: tuple):
         app = self.app
+        _ = self.app._
         success, loaded_config, original_filepath = data
         if not success:
             app.ui_manager.show_error_message(_("加载失败"), str(loaded_config))
@@ -228,6 +246,7 @@ class EventHandler:
 
     def _handle_task_done(self, data: tuple):
         app = self.app
+        _ = self.app._
         success, task_display_name, result_data = data
         if task_display_name == _("生成默认配置"):
             app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
@@ -248,6 +267,7 @@ class EventHandler:
                 self.app.ui_manager._show_plot_results(result_data)
 
     def _handle_error(self, data: str):
+        _ = self.app._
         self.app.ui_manager.show_error_message(_("任务执行出错"), data)
         self.app.ui_manager._finalize_task_ui(self.app.active_task_name or _("未知任务"), success=False)
 
@@ -260,16 +280,18 @@ class EventHandler:
             self.app.ui_manager.progress_dialog.update_progress(*data)
 
     def _handle_ai_models_fetched(self, data: tuple):
+        _ = self.app._
         provider_key, models_or_error = data
         if isinstance(models_or_error, list):
             self.app.ui_manager.update_ai_model_dropdown(provider_key, models_or_error)
             self.app.ui_manager.show_info_message(_("刷新成功"),
-                                                  f"{_('已成功获取并更新')} {provider_key} {_('的模型列表。')}")
+                                                  _("已成功获取并更新 {} 的模型列表。").format(provider_key))
         else:
             self.app.ui_manager.update_ai_model_dropdown(provider_key, [])
             self.app.ui_manager.show_error_message(_("刷新失败"), str(models_or_error))
 
     def _handle_ai_test_result(self, data: tuple):
+        _ = self.app._
         success, message = data
         self.app.ui_manager.show_info_message(_("测试成功"),
                                               message) if success else self.app.ui_manager.show_error_message(
@@ -282,6 +304,7 @@ class EventHandler:
             target_var.set(assembly_id)
 
     def _handle_proxy_test_done(self, data: tuple):
+        _ = self.app._
         success, message = data
         if success:
             self.app.ui_manager.show_info_message(_("代理测试成功"), message)
@@ -289,14 +312,8 @@ class EventHandler:
             self.app.ui_manager.show_error_message(_("代理测试失败"), message)
 
     def change_appearance_mode_event(self, new_mode_display: str):
-        """
-        【修正版】处理外观模式切换的事件。
-        确保在任何语言环境下都能正确工作。
-        """
         app = self.app
-        _ = app._  # 获取当前的翻译函数
-
-        # 使用翻译后的键来查找对应的模式英文名
+        _ = app._
         key_map = {
             _("浅色"): "Light",
             _("深色"): "Dark",
@@ -310,17 +327,10 @@ class EventHandler:
         app.ui_manager._update_log_tag_colors()
 
     def check_annotation_file_status(self, config, genome_info, file_type_key) -> str:
-        """
-        【新增】检查特定注释文件的下载状态。
-        返回 'complete', 'incomplete', 或 'missing'。
-        """
         from cotton_toolkit.config.loader import get_local_downloaded_file_path
-
         try:
-            # 获取该文件类型的预期本地路径
             file_path = get_local_downloaded_file_path(config, genome_info.assembly_id, file_type_key)
             if file_path and os.path.exists(file_path):
-                # 如果文件存在但大小为0，则视为不完整
                 if os.path.getsize(file_path) > 0:
                     return 'complete'
                 else:
@@ -333,6 +343,7 @@ class EventHandler:
 
     def toggle_log_viewer(self):
         app = self.app
+        _ = self.app._
         app.log_viewer_visible = not app.log_viewer_visible
         if app.log_viewer_visible:
             app.log_textbox.grid()
@@ -341,6 +352,7 @@ class EventHandler:
         app.toggle_log_button.configure(text=_("隐藏日志") if app.log_viewer_visible else _("显示日志"))
 
     def clear_log_viewer(self):
+        _ = self.app._
         if hasattr(self.app, 'log_textbox'):
             self.app.log_textbox.configure(state="normal")
             self.app.log_textbox.delete("1.0", "end")
@@ -348,6 +360,7 @@ class EventHandler:
             self.app._log_to_viewer(_("操作日志已清除。"), "INFO")
 
     def load_config_file(self, filepath: Optional[str] = None):
+        _ = self.app._
         if not filepath:
             filepath = filedialog.askopenfilename(title=_("选择配置文件"),
                                                   filetypes=[("YAML files", "*.yml *.yaml"), ("All files", "*.*")])
@@ -358,6 +371,7 @@ class EventHandler:
         threading.Thread(target=self._load_config_thread, args=(filepath,), daemon=True).start()
 
     def _load_config_thread(self, filepath: str):
+        _ = self.app._
         try:
             config_obj = load_config(os.path.abspath(filepath))
             self.app.message_queue.put(("config_load_task_done", (True, config_obj, filepath)))
@@ -368,6 +382,7 @@ class EventHandler:
             self.app.message_queue.put(("hide_progress_dialog", None))
 
     def _generate_default_configs_gui(self):
+        _ = self.app._
         root_dir = os.path.abspath(".")
         main_config_path = os.path.join(root_dir, "config.yml")
         sources_config_path = os.path.join(root_dir, "genome_sources.yml")
@@ -378,10 +393,11 @@ class EventHandler:
             existing_files.append("'genome_sources.yml'")
         if existing_files:
             files_str = _(" 和 ").join(existing_files)
-            dialog = MessageDialog(self.app, _("文件已存在"),
-                                   _("文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?").format(files_str),
-                                   "question", [_("是，覆盖"), _("否，取消")])
-            if dialog.wait_window() or dialog.result != _("是，覆盖"):
+            dialog = ConfirmationDialog(self.app, _("文件已存在"),
+                                        _("文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?").format(
+                                            files_str),
+                                        button1_text=_("是，覆盖"), button2_text=_("否，取消"))
+            if dialog.result is not True:
                 self.app._log_to_viewer(_("用户取消了生成默认配置文件的操作。"), "INFO")
                 return
         self.app.message_queue.put(("show_progress_dialog", {"title": _("生成配置文件中..."),
@@ -390,6 +406,7 @@ class EventHandler:
         threading.Thread(target=self._generate_default_configs_thread, args=(root_dir,), daemon=True).start()
 
     def _generate_default_configs_thread(self, output_dir: str):
+        _ = self.app._
         try:
             self.app.message_queue.put(("progress", (20, _("正在生成主配置文件..."))))
             success, new_cfg_path, _d = generate_default_config_files(output_dir, overwrite=True)
@@ -406,38 +423,191 @@ class EventHandler:
             self.app.message_queue.put(("hide_progress_dialog", None))
 
     def _handle_generate_default_configs_done(self, data: tuple):
+        _ = self.app._
         success, task_display_name, result_data = data
         if success and result_data and result_data.get('action') == 'load_new_config':
             new_cfg_path = result_data['path']
-            dialog = MessageDialog(self.app, _("生成成功"), f"{_('默认配置文件已成功生成。')}\n\n{_('是否立即加载?')}",
-                                   "info", [_("是"), _("否")])
-            if dialog.wait_window() or dialog.result == _("是"):
+            dialog = ConfirmationDialog(self.app, _("生成成功"),
+                                        f"{_('默认配置文件已成功生成。')}\n\n{_('是否立即加载?')}",
+                                        button1_text=_("是"), button2_text=_("否"))
+            if dialog.result is True:
                 self.load_config_file(filepath=new_cfg_path)
         elif not success:
             pass
 
     def _show_about_window(self):
-        # ... (This function remains unchanged, so it's omitted for brevity)
-        pass
+        """
+        【中文恢复版】显示一个尺寸动态、内容丰富的“关于”窗口。
+        """
+        _ = self.app._
+
+        about_win = ttkb.Toplevel(self.app)
+        about_win.title(_("关于 FCGT"))
+        about_win.minsize(500, 400)
+        about_win.transient(self.app)
+        about_win.grab_set()
+
+        main_frame = ttkb.Frame(about_win, padding=15)
+        main_frame.pack(fill="both", expand=True)
+        main_frame.rowconfigure(0, weight=1)
+        main_frame.columnconfigure(0, weight=1)
+
+        canvas = tk.Canvas(main_frame, highlightthickness=0, bd=0)
+        scrollbar = ttkb.Scrollbar(main_frame, orient="vertical", command=canvas.yview, bootstyle="round-primary")
+        scrollable_frame = ttkb.Frame(canvas)
+        canvas_frame_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        def _on_mousewheel(event):
+            if event.num == 5 or event.delta < 0:
+                canvas.yview_scroll(1, "units")
+            elif event.num == 4 or event.delta > 0:
+                canvas.yview_scroll(-1, "units")
+
+        def _bind_scroll(widget):
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            widget.bind("<Button-4>", _on_mousewheel)
+            widget.bind("<Button-5>", _on_mousewheel)
+
+        _bind_scroll(about_win)
+        _bind_scroll(main_frame)
+        _bind_scroll(canvas)
+        _bind_scroll(scrollable_frame)
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        labels_to_wrap = []
+
+        def populate_content(parent):
+            _ = self.app._
+            header_font = self.app.app_font_bold
+            content_font = self.app.app_font
+            link_font = self.app.app_font.copy()
+            link_font.configure(underline=True)
+
+            def bind_all_children_scroll(widget):
+                for child in widget.winfo_children():
+                    _bind_scroll(child)
+                    bind_all_children_scroll(child)
+
+            def add_label(text, font, justify="left", wrappable=True, **kwargs):
+                lbl = ttkb.Label(parent, text=text, font=font, justify=justify, **kwargs)
+                lbl.pack(fill="x", anchor="w", pady=(0, 2), padx=5)
+                if wrappable:
+                    labels_to_wrap.append(lbl)
+                return lbl
+
+            def add_separator():
+                ttkb.Separator(parent).pack(fill="x", anchor="w", pady=10)
+
+            # --- 内容填充（恢复为中文） ---
+            add_label(_("程序名称") + ": Friendly Cotton Genomes Toolkit (FCGT)", content_font)
+            add_label(_("版本") + f": {PKG_VERSION}", content_font)
+            add_label(_("项目地址") + ":", content_font, wrappable=False)
+
+            gh_link = add_label(PKG_PUBLISH_URL, link_font, wrappable=False, bootstyle="info", cursor="hand2")
+            gh_link.bind("<Button-1>", lambda e: webbrowser.open(PKG_PUBLISH_URL))
+
+            add_separator()
+            add_label(_("致谢与引用"), header_font)
+            add_label(_("本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"), content_font)
+
+            add_label("CottonGen " + _("文章:"), header_font).pack(pady=(10, 5))
+            add_label(
+                "• Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.",
+                content_font)
+            add_label(
+                "• Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.",
+                content_font)
+
+            add_label(_("基因组引用文献:"), header_font).pack(pady=(10, 5))
+            citations = [
+                "• NAU-NBI_v1.1: Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015",
+                "• UTX-JGI-Interim-release_v1.1:",
+                "  Haas, B.J., Delcher, A.L., Mount, S.M., Wortman, J.R., Smith Jr, R.K., Jr., Hannick, L.I., Maiti, R., Ronning, C.M., Rusch, D.B., Town, C.D. et al. (2003) Improving the Arabidopsis genome annotation using maximal transcript alignment assemblies. http://nar.oupjournals.org/cgi/content/full/31/19/5654 [Nucleic Acids Res, 31, 5654-5666].",
+                "  Smit, AFA, Hubley, R & Green, P. RepeatMasker Open-3.0. 1996-2011 .",
+                "  Yeh, R.-F., Lim, L. P., and Burge, C. B. (2001) Computational inference of homologous gene structures in the human genome. Genome Res. 11: 803-816.",
+                "  Salamov, A. A. and Solovyev, V. V. (2000). Ab initio gene finding in Drosophila genomic DNA. Genome Res 10, 516-22.",
+                "• HAU_v1 / v1.1: Wang et al. Reference genome sequences of two cultivated allotetraploid cottons, Gossypium hirsutum and Gossypium barbadense. Nature genetics. 2018 Dec 03",
+                "• ZJU-improved_v2.1_a1: Hu et al. Gossypium barbadense and Gossypium hirsutum genomes provide insights into the origin and evolution of allotetraploid cotton. Nature genetics. 2019 Jan;51(1):164.",
+                "• CRI_v1: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.",
+                "• WHU_v1: Huang, G. et al., Genome sequence of Gossypium herbaceum and genome updates of Gossypium arboreum and Gossypium hirsutum provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4",
+                "• UTX_v2.1: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.",
+                "• HAU_v2.0: Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. \"High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres.\" Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722"
+            ]
+            for cit in citations: add_label(cit, content_font)
+
+            add_separator()
+            add_label(_("许可证"), header_font)
+            add_label(_("本软件根据 Apache License 2.0 获得许可。"), content_font)
+            add_separator()
+            add_label(_("免责声明"), header_font)
+            add_label(_("上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"), content_font)
+
+            bind_all_children_scroll(parent)
+
+        def resize_content(event):
+            canvas_width = event.width
+            canvas.itemconfig(canvas_frame_id, width=canvas_width)
+            for lbl in labels_to_wrap:
+                lbl.configure(wraplength=canvas_width - 15)
+
+        populate_content(scrollable_frame)
+        canvas.bind("<Configure>", resize_content)
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        button_frame = ttkb.Frame(about_win);
+        button_frame.pack(side="bottom", fill="x", pady=(10, 15), padx=10)
+        ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
+        ok_button.pack()
+
+        # --- 最终版动态尺寸与居中 ---
+        # 1. 先设置一个固定的宽度
+        final_w = 750
+        about_win.geometry(f'{final_w}x1')  # 用最小高度强制设定宽度
+        about_win.update_idletasks()  # 强制UI刷新，使文字根据新宽度换行
+
+        # 2. 现在基于换行后的内容计算实际需要的高度
+        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45  # 内容+按钮+所有边距
+
+        # 3. 设定一个最大高度（不超过主窗口的85%），防止窗口过大
+        max_h = int(self.app.winfo_height() * 0.85)
+        final_h = min(req_h, max_h)
+
+        # 4. 获取主窗口位置，并将“关于”窗口居中
+        parent_x = self.app.winfo_x();
+        parent_y = self.app.winfo_y()
+        parent_w = self.app.winfo_width();
+        parent_h = self.app.winfo_height()
+        x = parent_x + (parent_w - final_w) // 2
+        y = parent_y + (parent_h - final_h) // 2
+        about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
+
+        about_win.wait_window()
 
     def _open_online_help(self):
+        _ = self.app._
         try:
             webbrowser.open(PKG_HELP_URL)
         except Exception as e:
             self.app.ui_manager.show_error_message(_("错误"), _("无法打开帮助链接: {}").format(e))
 
     def _browse_file(self, entry_widget: ttkb.Entry, filetypes_list: list):
+        _ = self.app._
         if filepath := filedialog.askopenfilename(title=_("选择文件"), filetypes=filetypes_list):
             entry_widget.delete(0, "end")
             entry_widget.insert(0, filepath)
 
     def _browse_save_file(self, entry_widget: ttkb.Entry, filetypes_list: list):
+        _ = self.app._
         if filepath := filedialog.asksaveasfilename(title=_("保存文件为"), filetypes=filetypes_list,
                                                     defaultextension=filetypes_list[0][1].replace("*", "")):
             entry_widget.delete(0, "end")
             entry_widget.insert(0, filepath)
 
     def _browse_directory(self, entry_widget: ttkb.Entry):
+        _ = self.app._
         if directory_path := filedialog.askdirectory(title=_("选择目录")):
             entry_widget.delete(0, tk.END)
             entry_widget.insert(0, directory_path)
@@ -458,6 +628,7 @@ class EventHandler:
 
     def test_proxy_connection(self):
         app = self.app
+        _ = self.app._
         http_proxy = app.proxy_http_entry.get().strip()
         https_proxy = app.proxy_https_entry.get().strip()
         if not http_proxy and not https_proxy:
@@ -470,6 +641,7 @@ class EventHandler:
         threading.Thread(target=self._test_proxy_thread, args=(proxies,), daemon=True).start()
 
     def _test_proxy_thread(self, proxies: dict):
+        _ = self.app._
         test_url = "https://httpbin.org/get"
         try:
             self.app.message_queue.put(("progress", (20, _("发送请求..."))))
@@ -487,10 +659,12 @@ class EventHandler:
 
     def _gui_fetch_ai_models(self, provider_key: str, use_proxy: bool):
         app = self.app
+        _ = self.app._
         app.logger.info(f"正在获取 '{provider_key}' 的模型列表... (使用代理: {use_proxy})")
         if app.active_task_name:
             app.ui_manager.show_warning_message(_("任务进行中"),
-                                                f"{_('任务')} '{app.active_task_name}' {_('正在运行。')}")
+                                                _("任务 '{}' 正在运行中，请等待其完成后再开始新任务。").format(
+                                                    app.active_task_name))
             return
         try:
             safe_key = provider_key.replace('-', '_')
@@ -518,6 +692,7 @@ class EventHandler:
 
     def _fetch_models_thread(self, **kwargs):
         provider = kwargs.get('provider')
+        _ = self.app._
         cancel_event = kwargs.get('cancel_event')
         progress = kwargs.get('progress_callback', lambda p, m: None)
         try:
