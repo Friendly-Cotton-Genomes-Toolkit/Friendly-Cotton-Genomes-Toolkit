@@ -1,7 +1,7 @@
 ﻿# 文件路径: ui/tabs/genome_identifier_tab.py
 
 import tkinter as tk
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 import ttkbootstrap as ttkb
 
@@ -91,30 +91,51 @@ class GenomeIdentifierTab(BaseTab):
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def start_identification_task(self):
+        """
+        【已修改】启动基因组鉴定后台任务。
+        将耗时的 identify_genome_from_gene_ids 函数放入后台线程。
+        """
+        # --- 前置检查 (这部分逻辑不变) ---
         if not self.app.current_config:
-            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
+            self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
             return
         if not self.app.genome_sources_data:
-            self.app.ui_manager.show_error_message(_("错误"), _("基因组源数据未加载，无法进行鉴定。"))
+            self.app.ui_manager.show_error_message(self._("错误"), self._("基因组源数据未加载，无法进行鉴定。"))
             return
 
         gene_ids_text = self.gene_list_textbox.get("1.0", tk.END).strip()
         if not gene_ids_text:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入至少一个基因ID进行鉴定。"))
+            self.app.ui_manager.show_error_message(self._("输入缺失"), self._("请输入至少一个基因ID进行鉴定。"))
             return
 
         gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]
 
-        self.result_var.set(_("正在鉴定中..."))
+        # --- UI准备 (更新UI提示用户任务已开始) ---
+        self.result_var.set(self._("正在鉴定中..."))
         self.result_label.configure(bootstyle="info", font=self.app.app_font_italic)
+        self.app.update_idletasks()  # 强制UI刷新，立即显示“正在鉴定中”
 
-        identified_assembly = identify_genome_from_gene_ids(gene_ids, self.app.genome_sources_data,
-                                                            lambda msg, level: self.app._log_to_viewer(msg, level))
+        # --- 启动后台任务 ---
+        # 使用您项目已有的 event_handler._start_task 框架
+        self.app.event_handler._start_task(
+            task_name=self._("基因组鉴定"),
+            target_func=identify_genome_from_gene_ids,  # 将要执行的耗时函数
+            kwargs={
+                'gene_ids': gene_ids,
+                'genome_sources': self.app.genome_sources_data
+                # 'status_callback' 和 'cancel_event' 会由 _start_task 自动注入
+            }
+        )
 
+    def handle_identification_result(self, identified_assembly: Optional[str]):
+        """
+        【新增】处理后台鉴定任务完成后的结果。
+        此方法将由 event_handler 在任务结束后调用，用于安全地更新UI。
+        """
         if identified_assembly:
-            result_text = f"{_('鉴定结果')}: {identified_assembly}"
+            result_text = f"{self._('鉴定结果')}: {identified_assembly}"
             self.result_var.set(result_text)
             self.result_label.configure(bootstyle="success", font=self.app.app_font_bold)
         else:
-            self.result_var.set(_("未能识别到匹配的基因组。"))
+            self.result_var.set(self._("未能识别到匹配的基因组。"))
             self.result_label.configure(bootstyle="warning", font=self.app.app_font_italic)

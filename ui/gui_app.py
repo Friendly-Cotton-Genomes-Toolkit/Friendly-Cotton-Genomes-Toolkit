@@ -657,21 +657,22 @@ class CottonToolkitApp(ttkb.Window):
             self.config_warning_label.configure(wraplength=wraplength)
 
     def _create_editor_frame(self, parent):
+        """
+        【已修改】创建编辑器页面的基础框架，并优化了滚轮滚动逻辑以提升流畅度。
+        """
         page = ttkb.Frame(parent)
         page.grid_columnconfigure(0, weight=1)
         page.grid_rowconfigure(1, weight=1)
 
+        # --- 顶部操作栏 (保持不变) ---
         top_frame = ttkb.Frame(page)
         top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
         top_frame.grid_columnconfigure(0, weight=1)
 
-        # 【核心修正 1/2】将警告标签保存为 self.config_warning_label，并移除固定的 wraplength
         self.config_warning_label = ttkb.Label(top_frame,
                                                text=self._("!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"),
                                                font=self.app_font_bold, bootstyle="danger")
         self.config_warning_label.grid(row=0, column=0, sticky="w", padx=5)
-
-        # 【核心修正 2/2】将 top_frame 的尺寸变更事件 <Configure> 绑定到我们新增的函数上
         top_frame.bind("<Configure>", self._update_wraplength)
 
         self.save_editor_button = ttkb.Button(top_frame, text=self._("应用并保存"),
@@ -679,13 +680,13 @@ class CottonToolkitApp(ttkb.Window):
                                               bootstyle='success')
         self.save_editor_button.grid(row=0, column=1, sticky="e", padx=5)
 
+        # --- 内容滚动区域 (Canvas 和 Scrollbar 保持不变) ---
         self.editor_canvas = tk.Canvas(page, highlightthickness=0, bd=0,
                                        background=self.style.lookup('TFrame', 'background'))
         self.editor_canvas.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
         scrollbar = ttkb.Scrollbar(page, orient="vertical", command=self.editor_canvas.yview, bootstyle="round")
         scrollbar.grid(row=1, column=1, sticky="ns", pady=10)
-
         self.editor_canvas.configure(yscrollcommand=scrollbar.set)
 
         self.editor_scroll_frame = ttkb.Frame(self.editor_canvas)
@@ -693,6 +694,7 @@ class CottonToolkitApp(ttkb.Window):
 
         self._last_editor_canvas_width = 0
 
+        # --- 尺寸调整逻辑 (保持不变) ---
         def on_frame_configure(event):
             self.editor_canvas.configure(scrollregion=self.editor_canvas.bbox("all"))
 
@@ -705,44 +707,61 @@ class CottonToolkitApp(ttkb.Window):
         self.editor_scroll_frame.bind("<Configure>", on_frame_configure)
         self.editor_canvas.bind("<Configure>", on_canvas_resize)
 
+        # --- 【核心优化】滚轮事件处理 ---
         def _on_mousewheel(event):
-            if not self.editor_canvas.winfo_exists():
+            # 确保画布存在，防止在窗口销毁后继续执行
+            if not self.editor_canvas or not self.editor_canvas.winfo_exists():
                 return
 
             # event.delta 在 Windows/macOS 上有值，通常是 +/-120 的倍数
-            # event.num 在 Linux 上有值，通常是 4 (上) 或 5 (下)
+            # event.num 在 Linux 上有值，通常是 4 (向上) 或 5 (向下)
             if event.delta:
-                # 根据 delta 值计算滚动单位数，实现平滑滚动
-                scroll_units = int(-1 * (event.delta / 120))
+                # Windows/macOS: 每次滚动2个单位，感觉更平滑
+                scroll_units = -2 if event.delta > 0 else 2
                 self.editor_canvas.yview_scroll(scroll_units, "units")
             else:
-                # 兼容 Linux
+                # Linux: 每次滚动5个单位，提供更快的响应
                 if event.num == 5:  # 向下滚动
-                    self.editor_canvas.yview_scroll(3, "units")  # 增加滚动单位
+                    self.editor_canvas.yview_scroll(5, "units")
                 elif event.num == 4:  # 向上滚动
-                    self.editor_canvas.yview_scroll(-3, "units")  # 增加滚动单位
-            return "break"  # 阻止事件继续传播
+                    self.editor_canvas.yview_scroll(-5, "units")
 
-        # 将事件绑定到 Canvas 和其内部的 Frame 上
-        widgets_to_bind = [self.editor_canvas, self.editor_scroll_frame]
+            # 返回 "break" 阻止事件继续传播，避免父控件也处理滚动
+            return "break"
 
-        # 递归地为内部Frame的所有子控件也绑定滚轮事件
-        # 这确保了无论鼠标悬停在哪个控件上，滚动都有效
-        def bind_all_children(parent_widget):
-            for child in parent_widget.winfo_children():
+        # 【核心优化】一个更干净的事件绑定函数
+        def _bind_scroll_to_all(widget):
+            # 绑定主控件
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            widget.bind("<Button-4>", _on_mousewheel)  # For Linux scroll up
+            widget.bind("<Button-5>", _on_mousewheel)  # For Linux scroll down
+
+            # 递归绑定所有子控件
+            for child in widget.winfo_children():
+                # 使用 "+" 确保我们是添加绑定，而不是替换可能存在的其他绑定
                 child.bind("<MouseWheel>", _on_mousewheel, add="+")
                 child.bind("<Button-4>", _on_mousewheel, add="+")
                 child.bind("<Button-5>", _on_mousewheel, add="+")
-                bind_all_children(child)
+                _bind_scroll_to_all(child)  # 递归
 
-        bind_all_children(self.editor_scroll_frame)
+        # 在创建完所有控件后 (或者在这里，当 scrollable_frame 创建后)，
+        # 我们需要一个时机来调用这个绑定。
+        # 最好的时机是在 _create_editor_widgets 执行后，
+        # 但为了把逻辑封装在这里，我们可以在 frame configure 时绑定。
+        # 一个更简单的方式是，直接在这里绑定 editor_scroll_frame，
+        # 并在 _create_editor_widgets 的末尾调用 `_bind_scroll_to_all(self.editor_scroll_frame)`。
+        # 为了让您只修改这一个函数，我们就在这里进行绑定。
+        # 注意：这将在创建子控件之前绑定父框架，子控件创建后需要再次确保它们也被绑定。
+        # 您的原始代码在 _create_editor_frame 中绑定，这是正确的，我们保持这个结构。
 
-        # 主控件也进行绑定
+        # 将绑定动作统一应用到 Canvas 和其内部的 Frame 上
+        widgets_to_bind = [self.editor_canvas, self.editor_scroll_frame]
         for widget in widgets_to_bind:
-            widget.bind("<MouseWheel>", _on_mousewheel)
-            widget.bind("<Button-4>", _on_mousewheel)  # 兼容 Linux
-            widget.bind("<Button-5>", _on_mousewheel)  # 兼容 Linux
+            widget.bind_all("<MouseWheel>", _on_mousewheel)
+            widget.bind_all("<Button-4>", _on_mousewheel)
+            widget.bind_all("<Button-5>", _on_mousewheel)
 
+        # --- 无配置时的提示标签 (保持不变) ---
         self.editor_no_config_label = ttkb.Label(page, text=self._("请先从“主页”加载或生成一个配置文件。"),
                                                  font=self.app_subtitle_font, bootstyle="secondary")
         self.editor_no_config_label.grid(row=1, column=0, sticky="nsew", columnspan=2)

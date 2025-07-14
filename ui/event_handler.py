@@ -245,23 +245,45 @@ class EventHandler:
             logger.error(f"{error_msg}\n{traceback.format_exc()}")
 
     def _handle_task_done(self, data: tuple):
+        """
+        【已修改】处理所有后台任务的完成事件。
+        """
         app = self.app
         _ = self.app._
         success, task_display_name, result_data = data
+
+        # 【新增代码块】处理基因组鉴定任务的结果
+        if task_display_name == _("基因组鉴定"):
+            # 首先，调用通用的UI收尾函数 (隐藏进度条、恢复按钮状态等)
+            app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
+            # 如果任务成功，则调用tab中对应的处理函数来更新 specific UI
+            if success:
+                # 安全地获取 'genome_identifier' 选项卡的实例
+                if identifier_tab := app.tool_tab_instances.get('genome_identifier'):
+                    # 调用我们刚刚在 GenomeIdentifierTab 中新增的方法
+                    identifier_tab.handle_identification_result(result_data)
+            return  # 处理完毕，提前返回
+
+        # --- 以下是您原有的其他任务处理逻辑，保持不变 ---
+
         if task_display_name == _("生成默认配置"):
             app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
             self._handle_generate_default_configs_done(data)
             return
+
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
+
         if task_display_name in [_("数据下载"), _("预处理注释文件")]:
             if download_tab := app.tool_tab_instances.get('download'):
                 if hasattr(download_tab, '_update_dynamic_widgets'):
                     selected_genome = download_tab.selected_genome_var.get()
                     app.after(10, lambda: download_tab._update_dynamic_widgets(selected_genome))
                     app.logger.info(_("数据下载选项卡状态已在任务完成后自动刷新。"))
+
         elif task_display_name == _("位点转换"):
             if success and result_data:
                 self.app.ui_manager.show_info_message(_("转换成功"), result_data)
+
         elif "富集分析" in task_display_name and success and result_data:
             if hasattr(self.app.ui_manager, '_show_plot_results') and result_data:
                 self.app.ui_manager._show_plot_results(result_data)
