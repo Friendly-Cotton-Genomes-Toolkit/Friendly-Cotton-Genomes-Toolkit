@@ -57,6 +57,8 @@ class CottonToolkitApp(ttkb.Window):
 
         self._ = translator
         self.logger = logging.getLogger(__name__)
+        self.app_icon_path: Optional[str] = None
+        self._patch_all_toplevels()
 
         self.title_text_key = "Friendly Cotton Genomes Toolkit - FCGT"
         self.title(self._(self.title_text_key))
@@ -117,21 +119,46 @@ class CottonToolkitApp(ttkb.Window):
         self.set_app_icon()
 
     def _patch_all_toplevels(self):
-        """用我们自己的逻辑包装所有Toplevel窗口的创建过程。"""
-        original_toplevel_init = ttkb.Toplevel.__init__
-        app_instance = self  # 显式捕获主应用实例
+        """
+        通过“猴子补丁”技术，自动为所有新创建的Toplevel窗口（弹窗）
+        应用深色标题栏、强制刷新逻辑以及应用图标。
+        """
+        app_instance = self
 
-        def new_init(toplevel_self, *args, **kwargs):
-            original_toplevel_init(toplevel_self, *args, **kwargs)
+        def apply_customizations(toplevel_self):
+            # 1. 设置图标
+            if app_instance.app_icon_path:
+                try:
+                    toplevel_self.iconbitmap(app_instance.app_icon_path)
+                except tk.TclError:
+                    # 在某些系统或特殊窗口上可能失败，静默处理
+                    pass
 
-            # 【核心修正】为每个弹窗创建一个独立的包装函数
-            def _update_dialog_task():
-                # 调用主应用的函数，并把弹窗实例 toplevel_self 作为参数
+            # 2. 安排刷新任务以适配标题栏
+            def _refresh_dialog_task():
                 app_instance.configure_title_bar_color(toplevel_self)
+                toplevel_self.withdraw()
+                toplevel_self.deiconify()
 
-            toplevel_self.after(50, _update_dialog_task)
+            toplevel_self.after(50, _refresh_dialog_task)
 
-        ttkb.Toplevel.__init__ = new_init
+        # --- 为 ttkbootstrap 的 Toplevel 打补丁 ---
+        original_ttkb_init = ttkb.Toplevel.__init__
+
+        def new_ttkb_init(toplevel_self, *args, **kwargs):
+            original_ttkb_init(toplevel_self, *args, **kwargs)
+            apply_customizations(toplevel_self)
+
+        ttkb.Toplevel.__init__ = new_ttkb_init
+
+        # --- 为标准 tkinter 的 Toplevel 打补丁 ---
+        original_tk_init = tk.Toplevel.__init__
+
+        def new_tk_init(toplevel_self, *args, **kwargs):
+            original_tk_init(toplevel_self, *args, **kwargs)
+            apply_customizations(toplevel_self)
+
+        tk.Toplevel.__init__ = new_tk_init
 
     def configure_title_bar_color(self, window_obj):
         """
@@ -151,7 +178,7 @@ class CottonToolkitApp(ttkb.Window):
             )
         except Exception as e:
             self.logger.warning(f"为窗口 {window_obj} 配置标题栏颜色时出错: {e}")
-            
+
     def _on_first_focus(self, event):
         """当窗口第一次获得焦点时，执行此操作，确保标题栏刷新。"""
         # 解除绑定，确保这个函数只被调用一次
@@ -681,13 +708,21 @@ class CottonToolkitApp(ttkb.Window):
         if self.tools_notebook.tabs(): self.tools_notebook.select(0)
 
     def set_app_icon(self):
+        """设置主窗口和所有未来弹窗的图标。"""
         try:
             base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(
                 os.path.dirname(os.path.abspath(__file__)))
             icon_path = os.path.join(base_path, "icon.ico")
-            if os.path.exists(icon_path): self.iconbitmap(icon_path)
+
+            if os.path.exists(icon_path):
+                # 【修改】将找到的路径保存到实例属性中
+                self.app_icon_path = icon_path
+                self.iconbitmap(self.app_icon_path)
+            else:
+                self.logger.warning(f"应用图标文件未找到: {icon_path}")
+
         except Exception as e:
-            self.logger.warning(self._("加载主窗口图标失败: {}。").format(e))
+            self.logger.warning(f"加载主窗口图标失败: {e}")
 
     def _update_wraplength(self, event):
         wraplength = event.width - 20

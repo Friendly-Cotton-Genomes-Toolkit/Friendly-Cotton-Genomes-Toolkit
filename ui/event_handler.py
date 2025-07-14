@@ -570,38 +570,36 @@ class EventHandler:
             bind_all_children_scroll(parent)
 
         def resize_content(event):
+            if not canvas.winfo_exists(): return
             canvas_width = event.width
             canvas.itemconfig(canvas_frame_id, width=canvas_width)
             for lbl in labels_to_wrap:
-                lbl.configure(wraplength=canvas_width - 15)
+                if lbl.winfo_exists():
+                    lbl.configure(wraplength=canvas_width - 15)
+
+        def on_frame_configure(event):
+            if not canvas.winfo_exists(): return
+            canvas.configure(scrollregion=canvas.bbox("all"))
 
         populate_content(scrollable_frame)
         canvas.bind("<Configure>", resize_content)
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        scrollable_frame.bind("<Configure>", on_frame_configure)
 
-        button_frame = ttkb.Frame(about_win);
+        button_frame = ttkb.Frame(about_win)
         button_frame.pack(side="bottom", fill="x", pady=(10, 15), padx=10)
         ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
         ok_button.pack()
 
-        # --- 最终版动态尺寸与居中 ---
-        # 1. 先设置一个固定的宽度
+        # Dynamic sizing and centering logic (remains unchanged)
+        about_win.update_idletasks()
         final_w = 750
-        about_win.geometry(f'{final_w}x1')  # 用最小高度强制设定宽度
-        about_win.update_idletasks()  # 强制UI刷新，使文字根据新宽度换行
-
-        # 2. 现在基于换行后的内容计算实际需要的高度
-        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45  # 内容+按钮+所有边距
-
-        # 3. 设定一个最大高度（不超过主窗口的85%），防止窗口过大
+        about_win.geometry(f'{final_w}x1')
+        about_win.update_idletasks()
+        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45
         max_h = int(self.app.winfo_height() * 0.85)
         final_h = min(req_h, max_h)
-
-        # 4. 获取主窗口位置，并将“关于”窗口居中
-        parent_x = self.app.winfo_x();
-        parent_y = self.app.winfo_y()
-        parent_w = self.app.winfo_width();
-        parent_h = self.app.winfo_height()
+        parent_x, parent_y = self.app.winfo_x(), self.app.winfo_y()
+        parent_w, parent_h = self.app.winfo_width(), self.app.winfo_height()
         x = parent_x + (parent_w - final_w) // 2
         y = parent_y + (parent_h - final_h) // 2
         about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
