@@ -2,6 +2,7 @@
 
 import tkinter as tk
 import time
+import sys
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 from typing import Optional, List, Callable
@@ -10,6 +11,7 @@ from typing import Optional, List, Callable
 try:
     from builtins import _
 except ImportError:
+    # 如果在测试或独立运行此模块时，_ 可能未设置
     _ = lambda s: str(s)
 
 
@@ -17,7 +19,6 @@ class ConfirmationDialog(tk.Toplevel):
     """
     一个通用的确认对话框，可以自定义按钮文本和回调。
     """
-
     def __init__(self, parent, title: str, message: str,
                  button1_text: str = "OK", button2_text: Optional[str] = None):
         super().__init__(parent)
@@ -73,7 +74,6 @@ class MessageDialog(ttkb.Toplevel):
     """
     一个通用的、带主题的消息对话框。
     """
-
     def __init__(self, parent, title: str, message: str, icon_type: str = "info",
                  buttons: Optional[List[str]] = None, style=None):
         super().__init__(parent)
@@ -130,7 +130,6 @@ class MessageDialog(ttkb.Toplevel):
 
 class ProgressDialog(ttkb.Toplevel):
     """任务进度弹窗。"""
-
     def __init__(self, parent, title: str, on_cancel: Optional[Callable] = None, style=None):
         super().__init__(parent)
         self.title(title)

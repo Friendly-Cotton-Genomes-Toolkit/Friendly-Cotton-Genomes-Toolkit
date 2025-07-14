@@ -19,49 +19,69 @@ if TYPE_CHECKING:
 try:
     import builtins
 
-    _ = builtins._  # type: ignore
-except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins失败
-    # 如果在测试或独立运行此模块时，_ 可能未设置
+    _ = builtins._
+except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
 
 class UIManager:
-    """负责所有UI控件的创建、布局和更新。"""
+    """负责所有UI控件的创建、布局和动态更新。"""
 
     def __init__(self, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.app = app
-        # --- 【核心修正】 ---
-        # 1. 首先，立即赋值，确保 self.translator_func 属性存在，防止后续调用崩溃。
         self.translator_func = translator
-        # --- 修正结束 ---
-
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
 
-        # 2. 此处调用 _load_ui_settings 时，self.translator_func 已存在。
-        self._load_ui_settings()
+    # 【核心修改点 1】将加载设置和应用主题分开
+    def load_settings(self):
+        """仅从文件加载UI设置，不应用任何主题。"""
+        app = self.app
+        _ = self.translator_func
+        try:
+            with open(self._get_settings_path(), 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            settings = {"appearance_mode": "System", "language": "zh-hans"}
+        app.ui_settings = settings
 
-        # 3. 基于加载的设置（或默认设置）来确定并应用最终正确的翻译器。
-        lang_code = self.app.ui_settings.get("language", "zh-hans")
-        correct_translator = setup_localization(language_code=lang_code)
+        # 设置下拉菜单的初始显示值
+        lang_code = app.ui_settings.get("language", "zh-hans")
+        app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
 
-        # 4. 用正确的翻译器覆盖初始的翻译器。
-        self.translator_func = correct_translator
-        self.app._ = correct_translator
+        mode_key = app.ui_settings.get("appearance_mode", "System")
+        display_map = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
+        app.selected_appearance_var.set(display_map.get(mode_key, mode_key))
 
-        self._set_ttk_theme_from_app_mode(self.app.ui_settings.get("appearance_mode", "System"))
+    def apply_initial_theme(self):
+        """【核心修改点 2】根据加载的设置，应用初始主题。"""
+        initial_mode = self.app.ui_settings.get("appearance_mode", "System")
+        self.apply_theme_from_mode(initial_mode)
 
-        self._update_placeholders_dictionary(self.translator_func)
+    def apply_theme_from_mode(self, mode: str):
+        """
+        【核心修改点 3】根据外观模式计算主题名称，并调用App实例的中心方法来应用。
+        """
+        if mode == "Dark":
+            theme_name = self.app.ui_settings.get("dark_mode_theme", "darkly")
+        elif mode == "Light":
+            theme_name = self.app.ui_settings.get("light_mode_theme", "flatly")
+        else:
+            # 此处可添加代码检测系统是深色还是浅色模式
+            theme_name = self.app.ui_settings.get("light_mode_theme", "flatly")
 
+        # 调用 app 实例上那个新的、统一的、健壮的方法
+        self.app.apply_theme_and_update_dependencies(theme_name)
+
+    # ... 以下是您文件中的其他方法，大部分保持不变 ...
     def update_language_ui(self, lang_code: str):
         app = self.app
         new_translator = setup_localization(language_code=lang_code)
         self.translator_func = new_translator
-        app._ = new_translator  # 更新app实例上的翻译函数，确保所有地方都用最新的
+        app._ = new_translator
 
-        # 【核心修正】更新占位符字典和所有UI组件
         self._update_placeholders_dictionary(new_translator)
         self._retranslate_all_tabs(new_translator)
         self._retranslate_managed_widgets(new_translator)
@@ -74,23 +94,18 @@ class UIManager:
                 tab_instance.retranslate_ui(translator=new_translator)
 
     def _retranslate_managed_widgets(self, new_translator: Callable[[str], str]):
-        """更新由 UIManager 直接管理的、非 Tab 内的 UI 组件。"""
         app = self.app
         _ = new_translator
-
         app.title(_(app.title_text_key))
 
-        # 【新增】更新主页上通过字典追踪的组件
         if hasattr(app, 'translatable_widgets'):
             for widget, text_key in app.translatable_widgets.items():
                 if widget and widget.winfo_exists():
-                    # 特殊处理LabelFrame，它的text属性需要通过config修改
                     if isinstance(widget, (ttkb.LabelFrame, ttkb.Frame)):
                         widget.config(text=_(text_key))
                     else:
                         widget.configure(text=_(text_key))
 
-        # 【新增】更新工具栏 Notebook 的标签页标题
         if hasattr(app, 'tools_notebook') and app.tools_notebook.tabs():
             for i, key in enumerate(app.TOOL_TAB_ORDER):
                 if i < len(app.tools_notebook.tabs()):
@@ -117,7 +132,6 @@ class UIManager:
         }
 
     def refresh_single_placeholder(self, widget, key):
-        """【新增】一个更可靠的刷新占位符的函数"""
         if not widget or not widget.winfo_exists(): return
 
         is_placeholder_state = getattr(widget, 'is_placeholder', False)
@@ -127,7 +141,6 @@ class UIManager:
         elif isinstance(widget, (tk.Entry, ttkb.Entry)):
             current_text = widget.get().strip()
 
-        # 仅当文本框为空或当前已经是占位符状态时才刷新
         if not current_text or is_placeholder_state:
             new_placeholder_text = self.app.placeholders.get(key, "...")
             self.add_placeholder(widget, new_placeholder_text)
@@ -147,22 +160,10 @@ class UIManager:
             widget.configure(font=self.app.app_font_italic, foreground=ph_color)
         widget.is_placeholder = True
 
-    def _set_ttk_theme_from_app_mode(self, mode: str):
-        if mode == "Dark":
-            theme_name = self.app.ui_settings.get("dark_mode_theme", "darkly")
-        else:
-            theme_name = self.app.ui_settings.get("light_mode_theme", "flatly")
-        self.style.theme_use(theme_name)
-        self.app._setup_fonts()
-        self.app.default_text_color = self.style.lookup('TLabel', 'foreground')
-        self._update_log_tag_colors()
-
     def setup_initial_ui(self):
         app = self.app
         self.create_main_layout()
         self.init_pages()
-        # 【修改】调用 retranslate_ui 替代 update_language_ui
-        # 因为 translator 已经从外部注入，我们只需用它来翻译UI
         self._retranslate_managed_widgets(self.translator_func)
         self.update_ui_from_config()
 
@@ -304,38 +305,12 @@ class UIManager:
             setattr(app, f"{'language_optionmenu' if i == 0 else 'appearance_mode_optionmenu'}", menu)
 
     def _get_settings_path(self):
-        # 修正路径问题，确保 .fcgt 目录在用户主目录下创建
         home_dir = os.path.expanduser("~")
         settings_dir = os.path.join(home_dir, ".fcgt")
         os.makedirs(settings_dir, exist_ok=True)
         return os.path.join(settings_dir, "ui_settings.json")
 
-    def _load_ui_settings(self):
-        app = self.app
-        # 在 `__init__` 中，self.translator_func 已经被安全地赋予了初始值
-        _ = self.translator_func
-        try:
-            with open(self._get_settings_path(), 'r', encoding='utf-8') as f:
-                settings = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            settings = {"appearance_mode": "System", "language": "zh-hans"}
-        app.ui_settings = settings
-
-        lang_code = app.ui_settings.get("language", "zh-hans")
-        app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
-
-        mode_key = app.ui_settings.get("appearance_mode", "System")
-
-        # Note: At this point, the translator might not be the final one.
-        # We use a direct map for initialization. The display will be corrected later
-        # by re-translation if needed.
-        display_map = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
-        # Fallback to English if key is weird
-        display_text = display_map.get(mode_key, mode_key)
-
-        app.selected_appearance_var.set(display_text)
-
-    def _save_ui_settings(self):
+    def save_ui_settings(self):
         try:
             with open(self._get_settings_path(), 'w', encoding='utf-8') as f:
                 json.dump(self.app.ui_settings, f, indent=4)
@@ -362,11 +337,9 @@ class UIManager:
                       icon_type="info").wait_window()
 
     def show_error_message(self, title: str, message: str):
-        # 注意: 传入的 message 可能已经包含格式化内容，不应再次翻译
         MessageDialog(self.app, self.translator_func(title), message, icon_type="error").wait_window()
 
     def show_warning_message(self, title: str, message: str):
-        # 注意: 传入的 message 可能已经包含格式化内容，不应再次翻译
         MessageDialog(self.app, self.translator_func(title), message, icon_type="warning").wait_window()
 
     def _show_progress_dialog(self, data: Dict[str, Any]):

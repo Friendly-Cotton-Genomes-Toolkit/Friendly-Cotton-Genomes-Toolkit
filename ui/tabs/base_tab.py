@@ -62,16 +62,23 @@ class BaseTab(ttk.Frame):
             canvas.itemconfig(canvas_window_id, width=event.width)
 
         def _on_mousewheel(event):
-            if event.num == 5 or event.delta == -120:
+            # 统一处理不同平台的滚轮事件
+            if event.num == 5 or event.delta < 0:
                 canvas.yview_scroll(1, "units")
-            if event.num == 4 or event.delta == 120:
+            elif event.num == 4 or event.delta > 0:
                 canvas.yview_scroll(-1, "units")
+            # 返回 "break" 阻止事件传播
+            return "break"
+
+        # 【核心修正】将滚轮事件直接绑定到 Canvas 和其内部的 Frame 上
+        # 这样可以确保只要鼠标在滚动区域内，事件就能被正确捕获
+        for widget in [canvas, self.scrollable_frame]:
+             widget.bind("<MouseWheel>", _on_mousewheel)
+             widget.bind("<Button-4>", _on_mousewheel)
+             widget.bind("<Button-5>", _on_mousewheel)
 
         self.scrollable_frame.bind("<Configure>", _on_frame_configure)
         canvas.bind("<Configure>", _on_canvas_configure)
-        self.bind_all("<MouseWheel>", _on_mousewheel, add="+")
-        self.bind_all("<Button-4>", _on_mousewheel, add="+")
-        self.bind_all("<Button-5>", _on_mousewheel, add="+")
 
         # --- 下部：固定操作区 ---
         action_frame = ttkb.Frame(self)
@@ -79,9 +86,9 @@ class BaseTab(ttk.Frame):
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_rowconfigure(0, weight=1)
 
-        # 【修改】按钮文本使用 self._ 进行翻译
         self.action_button = ttkb.Button(action_frame, text=self._("执行操作"), bootstyle="success")
         self.action_button.grid(row=0, column=0, sticky="e", padx=15, pady=10)
+
 
     def get_primary_action(self) -> Optional[Callable]:
         """返回此选项卡的主要操作函数，用于绑定回车键。"""
