@@ -48,13 +48,13 @@ class EventHandler:
             "error": self._handle_error,
             "status": self._handle_status,
             "progress": self._handle_progress,
-            "hide_progress_dialog": self.app.ui_manager._hide_progress_dialog,
+            "hide_progress_dialog": self.app.ui_manager.progress_dialog,
             "ai_models_fetched": self._handle_ai_models_fetched,
             "ai_test_result": self._handle_ai_test_result,
             "auto_identify_success": self._handle_auto_identify_success,
             "proxy_test_done": self._handle_proxy_test_done,
             "csv_columns_fetched": self._handle_csv_columns_fetched,
-            "show_progress_dialog": self.app.ui_manager._show_progress_dialog
+            "show_progress_dialog": self.app.ui_manager.progress_dialog
         }
 
     # --- 语言切换处理 ---

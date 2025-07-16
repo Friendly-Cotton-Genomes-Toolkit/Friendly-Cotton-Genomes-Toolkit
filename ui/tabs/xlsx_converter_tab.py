@@ -44,14 +44,18 @@ class XlsxConverterTab(BaseTab):
         self.description_label = ttkb.Label(parent_frame, text=_(
             "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n适用于所有工作表表头一致的情况。"),
                                             wraplength=700, justify="center", bootstyle="secondary")
-        self.description_label.grid(row=1, column=0, padx=10, pady=(0, 20), sticky="ew")
+
+        # 【核心修改】移除了 sticky="ew"，让标签本身在水平方向上居中
+        self.description_label.grid(row=1, column=0, padx=10, pady=(0, 20))
 
         self.main_card = ttkb.LabelFrame(parent_frame, text=_("文件路径"), bootstyle="secondary")
         self.main_card.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
         self.main_card.grid_columnconfigure(1, weight=1)
 
         self.input_label = ttk.Label(self.main_card, text=_("输入Excel文件:"), font=self.app.app_font_bold)
-        self.input_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
+        # 顺便修复之前文字歪的问题
+        self.input_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="sw")
+
         self.xlsx_input_entry = ttk.Entry(self.main_card)
         self.xlsx_input_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=10)
         self.input_browse_button = ttkb.Button(self.main_card, text=_("浏览..."), width=12, bootstyle="info-outline",
@@ -60,13 +64,16 @@ class XlsxConverterTab(BaseTab):
         self.input_browse_button.grid(row=0, column=2, padx=(5, 10), pady=10)
 
         self.output_label = ttk.Label(self.main_card, text=_("输出CSV文件:"), font=self.app.app_font_bold)
-        self.output_label.grid(row=1, column=0, padx=(10, 5), pady=10, sticky="w")
+        # 顺便修复之前文字歪的问题
+        self.output_label.grid(row=1, column=0, padx=(10, 5), pady=10, sticky="sw")
+
         self.csv_output_entry = ttk.Entry(self.main_card)
         self.csv_output_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=10)
         self.output_browse_button = ttkb.Button(self.main_card, text=_("另存为..."), width=12, bootstyle="info-outline",
                                                 command=lambda: self.app.event_handler._browse_save_file(
                                                     self.csv_output_entry, [("CSV files", "*.csv")]))
         self.output_browse_button.grid(row=1, column=2, padx=(5, 10), pady=10)
+
 
     def retranslate_ui(self, translator: Callable[[str], str]):
         """

@@ -34,7 +34,7 @@ class GenomeIdentifierTab(BaseTab):
             # --- 初始化并储存结果标签 ---
             self.result_var = tk.StringVar(value=self._("鉴定结果将显示在这里。"))
             self.result_label = ttkb.Label(action_frame, textvariable=self.result_var, anchor="w",
-                                           font=self.app.app_font_italic, bootstyle="secondary")
+                                           font=self.app.app_font)
             self.result_label.grid(row=0, column=0, sticky="ew", padx=(10, 10))
             self.action_button.grid(row=0, column=1, sticky="e")
 
@@ -72,7 +72,7 @@ class GenomeIdentifierTab(BaseTab):
 
     def retranslate_ui(self, translator: Callable[[str], str]):
         """
-        【新增】当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
+        当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
         """
         self.title_label.configure(text=translator("基因组类别鉴定工具"))
         self.input_card.configure(text=translator("输入基因列表"))
@@ -82,7 +82,7 @@ class GenomeIdentifierTab(BaseTab):
         # 重设结果标签的初始文字
         if hasattr(self, 'result_var'):
             self.result_var.set(translator("鉴定结果将显示在这里。"))
-            self.result_label.configure(bootstyle="secondary", font=self.app.app_font_italic)
+            self.result_label.configure(bootstyle="default", font=self.app.app_font)
 
         if self.action_button:
             self.action_button.configure(text=translator("开始鉴定"))
@@ -129,13 +129,16 @@ class GenomeIdentifierTab(BaseTab):
 
     def handle_identification_result(self, identified_assembly: Optional[str]):
         """
-        【新增】处理后台鉴定任务完成后的结果。
         此方法将由 event_handler 在任务结束后调用，用于安全地更新UI。
         """
         if identified_assembly:
             result_text = f"{self._('鉴定结果')}: {identified_assembly}"
             self.result_var.set(result_text)
             self.result_label.configure(bootstyle="success", font=self.app.app_font_bold)
+            # Log successful identification to the main log viewer
+            self.app._log_to_viewer(f"{self._('基因组鉴定成功')}: {identified_assembly}", "INFO")
         else:
             self.result_var.set(self._("未能识别到匹配的基因组。"))
-            self.result_label.configure(bootstyle="warning", font=self.app.app_font_italic)
+            self.result_label.configure(bootstyle="warning", font=self.app.app_font)
+            # Log failed identification to the main log viewer
+            self.app._log_to_viewer(self._("基因组鉴定失败：未能识别到匹配的基因组。"), "WARNING")

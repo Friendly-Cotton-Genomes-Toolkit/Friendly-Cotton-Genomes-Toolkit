@@ -71,10 +71,10 @@ class CottonToolkitApp(ttkb.Window):
         self.bind("<FocusIn>", self._on_first_focus, add='+')
 
         self._setup_fonts()
-        # ... (类的其他初始化代码保持不变) ...
+
         self.placeholder_color = (self.style.colors.secondary, self.style.colors.secondary)
         self.default_text_color = self.style.lookup('TLabel', 'foreground')
-        self.secondary_text_color = self.style.colors.info
+        self.secondary_text_color = self.style.lookup('TLabel', 'foreground')
         self.placeholders = {
             "homology_genes": "粘贴基因ID，每行一个...",
             "gff_genes": "粘贴基因ID，每行一个...",
@@ -198,11 +198,14 @@ class CottonToolkitApp(ttkb.Window):
             # 2. 更新所有依赖主题色的内部UI组件
             self._setup_fonts()
             self.default_text_color = self.style.lookup('TLabel', 'foreground')
+
+            if hasattr(self, 'ui_manager'):
+                self.ui_manager.update_sidebar_style()
+
             if hasattr(self.ui_manager, '_update_log_tag_colors'):
                 self.ui_manager._update_log_tag_colors()
 
             # 3. 安排一次强制刷新
-            # after_idle确保此操作在当前所有UI事件处理完后执行，避免冲突
             self.after_idle(self.refresh_window_visuals)
 
         except Exception as e:
@@ -213,7 +216,7 @@ class CottonToolkitApp(ttkb.Window):
         通过“隐藏再显示”的强制手段，刷新整个窗口的视觉表现。
         这是为了确保Windows原生标题栏能够同步更新。
         """
-        self.logger.info("正在强制刷新窗口视觉效果...")
+        self.logger.debug("正在强制刷新窗口视觉效果...")
 
         # a. 先应用标题栏颜色设置
         self.configure_title_bar_color(self)
@@ -221,6 +224,8 @@ class CottonToolkitApp(ttkb.Window):
         # b. 执行“隐藏-显示”操作，这会强制Windows重绘整个窗口框架
         self.withdraw()
         self.deiconify()
+
+        self.logger.debug(self._("刷新完成。"))
 
     def _configure_dark_title_bar(self, window_obj):
         """根据主应用主题，配置任意窗口对象的标题栏颜色并强制刷新。"""
@@ -627,7 +632,8 @@ class CottonToolkitApp(ttkb.Window):
         title_label.pack(pady=(40, 10))
         self.translatable_widgets[title_label] = self.title_text_key
 
-        ttkb.Label(page, textvariable=self.config_path_display_var, font=self.app_font, bootstyle="secondary").pack(
+        # 【关键修改】移除了 bootstyle="secondary"，使其使用默认的清晰颜色
+        ttkb.Label(page, textvariable=self.config_path_display_var, font=self.app_font).pack(
             pady=(10, 20))
 
         cards_frame = ttkb.Frame(page)
@@ -832,25 +838,49 @@ class CottonToolkitApp(ttkb.Window):
             self.save_editor_button.configure(state="normal" if has_config else "disabled")
 
     def _setup_fonts(self):
-        font_stack = ["Microsoft YaHei UI", "Segoe UI", "Calibri", "Helvetica", "sans-serif"];
+        """
+        【最终修复版】
+        设置全局字体，并强制覆盖所有低对比度样式的颜色以确保清晰可读。
+        """
+        # --- 字体定义 (这部分保持不变) ---
+        font_stack = ["Microsoft YaHei UI", "Segoe UI", "Calibri", "Helvetica", "sans-serif"]
         mono_stack = ["Consolas", "Courier New", "monospace"]
         self.font_family = next((f for f in font_stack if f in tkfont.families()), "sans-serif")
         self.mono_font_family = next((f for f in mono_stack if f in tkfont.families()), "monospace")
         self.logger.info(
             self._("UI font set to: {}, Monospace font to: {}").format(self.font_family, self.mono_font_family))
-        self.app_font = tkfont.Font(family=self.font_family, size=12);
-        self.app_font_italic = tkfont.Font(family=self.font_family, size=12, slant="italic");
-        self.app_font_bold = tkfont.Font(family=self.font_family, size=13, weight="bold");
-        self.app_subtitle_font = tkfont.Font(family=self.font_family, size=16, weight="bold");
-        self.app_title_font = tkfont.Font(family=self.font_family, size=24, weight="bold");
-        self.app_comment_font = tkfont.Font(family=self.font_family, size=11);
+        self.app_font = tkfont.Font(family=self.font_family, size=12)
+        self.app_font_italic = tkfont.Font(family=self.font_family, size=12, slant="italic")
+        self.app_font_bold = tkfont.Font(family=self.font_family, size=13, weight="bold")
+        self.app_subtitle_font = tkfont.Font(family=self.font_family, size=16, weight="bold")
+        self.app_title_font = tkfont.Font(family=self.font_family, size=24, weight="bold")
+        self.app_comment_font = tkfont.Font(family=self.font_family, size=11)
         self.app_font_mono = tkfont.Font(family=self.mono_font_family, size=12)
+
+        # --- 全局字体应用 (这部分保持不变) ---
         for style_name in ['TButton', 'TCheckbutton', 'TMenubutton', 'TLabel', 'TEntry', 'Toolbutton',
                            'Labelframe.TLabel']:
             self.style.configure(style_name, font=self.app_font)
         self.style.configure('success.TButton', font=self.app_font_bold)
-        self.style.configure('info-outline.TButton', font=self.app_font)
         self.style.configure('outline.TButton', font=self.app_font)
+
+        # --- 【关键代码】强制进行颜色覆盖 ---
+        # 1. 获取当前主题的标准高对比度文字颜色 (深色模式下为白色)
+        high_contrast_color = self.style.lookup('TLabel', 'foreground')
+
+        # 2. 强制修正侧边栏的 "outline" 按钮文字颜色
+        #    这将修复“配置编辑器”、“数据工具”按钮的颜色
+        self.style.configure('primary-outline.TButton', foreground=high_contrast_color)
+        self.style.configure('info-outline.TButton', foreground=high_contrast_color)
+
+        # 3. 强制修正所有使用 "secondary" 样式的标签和标题颜色
+        #    这将修复配置页面里的灰色提示文字和标题
+        self.style.configure('secondary.TLabel', foreground=high_contrast_color)
+        self.style.configure('secondary.Labelframe.TLabel', foreground=high_contrast_color)
+
+        # 4. 强制修正侧边栏下方的“语言”、“外观模式”等标签的颜色
+        #    在 ui_manager.py 中，这个样式叫 'Transparent.TLabel'
+        self.style.configure('Transparent.TLabel', foreground=high_contrast_color)
 
     def _log_to_viewer(self, message, level="INFO"):
         if logging.getLogger().getEffectiveLevel() <= logging.getLevelName(level.upper()):
