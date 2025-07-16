@@ -196,8 +196,13 @@ class UIManager:
         app.home_frame = app._create_home_frame(app.main_content_frame)
         app.editor_frame = app._create_editor_frame(app.main_content_frame)
         app.tools_frame = app._create_tools_frame(app.main_content_frame)
-        app._populate_tools_notebook()
-        if not app.editor_ui_built: app._create_editor_widgets(app.editor_scroll_frame); app.editor_ui_built = True
+
+        # 【重要修改】确保这里调用的是新的UI填充函数
+        app._populate_tools_ui()
+
+        if not app.editor_ui_built:
+            app._create_editor_widgets(app.editor_scroll_frame)
+            app.editor_ui_built = True
         app._handle_editor_ui_update()
         self.select_frame_by_name("home")
 

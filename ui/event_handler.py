@@ -465,6 +465,10 @@ class EventHandler:
 
         about_win = ttkb.Toplevel(self.app)
         about_win.title(_("关于 FCGT"))
+
+        # 【在此处添加代码】将 <Escape> 键事件绑定到窗口销毁函数上
+        about_win.bind("<Escape>", lambda e: about_win.destroy())
+
         about_win.minsize(500, 400)
         about_win.transient(self.app)
         about_win.grab_set()

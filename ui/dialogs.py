@@ -28,6 +28,7 @@ class ConfirmationDialog(tk.Toplevel):
 
         self.grab_set()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.bind("<Escape>", lambda event: self._on_close())
 
         main_frame = ttkb.Frame(self, padding=20)
         main_frame.pack(expand=True, fill="both")

@@ -674,15 +674,48 @@ class CottonToolkitApp(ttkb.Window):
         return page
 
     def _create_tools_frame(self, parent):
-        frame = ttkb.Frame(parent);
-        frame.grid_columnconfigure(0, weight=1);
+        """ 【重构版】创建工具区的主框架，包含左侧导航和右侧内容区 """
+        frame = ttkb.Frame(parent)
         frame.grid_rowconfigure(0, weight=1)
-        self.tools_notebook = ttkb.Notebook(frame, bootstyle="info");
-        self.tools_notebook.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        # 将第0列（左侧导航）设置为固定宽度，第1列（右侧内容）自动扩展
+        frame.grid_columnconfigure(0, weight=0)
+        frame.grid_columnconfigure(1, weight=1)
+
+        # 创建一个分隔线，视觉上更清晰
+        separator = ttkb.Separator(frame, orient='vertical')
+        separator.grid(row=0, column=0, sticky='ns', padx=5)
+
+        # 创建左侧的导航栏框架
+        self.tools_nav_frame = ttkb.Frame(frame, width=180)
+
+        # 【核心修正】将 'nsf' 修改为 'ns'
+        self.tools_nav_frame.grid(row=0, column=0, sticky='ns')
+
+        # 防止导航栏在窗口缩放时变形
+        self.tools_nav_frame.grid_propagate(False)
+
+        # 创建右侧的内容显示框架
+        self.tools_content_frame = ttkb.Frame(frame)
+        self.tools_content_frame.grid(row=0, column=1, sticky='nsew', padx=10)
+        self.tools_content_frame.grid_rowconfigure(0, weight=1)
+        self.tools_content_frame.grid_columnconfigure(0, weight=1)
+
+        # 保存导航按钮和内容页面的引用
+        self.tool_nav_buttons = {}
+        self.tool_content_pages = {}
+
         return frame
 
-    def _populate_tools_notebook(self):
+    def _populate_tools_ui(self):
+        """ 【重构版】填充工具区的导航按钮和内容页面 """
+        # 清空旧的控件，以便刷新
+        for widget in self.tools_nav_frame.winfo_children():
+            widget.destroy()
+        for widget in self.tools_content_frame.winfo_children():
+            widget.destroy()
         self.tool_tab_instances.clear()
+        self.tool_nav_buttons.clear()
+        self.tool_content_pages.clear()
 
         from ui.tabs.ai_assistant_tab import AIAssistantTab
         from ui.tabs.data_download_tab import DataDownloadTab
@@ -695,23 +728,55 @@ class CottonToolkitApp(ttkb.Window):
         from ui.tabs.xlsx_converter_tab import XlsxConverterTab
 
         tab_map = {
-            "download": DataDownloadTab,
-            "xlsx_to_csv": XlsxConverterTab,
-            "genome_identifier": GenomeIdentifierTab,
-            "homology": HomologyTab,
-            "locus_conversion": LocusConversionTab,
-            "gff_query": GFFQueryTab,
+            "download": DataDownloadTab, "annotation": AnnotationTab,
+            "enrichment": EnrichmentTab, "xlsx_to_csv": XlsxConverterTab,
+            "genome_identifier": GenomeIdentifierTab, "homology": HomologyTab,
+            "locus_conversion": LocusConversionTab, "gff_query": GFFQueryTab,
             "ai_assistant": AIAssistantTab,
-            "annotation": AnnotationTab,
-            "enrichment": EnrichmentTab
         }
+
         for key in self.TOOL_TAB_ORDER:
             if TabClass := tab_map.get(key):
-                tab_frame = ttkb.Frame(self.tools_notebook)
-                instance = TabClass(parent=tab_frame, app=self, translator=self._)
-                self.tools_notebook.add(tab_frame, text=self.TAB_TITLE_KEYS[key])
+                # 1. 创建内容页面，并放置在右侧内容区
+                # 注意：父控件是 self.tools_content_frame
+                content_page = ttkb.Frame(self.tools_content_frame)
+                instance = TabClass(parent=content_page, app=self, translator=self._)
                 self.tool_tab_instances[key] = instance
-        if self.tools_notebook.tabs(): self.tools_notebook.select(0)
+                self.tool_content_pages[key] = content_page
+                # 先不显示，用 grid_remove() 隐藏
+                content_page.grid(row=0, column=0, sticky='nsew')
+                content_page.grid_remove()
+
+                # 2. 在左侧导航栏创建对应的按钮
+                nav_button = ttkb.Button(
+                    self.tools_nav_frame,
+                    text=self.TAB_TITLE_KEYS[key],
+                    bootstyle="outline",  # 默认使用轮廓样式
+                    command=lambda k=key: self.select_tool_page(k)
+                )
+                nav_button.pack(fill='x', pady=5, padx=10)
+                self.tool_nav_buttons[key] = nav_button
+
+        # 默认选中并显示第一个工具页面
+        if self.TOOL_TAB_ORDER:
+            self.select_tool_page(self.TOOL_TAB_ORDER[0])
+
+    def select_tool_page(self, key_to_show: str):
+        """ 【新增】根据key，高亮对应的导航按钮并显示其内容页面 """
+        # 更新按钮样式：选中的高亮，其他变为轮廓
+        for key, button in self.tool_nav_buttons.items():
+            if key == key_to_show:
+                button.config(bootstyle="primary")
+            else:
+                button.config(bootstyle="outline")
+
+        # 更新内容页面：显示选中的，隐藏其他的
+        for key, page in self.tool_content_pages.items():
+            if key == key_to_show:
+                page.grid()  # 显示
+            else:
+                page.grid_remove()  # 隐藏
+
 
     def set_app_icon(self):
         """设置主窗口和所有未来弹窗的图标。"""
