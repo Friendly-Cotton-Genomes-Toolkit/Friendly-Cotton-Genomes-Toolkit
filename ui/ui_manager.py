@@ -448,18 +448,41 @@ class UIManager:
         self.progress_dialog = None
 
     def _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
+        """
+        【最终修复版】任务结束后，关闭进度条、恢复UI，并根据结果弹出最终提示对话框。
+        """
         _ = self.translator_func
-        self._hide_progress_dialog();
-        self.update_button_states(is_task_running=False);
-        self.app.active_task_name = None
-        if result_data == "CANCELLED":
-            status_msg = _("{} 已被用户取消。").format(_(task_display_name))
-        else:
-            status_text = _('完成。') if success else _('失败。')
-            status_msg = "{} {}".format(_(task_display_name), status_text)
 
-        if hasattr(self.app, 'status_label') and self.app.status_label.winfo_exists(): self.app.status_label.configure(
-            text=status_msg)
+        # 1. 关闭进度弹窗 (这部分不变)
+        self._hide_progress_dialog()
+        # 2. 恢复所有按钮的状态 (这部分不变)
+        self.update_button_states(is_task_running=False)
+        self.app.active_task_name = None
+
+        # 3. 【核心修正】根据任务结果，弹出相应的提示对话框
+        if result_data == "CANCELLED":
+            # 如果是用户取消
+            self.show_info_message(
+                _("任务已取消"),
+                _("任务 '{}' 已被用户取消。").format(_(task_display_name))
+            )
+        elif isinstance(result_data, Exception):
+            # 如果是执行失败
+            self.show_error_message(
+                _("任务失败"),
+                _("任务 '{}' 执行时发生错误:\n\n{}").format(_(task_display_name), str(result_data))
+            )
+        elif success:
+            # 如果是成功完成
+            self.show_info_message(
+                _("任务完成"),
+                _("任务 '{}' 已成功完成。").format(_(task_display_name))
+            )
+
+        # 4. 更新底部状态栏的文本 (作为辅助提示，保留此功能)
+        status_msg = f"{_(task_display_name)}: {result_data if result_data else (_('完成') if success else _('失败'))}"
+        if hasattr(self.app, 'status_label') and self.app.status_label.winfo_exists():
+            self.app.status_label.configure(text=status_msg)
 
     def update_button_states(self, is_task_running: bool = False):
         state = "disabled" if is_task_running else "normal"

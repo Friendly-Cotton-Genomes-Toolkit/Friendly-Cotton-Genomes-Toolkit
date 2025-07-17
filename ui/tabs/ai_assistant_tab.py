@@ -278,51 +278,106 @@ class AIAssistantTab(BaseTab):
             self._update_column_dropdown()
 
     def _update_column_dropdown(self):
+        """
+        当用户选择一个新的CSV文件后，此函数被调用。
+        它会启动一个后台线程来安全地读取文件的列名，避免UI卡顿。
+        """
         filepath = self.csv_path_entry.get().strip()
-        if not filepath or not os.path.exists(filepath):
-            self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var,
-                                                   [_("请先选择有效的CSV文件")])
-            return
-        self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [_("读取中...")])
+        _ = self._  # 使用实例的翻译函数
 
+        if not filepath or not os.path.exists(filepath):
+            # 如果路径无效，直接更新UI并返回
+            self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [],
+                                                   _("请先选择有效的CSV文件"))
+            return
+
+        # 先在UI上显示“读取中...”，提供即时反馈
+        self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [],
+                                               _("读取中..."))
+
+        # 定义将在后台线程中运行的函数
         def load_columns_thread():
             try:
+                # 只读取第一行来获取列名，效率最高
                 df = pd.read_csv(filepath, nrows=0)
                 columns = df.columns.tolist()
-                self.app.message_queue.put(("csv_columns_fetched", (columns, None)))
+                # 【核心修改】使用 after() 方法将UI更新任务安全地调度回主线程
+                self.app.after(0, self.update_column_dropdown_ui, columns, None)
             except Exception as e:
+                # 发生任何错误，同样将错误信息安全地调度回主线程
                 error_msg = f"{_('无法读取CSV列名')}:\n{e}"
-                self.app.message_queue.put(("csv_columns_fetched", ([], error_msg)))
+                self.app.after(0, self.update_column_dropdown_ui, [], error_msg)
 
+        # 启动后台线程
         threading.Thread(target=load_columns_thread, daemon=True).start()
 
     def update_column_dropdown_ui(self, columns: List[str], error_msg: Optional[str]):
+        """
+        【这是一个UI更新函数】
+        此函数总是在主UI线程中被安全地调用，负责将获取到的列名更新到下拉菜单中。
+        """
+        _ = self._  # 使用实例的翻译函数
+
         if error_msg:
             self.app.ui_manager.show_error_message(_("读取失败"), error_msg)
-            self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [_("读取失败")])
+            self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [],
+                                                   _("读取失败"))
         else:
             self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, columns,
                                                    _("无可用列"))
 
     def update_model_dropdown(self):
+        """根据当前选定的服务商，从配置的 available_models 字段更新模型列表。"""
         provider_name = self.ai_selected_provider_var.get()
         provider_key = next((k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == provider_name), None)
+
         models = []
         if self.app.current_config and provider_key:
             provider_cfg = self.app.current_config.ai_services.providers.get(provider_key)
-            if provider_cfg and provider_cfg.model:
+            # --- 【核心修正】从新的 available_models 字段读取列表 ---
+            if provider_cfg and provider_cfg.available_models:
+                # 如果 available_models 有内容，则用它作为选项
+                models = [m.strip() for m in provider_cfg.available_models.split(',') if m.strip()]
+            elif provider_cfg and provider_cfg.model:
+                # 否则，作为备用方案，使用旧的 model 字段
                 models = [m.strip() for m in provider_cfg.model.split(',') if m.strip()]
+
+        # 使用获取到的模型列表更新UI下拉菜单
         self.app.ui_manager.update_option_menu(self.model_dropdown, self.ai_selected_model_var, models, _("无可用模型"))
 
     def update_from_config(self):
-        if not self.app.current_config: return
+        """当主配置加载或更新后，刷新此选项卡的状态。"""
+        if not self.app.current_config:
+            return
+
         self.ai_proxy_var.set(self.app.current_config.ai_services.use_proxy_for_ai)
+
         default_provider_key = self.app.current_config.ai_services.default_provider
         default_provider_name = self.app.AI_PROVIDERS.get(default_provider_key, {}).get('name', '')
-        if default_provider_name: self.ai_selected_provider_var.set(default_provider_name)
+        if default_provider_name:
+            self.ai_selected_provider_var.set(default_provider_name)
+
+        # 这会使用新的逻辑从 available_models 更新选项列表
         self.update_model_dropdown()
-        self._on_task_type_change()  # 触发从配置加载提示词
+
+        # --- 【核心修正】---
+        # 从配置的 model 字段读取“当前选定”的模型并设置
+        provider_key_for_model = next(
+            (k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == self.ai_selected_provider_var.get()), None)
+        if provider_key_for_model:
+            provider_cfg = self.app.current_config.ai_services.providers.get(provider_key_for_model)
+            # 确保 model 字段的值在可选列表中
+            if provider_cfg and provider_cfg.model and provider_cfg.model in self.ai_selected_model_var.get().split(
+                    ','):
+                self.ai_selected_model_var.set(provider_cfg.model)
+            elif self.model_dropdown['menu'].index('end') is not None:
+                # 如果已保存的模型不在列表中，则默认选择列表中的第一个
+                first_option = self.model_dropdown['menu'].entrycget(0, "label")
+                self.ai_selected_model_var.set(first_option)
+
+        self._on_task_type_change()
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
+
 
     def start_ai_csv_processing_task(self):
         if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),

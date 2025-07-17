@@ -416,77 +416,79 @@ def run_ai_task(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         output_file: Optional[str] = None
 ):
-    batch_cfg = config.batch_ai_processor
-    _update_config_from_overrides(batch_cfg, cli_overrides)
+    # 初始化日志和进度回调 (这部分不变)
     progress = progress_callback if progress_callback else lambda p, m: None
     log = lambda msg, level="INFO": status_callback(msg, level)
 
     progress(0, _("AI任务流程开始..."))
     log(_("AI任务流程开始..."), "INFO")
 
-    progress(5, _("初始化AI客户端..."))
+    # AI客户端和服务商的初始化逻辑 (这部分不变)
+    progress(5, _("正在解析AI服务配置..."))
     ai_cfg = config.ai_services
-    provider_name = ai_cfg.default_provider
+    provider_name = cli_overrides.get('ai_provider') if cli_overrides else ai_cfg.default_provider
+    model_name = cli_overrides.get('ai_model') if cli_overrides else None
     provider_cfg_obj = ai_cfg.providers.get(provider_name)
     if not provider_cfg_obj:
-        log(_("错误: 在配置中未找到默认AI服务商 '{}' 的设置。").format(provider_name), "ERROR")
-        progress(100, _("任务终止：AI服务配置错误。"))
+        log(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name), "ERROR");
         return
+    if not model_name: model_name = provider_cfg_obj.model
     api_key = provider_cfg_obj.api_key
-    model = provider_cfg_obj.model
     base_url = provider_cfg_obj.base_url
     if not api_key or "YOUR_API_KEY" in api_key:
-        log(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name), "ERROR")
-        progress(100, _("任务终止：API Key 未设置。"))
+        log(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name), "ERROR");
         return
 
-    proxies_to_use = None
-    if ai_cfg.use_proxy_for_ai:
-        if config.proxies and (config.proxies.http or config.proxies.https):
-            proxies_to_use = config.proxies.model_dump(exclude_none=True)
-            log(_("INFO: AI服务将使用代理: {}").format(proxies_to_use))
-        else:
-            log(_("WARNING: AI代理开关已打开，但配置文件中未设置代理地址。"))
+    proxies_to_use = config.proxies.model_dump(
+        exclude_none=True) if ai_cfg.use_proxy_for_ai and config.proxies else None
 
     progress(10, _("正在初始化AI客户端..."))
-    log(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model))
-    ai_client = AIWrapper(
-        provider=provider_name,
-        api_key=api_key,
-        model=model,
-        base_url=base_url,
-        proxies=proxies_to_use,
-        max_workers=config.batch_ai_processor.max_workers
-    )
-    project_root = os.path.dirname(config.config_file_abs_path_) if hasattr(config, 'config_file_abs_path_') and config.config_file_abs_path_ else '.'
-    output_dir_name = getattr(config.batch_ai_processor, 'output_dir_name', 'ai_results')
-    output_dir = os.path.join(project_root, output_dir_name)
-    os.makedirs(output_dir, exist_ok=True)
-    prompt_to_use = custom_prompt_template
-    if not prompt_to_use:
-        prompt_to_use = config.ai_prompts.translation_prompt if task_type == 'translate' else config.ai_prompts.analysis_prompt
+    log(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model_name))
+    ai_client = AIWrapper(provider=provider_name, api_key=api_key, model=model_name, base_url=base_url,
+                          proxies=proxies_to_use, max_workers=config.batch_ai_processor.max_workers)
 
+    # 确定要使用的提示词 (这部分不变)
+    prompt_to_use = custom_prompt_template or (
+        config.ai_prompts.translation_prompt if task_type == 'translate' else config.ai_prompts.analysis_prompt)
+
+    # --- 【核心修正】 ---
+    # 根据 "另存为新文件" 的选择，来决定最终的输出目录和输出路径
+    final_output_path = None
+    if output_file is not None:
+        # 情况1: “另存为”开关关闭，此时 output_file 带有完整路径，表示在原文件上修改。
+        output_directory = os.path.dirname(output_file)
+        final_output_path = output_file
+        log(_("将在原文件上修改: {}").format(output_file), "INFO")
+    else:
+        # 情况2: “另存为”开关开启，此时 output_file 为 None。
+        # 我们将输出目录设置为源文件的目录。
+        output_directory = os.path.dirname(input_file)
+        # final_output_path 保持为 None，让下游函数自动生成新文件名。
+        log(_("将创建新文件并保存于源文件目录: {}").format(output_directory), "INFO")
+
+    # 确保目录存在
+    os.makedirs(output_directory, exist_ok=True)
+    # --- 修正结束 ---
+
+    # 开始处理文件
     progress(15, _("正在处理CSV文件并调用AI服务..."))
-    # process_single_csv_file 内部应有自己的进度更新
     process_single_csv_file(
         client=ai_client,
         input_csv_path=input_file,
-        output_csv_directory=output_dir,
+        output_csv_directory=output_directory,  # 使用我们新确定的目录
         source_column_name=source_column,
         new_column_name=new_column,
         user_prompt_template=prompt_to_use,
         task_identifier=f"{os.path.basename(input_file)}_{task_type}",
-        max_row_workers=batch_cfg.max_workers,
+        max_row_workers=config.batch_ai_processor.max_workers,
         status_callback=status_callback,
-        # 将 progress_callback 传递给子函数，并调整其百分比范围
-        progress_callback=lambda p, m: progress(15 + int(p * 0.8), _("AI处理: {}").format(m)), # 15%-95%
+        progress_callback=lambda p, m: progress(15 + int(p * 0.8), _("AI处理: {}").format(m)),
         cancel_event=cancel_event,
-        output_csv_path=output_file
+        output_csv_path=final_output_path  # 传递最终路径
     )
 
     if cancel_event and cancel_event.is_set():
-        log("INFO: 任务已被用户取消。", "INFO")
-        progress(100, _("任务已取消。"))
+        log("INFO: 任务已被用户取消。", "INFO");
         return
 
     progress(100, _("任务完成。"))

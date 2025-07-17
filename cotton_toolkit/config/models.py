@@ -14,6 +14,8 @@ class ProviderConfig(BaseModel):
     api_key: str = "YOUR_API_KEY_HERE"
     model: str = "default-model"
     base_url: Optional[str] = None
+    available_models: Optional[str] = None
+
 
 class DownloaderConfig(BaseModel):
     max_workers: int = 8

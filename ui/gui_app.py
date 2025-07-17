@@ -477,20 +477,56 @@ class CottonToolkitApp(ttkb.Window):
         self._switch_tool_content_page(selected_key)
 
     def _switch_tool_content_page(self, key_to_show: str):
+        """切换在主内容区显示的工具页面。"""
         for key, page in self.tool_content_pages.items():
-            if key == key_to_show: page.grid()
-            else: page.grid_remove()
+            if key == key_to_show:
+                # 显示被选中的页面
+                page.grid()
+
+                # --- 【核心修正】 ---
+                # 当一个页面被选中显示时，获取其实例并调用其刷新函数
+                if instance := self.tool_tab_instances.get(key):
+                    if hasattr(instance, 'update_from_config'):
+                        # 调用该Tab自己的update_from_config方法，
+                        # 从而根据最新配置刷新其所有UI组件的状态。
+                        instance.update_from_config()
+                        self.logger.debug(f"Tab '{key}' has been refreshed upon selection.")
+                # --- 修正结束 ---
+
+            else:
+                # 隐藏其他未被选中的页面
+                page.grid_remove()
 
     def set_app_icon(self):
+        """
+        设置应用程序主窗口的图标。
+        此方法会查找并加载指定的.ico文件作为窗口和任务栏的图标。
+        """
         try:
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(os.path.abspath(__file__))
-            icon_path = os.path.join(base_path, "assets", "icon.ico")
+            # 检查程序是否被打包成单文件执行包 (pyinstaller)
+            if hasattr(sys, '_MEIPASS'):
+                # 如果是，则基准路径是解压后的临时目录
+                base_path = sys._MEIPASS
+            else:
+                # 否则，基准路径是当前脚本文件所在的目录 (即 ui/ 目录)
+                base_path = os.path.dirname(os.path.abspath(__file__))
+
+            # 【核心修改】将 "icon.ico" 修改为您自己的图标文件名 "logo.ico"
+            icon_path = os.path.join(base_path, "assets", "logo.ico")
+
             if os.path.exists(icon_path):
                 self.app_icon_path = icon_path
+                # 调用 ttkbootstrap 的方法来设置图标
                 self.iconbitmap(self.app_icon_path)
-            else: self.logger.warning(f"应用图标文件未找到: {icon_path}")
+                self.logger.info(f"成功加载并设置应用图标: {icon_path}")
+            else:
+                # 如果找不到图标，在日志中打印警告，方便排查问题
+                self.logger.warning(f"应用图标文件未找到，请检查路径: {icon_path}")
+
         except Exception as e:
+            # 如果加载过程中出现任何其他错误，也记录下来
             self.logger.warning(f"加载主窗口图标失败: {e}")
+
 
     def _update_wraplength(self, event):
         wraplength = event.width - 20

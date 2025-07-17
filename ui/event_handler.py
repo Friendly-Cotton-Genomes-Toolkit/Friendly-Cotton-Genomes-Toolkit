@@ -39,7 +39,9 @@ class EventHandler:
         self.message_handlers = self._initialize_message_handlers()
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
-        """返回消息类型到其处理函数的映射。"""
+        """
+        【最终修复版】返回消息类型到其处理函数的正确映射。
+        """
         return {
             "startup_complete": self._handle_startup_complete,
             "startup_failed": self._handle_startup_failed,
@@ -48,14 +50,19 @@ class EventHandler:
             "error": self._handle_error,
             "status": self._handle_status,
             "progress": self._handle_progress,
-            "hide_progress_dialog": self.app.ui_manager.progress_dialog,
             "ai_models_fetched": self._handle_ai_models_fetched,
             "ai_test_result": self._handle_ai_test_result,
             "auto_identify_success": self._handle_auto_identify_success,
             "proxy_test_done": self._handle_proxy_test_done,
             "csv_columns_fetched": self._handle_csv_columns_fetched,
-            "show_progress_dialog": self.app.ui_manager.progress_dialog
+
+            # --- 【核心修正】 ---
+            # 这两个消息处理器必须指向 UIManager 中对应的【函数】，而不是对象
+            # 它们在您的 ui_manager.py 中已经存在
+            "show_progress_dialog": self.ui_manager._show_progress_dialog,
+            "hide_progress_dialog": self.ui_manager._hide_progress_dialog,
         }
+
 
     # --- 语言切换处理 ---
     def on_language_change(self, language_name: str):
@@ -185,17 +192,33 @@ class EventHandler:
         threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name), daemon=True).start()
 
     def _task_wrapper(self, target_func, kwargs, task_name):
+        """
+        【最终修复版】在后台线程中执行任务的包装器。
+        它会捕获任务的各种结束状态，并统一发送给 task_done 处理器。
+        """
         _ = self.app._
+        final_data = None
         try:
+            # 1. 执行任务函数
             result = target_func(**kwargs)
-            data = (False, task_name, "CANCELLED") if self.app.cancel_current_task_event.is_set() else (True, task_name,
-                                                                                                        result)
-            self.app.message_queue.put(("task_done", data))
+
+            # 2. 检查任务是否被用户取消
+            if self.app.cancel_current_task_event.is_set():
+                # 如果是，准备一个 "CANCELLED" 状态的结果
+                final_data = (False, task_name, "CANCELLED")
+            else:
+                # 如果正常完成，准备一个成功的结果
+                final_data = (True, task_name, result)
+
         except Exception as e:
-            self.app.message_queue.put(("error", f"{_('任务执行出错')}: {e}\n{traceback.format_exc()}"))
+            # 3. 如果任务执行过程中抛出任何异常，准备一个失败的结果
+            #    将异常对象本身作为结果数据，方便后续显示详细错误
+            final_data = (False, task_name, e)
         finally:
-            self.app.message_queue.put(("progress", (100, _("任务完成。"))))
-            self.app.message_queue.put(("hide_progress_dialog", None))
+            # 4. 【重要】无论成功、失败还是取消，最后都把结果统一发送给 task_done 处理器
+            if final_data:
+                self.app.message_queue.put(("task_done", final_data))
+
 
     def _handle_startup_complete(self, data: dict):
         app = self.app
@@ -246,33 +269,17 @@ class EventHandler:
 
     def _handle_task_done(self, data: tuple):
         """
-        【已修改】处理所有后台任务的完成事件。
+        【最终修复版】处理所有后台任务的完成事件，并调用 UIManager 来显示最终状态。
         """
         app = self.app
         _ = self.app._
         success, task_display_name, result_data = data
 
-        # 【新增代码块】处理基因组鉴定任务的结果
-        if task_display_name == _("基因组鉴定"):
-            # 首先，调用通用的UI收尾函数 (隐藏进度条、恢复按钮状态等)
-            app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
-            # 如果任务成功，则调用tab中对应的处理函数来更新 specific UI
-            if success:
-                # 安全地获取 'genome_identifier' 选项卡的实例
-                if identifier_tab := app.tool_tab_instances.get('genome_identifier'):
-                    # 调用我们刚刚在 GenomeIdentifierTab 中新增的方法
-                    identifier_tab.handle_identification_result(result_data)
-            return  # 处理完毕，提前返回
-
-        # --- 以下是您原有的其他任务处理逻辑，保持不变 ---
-
-        if task_display_name == _("生成默认配置"):
-            app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
-            self._handle_generate_default_configs_done(data)
-            return
-
+        # 1. 直接调用您在 ui_manager.py 中已有的 _finalize_task_ui 函数
+        #    这个函数负责隐藏进度条、恢复UI，并根据结果弹出最终提示
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
 
+        # 2. 如果是特定任务，可以在此之后添加额外的UI更新逻辑
         if task_display_name in [_("数据下载"), _("预处理注释文件")]:
             if download_tab := app.tool_tab_instances.get('download'):
                 if hasattr(download_tab, '_update_dynamic_widgets'):
@@ -280,13 +287,10 @@ class EventHandler:
                     app.after(10, lambda: download_tab._update_dynamic_widgets(selected_genome))
                     app.logger.info(_("数据下载选项卡状态已在任务完成后自动刷新。"))
 
-        elif task_display_name == _("位点转换"):
-            if success and result_data:
-                self.app.ui_manager.show_info_message(_("转换成功"), result_data)
-
         elif "富集分析" in task_display_name and success and result_data:
-            if hasattr(self.app.ui_manager, '_show_plot_results') and result_data:
+             if hasattr(self.app.ui_manager, '_show_plot_results'):
                 self.app.ui_manager._show_plot_results(result_data)
+
 
     def _handle_error(self, data: str):
         _ = self.app._
@@ -304,13 +308,26 @@ class EventHandler:
     def _handle_ai_models_fetched(self, data: tuple):
         _ = self.app._
         provider_key, models_or_error = data
-        if isinstance(models_or_error, list):
+        if isinstance(models_or_error, list) and models_or_error:
+            # 更新编辑器UI中的下拉选项 (这部分逻辑不变)
             self.app.ui_manager.update_ai_model_dropdown(provider_key, models_or_error)
+
+            # --- 【核心修正】---
+            # 将获取到的完整模型列表（用逗号连接成字符串）
+            # 更新到内存中配置对象的 available_models 字段
+            if self.app.current_config:
+                provider_cfg = self.app.current_config.ai_services.providers.get(provider_key)
+                if provider_cfg:
+                    provider_cfg.available_models = ",".join(models_or_error)
+                    self.app.logger.info(f"In-memory config for '{provider_key}' updated with a list of {len(models_or_error)} available models.")
+            # --- 修正结束 ---
+
             self.app.ui_manager.show_info_message(_("刷新成功"),
                                                   _("已成功获取并更新 {} 的模型列表。").format(provider_key))
         else:
             self.app.ui_manager.update_ai_model_dropdown(provider_key, [])
             self.app.ui_manager.show_error_message(_("刷新失败"), str(models_or_error))
+
 
     def _handle_ai_test_result(self, data: tuple):
         _ = self.app._

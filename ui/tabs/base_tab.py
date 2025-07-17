@@ -1,5 +1,5 @@
 ﻿# 文件路径: ui/tabs/base_tab.py
-
+import sys
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Callable, Optional
@@ -30,55 +30,81 @@ class BaseTab(ttk.Frame):
         self._create_widgets()
 
     def _create_base_layout(self):
-        """创建基础的上下布局框架。"""
+        """创建基础的上下布局框架，并实现健壮的滚动逻辑。"""
         self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(1, weight=0)  # 固定操作区高度
         self.grid_columnconfigure(0, weight=1)
 
         # --- 上部：可滚动内容区 ---
+        # 容器包含了画布和滚动条
         scroll_container = ttk.Frame(self)
         scroll_container.grid(row=0, column=0, sticky="nsew")
         scroll_container.grid_rowconfigure(0, weight=1)
         scroll_container.grid_columnconfigure(0, weight=1)
 
+        # 画布，所有内容将绘制于此
         canvas = tk.Canvas(scroll_container, highlightthickness=0, bd=0,
                            background=self.app.style.lookup('TFrame', 'background'))
-        canvas.grid(row=0, column=0, sticky="nsew")
 
+        # 滚动条
         scrollbar = ttkb.Scrollbar(scroll_container, orient="vertical", command=canvas.yview,
                                    bootstyle="round-secondary")
-        scrollbar.grid(row=0, column=1, sticky="ns")
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
+        # 放置所有子页面组件的内部框架
         self.scrollable_frame = ttk.Frame(canvas)
-        canvas_window_id = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw",
-                                                width=self.winfo_width())
 
-        def _on_frame_configure(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
+        # 将内部框架放入画布中
+        canvas_window_id = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
 
-        def _on_canvas_configure(event):
-            canvas.itemconfig(canvas_window_id, width=event.width)
+        # --- 滚轮事件处理优化 ---
 
         def _on_mousewheel(event):
-            # 统一处理不同平台的滚轮事件
-            if event.num == 5 or event.delta < 0:
-                canvas.yview_scroll(1, "units")
-            elif event.num == 4 or event.delta > 0:
-                canvas.yview_scroll(-1, "units")
-            # 返回 "break" 阻止事件传播
+            """统一处理不同平台的滚轮事件。"""
+            # 根据事件类型判断滚动方向和幅度
+            # Windows/macOS 使用 event.delta
+            # Linux 使用 event.num
+            if sys.platform.startswith('linux'):
+                if event.num == 4:
+                    canvas.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    canvas.yview_scroll(1, "units")
+            else:
+                # 调整滚动速度，可以修改 -1 和 1 来改变快慢
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+            # 返回 "break" 阻止事件传播到父级窗口，避免意外滚动
             return "break"
 
-        # 【核心修正】将滚轮事件直接绑定到 Canvas 和其内部的 Frame 上
-        # 这样可以确保只要鼠标在滚动区域内，事件就能被正确捕获
-        for widget in [canvas, self.scrollable_frame]:
-             widget.bind("<MouseWheel>", _on_mousewheel)
-             widget.bind("<Button-4>", _on_mousewheel)
-             widget.bind("<Button-5>", _on_mousewheel)
+        def _bind_mousewheel(widget):
+            """递归地为组件及其所有子组件绑定滚轮事件。"""
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            widget.bind("<Button-4>", _on_mousewheel)  # For Linux scroll up
+            widget.bind("<Button-5>", _on_mousewheel)  # For Linux scroll down
+            for child in widget.winfo_children():
+                _bind_mousewheel(child)
 
+        # 【核心优化】
+        # 在窗口内容发生变化时，不仅绑定 canvas 和 scrollable_frame，
+        # 还递归绑定所有子孙组件的滚轮事件。
+        def _on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            # 每当框架配置变化（例如添加新组件），重新绑定所有组件的滚轮事件
+            _bind_mousewheel(self.scrollable_frame)
+
+        def _on_canvas_configure(event):
+            # 当画布大小变化时，调整内部框架的宽度以填充画布
+            canvas.itemconfig(canvas_window_id, width=event.width)
+
+        # 初始绑定
+        _bind_mousewheel(self)
         self.scrollable_frame.bind("<Configure>", _on_frame_configure)
         canvas.bind("<Configure>", _on_canvas_configure)
+
+        # 将画布和滚动条布局到容器中
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         # --- 下部：固定操作区 ---
         action_frame = ttkb.Frame(self)
@@ -88,7 +114,6 @@ class BaseTab(ttk.Frame):
 
         self.action_button = ttkb.Button(action_frame, text=self._("执行操作"), bootstyle="success")
         self.action_button.grid(row=0, column=0, sticky="e", padx=15, pady=10)
-
 
     def get_primary_action(self) -> Optional[Callable]:
         """返回此选项卡的主要操作函数，用于绑定回车键。"""
