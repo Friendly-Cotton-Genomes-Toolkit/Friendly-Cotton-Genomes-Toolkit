@@ -66,8 +66,8 @@ class CottonToolkitApp(ttkb.Window):
 
         self.title_text_key = "Friendly Cotton Genomes Toolkit - FCGT"
         self.title(self._(self.title_text_key))
-        self.geometry("1200x750")
-        self.minsize(1200, 600)
+        self.geometry("1500x900")
+        self.minsize(1400, 800)
 
         self.bind("<FocusIn>", self._on_first_focus, add='+')
         self._setup_fonts()

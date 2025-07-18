@@ -79,7 +79,7 @@ class EventHandler:
 
         # 步骤 1: 更新并保存 UI 配置文件 (ui_settings.json)，这会影响下次启动时的默认语言
         app.ui_settings['language'] = selected_lang_code
-        self.ui_manager._save_ui_settings()
+        self.ui_manager.save_ui_settings()
 
         # 步骤 2: 【关键修正】如果当前加载了主配置文件(config.yml)，则更新并保存它
         if app.current_config and app.config_path:

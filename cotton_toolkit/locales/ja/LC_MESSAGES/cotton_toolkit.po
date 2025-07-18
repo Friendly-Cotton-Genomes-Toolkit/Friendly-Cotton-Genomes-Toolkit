@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-07-10 11:57+0800\n"
-"PO-Revision-Date: 2025-07-10 11:57+0800\n"
+"POT-Creation-Date: 2025-07-18 20:40+0800\n"
+"PO-Revision-Date: 2025-07-18 20:47+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Gemini 2.5 Pro\n"
 "Language: ja_JP\n"
@@ -494,7 +494,7 @@ msgstr "プロジェクトのオープンソースアドレス: "
 msgid "数据来源与引文"
 msgstr "データソースと引用"
 
-#: cotton_toolkit/cli.py:514 ui/event_handler.py:514
+#: cotton_toolkit/cli.py:514 ui/event_handler.py:557
 msgid "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"
 msgstr ""
 "このツールはCottonGenから提供された信頼できるデータに依存しています。彼らの"
@@ -504,7 +504,7 @@ msgstr ""
 msgid "CottonGen 主要引文:"
 msgstr "主なCottonGenの引用:"
 
-#: cotton_toolkit/cli.py:522 ui/event_handler.py:524
+#: cotton_toolkit/cli.py:522 ui/event_handler.py:567
 msgid "基因组引用文献:"
 msgstr "ゲノム参照引用:"
 
@@ -892,7 +892,7 @@ msgid "错误: 创建GFF数据库 '{}' 失败: {}"
 msgstr "エラー: GFFデータベース '{}' の作成に失敗しました: {}"
 
 #: cotton_toolkit/core/gff_parser.py:177 cotton_toolkit/core/gff_parser.py:224
-#: cotton_toolkit/pipelines.py:715
+#: cotton_toolkit/pipelines.py:717
 msgid "正在准备GFF数据库..."
 msgstr "GFFデータベースを準備しています..."
 
@@ -1085,8 +1085,8 @@ msgid "错误: 一个或多个指定的基因组名称无效。"
 msgstr "エラー: 1つ以上の指定されたゲノム名が無効です。"
 
 #: cotton_toolkit/pipelines.py:133 cotton_toolkit/pipelines.py:309
-#: cotton_toolkit/pipelines.py:554 cotton_toolkit/pipelines.py:706
-#: cotton_toolkit/pipelines.py:930
+#: cotton_toolkit/pipelines.py:556 cotton_toolkit/pipelines.py:708
+#: cotton_toolkit/pipelines.py:932
 msgid "任务终止：基因组配置错误。"
 msgstr "タスクが終了しました: ゲノム設定エラー。"
 
@@ -1106,7 +1106,7 @@ msgstr "タスクが終了しました: 領域内に遺伝子がありません�
 msgid "错误: 输入的基因列表为空。"
 msgstr "エラー: 入力遺伝子リストが空です。"
 
-#: cotton_toolkit/pipelines.py:155 cotton_toolkit/pipelines.py:537
+#: cotton_toolkit/pipelines.py:155 cotton_toolkit/pipelines.py:539
 msgid "任务终止：基因列表为空。"
 msgstr "タスクが終了しました: 遺伝子リストが空です。"
 
@@ -1127,7 +1127,7 @@ msgid "步骤 4: 通过桥梁物种执行基因映射..."
 msgstr "ステップ4: ブリッジ種を介して遺伝子マッピングを実行しています..."
 
 #: cotton_toolkit/pipelines.py:201 cotton_toolkit/pipelines.py:371
-#: cotton_toolkit/pipelines.py:596
+#: cotton_toolkit/pipelines.py:598
 msgid "基因映射: {}"
 msgstr "遺伝子マッピング: {}"
 
@@ -1137,10 +1137,9 @@ msgstr ""
 "情報: タスクは遺伝子マッピング段階でユーザーによってキャンセルされました。"
 
 #: cotton_toolkit/pipelines.py:207 cotton_toolkit/pipelines.py:377
-#: cotton_toolkit/pipelines.py:489 cotton_toolkit/pipelines.py:602
-#: cotton_toolkit/pipelines.py:636 cotton_toolkit/pipelines.py:745
-#: cotton_toolkit/pipelines.py:867 cotton_toolkit/pipelines.py:973
-#: cotton_toolkit/pipelines.py:1123
+#: cotton_toolkit/pipelines.py:604 cotton_toolkit/pipelines.py:638
+#: cotton_toolkit/pipelines.py:747 cotton_toolkit/pipelines.py:869
+#: cotton_toolkit/pipelines.py:975 cotton_toolkit/pipelines.py:1125
 msgid "任务已取消。"
 msgstr "タスクがキャンセルされました。"
 
@@ -1238,11 +1237,11 @@ msgstr ""
 "エラー: 必要なホモロジーファイルがありません。関連するゲノムのデータを先にダ"
 "ウンロードしてください。"
 
-#: cotton_toolkit/pipelines.py:337 cotton_toolkit/pipelines.py:564
+#: cotton_toolkit/pipelines.py:337 cotton_toolkit/pipelines.py:566
 msgid "任务终止：缺少同源文件。"
 msgstr "タスクが終了しました: ホモロジーファイルがありません。"
 
-#: cotton_toolkit/pipelines.py:340 cotton_toolkit/pipelines.py:567
+#: cotton_toolkit/pipelines.py:340 cotton_toolkit/pipelines.py:569
 msgid "正在解析源到桥梁的同源文件..."
 msgstr "ソースからブリッジへのホモロジーファイルを解析しています..."
 
@@ -1250,7 +1249,7 @@ msgstr "ソースからブリッジへのホモロジーファイルを解析し
 msgid "解析同源文件 (S->B): {}"
 msgstr "ホモロジーファイルを解析しています (S->B): {}"
 
-#: cotton_toolkit/pipelines.py:343 cotton_toolkit/pipelines.py:570
+#: cotton_toolkit/pipelines.py:343 cotton_toolkit/pipelines.py:572
 msgid "正在解析桥梁到目标的同源文件..."
 msgstr "ブリッジからターゲットへのホモロジーファイルを解析しています..."
 
@@ -1262,7 +1261,7 @@ msgstr "ホモロジーファイルを解析しています (B->T): {}"
 msgid "正在执行核心同源映射..."
 msgstr "コアホモロジーマッピングを実行しています..."
 
-#: cotton_toolkit/pipelines.py:376 cotton_toolkit/pipelines.py:601
+#: cotton_toolkit/pipelines.py:376 cotton_toolkit/pipelines.py:603
 msgid "任务在同源映射阶段被用户取消。"
 msgstr ""
 "タスクはホモロジーマッピング段階でユーザーによってキャンセルされました。"
@@ -1311,570 +1310,560 @@ msgstr ""
 msgid "位点转换流程出错: {}"
 msgstr "座位変換プロセスが失敗しました: {}"
 
-#: cotton_toolkit/pipelines.py:424 cotton_toolkit/pipelines.py:425
+#: cotton_toolkit/pipelines.py:423 cotton_toolkit/pipelines.py:424
 msgid "AI任务流程开始..."
 msgstr "AIタスクプロセスが開始されました..."
 
 #: cotton_toolkit/pipelines.py:427
-msgid "初始化AI客户端..."
-msgstr "AIクライアントを初期化しています..."
-
-#: cotton_toolkit/pipelines.py:432
-msgid "错误: 在配置中未找到默认AI服务商 '{}' 的设置。"
-msgstr "エラー: デフォルトのAIプロバイダー '{}' の設定が設定に見つかりません。"
+msgid "正在解析AI服务配置..."
+msgstr "AIサービスの設定を解析中です..."
 
 #: cotton_toolkit/pipelines.py:433
-msgid "任务终止：AI服务配置错误。"
-msgstr "タスクが終了しました: AIサービス設定エラー。"
+msgid "错误: 在配置中未找到AI服务商 '{}' 的设置。"
+msgstr "エラー: 設定でAIサービスプロバイダ '{}' の設定が見つかりません。"
 
 #: cotton_toolkit/pipelines.py:439
 msgid "错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。"
 msgstr ""
 "エラー: 設定ファイルでプロバイダー '{}' に有効なAPIキーを設定してください。"
 
-#: cotton_toolkit/pipelines.py:440
-msgid "任务终止：API Key 未设置。"
-msgstr "タスクが終了しました: APIキーが設定されていません。"
-
-#: cotton_toolkit/pipelines.py:447
-msgid "INFO: AI服务将使用代理: {}"
-msgstr "情報: AIサービスはプロキシを使用します: {}"
-
-#: cotton_toolkit/pipelines.py:449
-msgid "WARNING: AI代理开关已打开，但配置文件中未设置代理地址。"
-msgstr ""
-"警告: AIプロキシは有効ですが、設定ファイルにプロキシアドレスが設定されていま"
-"せん。"
-
-#: cotton_toolkit/pipelines.py:451
+#: cotton_toolkit/pipelines.py:445
 msgid "正在初始化AI客户端..."
 msgstr "AIクライアントを初期化しています..."
 
-#: cotton_toolkit/pipelines.py:452
+#: cotton_toolkit/pipelines.py:446
 msgid "正在初始化AI客户端... 服务商: {}, 模型: {}"
 msgstr "AIクライアントを初期化しています... プロバイダー: {}, モデル: {}"
 
-#: cotton_toolkit/pipelines.py:469
+#: cotton_toolkit/pipelines.py:461
+msgid "将在原文件上修改: {}"
+msgstr "原ファイル上で修正します: {}"
+
+#: cotton_toolkit/pipelines.py:467
+msgid "将创建新文件并保存于源文件目录: {}"
+msgstr "新しいファイルを作成し、ソースファイルディレクトリに保存します: {}"
+
+#: cotton_toolkit/pipelines.py:474
 msgid "正在处理CSV文件并调用AI服务..."
 msgstr "CSVファイルを処理し、AIサービスを呼び出しています..."
 
-#: cotton_toolkit/pipelines.py:482
+#: cotton_toolkit/pipelines.py:485
 msgid "AI处理: {}"
 msgstr "AI処理: {}"
 
-#: cotton_toolkit/pipelines.py:492 ui/event_handler.py:197
+#: cotton_toolkit/pipelines.py:494
 msgid "任务完成。"
 msgstr "タスクが完了しました。"
 
-#: cotton_toolkit/pipelines.py:493
+#: cotton_toolkit/pipelines.py:495
 msgid "AI任务流程成功完成。"
 msgstr "AIタスクプロセスは正常に完了しました。"
 
-#: cotton_toolkit/pipelines.py:514
+#: cotton_toolkit/pipelines.py:516
 msgid "准备输入基因列表..."
 msgstr "入力遺伝子リストを準備しています..."
 
-#: cotton_toolkit/pipelines.py:518
+#: cotton_toolkit/pipelines.py:520
 msgid "INFO: 从参数直接获取了 {} 个唯一基因ID。"
 msgstr "情報: パラメータから直接{}個の一意の遺伝子IDを取得しました。"
 
-#: cotton_toolkit/pipelines.py:521
+#: cotton_toolkit/pipelines.py:523
 msgid "正在从文件读取基因列表..."
 msgstr "ファイルから遺伝子リストを読み込んでいます..."
 
-#: cotton_toolkit/pipelines.py:522
+#: cotton_toolkit/pipelines.py:524
 msgid "INFO: 正在从文件 '{}' 中读取基因列表..."
 msgstr "情報: ファイル '{}' から遺伝子リストを読み込んでいます..."
 
-#: cotton_toolkit/pipelines.py:525
+#: cotton_toolkit/pipelines.py:527
 msgid "INFO: 从文件中读取了 {} 个唯一基因ID。"
 msgstr "情報: ファイルから{}個の一意の遺伝子IDを読み込みました。"
 
-#: cotton_toolkit/pipelines.py:527
+#: cotton_toolkit/pipelines.py:529
 msgid "读取基因列表文件时出错: {}"
 msgstr "遺伝子リストファイルの読み込み中にエラーが発生しました: {}"
 
-#: cotton_toolkit/pipelines.py:528
+#: cotton_toolkit/pipelines.py:530
 msgid "任务终止：读取基因列表失败。"
 msgstr "タスクが終了しました: 遺伝子リストの読み込みに失敗しました。"
 
-#: cotton_toolkit/pipelines.py:531
+#: cotton_toolkit/pipelines.py:533
 msgid "错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"
 msgstr ""
 "エラー: 'gene_ids' または有効な 'gene_list_path' パラメータのいずれかを指定す"
 "る必要があります。"
 
-#: cotton_toolkit/pipelines.py:532
+#: cotton_toolkit/pipelines.py:534
 msgid "任务终止：缺少基因输入。"
 msgstr "タスクが終了しました: 遺伝子の入力がありません。"
 
-#: cotton_toolkit/pipelines.py:536
+#: cotton_toolkit/pipelines.py:538
 msgid "输入的基因列表为空，流程终止。"
 msgstr "入力遺伝子リストが空のため、プロセスは終了しました。"
 
-#: cotton_toolkit/pipelines.py:543
+#: cotton_toolkit/pipelines.py:545
 msgid "检查是否需要同源映射..."
 msgstr "ホモロジーマッピングが必要かどうかを確認しています..."
 
-#: cotton_toolkit/pipelines.py:545
+#: cotton_toolkit/pipelines.py:547
 msgid "源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。"
 msgstr ""
 "ソースゲノム ({}) はターゲットゲノム ({}) と異なるため、ホモロジー変換の準備"
 "をしています。"
 
-#: cotton_toolkit/pipelines.py:553
+#: cotton_toolkit/pipelines.py:555
 msgid "一个或多个基因组名称无效，无法找到配置信息。"
 msgstr "1つ以上のゲノム名が無効であるため、設定情報が見つかりません。"
 
-#: cotton_toolkit/pipelines.py:557
+#: cotton_toolkit/pipelines.py:559
 msgid "加载同源数据文件..."
 msgstr "ホモロジーデータファイルを読み込んでいます..."
 
-#: cotton_toolkit/pipelines.py:563
+#: cotton_toolkit/pipelines.py:565
 msgid "缺少必要的同源文件，无法进行转换。请先下载数据。"
 msgstr ""
 "必要なホモロジーファイルがないため、変換を実行できません。最初にデータをダウ"
 "ンロードしてください。"
 
-#: cotton_toolkit/pipelines.py:569 cotton_toolkit/pipelines.py:573
+#: cotton_toolkit/pipelines.py:571 cotton_toolkit/pipelines.py:575
 msgid "加载同源数据: {}"
 msgstr "ホモロジーデータを読み込んでいます: {}"
 
-#: cotton_toolkit/pipelines.py:581
+#: cotton_toolkit/pipelines.py:583
 msgid "正在通过桥梁物种进行基因映射..."
 msgstr "ブリッジ種を介して遺伝子マッピングを実行しています..."
 
-#: cotton_toolkit/pipelines.py:606
+#: cotton_toolkit/pipelines.py:608
 msgid "同源转换未能映射到任何基因，流程终止。"
 msgstr ""
 "ホモロジー変換でどの遺伝子もマッピングできなかったため、プロセスは終了しまし"
 "た。"
 
-#: cotton_toolkit/pipelines.py:607
+#: cotton_toolkit/pipelines.py:609
 msgid "任务终止：同源映射失败。"
 msgstr "タスクが終了しました: ホモロジーマッピングに失敗しました。"
 
-#: cotton_toolkit/pipelines.py:613
+#: cotton_toolkit/pipelines.py:615
 msgid "初始化注释器..."
 msgstr "アノテーターを初期化しています..."
 
-#: cotton_toolkit/pipelines.py:617
+#: cotton_toolkit/pipelines.py:619
 msgid "错误：无法为目标基因组 {} 找到配置信息。"
 msgstr "エラー: ターゲットゲノム {} の設定情報が見つかりません。"
 
-#: cotton_toolkit/pipelines.py:618
+#: cotton_toolkit/pipelines.py:620
 msgid "任务终止：目标基因组配置错误。"
 msgstr "タスクが終了しました: ターゲットゲノム設定エラー。"
 
-#: cotton_toolkit/pipelines.py:627
+#: cotton_toolkit/pipelines.py:629
 msgid "执行注释: {}"
 msgstr "アノテーションを実行しています: {}"
 
-#: cotton_toolkit/pipelines.py:631
+#: cotton_toolkit/pipelines.py:633
 msgid "正在执行功能注释..."
 msgstr "機能アノテーションを実行しています..."
 
-#: cotton_toolkit/pipelines.py:635
+#: cotton_toolkit/pipelines.py:637
 msgid "任务在注释阶段被用户取消。"
 msgstr "タスクはアノテーション段階でユーザーによってキャンセルされました。"
 
-#: cotton_toolkit/pipelines.py:639
+#: cotton_toolkit/pipelines.py:641
 msgid "整理并保存结果..."
 msgstr "結果を整理して保存しています..."
 
-#: cotton_toolkit/pipelines.py:658
+#: cotton_toolkit/pipelines.py:660
 msgid "错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"
 msgstr ""
 "エラー: 結果を保存するには、output_dir または output_path パラメータのいずれ"
 "かを指定する必要があります。"
 
-#: cotton_toolkit/pipelines.py:659
+#: cotton_toolkit/pipelines.py:661
 msgid "任务终止：未提供输出路径。"
 msgstr "タスクが終了しました: 出力パスが指定されていません。"
 
-#: cotton_toolkit/pipelines.py:664
+#: cotton_toolkit/pipelines.py:666
 msgid "注释成功！结果已保存至: {}"
 msgstr "アノテーションに成功しました！結果は次の場所に保存されました: {}"
 
-#: cotton_toolkit/pipelines.py:666
+#: cotton_toolkit/pipelines.py:668
 msgid "保存结果到 {} 时发生错误: {}"
 msgstr "{} への結果の保存中にエラーが発生しました: {}"
 
-#: cotton_toolkit/pipelines.py:667 cotton_toolkit/pipelines.py:768
+#: cotton_toolkit/pipelines.py:669 cotton_toolkit/pipelines.py:770
 msgid "任务终止：保存结果失败。"
 msgstr "タスクが終了しました: 結果の保存に失敗しました。"
 
-#: cotton_toolkit/pipelines.py:671
+#: cotton_toolkit/pipelines.py:673
 msgid "注释完成，但没有生成任何结果。"
 msgstr "アノテーションは完了しましたが、結果は生成されませんでした。"
 
-#: cotton_toolkit/pipelines.py:672
+#: cotton_toolkit/pipelines.py:674
 #: cotton_toolkit/tools/enrichment_analyzer.py:128
 #: cotton_toolkit/tools/enrichment_analyzer.py:153
 msgid "任务完成：无结果。"
 msgstr "タスク完了: 結果なし。"
 
-#: cotton_toolkit/pipelines.py:674
+#: cotton_toolkit/pipelines.py:676
 msgid "功能注释流程结束。"
 msgstr "機能アノテーションプロセスが終了しました。"
 
-#: cotton_toolkit/pipelines.py:691
+#: cotton_toolkit/pipelines.py:693
 msgid "错误: 必须提供基因ID列表或染色体区域进行查询。"
 msgstr ""
 "エラー: クエリには遺伝子IDリストまたは染色体領域を指定する必要があります。"
 
-#: cotton_toolkit/pipelines.py:692
+#: cotton_toolkit/pipelines.py:694
 msgid "任务终止：缺少查询参数。"
 msgstr "タスクが終了しました: クエリパラメータがありません。"
 
-#: cotton_toolkit/pipelines.py:695
+#: cotton_toolkit/pipelines.py:697
 msgid "流程开始，正在初始化配置..."
 msgstr "プロセスが開始されました。設定を初期化しています..."
 
-#: cotton_toolkit/pipelines.py:696
+#: cotton_toolkit/pipelines.py:698
 msgid "开始GFF基因查询流程..."
 msgstr "GFF遺伝子クエリプロセスを開始しています..."
 
-#: cotton_toolkit/pipelines.py:705
+#: cotton_toolkit/pipelines.py:707
 msgid "错误: 基因组 '{}' 未在基因组源列表中找到。"
 msgstr "エラー: ゲノム '{}' がゲノムソースリストに見つかりません。"
 
-#: cotton_toolkit/pipelines.py:711
+#: cotton_toolkit/pipelines.py:713
 msgid "错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。"
 msgstr ""
 "エラー: ゲノム '{}' のGFFファイルが見つかりません。最初にデータをダウンロード"
 "してください。"
 
-#: cotton_toolkit/pipelines.py:712
+#: cotton_toolkit/pipelines.py:714
 msgid "任务终止：GFF文件缺失。"
 msgstr "タスクが終了しました: GFFファイルがありません。"
 
-#: cotton_toolkit/pipelines.py:722
+#: cotton_toolkit/pipelines.py:724
 msgid "正在数据库中查询..."
 msgstr "データベースをクエリしています..."
 
-#: cotton_toolkit/pipelines.py:724
+#: cotton_toolkit/pipelines.py:726
 msgid "按基因ID查询 {} 个基因..."
 msgstr "遺伝子IDで{}個の遺伝子をクエリしています..."
 
-#: cotton_toolkit/pipelines.py:729
+#: cotton_toolkit/pipelines.py:731
 msgid "查询基因ID: {}"
 msgstr "遺伝子IDをクエリしています: {}"
 
-#: cotton_toolkit/pipelines.py:733
+#: cotton_toolkit/pipelines.py:735
 msgid "按区域 {}:{}-{} 查询基因..."
 msgstr "領域 {}:{}-{} で遺伝子をクエリしています..."
 
-#: cotton_toolkit/pipelines.py:738
+#: cotton_toolkit/pipelines.py:740
 msgid "查询区域基因: {}"
 msgstr "領域遺伝子をクエリしています: {}"
 
-#: cotton_toolkit/pipelines.py:748
+#: cotton_toolkit/pipelines.py:750
 msgid "查询完成，正在整理结果..."
 msgstr "クエリが完了しました。結果を整理しています..."
 
-#: cotton_toolkit/pipelines.py:750
+#: cotton_toolkit/pipelines.py:752
 msgid "未找到任何符合条件的基因。"
 msgstr "基準に一致する遺伝子は見つかりませんでした。"
 
-#: cotton_toolkit/pipelines.py:751
+#: cotton_toolkit/pipelines.py:753
 msgid "任务完成：未找到结果。"
 msgstr "タスク完了: 結果が見つかりませんでした。"
 
-#: cotton_toolkit/pipelines.py:753
+#: cotton_toolkit/pipelines.py:755
 msgid "查询完成，找到 {} 个基因记录。"
 msgstr "クエリが完了し、{}個の遺伝子レコードが見つかりました。"
 
-#: cotton_toolkit/pipelines.py:765
+#: cotton_toolkit/pipelines.py:767
 msgid "GFF基因查询结果已保存到: {}"
 msgstr "GFF遺伝子クエリ結果は次の場所に保存されました: {}"
 
-#: cotton_toolkit/pipelines.py:767
+#: cotton_toolkit/pipelines.py:769
 msgid "保存结果时出错: {}"
 msgstr "結果の保存中にエラーが発生しました: {}"
 
-#: cotton_toolkit/pipelines.py:771
+#: cotton_toolkit/pipelines.py:773
 msgid "GFF查询流程结束。"
 msgstr "GFFクエリプロセスが終了しました。"
 
-#: cotton_toolkit/pipelines.py:785
+#: cotton_toolkit/pipelines.py:787
 msgid "下载流程开始..."
 msgstr "ダウンロードプロセスが開始されました..."
 
-#: cotton_toolkit/pipelines.py:786
+#: cotton_toolkit/pipelines.py:788
 msgid "INFO: 下载流程开始..."
 msgstr "情報: ダウンロードプロセスが開始されました..."
 
-#: cotton_toolkit/pipelines.py:803
+#: cotton_toolkit/pipelines.py:805
 msgid "INFO: 本次下载将使用代理: {}"
 msgstr "情報: このダウンロードではプロキシを使用します: {}"
 
-#: cotton_toolkit/pipelines.py:805
+#: cotton_toolkit/pipelines.py:807
 msgid "WARNING: 下载代理开关已打开，但配置文件中未设置代理地址。"
 msgstr ""
 "警告: ダウンロードプロキシは有効ですが、設定ファイルにプロキシアドレスが設定"
 "されていません。"
 
-#: cotton_toolkit/pipelines.py:807
+#: cotton_toolkit/pipelines.py:809
 msgid "正在准备下载任务列表..."
 msgstr "ダウンロードタスクリストを準備しています..."
 
-#: cotton_toolkit/pipelines.py:808
+#: cotton_toolkit/pipelines.py:810
 msgid "INFO: 将尝试下载的基因组版本: {}"
 msgstr "情報: ダウンロードされるゲノムバージョン: {}"
 
-#: cotton_toolkit/pipelines.py:814
+#: cotton_toolkit/pipelines.py:816
 msgid "DEBUG: 未从UI指定文件类型，将尝试检查所有可能的类型: {}"
 msgstr ""
 "DEBUG: UIからファイルタイプが指定されていないため、すべての可能なタイプを"
 "チェックします: {}"
 
-#: cotton_toolkit/pipelines.py:817
+#: cotton_toolkit/pipelines.py:819
 msgid "DEBUG: 将根据UI的选择，精确下载以下文件类型: {}"
 msgstr ""
 "DEBUG: UIの選択に基づいて、次のファイルタイプを正確にダウンロードします: {}"
 
-#: cotton_toolkit/pipelines.py:822
+#: cotton_toolkit/pipelines.py:824
 msgid "WARNING: 在基因组源中未找到版本 '{}'，已跳过。"
 msgstr ""
 "警告: バージョン '{}' がゲノムソースに見つからなかったため、スキップします。"
 
-#: cotton_toolkit/pipelines.py:838
+#: cotton_toolkit/pipelines.py:840
 msgid "WARNING: 根据您的选择，没有找到任何有效的URL可供下载。"
 msgstr "警告: 選択に基づいてダウンロード用の有効なURLが見つかりませんでした。"
 
-#: cotton_toolkit/pipelines.py:839
+#: cotton_toolkit/pipelines.py:841
 msgid "任务完成：无文件可下载。"
 msgstr "タスク完了: ダウンロードするファイルがありません。"
 
-#: cotton_toolkit/pipelines.py:842
+#: cotton_toolkit/pipelines.py:844
 msgid "找到 {} 个文件需要下载。"
 msgstr "ダウンロードするファイルが{}個見つかりました。"
 
-#: cotton_toolkit/pipelines.py:843
+#: cotton_toolkit/pipelines.py:845
 msgid "INFO: 准备下载 {} 个文件..."
 msgstr "情報: {}個のファイルをダウンロードする準備をしています..."
 
-#: cotton_toolkit/pipelines.py:877
+#: cotton_toolkit/pipelines.py:879
 msgid "ERROR: 下载 {} 的 {} 文件时发生严重错误: {}"
 msgstr ""
 "エラー: {} の {} ファイルのダウンロード中に重大なエラーが発生しました: {}"
 
-#: cotton_toolkit/pipelines.py:886
+#: cotton_toolkit/pipelines.py:888
 msgid "总体下载进度"
 msgstr "全体のダウンロード進捗"
 
-#: cotton_toolkit/pipelines.py:888
+#: cotton_toolkit/pipelines.py:890
 msgid "INFO: 所有指定的下载任务已完成。成功: {}, 失败: {}。"
 msgstr ""
 "情報: 指定されたすべてのダウンロードタスクが完了しました。成功: {}, 失敗: "
 "{}。"
 
-#: cotton_toolkit/pipelines.py:889
+#: cotton_toolkit/pipelines.py:891
 msgid "下载流程完成。"
 msgstr "ダウンロードプロセスが完了しました。"
 
-#: cotton_toolkit/pipelines.py:914
+#: cotton_toolkit/pipelines.py:916
 msgid "富集分析与可视化流程启动。"
 msgstr "エンリッチメント解析と可視化パイプラインが開始されました。"
 
-#: cotton_toolkit/pipelines.py:915
+#: cotton_toolkit/pipelines.py:917
 msgid "INFO: {} 富集与可视化流程启动。"
 msgstr "情報: {} エンリッチメントと可視化パイプラインが開始されました。"
 
-#: cotton_toolkit/pipelines.py:919
+#: cotton_toolkit/pipelines.py:921
 msgid "正在将RNA合并到基因..."
 msgstr "RNAを遺伝子にまとめています..."
 
-#: cotton_toolkit/pipelines.py:920
+#: cotton_toolkit/pipelines.py:922
 msgid "INFO: 正在将RNA合并到基因..."
 msgstr "情報: RNAを遺伝子にまとめています..."
 
-#: cotton_toolkit/pipelines.py:922
+#: cotton_toolkit/pipelines.py:924
 msgid "INFO: 基因列表已从 {} 个RNA合并为 {} 个唯一基因。"
 msgstr ""
 "情報: 遺伝子リストは{}個のRNAから{}個の一意の遺伝子にまとめられました。"
 
-#: cotton_toolkit/pipelines.py:925
+#: cotton_toolkit/pipelines.py:927
 msgid "正在获取基因组信息..."
 msgstr "ゲノム情報を取得しています..."
 
-#: cotton_toolkit/pipelines.py:929
+#: cotton_toolkit/pipelines.py:931
 msgid "ERROR: 无法在配置中找到基因组 '{}'。"
 msgstr "エラー: 設定でゲノム '{}' が見つかりません。"
 
-#: cotton_toolkit/pipelines.py:934
+#: cotton_toolkit/pipelines.py:936
 msgid "ERROR: 获取基因组源数据时失败: {}"
 msgstr "エラー: ゲノムソースデータの取得に失敗しました: {}"
 
-#: cotton_toolkit/pipelines.py:935
+#: cotton_toolkit/pipelines.py:937
 msgid "任务终止：获取基因组信息失败。"
 msgstr "タスクが終了しました: ゲノム情報の取得に失敗しました。"
 
-#: cotton_toolkit/pipelines.py:942
+#: cotton_toolkit/pipelines.py:944
 msgid "正在执行GO富集分析..."
 msgstr "GOエンリッチメント解析を実行しています..."
 
-#: cotton_toolkit/pipelines.py:945
+#: cotton_toolkit/pipelines.py:947
 msgid "ERROR: 未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。"
 msgstr ""
 "エラー: '{}' のGOアノテーションファイル（GAF）が見つかりません。最初にデータ"
 "をダウンロードしてください。"
 
-#: cotton_toolkit/pipelines.py:946
+#: cotton_toolkit/pipelines.py:948
 msgid "任务终止：缺少GO注释文件。"
 msgstr "タスクが終了しました: GOアノテーションファイルがありません。"
 
-#: cotton_toolkit/pipelines.py:951
+#: cotton_toolkit/pipelines.py:953
 msgid "GO富集: {}"
 msgstr "GOエンリッチメント: {}"
 
-#: cotton_toolkit/pipelines.py:954
+#: cotton_toolkit/pipelines.py:956
 msgid "正在执行KEGG富集分析..."
 msgstr "KEGGエンリッチメント解析を実行しています..."
 
-#: cotton_toolkit/pipelines.py:957
+#: cotton_toolkit/pipelines.py:959
 msgid "ERROR: 未找到 '{}' 的KEGG通路文件。请先下载数据。"
 msgstr ""
 "エラー: '{}' のKEGGパスウェイファイルが見つかりません。最初にデータをダウン"
 "ロードしてください。"
 
-#: cotton_toolkit/pipelines.py:958
+#: cotton_toolkit/pipelines.py:960
 msgid "任务终止：缺少KEGG通路文件。"
 msgstr "タスクが終了しました: KEGGパスウェイファイルがありません。"
 
-#: cotton_toolkit/pipelines.py:963
+#: cotton_toolkit/pipelines.py:965
 msgid "KEGG富集: {}"
 msgstr "KEGGエンリッチメント: {}"
 
-#: cotton_toolkit/pipelines.py:967
+#: cotton_toolkit/pipelines.py:969
 msgid "ERROR: 未知的分析类型 '{}'。"
 msgstr "エラー: 不明な解析タイプ '{}'。"
 
-#: cotton_toolkit/pipelines.py:968
+#: cotton_toolkit/pipelines.py:970
 msgid "任务终止：分析类型未知。"
 msgstr "タスクが終了しました: 不明な解析タイプ。"
 
-#: cotton_toolkit/pipelines.py:972
+#: cotton_toolkit/pipelines.py:974
 msgid "INFO: 任务在分析后被取消。"
 msgstr "情報: 解析後にタスクがキャンセルされました。"
 
-#: cotton_toolkit/pipelines.py:977
+#: cotton_toolkit/pipelines.py:979
 msgid "WARNING: 富集分析未发现任何显著结果，流程终止。"
 msgstr ""
 "警告: エンリッチメント解析で有意な結果が見つからなかったため、プロセスは終了"
 "しました。"
 
-#: cotton_toolkit/pipelines.py:978
+#: cotton_toolkit/pipelines.py:980
 msgid "任务完成：无显著结果。"
 msgstr "タスク完了: 有意な結果なし。"
 
-#: cotton_toolkit/pipelines.py:981
+#: cotton_toolkit/pipelines.py:983
 msgid "富集分析完成，正在生成图表..."
 msgstr "エンリッチメント解析が完了しました。プロットを生成しています..."
 
-#: cotton_toolkit/pipelines.py:1003
+#: cotton_toolkit/pipelines.py:1005
 msgid "生成气泡图 ({})"
 msgstr "バブルプロットを生成しています ({})"
 
-#: cotton_toolkit/pipelines.py:1012
+#: cotton_toolkit/pipelines.py:1014
 msgid "生成条形图 ({})"
 msgstr "棒グラフを生成しています ({})"
 
-#: cotton_toolkit/pipelines.py:1021
+#: cotton_toolkit/pipelines.py:1023
 msgid "生成Upset图 ({})"
 msgstr "Upsetプロットを生成しています ({})"
 
-#: cotton_toolkit/pipelines.py:1029
+#: cotton_toolkit/pipelines.py:1031
 msgid "生成网络图(Cnet) ({})"
 msgstr "Cnetプロットを生成しています ({})"
 
-#: cotton_toolkit/pipelines.py:1044
+#: cotton_toolkit/pipelines.py:1046
 msgid "生成气泡图..."
 msgstr "バブルプロットを生成しています..."
 
-#: cotton_toolkit/pipelines.py:1051
+#: cotton_toolkit/pipelines.py:1053
 msgid "生成条形图..."
 msgstr "棒グラフを生成しています..."
 
-#: cotton_toolkit/pipelines.py:1058
+#: cotton_toolkit/pipelines.py:1060
 msgid "生成Upset图..."
 msgstr "Upsetプロットを生成しています..."
 
-#: cotton_toolkit/pipelines.py:1064
+#: cotton_toolkit/pipelines.py:1066
 msgid "生成网络图(Cnet)..."
 msgstr "Cnetプロットを生成しています..."
 
-#: cotton_toolkit/pipelines.py:1070
+#: cotton_toolkit/pipelines.py:1072
 msgid "所有图表已生成。"
 msgstr "すべてのプロットが生成されました。"
 
-#: cotton_toolkit/pipelines.py:1071
+#: cotton_toolkit/pipelines.py:1073
 msgid "流程完成。在 '{}' 中成功生成 {} 个图表。"
 msgstr "プロセスが完了しました。'{}' に{}個のプロットが正常に生成されました。"
 
-#: cotton_toolkit/pipelines.py:1087 cotton_toolkit/pipelines.py:1088
+#: cotton_toolkit/pipelines.py:1089 cotton_toolkit/pipelines.py:1090
 msgid "开始预处理注释文件（转换为CSV）..."
 msgstr "アノテーションファイルの前処理を開始しています（CSVに変換）..."
 
-#: cotton_toolkit/pipelines.py:1090 ui/event_handler.py:158
+#: cotton_toolkit/pipelines.py:1092 ui/event_handler.py:165
 msgid "正在加载基因组源数据..."
 msgstr "ゲノムソースデータを読み込んでいます..."
 
-#: cotton_toolkit/pipelines.py:1093
+#: cotton_toolkit/pipelines.py:1095
 msgid "未能加载基因组源数据。"
 msgstr "ゲノムソースデータの読み込みに失敗しました。"
 
-#: cotton_toolkit/pipelines.py:1094
+#: cotton_toolkit/pipelines.py:1096
 msgid "任务终止：未能加载基因组源。"
 msgstr "タスクが終了しました: ゲノムソースの読み込みに失敗しました。"
 
-#: cotton_toolkit/pipelines.py:1099
+#: cotton_toolkit/pipelines.py:1101
 msgid "正在检查需要预处理的文件..."
 msgstr "前処理が必要なファイルを確認しています..."
 
-#: cotton_toolkit/pipelines.py:1111
+#: cotton_toolkit/pipelines.py:1113
 msgid "所有注释文件均已是最新状态，无需预处理。"
 msgstr ""
 "すべてのアノテーションファイルは最新の状態であるため、前処理は不要です。"
 
-#: cotton_toolkit/pipelines.py:1112
+#: cotton_toolkit/pipelines.py:1114
 msgid "无需处理，所有文件已是最新。"
 msgstr "処理は不要です。すべてのファイルは最新です。"
 
-#: cotton_toolkit/pipelines.py:1116 cotton_toolkit/pipelines.py:1117
+#: cotton_toolkit/pipelines.py:1118 cotton_toolkit/pipelines.py:1119
 msgid "找到 {} 个文件需要进行预处理。"
 msgstr "前処理が必要なファイルが{}個見つかりました。"
 
-#: cotton_toolkit/pipelines.py:1122
+#: cotton_toolkit/pipelines.py:1124
 msgid "任务被用户取消。"
 msgstr "タスクはユーザーによってキャンセルされました。"
 
-#: cotton_toolkit/pipelines.py:1128
+#: cotton_toolkit/pipelines.py:1130
 msgid "正在转换: {} ({}/{})"
 msgstr "変換中: {} ({}/{})"
 
-#: cotton_toolkit/pipelines.py:1134
+#: cotton_toolkit/pipelines.py:1136
 msgid "预处理完成。成功转换 {}/{} 个文件。"
 msgstr "前処理が完了しました。{}/{}個のファイルを正常に変換しました。"
 
-#: cotton_toolkit/pipelines.py:1135
+#: cotton_toolkit/pipelines.py:1137
 msgid "预处理完成。"
 msgstr "前処理が完了しました。"
 
-#: cotton_toolkit/pipelines.py:1150
+#: cotton_toolkit/pipelines.py:1152
 msgid "开始将 '{}' 转换为CSV..."
 msgstr "'{}' をCSVに変換し始めています..."
 
-#: cotton_toolkit/pipelines.py:1158
+#: cotton_toolkit/pipelines.py:1160
 msgid "成功将文件转换为CSV格式: {}"
 msgstr "ファイルを正常にCSV形式に変換しました: {}"
 
-#: cotton_toolkit/pipelines.py:1160
+#: cotton_toolkit/pipelines.py:1162
 msgid "转换文件时失败。"
 msgstr "ファイル変換中に失敗しました。"
 
-#: cotton_toolkit/pipelines.py:1163
+#: cotton_toolkit/pipelines.py:1165
 msgid "执行Excel到CSV转换流水线时发生错误: {}"
 msgstr "ExcelからCSVへの変換パイプラインの実行中にエラーが発生しました: {}"
 
@@ -2333,7 +2322,7 @@ msgid "全局日志系统已初始化，级别设置为: {}"
 msgstr ""
 "グローバルロギングシステムが初期化され、レベルが次のように設定されました: {}"
 
-#: cotton_toolkit/utils/logger.py:95 ui/gui_app.py:822
+#: cotton_toolkit/utils/logger.py:95 ui/gui_app.py:679
 msgid "全局日志级别已更新为: {}"
 msgstr "グローバルログレベルが次のように更新されました: {}"
 
@@ -2351,123 +2340,119 @@ msgstr ""
 msgid "正在准备任务..."
 msgstr "タスクを準備しています..."
 
-#: ui/dialogs.py:156 ui/event_handler.py:122 ui/event_handler.py:134
+#: ui/dialogs.py:156 ui/event_handler.py:129 ui/event_handler.py:141
 msgid "取消"
 msgstr "キャンセル"
 
-#: ui/event_handler.py:84
+#: ui/event_handler.py:91
 msgid "配置已保存"
 msgstr "配置が保存されました"
 
-#: ui/event_handler.py:85
+#: ui/event_handler.py:92
 msgid "语言设置已同步到 {}。"
 msgstr "言語設定は {} に同期されました。"
 
-#: ui/event_handler.py:90 ui/event_handler.py:244 ui/gui_app.py:536
+#: ui/event_handler.py:97 ui/event_handler.py:267 ui/gui_app.py:410
 msgid "保存失败"
 msgstr "保存失敗"
 
-#: ui/event_handler.py:90
+#: ui/event_handler.py:97
 msgid "无法将语言设置写入配置文件。"
 msgstr "言語設定をコンフィグファイルに書き込めません。"
 
-#: ui/event_handler.py:119 ui/event_handler.py:131
+#: ui/event_handler.py:126 ui/event_handler.py:138
 msgid "确认退出"
 msgstr "退出確認"
 
-#: ui/event_handler.py:120
+#: ui/event_handler.py:127
 msgid "任务'{}'正在运行中，确定要强制退出吗？"
 msgstr "タスク'{}'は実行中です。強制終了しますか？"
 
-#: ui/event_handler.py:121
+#: ui/event_handler.py:128
 msgid "强制退出"
 msgstr "強制終了"
 
-#: ui/event_handler.py:132
+#: ui/event_handler.py:139
 msgid "您确定要退出吗？"
 msgstr "本当に終了しますか？"
 
-#: ui/event_handler.py:133
+#: ui/event_handler.py:140
 msgid "退出"
 msgstr "退出"
 
-#: ui/event_handler.py:142
+#: ui/event_handler.py:149
 msgid "图形界面启动中..."
 msgstr "GUIを起動しています..."
 
-#: ui/event_handler.py:143
+#: ui/event_handler.py:150
 msgid "正在初始化应用程序和加载配置，请稍候..."
 msgstr ""
 "アプリケーションを初期化し、設定を読み込んでいます。しばらくお待ちください..."
 
-#: ui/event_handler.py:153 ui/event_handler.py:370
+#: ui/event_handler.py:160 ui/event_handler.py:409
 msgid "正在加载配置文件..."
 msgstr "設定ファイルを読み込んでいます..."
 
-#: ui/event_handler.py:160
+#: ui/event_handler.py:167
 msgid "启动完成准备..."
 msgstr "起動準備が完了しました..."
 
-#: ui/event_handler.py:165
+#: ui/event_handler.py:172
 msgid "应用启动失败"
 msgstr "アプリケーションの起動に失敗しました"
 
-#: ui/event_handler.py:167
+#: ui/event_handler.py:174
 msgid "初始化完成。"
 msgstr "初期化が完了しました。"
 
-#: ui/event_handler.py:174 ui/event_handler.py:665
+#: ui/event_handler.py:181 ui/event_handler.py:745
 msgid "任务进行中"
 msgstr "タスク進行中"
 
-#: ui/event_handler.py:175 ui/event_handler.py:666
+#: ui/event_handler.py:182 ui/event_handler.py:746
 msgid "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
 msgstr ""
 "タスク '{}' が実行中です。新しいタスクを開始する前に終了を待ちください。"
 
-#: ui/event_handler.py:181
+#: ui/event_handler.py:188
 msgid "正在处理..."
 msgstr "処理中..."
 
-#: ui/event_handler.py:195 ui/event_handler.py:271
-msgid "任务执行出错"
-msgstr "タスク実行エラー"
-
-#: ui/event_handler.py:203
+#: ui/event_handler.py:226
 msgid "应用程序启动完成。"
 msgstr "アプリケーションの起動が完了しました。"
 
-#: ui/event_handler.py:207
+#: ui/event_handler.py:230
 msgid "无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"
 msgstr ""
 "起動時にUIの配置を更新できない：UIManagerやconfig_path_display_varが初期化さ"
 "れていない。"
 
-#: ui/event_handler.py:214
+#: ui/event_handler.py:237
 msgid "默认配置文件加载成功。"
 msgstr "デフォルト設定ファイルが正常に読み込まれました。"
 
-#: ui/event_handler.py:216
+#: ui/event_handler.py:239
 msgid "未找到或无法加载默认配置文件。"
 msgstr "デフォルト設定ファイルが見つからないか、読み込めませんでした。"
 
-#: ui/event_handler.py:223
+#: ui/event_handler.py:246
 msgid "启动错误"
 msgstr "起動エラー"
 
-#: ui/event_handler.py:231
+#: ui/event_handler.py:254
 msgid "加载失败"
 msgstr "読み込み失敗"
 
-#: ui/event_handler.py:238
+#: ui/event_handler.py:261
 msgid "加载并覆盖成功"
 msgstr "ロードして上書き成功"
 
-#: ui/event_handler.py:238
+#: ui/event_handler.py:261
 msgid "已将 '{}' 的内容加载并保存至 '{}'。"
 msgstr "{} の内容を {} に読み込み保存しました。"
 
-#: ui/event_handler.py:243
+#: ui/event_handler.py:266
 msgid ""
 "无法将加载的配置保存到根目录 'config.yml'。\n"
 "错误: {}"
@@ -2475,92 +2460,84 @@ msgstr ""
 "ロードした配置をルートディレクトリ 'config.yml' に保存できません。\n"
 "エラー: {}"
 
-#: ui/event_handler.py:251 ui/event_handler.py:417
-msgid "生成默认配置"
-msgstr "デフォルト設定を生成"
-
-#: ui/event_handler.py:256 ui/gui_app.py:51 ui/tabs/data_download_tab.py:269
+#: ui/event_handler.py:283 ui/gui_app.py:54 ui/tabs/data_download_tab.py:269
 msgid "数据下载"
 msgstr "データダウンロード"
 
-#: ui/event_handler.py:256 ui/tabs/data_download_tab.py:59
+#: ui/event_handler.py:283 ui/tabs/data_download_tab.py:59
 #: ui/tabs/data_download_tab.py:133 ui/tabs/data_download_tab.py:307
 msgid "预处理注释文件"
 msgstr "アノテーションファイルの前処理"
 
-#: ui/event_handler.py:261
+#: ui/event_handler.py:288
 msgid "数据下载选项卡状态已在任务完成后自动刷新。"
 msgstr "データダウンロードタブの状態はタスク完了後に自動的に更新されました。"
 
-#: ui/event_handler.py:262 ui/gui_app.py:57 ui/tabs/locus_conversion_tab.py:145
-msgid "位点转换"
-msgstr "座位変換"
+#: ui/event_handler.py:297
+msgid "任务执行出错"
+msgstr "タスク実行エラー"
 
-#: ui/event_handler.py:264
-msgid "转换成功"
-msgstr "変換成功"
-
-#: ui/event_handler.py:272
+#: ui/event_handler.py:298
 msgid "未知任务"
 msgstr "不明なタスク"
 
-#: ui/event_handler.py:287
+#: ui/event_handler.py:325
 msgid "刷新成功"
 msgstr "更新成功"
 
-#: ui/event_handler.py:288
+#: ui/event_handler.py:326
 msgid "已成功获取并更新 {} 的模型列表。"
 msgstr "{} のモデルリストを成功して取得し更新しました。"
 
-#: ui/event_handler.py:291
+#: ui/event_handler.py:329
 msgid "刷新失败"
 msgstr "更新失敗"
 
-#: ui/event_handler.py:296
+#: ui/event_handler.py:335
 msgid "测试成功"
 msgstr "テスト成功"
 
-#: ui/event_handler.py:298
+#: ui/event_handler.py:337
 msgid "测试失败"
 msgstr "テスト失敗"
 
-#: ui/event_handler.py:310
+#: ui/event_handler.py:349
 msgid "代理测试成功"
 msgstr "プロキシテスト成功"
 
-#: ui/event_handler.py:312
+#: ui/event_handler.py:351
 msgid "代理测试失败"
 msgstr "プロキシテスト失敗"
 
-#: ui/event_handler.py:318 ui/ui_manager.py:291 ui/ui_manager.py:332
+#: ui/event_handler.py:357 ui/ui_manager.py:56 ui/ui_manager.py:344
 msgid "浅色"
 msgstr "薄い色"
 
-#: ui/event_handler.py:319 ui/ui_manager.py:291 ui/ui_manager.py:332
+#: ui/event_handler.py:358 ui/ui_manager.py:56 ui/ui_manager.py:344
 msgid "深色"
 msgstr "濃い色"
 
-#: ui/event_handler.py:320 ui/ui_manager.py:291 ui/ui_manager.py:332
+#: ui/event_handler.py:359 ui/ui_manager.py:56 ui/ui_manager.py:344
 msgid "跟随系统"
 msgstr "システムに追随する"
 
-#: ui/event_handler.py:352
+#: ui/event_handler.py:391
 msgid "隐藏日志"
 msgstr "ログを非表示"
 
-#: ui/event_handler.py:352 ui/ui_manager.py:213
+#: ui/event_handler.py:391 ui/ui_manager.py:221
 msgid "显示日志"
 msgstr "ログを表示"
 
-#: ui/event_handler.py:360
+#: ui/event_handler.py:399
 msgid "操作日志已清除。"
 msgstr "操作ログがクリアされました。"
 
-#: ui/event_handler.py:365
+#: ui/event_handler.py:404
 msgid "选择配置文件"
 msgstr "設定ファイルを選択"
 
-#: ui/event_handler.py:370 ui/tabs/annotation_tab.py:48
+#: ui/event_handler.py:409 ui/tabs/annotation_tab.py:48
 #: ui/tabs/annotation_tab.py:162 ui/tabs/enrichment_tab.py:68
 #: ui/tabs/enrichment_tab.py:261 ui/tabs/gff_query_tab.py:102
 #: ui/tabs/gff_query_tab.py:200 ui/tabs/homology_tab.py:55
@@ -2570,335 +2547,343 @@ msgstr "設定ファイルを選択"
 msgid "加载中..."
 msgstr "読み込み中..."
 
-#: ui/event_handler.py:381
+#: ui/event_handler.py:420
 msgid "加载完成。"
 msgstr "読み込みが完了しました。"
 
-#: ui/event_handler.py:395
+#: ui/event_handler.py:434
 msgid " 和 "
 msgstr "と"
 
-#: ui/event_handler.py:396
+#: ui/event_handler.py:435
 msgid "文件已存在"
 msgstr "ファイルが存在します"
 
-#: ui/event_handler.py:397
+#: ui/event_handler.py:436
 msgid "文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?"
 msgstr ""
 "ファイル {} は既にプログラムのルートディレクトリに存在します。これらを上書き"
 "して新しいデフォルト設定を生成しますか？"
 
-#: ui/event_handler.py:399
+#: ui/event_handler.py:438
 msgid "是，覆盖"
 msgstr "はい、上書きします"
 
-#: ui/event_handler.py:399
+#: ui/event_handler.py:438
 msgid "否，取消"
 msgstr "いいえ、キャンセル"
 
-#: ui/event_handler.py:401
+#: ui/event_handler.py:440
 msgid "用户取消了生成默认配置文件的操作。"
 msgstr "ユーザーがデフォルト設定ファイルの生成をキャンセルしました。"
 
-#: ui/event_handler.py:403
+#: ui/event_handler.py:442
 msgid "生成配置文件中..."
 msgstr "設定ファイルを生成しています..."
 
-#: ui/event_handler.py:404
+#: ui/event_handler.py:443
 msgid "正在根目录生成默认配置文件，请稍候..."
 msgstr ""
 "現在ルートディレクトリにデフォルトの設定ファイルを生成しています、少々お待ち"
 "ください..."
 
-#: ui/event_handler.py:411
+#: ui/event_handler.py:450
 msgid "正在生成主配置文件..."
 msgstr "メイン設定ファイルを生成しています..."
 
-#: ui/event_handler.py:413
+#: ui/event_handler.py:452
 msgid "生成其他配置文件..."
 msgstr "他の設定ファイルを生成しています..."
 
-#: ui/event_handler.py:415
+#: ui/event_handler.py:454
 msgid "配置文件生成完成。"
 msgstr "設定ファイルの生成が完了しました。"
 
-#: ui/event_handler.py:419
+#: ui/event_handler.py:456
+msgid "生成默认配置"
+msgstr "デフォルト設定を生成"
+
+#: ui/event_handler.py:458
 msgid "生成默认配置文件失败。"
 msgstr "デフォルト設定ファイルの生成に失敗しました。"
 
-#: ui/event_handler.py:421
+#: ui/event_handler.py:460
 msgid "生成默认配置文件时发生错误:"
 msgstr "デフォルト設定ファイルの生成中にエラーが発生しました:"
 
-#: ui/event_handler.py:430
+#: ui/event_handler.py:469
 msgid "生成成功"
 msgstr "生成成功"
 
-#: ui/event_handler.py:431
+#: ui/event_handler.py:470
 msgid "默认配置文件已成功生成。"
 msgstr "デフォルト設定ファイルが正常に生成されました。"
 
-#: ui/event_handler.py:431
+#: ui/event_handler.py:470
 msgid "是否立即加载?"
 msgstr "今すぐ読み込みますか？"
 
-#: ui/event_handler.py:432
+#: ui/event_handler.py:471
 msgid "是"
 msgstr "はい"
 
-#: ui/event_handler.py:432
+#: ui/event_handler.py:471
 msgid "否"
 msgstr "いいえ"
 
-#: ui/event_handler.py:445
+#: ui/event_handler.py:484
 msgid "关于 FCGT"
 msgstr "FCGTについて"
 
-#: ui/event_handler.py:505
+#: ui/event_handler.py:548
 msgid "程序名称"
 msgstr "プログラム名"
 
-#: ui/event_handler.py:506
+#: ui/event_handler.py:549
 msgid "版本"
 msgstr "バージョン"
 
-#: ui/event_handler.py:507
+#: ui/event_handler.py:550
 msgid "项目地址"
 msgstr "プロジェクトアドレス"
 
-#: ui/event_handler.py:513
+#: ui/event_handler.py:556
 msgid "致谢与引用"
 msgstr "感謝と引用"
 
-#: ui/event_handler.py:516
+#: ui/event_handler.py:559
 msgid "文章:"
 msgstr "文章:"
 
-#: ui/event_handler.py:542
+#: ui/event_handler.py:585
 msgid "许可证"
 msgstr "ライセンス"
 
-#: ui/event_handler.py:543
+#: ui/event_handler.py:586
 msgid "本软件根据 Apache License 2.0 获得许可。"
 msgstr "このソフトウェアはApache License 2.0に従って許可されています。"
 
-#: ui/event_handler.py:545
+#: ui/event_handler.py:588
 msgid "免责声明"
 msgstr "免責事項"
 
-#: ui/event_handler.py:546
+#: ui/event_handler.py:589
 msgid "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
 msgstr ""
 "上記のゲノムデータのダウンロードと処理はすべてユーザーが実行し、本ツールはフ"
 "レームワークサービスを提供するのみです。"
 
-#: ui/event_handler.py:562
+#: ui/event_handler.py:611 ui/event_handler.py:642
 msgid "确定"
 msgstr "OK"
 
-#: ui/event_handler.py:594 ui/gui_app.py:490 ui/tabs/ai_assistant_tab.py:328
+#: ui/event_handler.py:674 ui/gui_app.py:378 ui/tabs/ai_assistant_tab.py:383
 #: ui/tabs/annotation_tab.py:139 ui/tabs/data_download_tab.py:252
 #: ui/tabs/data_download_tab.py:275 ui/tabs/data_download_tab.py:284
-#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:95
-#: ui/tabs/genome_identifier_tab.py:98 ui/tabs/gff_query_tab.py:164
+#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:100
+#: ui/tabs/genome_identifier_tab.py:103 ui/tabs/gff_query_tab.py:164
 #: ui/tabs/homology_tab.py:155 ui/tabs/locus_conversion_tab.py:122
 msgid "错误"
 msgstr "エラー"
 
-#: ui/event_handler.py:594
+#: ui/event_handler.py:674
 msgid "无法打开帮助链接: {}"
 msgstr "ヘルプリンクを開けません: {}"
 
-#: ui/event_handler.py:598
+#: ui/event_handler.py:678
 msgid "选择文件"
 msgstr "ファイルを選択"
 
-#: ui/event_handler.py:604
+#: ui/event_handler.py:684
 msgid "保存文件为"
 msgstr "名前を付けてファイルを保存"
 
-#: ui/event_handler.py:611
+#: ui/event_handler.py:691
 msgid "选择目录"
 msgstr "ディレクトリを選択"
 
-#: ui/event_handler.py:635
+#: ui/event_handler.py:715
 msgid "信息"
 msgstr "情報"
 
-#: ui/event_handler.py:635
+#: ui/event_handler.py:715
 msgid "请先填写HTTP或HTTPS代理地址。"
 msgstr "最初にHTTPまたはHTTPSプロキシアドレスを入力してください。"
 
-#: ui/event_handler.py:639
+#: ui/event_handler.py:719
 msgid "正在测试代理..."
 msgstr "プロキシをテストしています..."
 
-#: ui/event_handler.py:639
+#: ui/event_handler.py:719
 msgid "尝试通过代理连接到测试站点..."
 msgstr "プロキシ経由でテストサイトに接続しようとしています..."
 
-#: ui/event_handler.py:647
+#: ui/event_handler.py:727
 msgid "发送请求..."
 msgstr "リクエストを送信しています..."
 
-#: ui/event_handler.py:651
+#: ui/event_handler.py:731
 msgid "连接成功！"
 msgstr "接続に成功しました！"
 
-#: ui/event_handler.py:651
+#: ui/event_handler.py:731
 msgid "测试站点报告的IP地址是:"
 msgstr "テストサイトから報告されたIPアドレスは次のとおりです:"
 
-#: ui/event_handler.py:653
+#: ui/event_handler.py:733
 msgid "测试完成。"
 msgstr "テストが完了しました。"
 
-#: ui/event_handler.py:655
+#: ui/event_handler.py:735
 msgid "连接失败。"
 msgstr "接続に失敗しました。"
 
-#: ui/event_handler.py:655
+#: ui/event_handler.py:735
 msgid "错误详情:"
 msgstr "エラーの詳細:"
 
-#: ui/event_handler.py:656
+#: ui/event_handler.py:736
 msgid "测试失败。"
 msgstr "テストに失敗しました。"
 
-#: ui/event_handler.py:674
+#: ui/event_handler.py:754
 msgid "UI错误"
 msgstr "UIエラー"
 
-#: ui/event_handler.py:674
+#: ui/event_handler.py:754
 msgid "配置编辑器UI尚未完全加载。"
 msgstr "設定エディタのUIがまだ完全に読み込まれていません。"
 
-#: ui/event_handler.py:677
+#: ui/event_handler.py:757
 msgid "缺少API Key"
 msgstr "APIキーがありません"
 
-#: ui/event_handler.py:678
+#: ui/event_handler.py:758
 msgid "请先在编辑器中为 '{}' 填写有效的API Key。"
 msgstr "最初にエディタで '{}' に有効なAPIキーを入力してください。"
 
-#: ui/event_handler.py:684
+#: ui/event_handler.py:764
 msgid "刷新模型列表"
 msgstr "モデルリストを更新"
 
-#: ui/event_handler.py:687
+#: ui/event_handler.py:767
 msgid "正在获取模型..."
 msgstr "モデルを取得しています..."
 
-#: ui/event_handler.py:687
+#: ui/event_handler.py:767
 msgid "连接到 {}..."
 msgstr "{} に接続しています..."
 
-#: ui/event_handler.py:702
+#: ui/event_handler.py:782
 msgid "开始连接AI服务..."
 msgstr "AIサービスへの接続を開始しています..."
 
-#: ui/event_handler.py:710
+#: ui/event_handler.py:790
 msgid "数据处理中..."
 msgstr "データ処理中..."
 
-#: ui/event_handler.py:715
+#: ui/event_handler.py:795 ui/gui_app.py:178
 msgid "刷新完成。"
 msgstr "更新が完了しました。"
 
-#: ui/gui_app.py:37
+#: ui/gui_app.py:44
 msgid "通用OpenAI兼容接口"
 msgstr "汎用OpenAI互換インターフェース"
 
-#: ui/gui_app.py:52 ui/tabs/annotation_tab.py:40 ui/tabs/annotation_tab.py:99
+#: ui/gui_app.py:54 ui/tabs/annotation_tab.py:40 ui/tabs/annotation_tab.py:99
 #: ui/tabs/annotation_tab.py:179
 msgid "功能注释"
 msgstr "機能アノテーション"
 
-#: ui/gui_app.py:53 ui/tabs/enrichment_tab.py:58 ui/tabs/enrichment_tab.py:189
+#: ui/gui_app.py:54 ui/tabs/enrichment_tab.py:58 ui/tabs/enrichment_tab.py:189
 msgid "富集分析与绘图"
 msgstr "エンリッチメント解析とプロット"
 
-#: ui/gui_app.py:54 ui/tabs/xlsx_converter_tab.py:106
+#: ui/gui_app.py:55 ui/tabs/xlsx_converter_tab.py:113
 msgid "XLSX转CSV"
 msgstr "XLSXをCSVに変換"
 
-#: ui/gui_app.py:55
+#: ui/gui_app.py:55 ui/tabs/genome_identifier_tab.py:121
 msgid "基因组鉴定"
 msgstr "ゲノム鑑定"
 
-#: ui/gui_app.py:56
+#: ui/gui_app.py:55
 msgid "同源转换"
 msgstr "同源変換"
 
-#: ui/gui_app.py:58
+#: ui/gui_app.py:56 ui/tabs/locus_conversion_tab.py:145
+msgid "位点转换"
+msgstr "座位変換"
+
+#: ui/gui_app.py:56
 msgid "GFF查询"
 msgstr "GFF 検索"
 
-#: ui/gui_app.py:59
+#: ui/gui_app.py:56
 msgid "AI助手"
 msgstr "AIアシスタント"
 
-#: ui/gui_app.py:139
+#: ui/gui_app.py:191
 msgid "图片资源未找到: '{}'"
 msgstr "画像リソースが見つかりません: '{}'"
 
-#: ui/gui_app.py:142
+#: ui/gui_app.py:193
 msgid "获取图片资源 '{}' 路径时发生错误: {}"
 msgstr "画像リソース '{}' のパス取得中にエラーが発生しました: {}"
 
-#: ui/gui_app.py:157
+#: ui/gui_app.py:206
 msgid "通用设置"
 msgstr "一般設定"
 
-#: ui/gui_app.py:166
+#: ui/gui_app.py:211
 msgid "日志级别"
 msgstr "ログレベル"
 
-#: ui/gui_app.py:173
+#: ui/gui_app.py:216
 msgid "设置应用程序的日志详细程度。"
 msgstr "アプリケーションのログの詳細度を設定します。"
 
-#: ui/gui_app.py:182
+#: ui/gui_app.py:220
 msgid "HTTP代理"
 msgstr "HTTPプロキシ"
 
-#: ui/gui_app.py:187
+#: ui/gui_app.py:223
 msgid "例如: http://127.0.0.1:7890"
 msgstr "例: http://127.0.0.1:7890"
 
-#: ui/gui_app.py:196
+#: ui/gui_app.py:227
 msgid "HTTPS代理"
 msgstr "HTTPSプロキシ"
 
-#: ui/gui_app.py:201
+#: ui/gui_app.py:230
 msgid "例如: https://127.0.0.1:7890"
 msgstr "例: https://127.0.0.1:7890"
 
-#: ui/gui_app.py:209
+#: ui/gui_app.py:234
 msgid "测试代理连接"
 msgstr "プロキシ接続をテスト"
 
-#: ui/gui_app.py:216
+#: ui/gui_app.py:237
 msgid "数据下载器配置"
 msgstr "データダウンローダー設定"
 
-#: ui/gui_app.py:225
+#: ui/gui_app.py:242
 msgid "基因组源文件"
 msgstr "ゲノムソースファイル"
 
-#: ui/gui_app.py:230
+#: ui/gui_app.py:245
 msgid "定义基因组下载链接的YAML文件。"
 msgstr "ゲノムダウンロードリンクを定義するYAMLファイル。"
 
-#: ui/gui_app.py:239
+#: ui/gui_app.py:249
 msgid "下载输出根目录"
 msgstr "ダウンロード出力ルートディレクトリ"
 
-#: ui/gui_app.py:244
+#: ui/gui_app.py:252
 msgid "所有下载文件存放的基准目录。"
 msgstr "すべてのダウンロード済みファイルが保存されるベースディレクトリ。"
 
-#: ui/gui_app.py:253
+#: ui/gui_app.py:256
 msgid "强制重新下载"
 msgstr "強制再ダウンロード"
 
@@ -2906,110 +2891,110 @@ msgstr "強制再ダウンロード"
 msgid "如果文件已存在，是否覆盖。"
 msgstr "ファイルが既に存在する場合に上書きするかどうか。"
 
-#: ui/gui_app.py:269
+#: ui/gui_app.py:264
 msgid "最大下载线程数"
 msgstr "最大ダウンロードスレッド数"
 
-#: ui/gui_app.py:274
+#: ui/gui_app.py:267
 msgid "多线程下载时使用的最大线程数。"
 msgstr "マルチスレッドダウンロードに使用する最大スレッド数。"
 
-#: ui/gui_app.py:283
+#: ui/gui_app.py:271
 msgid "为下载使用代理"
 msgstr "ダウンロードにプロキシを使用"
 
-#: ui/gui_app.py:290
+#: ui/gui_app.py:275
 msgid "是否为数据下载启用代理。"
 msgstr "データダウンロードでプロキシを有効にするかどうか。"
 
-#: ui/gui_app.py:296
+#: ui/gui_app.py:278
 msgid "AI 服务配置"
 msgstr "AIサービス設定"
 
-#: ui/gui_app.py:305
+#: ui/gui_app.py:283
 msgid "默认AI服务商"
 msgstr "デフォルトのAIプロバイダー"
 
-#: ui/gui_app.py:314
+#: ui/gui_app.py:289
 msgid "选择默认使用的AI模型提供商。"
 msgstr "使用するデフォルトのAIモデルプロバイダーを選択します。"
 
-#: ui/gui_app.py:323
+#: ui/gui_app.py:293
 msgid "最大并行AI任务数"
 msgstr "最大並列AIタスク数"
 
-#: ui/gui_app.py:328
+#: ui/gui_app.py:296
 msgid "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 msgstr ""
 "AIタスクの最大並列処理数。CPUコア数とネットワーク状況に基づいて設定することを"
 "お勧めします。"
 
-#: ui/gui_app.py:337
+#: ui/gui_app.py:300
 msgid "为AI服务使用代理"
 msgstr "AIサービスにプロキシを使用"
 
-#: ui/gui_app.py:343
+#: ui/gui_app.py:304
 msgid "是否为连接AI模型API启用代理。"
 msgstr "AIモデルAPIへの接続でプロキシを有効にするかどうか。"
 
-#: ui/gui_app.py:372 ui/ui_manager.py:486
+#: ui/gui_app.py:319 ui/ui_manager.py:574
 msgid "点击刷新获取列表"
 msgstr "更新をクリックしてリストを取得"
 
-#: ui/gui_app.py:373
+#: ui/gui_app.py:320
 msgid "点击刷新..."
 msgstr "クリックして更新..."
 
-#: ui/gui_app.py:382
+#: ui/gui_app.py:323
 msgid "刷新"
 msgstr "更新"
 
-#: ui/gui_app.py:388
+#: ui/gui_app.py:325
 msgid "代理刷新"
 msgstr "プロキシで更新"
 
-#: ui/gui_app.py:404
+#: ui/gui_app.py:332
 msgid "AI 提示词模板"
 msgstr "AIプロンプトテンプレート"
 
-#: ui/gui_app.py:413
+#: ui/gui_app.py:337
 msgid "翻译提示词"
 msgstr "翻訳プロンプト"
 
-#: ui/gui_app.py:426
+#: ui/gui_app.py:344
 msgid "分析提示词"
 msgstr "分析プロンプト"
 
-#: ui/gui_app.py:485
+#: ui/gui_app.py:374
 msgid "配置已应用到编辑器UI。"
 msgstr "設定がエディタUIに適用されました。"
 
-#: ui/gui_app.py:490
+#: ui/gui_app.py:378
 msgid "没有加载配置文件，无法保存。"
 msgstr "設定ファイルが読み込まれていないため、保存できません。"
 
-#: ui/gui_app.py:511
+#: ui/gui_app.py:396
 msgid "无效的最大工作线程数值，已重置为默认值 4。"
 msgstr ""
 "最大ワーカースレッドの値が無効です。デフォルト値の4にリセットされました。"
 
-#: ui/gui_app.py:532
+#: ui/gui_app.py:407
 msgid "保存成功"
 msgstr "保存成功"
 
-#: ui/gui_app.py:532
+#: ui/gui_app.py:407
 msgid "配置文件已更新。"
 msgstr "設定ファイルが更新されました。"
 
-#: ui/gui_app.py:536
+#: ui/gui_app.py:410
 msgid "写入文件时发生未知错误。"
 msgstr "ファイルへの書き込み中に不明なエラーが発生しました。"
 
-#: ui/gui_app.py:539
+#: ui/gui_app.py:412
 msgid "保存错误"
 msgstr "保存エラー"
 
-#: ui/gui_app.py:540
+#: ui/gui_app.py:412
 msgid ""
 "保存配置时发生错误:\n"
 "{}"
@@ -3017,59 +3002,55 @@ msgstr ""
 "設定の保存中にエラーが発生しました:\n"
 "{}"
 
-#: ui/gui_app.py:563
+#: ui/gui_app.py:422
 msgid "配置文件"
 msgstr "設定ファイル"
 
-#: ui/gui_app.py:568
+#: ui/gui_app.py:424
 msgid "加载配置文件..."
 msgstr "設定ファイルを読み込み中..."
 
-#: ui/gui_app.py:573
+#: ui/gui_app.py:426
 msgid "生成默认配置..."
 msgstr "デフォルトの設定を生成中..."
 
-#: ui/gui_app.py:579
+#: ui/gui_app.py:428
 msgid "帮助与支持"
 msgstr "支援とサポート"
 
-#: ui/gui_app.py:584
+#: ui/gui_app.py:430
 msgid "在线帮助文档"
 msgstr "オンラインヘルプドキュメント"
 
-#: ui/gui_app.py:589
+#: ui/gui_app.py:432
 msgid "关于本软件"
 msgstr "本ソフトウェアについて"
 
-#: ui/gui_app.py:648
-msgid "加载主窗口图标失败: {}。"
-msgstr "メインウィンドウアイコンの読み込みに失敗しました: {}。"
-
-#: ui/gui_app.py:670
+#: ui/gui_app.py:546
 msgid "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 msgstr ""
 "!! 警告: 設定ファイルには機密情報が含まれている可能性があります。軽々しく共有"
 "しないでください。"
 
-#: ui/gui_app.py:677
+#: ui/gui_app.py:551
 msgid "应用并保存"
 msgstr "適用して保存"
 
-#: ui/gui_app.py:746
+#: ui/gui_app.py:618
 msgid "请先从“主页”加载或生成一个配置文件。"
 msgstr "最初に「ホーム」ページから設定ファイルを読み込むか生成してください。"
 
-#: ui/gui_app.py:777
+#: ui/gui_app.py:643
 msgid "UI font set to: {}, Monospace font to: {}"
 msgstr ""
 "UIフォントが次のように設定されました: {}, 等幅フォントが次のように設定されま"
 "した: {}"
 
-#: ui/gui_app.py:812
+#: ui/gui_app.py:670
 msgid "处理消息队列时出错: {}"
 msgstr "メッセージキューの処理中にエラーが発生しました: {}"
 
-#: ui/gui_app.py:825
+#: ui/gui_app.py:681
 msgid "配置日志级别时出错: {}"
 msgstr "ログレベルの設定中にエラーが発生しました: {}"
 
@@ -3136,7 +3117,7 @@ msgstr "CSVファイルパス:"
 #: ui/tabs/gff_query_tab.py:111 ui/tabs/gff_query_tab.py:128
 #: ui/tabs/homology_tab.py:115 ui/tabs/homology_tab.py:138
 #: ui/tabs/locus_conversion_tab.py:77 ui/tabs/locus_conversion_tab.py:95
-#: ui/tabs/xlsx_converter_tab.py:57 ui/tabs/xlsx_converter_tab.py:81
+#: ui/tabs/xlsx_converter_tab.py:61 ui/tabs/xlsx_converter_tab.py:88
 msgid "浏览..."
 msgstr "参照..."
 
@@ -3145,7 +3126,7 @@ msgid "待处理列:"
 msgstr "処理する列:"
 
 #: ui/tabs/ai_assistant_tab.py:133 ui/tabs/ai_assistant_tab.py:134
-#: ui/tabs/ai_assistant_tab.py:187 ui/tabs/ai_assistant_tab.py:342
+#: ui/tabs/ai_assistant_tab.py:187 ui/tabs/ai_assistant_tab.py:397
 msgid "请先选择CSV文件"
 msgstr "最初にCSVファイルを選択してください"
 
@@ -3165,90 +3146,90 @@ msgstr "AIサービスにHTTP/HTTPSプロキシを使用"
 msgid "提示词已更新，正在后台保存配置..."
 msgstr "プロンプトが更新されました。バックグラウンドで設定を保存しています..."
 
-#: ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:116 ui/ui_manager.py:462
+#: ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:132 ui/ui_manager.py:550
 msgid "Default prompt is empty, please set it in the configuration editor."
 msgstr "デフォルトのプロンプトは空です、設定編集子で設定してください。"
 
-#: ui/tabs/ai_assistant_tab.py:284
+#: ui/tabs/ai_assistant_tab.py:291
 msgid "请先选择有效的CSV文件"
 msgstr "最初に有効なCSVファイルを選択してください"
 
-#: ui/tabs/ai_assistant_tab.py:286 ui/tabs/ai_assistant_tab.py:342
+#: ui/tabs/ai_assistant_tab.py:296 ui/tabs/ai_assistant_tab.py:397
 msgid "读取中..."
 msgstr "読み込み中..."
 
-#: ui/tabs/ai_assistant_tab.py:294
+#: ui/tabs/ai_assistant_tab.py:308
 msgid "无法读取CSV列名"
 msgstr "CSVの列名を読み取れません"
 
-#: ui/tabs/ai_assistant_tab.py:301 ui/tabs/ai_assistant_tab.py:302
-#: ui/tabs/ai_assistant_tab.py:342
+#: ui/tabs/ai_assistant_tab.py:322 ui/tabs/ai_assistant_tab.py:324
+#: ui/tabs/ai_assistant_tab.py:397
 msgid "读取失败"
 msgstr "読み込み失敗"
 
-#: ui/tabs/ai_assistant_tab.py:305 ui/tabs/ai_assistant_tab.py:342
+#: ui/tabs/ai_assistant_tab.py:327 ui/tabs/ai_assistant_tab.py:397
 msgid "无可用列"
 msgstr "利用可能な列がありません"
 
-#: ui/tabs/ai_assistant_tab.py:315
+#: ui/tabs/ai_assistant_tab.py:346
 msgid "无可用模型"
 msgstr "利用可能なモデルがありません"
 
-#: ui/tabs/ai_assistant_tab.py:329 ui/tabs/annotation_tab.py:139
+#: ui/tabs/ai_assistant_tab.py:384 ui/tabs/annotation_tab.py:139
 #: ui/tabs/data_download_tab.py:253 ui/tabs/data_download_tab.py:275
-#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:95
+#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:100
 #: ui/tabs/gff_query_tab.py:164 ui/tabs/homology_tab.py:156
 #: ui/tabs/locus_conversion_tab.py:122
 msgid "请先加载配置文件。"
 msgstr "最初に設定ファイルを読み込んでください。"
 
-#: ui/tabs/ai_assistant_tab.py:340 ui/tabs/ai_assistant_tab.py:343
+#: ui/tabs/ai_assistant_tab.py:395 ui/tabs/ai_assistant_tab.py:398
 #: ui/tabs/annotation_tab.py:160 ui/tabs/annotation_tab.py:163
 #: ui/tabs/annotation_tab.py:166 ui/tabs/enrichment_tab.py:257
 #: ui/tabs/enrichment_tab.py:262 ui/tabs/enrichment_tab.py:267
 #: ui/tabs/enrichment_tab.py:274 ui/tabs/enrichment_tab.py:306
-#: ui/tabs/genome_identifier_tab.py:103 ui/tabs/gff_query_tab.py:172
+#: ui/tabs/genome_identifier_tab.py:108 ui/tabs/gff_query_tab.py:172
 #: ui/tabs/gff_query_tab.py:181 ui/tabs/gff_query_tab.py:201
 #: ui/tabs/homology_tab.py:159 ui/tabs/homology_tab.py:165
 #: ui/tabs/locus_conversion_tab.py:133
 msgid "输入缺失"
 msgstr "入力がありません"
 
-#: ui/tabs/ai_assistant_tab.py:340
+#: ui/tabs/ai_assistant_tab.py:395
 msgid "请确保所有必填项都已填写。"
 msgstr "すべての必須フィールドが入力されていることを確認してください。"
 
-#: ui/tabs/ai_assistant_tab.py:343
+#: ui/tabs/ai_assistant_tab.py:398
 msgid "请选择一个有效的“待处理列”。"
 msgstr "有効な「処理する列」を選択してください。"
 
-#: ui/tabs/ai_assistant_tab.py:346
+#: ui/tabs/ai_assistant_tab.py:401
 msgid "文件错误"
 msgstr "ファイルエラー"
 
-#: ui/tabs/ai_assistant_tab.py:346
+#: ui/tabs/ai_assistant_tab.py:401
 msgid "指定的CSV文件不存在。"
 msgstr "指定されたCSVファイルが存在しません。"
 
-#: ui/tabs/ai_assistant_tab.py:349
+#: ui/tabs/ai_assistant_tab.py:404
 msgid "模板错误"
 msgstr "テンプレートエラー"
 
-#: ui/tabs/ai_assistant_tab.py:349
+#: ui/tabs/ai_assistant_tab.py:404
 #, python-brace-format
 msgid "提示词模板必须包含 {text} 占位符。"
 msgstr ""
 "プロンプトテンプレートには {text} プレースホルダーを含める必要があります。"
 
-#: ui/tabs/ai_assistant_tab.py:362
+#: ui/tabs/ai_assistant_tab.py:417
 msgid "AI批量处理CSV"
 msgstr "AIバッチ処理CSV"
 
-#: ui/tabs/ai_assistant_tab.py:372
+#: ui/tabs/ai_assistant_tab.py:427
 msgid "任务启动失败"
 msgstr "タスク開始失敗"
 
-#: ui/tabs/ai_assistant_tab.py:373
+#: ui/tabs/ai_assistant_tab.py:428
 msgid "准备AI处理任务时发生错误:"
 msgstr "AI処理タスクの準備中にエラーが発生しました:"
 
@@ -3291,7 +3272,7 @@ msgstr "アノテーションする遺伝子IDを入力してください。"
 #: ui/tabs/gff_query_tab.py:147 ui/tabs/gff_query_tab.py:200
 #: ui/tabs/homology_tab.py:165 ui/tabs/homology_tab.py:199
 #: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:132
-#: ui/ui_manager.py:467
+#: ui/ui_manager.py:555
 msgid "无可用基因组"
 msgstr "利用可能なゲノムがありません"
 
@@ -3304,7 +3285,7 @@ msgstr "ゲノムバージョンを選択してください。"
 msgid "请至少选择一种注释类型。"
 msgstr "少なくとも1つのアノテーションタイプを選択してください。"
 
-#: ui/tabs/base_tab.py:83
+#: ui/tabs/base_tab.py:115
 msgid "执行操作"
 msgstr "アクションを実行"
 
@@ -3584,25 +3565,33 @@ msgstr ""
 "ここに遺伝子リストを貼り付けると、ツールはそれらがどのゲノムバージョンに属す"
 "るかを特定しようとします。"
 
-#: ui/tabs/genome_identifier_tab.py:98
+#: ui/tabs/genome_identifier_tab.py:103
 msgid "基因组源数据未加载，无法进行鉴定。"
 msgstr "ゲノムソースデータが読み込まれていないため、特定を実行できません。"
 
-#: ui/tabs/genome_identifier_tab.py:103
+#: ui/tabs/genome_identifier_tab.py:108
 msgid "请输入至少一个基因ID进行鉴定。"
 msgstr "特定のために少なくとも1つの遺伝子IDを入力してください。"
 
-#: ui/tabs/genome_identifier_tab.py:108
+#: ui/tabs/genome_identifier_tab.py:114
 msgid "正在鉴定中..."
 msgstr "特定中..."
 
-#: ui/tabs/genome_identifier_tab.py:115
+#: ui/tabs/genome_identifier_tab.py:135
 msgid "鉴定结果"
 msgstr "特定結果"
 
-#: ui/tabs/genome_identifier_tab.py:119
+#: ui/tabs/genome_identifier_tab.py:139
+msgid "基因组鉴定成功"
+msgstr "ゲノム鑑定成功"
+
+#: ui/tabs/genome_identifier_tab.py:141
 msgid "未能识别到匹配的基因组。"
 msgstr "一致するゲノムを特定できませんでした。"
+
+#: ui/tabs/genome_identifier_tab.py:144
+msgid "基因组鉴定失败：未能识别到匹配的基因组。"
+msgstr "ゲノム鑑定失敗：一致するゲノムが見つかりませんでした。"
 
 #: ui/tabs/gff_query_tab.py:34 ui/tabs/gff_query_tab.py:131
 msgid "开始基因查询"
@@ -3659,7 +3648,7 @@ msgid "将优先使用基因ID列表进行查询。"
 msgstr "クエリには遺伝子IDリストが優先されます。"
 
 #: ui/tabs/gff_query_tab.py:197 ui/tabs/homology_tab.py:174
-#: ui/tabs/locus_conversion_tab.py:141 ui/tabs/xlsx_converter_tab.py:96
+#: ui/tabs/locus_conversion_tab.py:141 ui/tabs/xlsx_converter_tab.py:103
 msgid "输入错误"
 msgstr "入力エラー"
 
@@ -3673,7 +3662,7 @@ msgstr "GFF 遺伝子検索"
 
 #: ui/tabs/homology_tab.py:32 ui/tabs/homology_tab.py:141
 #: ui/tabs/locus_conversion_tab.py:32 ui/tabs/locus_conversion_tab.py:98
-#: ui/tabs/xlsx_converter_tab.py:28 ui/tabs/xlsx_converter_tab.py:85
+#: ui/tabs/xlsx_converter_tab.py:28 ui/tabs/xlsx_converter_tab.py:92
 msgid "开始转换"
 msgstr "開始変換"
 
@@ -3766,11 +3755,11 @@ msgstr ""
 msgid "区域格式不正确，请使用 'Chr:Start-End' 格式。"
 msgstr "区域形式が正しくありません。'Chr:Start-End' 形式を使用してください。"
 
-#: ui/tabs/xlsx_converter_tab.py:40 ui/tabs/xlsx_converter_tab.py:75
+#: ui/tabs/xlsx_converter_tab.py:40 ui/tabs/xlsx_converter_tab.py:82
 msgid "Excel (.xlsx) 转 CSV 工具"
 msgstr "Excel (.xlsx) を CSV に変換するツール"
 
-#: ui/tabs/xlsx_converter_tab.py:45 ui/tabs/xlsx_converter_tab.py:77
+#: ui/tabs/xlsx_converter_tab.py:45 ui/tabs/xlsx_converter_tab.py:84
 msgid ""
 "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
 "适用于所有工作表表头一致的情况。"
@@ -3779,59 +3768,59 @@ msgstr ""
 "結合します。\n"
 "すべてのワークシートのヘッダーが一致している場合に適しています。"
 
-#: ui/tabs/xlsx_converter_tab.py:49 ui/tabs/xlsx_converter_tab.py:78
+#: ui/tabs/xlsx_converter_tab.py:51 ui/tabs/xlsx_converter_tab.py:85
 msgid "文件路径"
 msgstr "ファイルパス"
 
-#: ui/tabs/xlsx_converter_tab.py:53 ui/tabs/xlsx_converter_tab.py:79
+#: ui/tabs/xlsx_converter_tab.py:55 ui/tabs/xlsx_converter_tab.py:86
 msgid "输入Excel文件:"
 msgstr "入力 Excelファイル:"
 
-#: ui/tabs/xlsx_converter_tab.py:62 ui/tabs/xlsx_converter_tab.py:80
+#: ui/tabs/xlsx_converter_tab.py:66 ui/tabs/xlsx_converter_tab.py:87
 msgid "输出CSV文件:"
 msgstr "出力 CSVファイル:"
 
-#: ui/tabs/xlsx_converter_tab.py:66 ui/tabs/xlsx_converter_tab.py:82
+#: ui/tabs/xlsx_converter_tab.py:72 ui/tabs/xlsx_converter_tab.py:89
 msgid "另存为..."
 msgstr "名前を付けて保存..."
 
-#: ui/tabs/xlsx_converter_tab.py:96
+#: ui/tabs/xlsx_converter_tab.py:103
 msgid "请输入一个有效的Excel文件路径。"
 msgstr "有効なExcelファイルのパスを入力してください。"
 
-#: ui/tabs/xlsx_converter_tab.py:103
+#: ui/tabs/xlsx_converter_tab.py:110
 msgid "自动生成输出路径:"
 msgstr "自動生成出力パス:"
 
-#: ui/tabs/xlsx_converter_tab.py:111
+#: ui/tabs/xlsx_converter_tab.py:118
 msgid "转换失败"
 msgstr "変換失敗"
 
-#: ui/tabs/xlsx_converter_tab.py:111
+#: ui/tabs/xlsx_converter_tab.py:118
 msgid "一个未预料的错误发生:"
 msgstr "予期せぬエラーが発生しました:"
 
-#: ui/ui_manager.py:102 ui/ui_manager.py:413
+#: ui/ui_manager.py:118 ui/ui_manager.py:501
 msgid "当前配置: {}"
 msgstr "現在の設定: {}"
 
-#: ui/ui_manager.py:104 ui/ui_manager.py:414
+#: ui/ui_manager.py:120 ui/ui_manager.py:502
 msgid "未加载配置"
 msgstr "設定が読み込まれていません"
 
-#: ui/ui_manager.py:109 ui/ui_manager.py:110
+#: ui/ui_manager.py:125 ui/ui_manager.py:126
 msgid "粘贴基因ID，每行一个..."
 msgstr "基因 IDを貼り付けてください...一行に一つです..."
 
-#: ui/ui_manager.py:111
+#: ui/ui_manager.py:127
 msgid "例如: A01:1-100000"
 msgstr "例: A01:1-100000"
 
-#: ui/ui_manager.py:112
+#: ui/ui_manager.py:128
 msgid "在此处粘贴要注释的基因ID，每行一个。"
 msgstr "ここにアノテーションする遺伝子IDを1行に1つずつ貼り付けてください。"
 
-#: ui/ui_manager.py:114
+#: ui/ui_manager.py:130
 msgid ""
 "在此处粘贴用于富集分析的基因ID，每行一个。\n"
 "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
@@ -3842,54 +3831,80 @@ msgstr ""
 "（注意：タブ区切りで貼り付けてください。Excelから直接コピーした列は既にタブ区"
 "切り形式です）。"
 
-#: ui/ui_manager.py:115
+#: ui/ui_manager.py:131
 #, python-brace-format
 msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
 msgstr ""
 "ここにカスタムプロンプトテンプレートを入力してください。{text} プレースホル"
 "ダーを含める必要があります..."
 
-#: ui/ui_manager.py:208
+#: ui/ui_manager.py:216
 msgid "操作日志"
 msgstr "操作ログ"
 
-#: ui/ui_manager.py:217
+#: ui/ui_manager.py:225
 msgid "清空日志"
 msgstr "ログをクリア"
 
-#: ui/ui_manager.py:277
+#: ui/ui_manager.py:328
 msgid "主页"
 msgstr "ホーム"
 
-#: ui/ui_manager.py:277
+#: ui/ui_manager.py:328
 msgid "配置编辑器"
 msgstr "配置編集器"
 
-#: ui/ui_manager.py:278
+#: ui/ui_manager.py:329
 msgid "数据工具"
 msgstr "データツール"
 
-#: ui/ui_manager.py:294
+#: ui/ui_manager.py:346
 msgid "语言"
 msgstr "言語"
 
-#: ui/ui_manager.py:296
+#: ui/ui_manager.py:348
 msgid "外观模式"
 msgstr "外観模式"
 
-#: ui/ui_manager.py:391
-msgid "{} 已被用户取消。"
-msgstr "{} はユーザーによってキャンセルされました。"
+#: ui/ui_manager.py:466
+msgid "任务已取消"
+msgstr "任務はキャンセルされました"
 
-#: ui/ui_manager.py:393
-msgid "完成。"
-msgstr "完了。"
+#: ui/ui_manager.py:467
+msgid "任务 '{}' 已被用户取消。"
+msgstr "任務 '{}' はユーザーによってキャンセルされました。"
 
-#: ui/ui_manager.py:393
-msgid "失败。"
-msgstr "失敗。"
+#: ui/ui_manager.py:472
+msgid "任务失败"
+msgstr "任務失敗"
 
-#: ui/ui_manager.py:417
+#: ui/ui_manager.py:473
+msgid ""
+"任务 '{}' 执行时发生错误:\n"
+"\n"
+"{}"
+msgstr ""
+"任務 '{}' の実行中にエラーが発生しました:\n"
+"\n"
+"{}"
+
+#: ui/ui_manager.py:478
+msgid "任务完成"
+msgstr "任務完了"
+
+#: ui/ui_manager.py:479
+msgid "任务 '{}' 已成功完成。"
+msgstr "任務 '{}' は正常に完了しました。"
+
+#: ui/ui_manager.py:483
+msgid "完成"
+msgstr "完了"
+
+#: ui/ui_manager.py:483
+msgid "失败"
+msgstr "失敗"
+
+#: ui/ui_manager.py:505
 msgid ""
 "无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
 "动的早期阶段。"
@@ -3897,13 +3912,36 @@ msgstr ""
 "config_path_display_varの設定が无法设置：変数が準備されていないかNoneです。こ"
 "れは通常、アプリケーションの初期起動段階で起こります。"
 
-#: ui/ui_manager.py:428
+#: ui/ui_manager.py:516
 msgid "UI已根据当前配置刷新。"
 msgstr "UIは現在の設定に応じて更新されました。"
 
-#: ui/ui_manager.py:478
+#: ui/ui_manager.py:566
 msgid "刷新失败或无可用模型"
 msgstr "刷新失敗または利用可能なモデルがありません"
+
+#~ msgid "初始化AI客户端..."
+#~ msgstr "AIクライアントを初期化しています..."
+
+#~ msgid "任务终止：AI服务配置错误。"
+#~ msgstr "タスクが終了しました: AIサービス設定エラー。"
+
+#~ msgid "任务终止：API Key 未设置。"
+#~ msgstr "タスクが終了しました: APIキーが設定されていません。"
+
+#~ msgid "INFO: AI服务将使用代理: {}"
+#~ msgstr "情報: AIサービスはプロキシを使用します: {}"
+
+#~ msgid "WARNING: AI代理开关已打开，但配置文件中未设置代理地址。"
+#~ msgstr ""
+#~ "警告: AIプロキシは有効ですが、設定ファイルにプロキシアドレスが設定されてい"
+#~ "ません。"
+
+#~ msgid "转换成功"
+#~ msgstr "変換成功"
+
+#~ msgid "加载主窗口图标失败: {}。"
+#~ msgstr "メインウィンドウアイコンの読み込みに失敗しました: {}。"
 
 #~ msgid "需要重启"
 #~ msgstr "再起動が必要です（Restart required）"
