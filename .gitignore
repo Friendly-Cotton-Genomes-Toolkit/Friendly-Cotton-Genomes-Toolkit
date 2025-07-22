@@ -91,3 +91,4 @@ build_temp
 release
 7z.sfx
 ai_processed_results
+nuitka-crash-report.xml
