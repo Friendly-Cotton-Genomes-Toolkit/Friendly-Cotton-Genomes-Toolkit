@@ -87,5 +87,5 @@ setup(
 )
 
 
-
+# 多语言模板生成
 # python setup.py extract_messages -o cotton_toolkit/cotton_toolkit.pot
