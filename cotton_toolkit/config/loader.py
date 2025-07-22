@@ -77,7 +77,8 @@ def save_config(config: MainConfig, path: str) -> bool:
 def load_config(path: str) -> MainConfig:
     """从指定路径加载主配置文件并进行验证。"""
     abs_path = os.path.abspath(path)
-    logger.info(_("正在从 '{}' 加载主配置文件...").format(abs_path))
+    info = _("正在从 '{}' 加载主配置文件...")
+    logger.info(info.format(abs_path))
     try:
         with open(abs_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)

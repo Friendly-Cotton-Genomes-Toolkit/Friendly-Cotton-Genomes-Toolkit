@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-07-18 20:39+0800\n"
-"PO-Revision-Date: 2025-07-18 20:45+0800\n"
+"POT-Creation-Date: 2025-07-22 18:52+0800\n"
+"PO-Revision-Date: 2025-07-22 18:52+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Gemini 2.5 Pro\n"
 "Language: en_US\n"
@@ -533,19 +533,19 @@ msgstr "Error saving config file to '{}': {}"
 msgid "正在从 '{}' 加载主配置文件..."
 msgstr "Loading main config file from '{}'..."
 
-#: cotton_toolkit/config/loader.py:90
+#: cotton_toolkit/config/loader.py:91
 msgid "主配置文件加载并验证成功。"
 msgstr "Main config file loaded and validated successfully."
 
-#: cotton_toolkit/config/loader.py:93
+#: cotton_toolkit/config/loader.py:94
 msgid "配置文件未找到: {}"
 msgstr "Config file not found: {}"
 
-#: cotton_toolkit/config/loader.py:96
+#: cotton_toolkit/config/loader.py:97
 msgid "解析YAML文件时发生错误 '{}': {}"
 msgstr "Error parsing YAML file '{}': {}"
 
-#: cotton_toolkit/config/loader.py:99
+#: cotton_toolkit/config/loader.py:100
 msgid ""
 "配置文件验证失败 '{}':\n"
 "{}"
@@ -553,23 +553,23 @@ msgstr ""
 "Config file validation failed '{}':\n"
 "{}"
 
-#: cotton_toolkit/config/loader.py:102
+#: cotton_toolkit/config/loader.py:103
 msgid "加载配置文件时发生未知错误 '{}': {}"
 msgstr "Unknown error loading config file '{}': {}"
 
-#: cotton_toolkit/config/loader.py:110
+#: cotton_toolkit/config/loader.py:111
 msgid "警告: 配置文件中未指定基因组源文件。"
 msgstr "Warning: Genome source file not specified in the config file."
 
-#: cotton_toolkit/config/loader.py:117
+#: cotton_toolkit/config/loader.py:118
 msgid "警告: 基因组源文件未找到: '{}'"
 msgstr "Warning: Genome source file not found: '{}'"
 
-#: cotton_toolkit/config/loader.py:140
+#: cotton_toolkit/config/loader.py:141
 msgid "已成功加载 {} 个基因组源。"
 msgstr "Successfully loaded {} genome sources."
 
-#: cotton_toolkit/config/loader.py:143
+#: cotton_toolkit/config/loader.py:144
 msgid ""
 "加载基因组源文件时验证出错 '{}':\n"
 "{}"
@@ -577,18 +577,18 @@ msgstr ""
 "Validation error while loading genome source file '{}':\n"
 "{}"
 
-#: cotton_toolkit/config/loader.py:146
+#: cotton_toolkit/config/loader.py:147
 #, python-format
 msgid "加载基因组源文件时发生错误 '%s': %s"
 msgstr "An error occurred while loading the genome source file '%s': %s"
 
-#: cotton_toolkit/config/loader.py:160
+#: cotton_toolkit/config/loader.py:161
 msgid "一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"
 msgstr ""
 "One or more default config files already exist and overwrite is not allowed. "
 "Operation cancelled."
 
-#: cotton_toolkit/config/loader.py:178
+#: cotton_toolkit/config/loader.py:179
 msgid "生成默认配置文件时发生错误: {}"
 msgstr "Error generating default config file: {}"
 
@@ -2300,7 +2300,7 @@ msgstr "Warning: Failed to apply regex for gene ID normalization. Reason: {}"
 msgid "全局日志系统已初始化，级别设置为: {}"
 msgstr "Global logging system initialized, level set to: {}"
 
-#: cotton_toolkit/utils/logger.py:95 ui/gui_app.py:679
+#: cotton_toolkit/utils/logger.py:96 ui/gui_app.py:717
 msgid "全局日志级别已更新为: {}"
 msgstr "Global log level updated to: {}"
 
@@ -2330,7 +2330,7 @@ msgstr "Configuration saved"
 msgid "语言设置已同步到 {}。"
 msgstr "Language settings have been synchronized to {}."
 
-#: ui/event_handler.py:97 ui/event_handler.py:267 ui/gui_app.py:410
+#: ui/event_handler.py:97 ui/event_handler.py:267 ui/gui_app.py:448
 msgid "保存失败"
 msgstr "Save Failed"
 
@@ -2657,7 +2657,7 @@ msgstr ""
 msgid "确定"
 msgstr "OK"
 
-#: ui/event_handler.py:674 ui/gui_app.py:378 ui/tabs/ai_assistant_tab.py:383
+#: ui/event_handler.py:674 ui/gui_app.py:416 ui/tabs/ai_assistant_tab.py:383
 #: ui/tabs/annotation_tab.py:139 ui/tabs/data_download_tab.py:252
 #: ui/tabs/data_download_tab.py:275 ui/tabs/data_download_tab.py:284
 #: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:100
@@ -2762,7 +2762,7 @@ msgstr "Starting to connect to AI service..."
 msgid "数据处理中..."
 msgstr "Data processing..."
 
-#: ui/event_handler.py:795 ui/gui_app.py:178
+#: ui/event_handler.py:795 ui/gui_app.py:231
 msgid "刷新完成。"
 msgstr "Refresh complete."
 
@@ -2803,179 +2803,206 @@ msgstr "GFF query"
 msgid "AI助手"
 msgstr "AI assistant"
 
-#: ui/gui_app.py:191
-msgid "图片资源未找到: '{}'"
-msgstr "Image resource not found: '{}'"
+#: ui/gui_app.py:99 ui/gui_app.py:100 ui/ui_manager.py:125 ui/ui_manager.py:126
+msgid "粘贴基因ID，每行一个..."
+msgstr "Paste gene IDs, one per line..."
 
-#: ui/gui_app.py:193
-msgid "获取图片资源 '{}' 路径时发生错误: {}"
-msgstr "Error getting path for image resource '{}': {}"
+#: ui/gui_app.py:101 ui/ui_manager.py:127
+msgid "例如: A01:1-100000"
+msgstr "e.g., A01:1-100000"
 
-#: ui/gui_app.py:206
+#: ui/gui_app.py:102
+msgid "在此处粘贴要注释的基因ID，每行一个"
+msgstr "Paste gene IDs to be annotated here, one per line"
+
+#: ui/gui_app.py:103
+msgid ""
+"在此处粘贴用于富集分析的基因ID，每行一个。\n"
+"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"
+msgstr ""
+"Paste the gene IDs for enrichment analysis here, one per line.\n"
+"If including Log2FC, the format should be: GeneID Log2FC\n"
+"(Note: Use tab as separator. Columns copied directly from Excel are already "
+"tab-delimited)."
+
+#: ui/gui_app.py:104 ui/ui_manager.py:131
+#, python-brace-format
+msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
+msgstr ""
+"Enter your custom prompt template here. It must include the {text} "
+"placeholder..."
+
+#: ui/gui_app.py:105 ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:132
+#: ui/ui_manager.py:550
+msgid "Default prompt is empty, please set it in the configuration editor."
+msgstr "Default prompt is empty, please set it in the configuration editor."
+
+#: ui/gui_app.py:244
 msgid "通用设置"
 msgstr "General Settings"
 
-#: ui/gui_app.py:211
+#: ui/gui_app.py:249
 msgid "日志级别"
 msgstr "Log Level"
 
-#: ui/gui_app.py:216
+#: ui/gui_app.py:254
 msgid "设置应用程序的日志详细程度。"
 msgstr "Set the verbosity level of the application's logs."
 
-#: ui/gui_app.py:220
+#: ui/gui_app.py:258
 msgid "HTTP代理"
 msgstr "HTTP Proxy"
 
-#: ui/gui_app.py:223
+#: ui/gui_app.py:261
 msgid "例如: http://127.0.0.1:7890"
 msgstr "e.g., http://127.0.0.1:7890"
 
-#: ui/gui_app.py:227
+#: ui/gui_app.py:265
 msgid "HTTPS代理"
 msgstr "HTTPS Proxy"
 
-#: ui/gui_app.py:230
+#: ui/gui_app.py:268
 msgid "例如: https://127.0.0.1:7890"
 msgstr "e.g., https://127.0.0.1:7890"
 
-#: ui/gui_app.py:234
+#: ui/gui_app.py:272
 msgid "测试代理连接"
 msgstr "Test Proxy Connection"
 
-#: ui/gui_app.py:237
+#: ui/gui_app.py:275
 msgid "数据下载器配置"
 msgstr "Data Downloader Configuration"
 
-#: ui/gui_app.py:242
+#: ui/gui_app.py:280
 msgid "基因组源文件"
 msgstr "Genome Source File"
 
-#: ui/gui_app.py:245
+#: ui/gui_app.py:283
 msgid "定义基因组下载链接的YAML文件。"
 msgstr "YAML file that defines the genome download links."
 
-#: ui/gui_app.py:249
+#: ui/gui_app.py:287
 msgid "下载输出根目录"
 msgstr "Download Output Root Directory"
 
-#: ui/gui_app.py:252
+#: ui/gui_app.py:290
 msgid "所有下载文件存放的基准目录。"
 msgstr "Base directory where all downloaded files are stored."
 
-#: ui/gui_app.py:256
+#: ui/gui_app.py:294
 msgid "强制重新下载"
 msgstr "Force Re-download"
 
-#: ui/gui_app.py:260
+#: ui/gui_app.py:298
 msgid "如果文件已存在，是否覆盖。"
 msgstr "Whether to overwrite if the file already exists."
 
-#: ui/gui_app.py:264
+#: ui/gui_app.py:302
 msgid "最大下载线程数"
 msgstr "Maximum Download Threads"
 
-#: ui/gui_app.py:267
+#: ui/gui_app.py:305
 msgid "多线程下载时使用的最大线程数。"
 msgstr "Maximum number of threads to use for multi-threaded downloads."
 
-#: ui/gui_app.py:271
+#: ui/gui_app.py:309
 msgid "为下载使用代理"
 msgstr "Use Proxy for Downloads"
 
-#: ui/gui_app.py:275
+#: ui/gui_app.py:313
 msgid "是否为数据下载启用代理。"
 msgstr "Whether to enable proxy for data downloads."
 
-#: ui/gui_app.py:278
+#: ui/gui_app.py:316
 msgid "AI 服务配置"
 msgstr "AI Service Configuration"
 
-#: ui/gui_app.py:283
+#: ui/gui_app.py:321
 msgid "默认AI服务商"
 msgstr "Default AI Provider"
 
-#: ui/gui_app.py:289
+#: ui/gui_app.py:327
 msgid "选择默认使用的AI模型提供商。"
 msgstr "Select the default AI model provider to use."
 
-#: ui/gui_app.py:293
+#: ui/gui_app.py:331
 msgid "最大并行AI任务数"
 msgstr "Maximum Parallel AI Tasks"
 
-#: ui/gui_app.py:296
+#: ui/gui_app.py:334
 msgid "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 msgstr ""
 "The maximum number of parallel processes for AI tasks. It is recommended to "
 "set this based on CPU cores and network conditions."
 
-#: ui/gui_app.py:300
+#: ui/gui_app.py:338
 msgid "为AI服务使用代理"
 msgstr "Use Proxy for AI Services"
 
-#: ui/gui_app.py:304
+#: ui/gui_app.py:342
 msgid "是否为连接AI模型API启用代理。"
 msgstr "Whether to enable proxy for connecting to the AI model API."
 
-#: ui/gui_app.py:319 ui/ui_manager.py:574
+#: ui/gui_app.py:357 ui/ui_manager.py:574
 msgid "点击刷新获取列表"
 msgstr "Click refresh to get the list"
 
-#: ui/gui_app.py:320
+#: ui/gui_app.py:358
 msgid "点击刷新..."
 msgstr "Click to refresh..."
 
-#: ui/gui_app.py:323
+#: ui/gui_app.py:361
 msgid "刷新"
 msgstr "Refresh"
 
-#: ui/gui_app.py:325
+#: ui/gui_app.py:363
 msgid "代理刷新"
 msgstr "Refresh with Proxy"
 
-#: ui/gui_app.py:332
+#: ui/gui_app.py:370
 msgid "AI 提示词模板"
 msgstr "AI Prompt Templates"
 
-#: ui/gui_app.py:337
+#: ui/gui_app.py:375
 msgid "翻译提示词"
 msgstr "Translation Prompt"
 
-#: ui/gui_app.py:344
+#: ui/gui_app.py:382
 msgid "分析提示词"
 msgstr "Analysis Prompt"
 
-#: ui/gui_app.py:374
+#: ui/gui_app.py:412
 msgid "配置已应用到编辑器UI。"
 msgstr "Configuration has been applied to the editor UI."
 
-#: ui/gui_app.py:378
+#: ui/gui_app.py:416
 msgid "没有加载配置文件，无法保存。"
 msgstr "No configuration file loaded, cannot save."
 
-#: ui/gui_app.py:396
+#: ui/gui_app.py:434
 msgid "无效的最大工作线程数值，已重置为默认值 4。"
 msgstr ""
 "Invalid value for max worker threads, has been reset to the default value of "
 "4."
 
-#: ui/gui_app.py:407
+#: ui/gui_app.py:445
 msgid "保存成功"
 msgstr "Save Successful"
 
-#: ui/gui_app.py:407
+#: ui/gui_app.py:445
 msgid "配置文件已更新。"
 msgstr "Configuration file has been updated."
 
-#: ui/gui_app.py:410
+#: ui/gui_app.py:448
 msgid "写入文件时发生未知错误。"
 msgstr "An unknown error occurred while writing to the file."
 
-#: ui/gui_app.py:412
+#: ui/gui_app.py:450
 msgid "保存错误"
 msgstr "Save Error"
 
-#: ui/gui_app.py:412
+#: ui/gui_app.py:450
 msgid ""
 "保存配置时发生错误:\n"
 "{}"
@@ -2983,54 +3010,54 @@ msgstr ""
 "An error occurred while saving the configuration:\n"
 "{}"
 
-#: ui/gui_app.py:422
+#: ui/gui_app.py:460
 msgid "配置文件"
 msgstr "Configuration file"
 
-#: ui/gui_app.py:424
+#: ui/gui_app.py:462
 msgid "加载配置文件..."
 msgstr "Loading configuration file..."
 
-#: ui/gui_app.py:426
+#: ui/gui_app.py:464
 msgid "生成默认配置..."
 msgstr "Generating default configuration..."
 
-#: ui/gui_app.py:428
+#: ui/gui_app.py:466
 msgid "帮助与支持"
 msgstr "Help and support"
 
-#: ui/gui_app.py:430
+#: ui/gui_app.py:468
 msgid "在线帮助文档"
 msgstr "Online help documentation"
 
-#: ui/gui_app.py:432
+#: ui/gui_app.py:470
 msgid "关于本软件"
 msgstr "About this software"
 
-#: ui/gui_app.py:546
+#: ui/gui_app.py:584
 msgid "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 msgstr ""
 "!! WARNING: The configuration file may contain sensitive information. Please "
 "do not share it lightly."
 
-#: ui/gui_app.py:551
+#: ui/gui_app.py:589
 msgid "应用并保存"
 msgstr "Apply and Save"
 
-#: ui/gui_app.py:618
+#: ui/gui_app.py:656
 msgid "请先从“主页”加载或生成一个配置文件。"
 msgstr ""
 "Please first load or generate a configuration file from the 'Home' page."
 
-#: ui/gui_app.py:643
+#: ui/gui_app.py:681
 msgid "UI font set to: {}, Monospace font to: {}"
 msgstr "UI font set to: {}, Monospace font to: {}"
 
-#: ui/gui_app.py:670
+#: ui/gui_app.py:708
 msgid "处理消息队列时出错: {}"
 msgstr "Error processing message queue: {}"
 
-#: ui/gui_app.py:681
+#: ui/gui_app.py:719
 msgid "配置日志级别时出错: {}"
 msgstr "Error configuring log level: {}"
 
@@ -3125,10 +3152,6 @@ msgstr "Use HTTP/HTTPS proxy for AI services"
 #: ui/tabs/ai_assistant_tab.py:224
 msgid "提示词已更新，正在后台保存配置..."
 msgstr "Prompt updated, saving configuration in the background..."
-
-#: ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:132 ui/ui_manager.py:550
-msgid "Default prompt is empty, please set it in the configuration editor."
-msgstr "Default prompt is empty, please set it in the configuration editor."
 
 #: ui/tabs/ai_assistant_tab.py:291
 msgid "请先选择有效的CSV文件"
@@ -3785,14 +3808,6 @@ msgstr "Current Config: {}"
 msgid "未加载配置"
 msgstr "No Configuration Loaded"
 
-#: ui/ui_manager.py:125 ui/ui_manager.py:126
-msgid "粘贴基因ID，每行一个..."
-msgstr "Paste gene IDs, one per line..."
-
-#: ui/ui_manager.py:127
-msgid "例如: A01:1-100000"
-msgstr "e.g., A01:1-100000"
-
 #: ui/ui_manager.py:128
 msgid "在此处粘贴要注释的基因ID，每行一个。"
 msgstr "Paste gene IDs to be annotated here, one per line."
@@ -3807,13 +3822,6 @@ msgstr ""
 "If including Log2FC, the format should be: GeneID Log2FC\n"
 "(Note: Use tab as separator. Columns copied directly from Excel are already "
 "tab-delimited)."
-
-#: ui/ui_manager.py:131
-#, python-brace-format
-msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
-msgstr ""
-"Enter your custom prompt template here. It must include the {text} "
-"placeholder..."
 
 #: ui/ui_manager.py:216
 msgid "操作日志"
@@ -3896,6 +3904,12 @@ msgstr "UI has been refreshed according to the current configuration."
 #: ui/ui_manager.py:566
 msgid "刷新失败或无可用模型"
 msgstr "Refresh failed or no available model"
+
+#~ msgid "图片资源未找到: '{}'"
+#~ msgstr "Image resource not found: '{}'"
+
+#~ msgid "获取图片资源 '{}' 路径时发生错误: {}"
+#~ msgstr "Error getting path for image resource '{}': {}"
 
 #~ msgid "初始化AI客户端..."
 #~ msgstr "Initializing AI client..."

@@ -83,7 +83,8 @@ def setup_global_logger(
         sys.stdout = StreamToQueue(log_queue, "INFO")
         sys.stderr = StreamToQueue(log_queue, "ERROR")
 
-    logging.info(_("全局日志系统已初始化，级别设置为: {}").format(log_level_str))
+    fc = _("全局日志系统已初始化，级别设置为: {}")
+    logging.info(fc.format(log_level_str))
 
 
 def set_log_level(log_level_str: str):

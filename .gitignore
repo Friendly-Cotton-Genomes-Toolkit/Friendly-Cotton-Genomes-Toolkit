@@ -92,3 +92,6 @@ release
 7z.sfx
 ai_processed_results
 nuitka-crash-report.xml
+main.onefile-build
+main.dist
+main.build

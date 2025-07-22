@@ -56,12 +56,21 @@ class CottonToolkitApp(ttkb.Window):
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "ai_assistant": _("AI助手"),
         }
 
+
+
     def __init__(self, translator: Callable[[str], str]):
         super().__init__(themename='flatly')
 
         self._ = translator
         self.logger = logging.getLogger(__name__)
-        self.app_icon_path: Optional[str] = None
+
+        # --- 使用新的 resource_path 函数定义所有资源路径 ---
+        self.app_icon_path: Optional[str] = self.resource_path("logo.ico")
+        self.logo_image_path: Optional[str] = self.resource_path("logo.png")
+        self.home_icon_path: Optional[str] = self.resource_path("home.png")
+        self.tools_icon_path: Optional[str] = self.resource_path("tools.png")
+        self.settings_icon_path: Optional[str] = self.resource_path("settings.png")
+
         self._patch_all_toplevels()
 
         self.title_text_key = "Friendly Cotton Genomes Toolkit - FCGT"
@@ -69,6 +78,17 @@ class CottonToolkitApp(ttkb.Window):
         self.geometry("1500x900")
         self.minsize(1400, 800)
 
+        # --- 直接在这里设置主窗口图标 ---
+        try:
+            if self.app_icon_path and os.path.exists(self.app_icon_path):
+                self.iconbitmap(self.app_icon_path)
+                self.logger.info(f"成功加载并设置应用图标: {self.app_icon_path}")
+            else:
+                self.logger.warning(f"应用图标文件未找到，请检查路径: {self.app_icon_path}")
+        except Exception as e:
+            self.logger.warning(f"加载主窗口图标失败: {e}")
+
+        # --- 原有的 __init__ 其他代码 ---
         self.bind("<FocusIn>", self._on_first_focus, add='+')
         self._setup_fonts()
 
@@ -76,14 +96,15 @@ class CottonToolkitApp(ttkb.Window):
         self.default_text_color = self.style.lookup('TLabel', 'foreground')
         self.secondary_text_color = self.style.lookup('TLabel', 'foreground')
         self.placeholders = {
-            "homology_genes": "粘贴基因ID，每行一个...",
-            "gff_genes": "粘贴基因ID，每行一个...",
-            "gff_region": "例如: A01:1-100000",
-            "genes_input": "在此处粘贴要注释的基因ID，每行一个。",
-            "enrichment_genes_input": "在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。",
-            "custom_prompt": "在此处输入您的自定义提示词模板，必须包含 {text} 占位符...",
-            "default_prompt_empty": "Default prompt is empty, please set it in the configuration editor."
+            "homology_genes": self._("粘贴基因ID，每行一个..."),
+            "gff_genes":  self._("粘贴基因ID，每行一个..."),
+            "gff_region":  self._("例如: A01:1-100000"),
+            "genes_input":  self._("在此处粘贴要注释的基因ID，每行一个"),
+            "enrichment_genes_input": self._("在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"),
+            "custom_prompt": self._("在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
+            "default_prompt_empty": self._("Default prompt is empty, please set it in the configuration editor.")
         }
+
         self.home_widgets: Dict[str, Any] = {}
         self.editor_widgets: Dict[str, Any] = {}
         self.translatable_widgets = {}
@@ -107,7 +128,8 @@ class CottonToolkitApp(ttkb.Window):
 
         self.ui_manager = UIManager(self, translator=self._)
         self.event_handler = EventHandler(self)
-        self._create_image_assets()
+
+        # 注意：这里不再调用 _create_image_assets()
         setup_global_logger(log_level_str="INFO", log_queue=self.log_queue)
 
         self.ui_manager.load_settings()
@@ -116,30 +138,61 @@ class CottonToolkitApp(ttkb.Window):
         self.event_handler.start_app_async_startup()
         self.check_queue_periodic()
         self.protocol("WM_DELETE_WINDOW", self.event_handler.on_closing)
-        self.set_app_icon()
+
+
+    def resource_path(self,relative_path:str):
+        """
+        获取资源的绝对路径。
+        兼容开发模式、Nuitka --standalone 模式和 --onefile 模式。
+        """
+        try:
+            # Nuitka --onefile 模式下，sys._MEIPASS 是解压后的临时路径
+            base_path = sys._MEIPASS
+        except Exception:
+            # 开发模式或 Nuitka --standalone 模式
+            # os.path.abspath(".") 返回的是 main.py 所在的目录
+            base_path = os.path.abspath(".")
+
+        # 路径拼接，请确保您的资源都放在 ui/assets/ 目录下
+        return os.path.join(base_path, "ui", "assets", relative_path)
 
     def _patch_all_toplevels(self):
         app_instance = self
+
         def apply_customizations(toplevel_self):
+            # 1. 设置窗口图标 (这部分是安全的，保持不变)
             if app_instance.app_icon_path:
                 try:
                     toplevel_self.iconbitmap(app_instance.app_icon_path)
                 except tk.TclError:
-                    pass
-            def _refresh_dialog_task():
+                    pass  # 如果窗口不支持图标，则静默失败
+
+            # 2. 【核心修改】使用更安全的方式刷新标题栏
+            # 我们不再使用 withdraw/deiconify，而是让Tkinter在下一个空闲周期自行处理更新
+            def _safer_refresh_task():
+                # 直接应用颜色配置
                 app_instance.configure_title_bar_color(toplevel_self)
-                toplevel_self.withdraw()
-                toplevel_self.deiconify()
-            toplevel_self.after(50, _refresh_dialog_task)
+                # 调用 update_idletasks() 来处理所有待办的UI更新，这比 withdraw() 安全得多
+                toplevel_self.update_idletasks()
+
+            # 同样使用 after，但执行的任务是安全的
+            toplevel_self.after(10, _safer_refresh_task)
+
+        # 保持原有的补丁逻辑不变
         original_ttkb_init = ttkb.Toplevel.__init__
+
         def new_ttkb_init(toplevel_self, *args, **kwargs):
             original_ttkb_init(toplevel_self, *args, **kwargs)
             apply_customizations(toplevel_self)
+
         ttkb.Toplevel.__init__ = new_ttkb_init
+
         original_tk_init = tk.Toplevel.__init__
+
         def new_tk_init(toplevel_self, *args, **kwargs):
             original_tk_init(toplevel_self, *args, **kwargs)
             apply_customizations(toplevel_self)
+
         tk.Toplevel.__init__ = new_tk_init
 
     def configure_title_bar_color(self, window_obj):
@@ -177,21 +230,6 @@ class CottonToolkitApp(ttkb.Window):
         self.deiconify()
         self.logger.debug(self._("刷新完成。"))
 
-    def _create_image_assets(self):
-        self.logo_image_path = self._get_image_resource_path("logo.png")
-        self.home_icon_path = self._get_image_resource_path("home.png")
-        self.tools_icon_path = self._get_image_resource_path("tools.png")
-        self.settings_icon_path = self._get_image_resource_path("settings.png")
-
-    def _get_image_resource_path(self, file_name):
-        try:
-            base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(__file__)
-            image_path = os.path.join(base_path, "assets", file_name)
-            if os.path.exists(image_path): return image_path
-            self.logger.warning(self._("图片资源未找到: '{}'").format(image_path))
-        except Exception as e:
-            self.logger.error(self._("获取图片资源 '{}' 路径时发生错误: {}").format(file_name, e))
-        return None
 
     def _create_editor_widgets(self, parent):
         parent.grid_columnconfigure(0, weight=1)
