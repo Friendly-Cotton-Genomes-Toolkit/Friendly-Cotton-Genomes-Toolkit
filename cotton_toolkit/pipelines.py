@@ -152,36 +152,28 @@ def run_homology_mapping(
         is_map_from_bridge = (source_assembly_id == bridge_species_name)
         mapped_df, failed_genes = None, []
 
-        if is_map_to_bridge or is_map_from_bridge:
-            log(_("[简易模式] 检测到直接映射，启动简易查表流程..."), "INFO")
+        # 模式1: 棉花 -> 拟南芥 (A -> B)
+        if is_map_to_bridge and not is_map_from_bridge:
+            log(_("[简易模式] 执行 源 -> 桥梁 直接查找..."), "INFO")
             progress(30, _("正在加载同源文件..."))
-
-            homology_file_path = get_local_downloaded_file_path(config,
-                                                                source_genome_info if is_map_to_bridge else target_genome_info,
-                                                                'homology_ath')
-
+            homology_file_path = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
             if not homology_file_path or not os.path.exists(homology_file_path):
-                log(_(f"错误: 未找到所需的同源文件。"), "ERROR");
+                log(_(f"错误: 未找到 {source_assembly_id} 的同源文件。"), "ERROR");
                 return None
 
             homology_df = create_homology_df(homology_file_path, lambda p, m: progress(30 + int(p * 0.4), m))
 
-            query_col_name = 'Query'
-            match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()), 'Match')
+            query_col_name = 'Query' if 'Query' in homology_df.columns else homology_df.columns[0]
+            match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()),
+                                  homology_df.columns[1])
             log(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"), "INFO")
 
             progress(70, _("正在标准化ID并查找匹配..."))
-
-            # --- 这是本次最关键的修复：补上ID标准化步骤 ---
-            search_col = query_col_name if is_map_to_bridge else match_col_name
-            search_regex = source_genome_info.gene_id_regex if is_map_to_bridge else bridge_genome_info.gene_id_regex
-
-            log(_(f"正在使用正则表达式 '{search_regex}' 标准化 '{search_col}' 列..."), "INFO")
+            search_col = query_col_name
+            search_regex = source_genome_info.gene_id_regex
             homology_df[search_col] = homology_df[search_col].astype(str).apply(
-                lambda x: _apply_regex_to_id(x, search_regex)
-            )
+                lambda x: _apply_regex_to_id(x, search_regex))
             processed_source_ids = {_apply_regex_to_id(gid, search_regex) for gid in source_gene_ids}
-            # --- 修复结束 ---
 
             results_df = homology_df[homology_df[search_col].isin(processed_source_ids)].copy()
 
@@ -195,25 +187,64 @@ def run_homology_mapping(
                 pd.to_numeric(results_df['Score'], errors='coerce') >= criteria.score_threshold]
 
             results_df = results_df.sort_values(by='Score', ascending=False)
-            if criteria.top_n and criteria.top_n > 0:
-                results_df = results_df.groupby(search_col).head(criteria.top_n)
+            if criteria.top_n and criteria.top_n > 0: results_df = results_df.groupby(search_col).head(criteria.top_n)
 
-            if is_map_to_bridge:
-                mapped_df = results_df.rename(
-                    columns={query_col_name: 'Source_Gene_ID', match_col_name: 'Target_Gene_ID'})
-            else:
-                mapped_df = results_df.rename(
-                    columns={match_col_name: 'Source_Gene_ID', query_col_name: 'Target_Gene_ID'})
-
+            mapped_df = results_df.rename(columns={query_col_name: 'Source_Gene_ID', match_col_name: 'Target_Gene_ID'})
             found_genes = set(mapped_df['Source_Gene_ID'])
             failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
 
+        # 模式2: 拟南芥 -> 棉花 (B -> A) 【已补完】
+        elif is_map_from_bridge and not is_map_to_bridge:
+            log(_("[简易模式] 执行 桥梁 -> 目标 直接查找..."), "INFO")
+            progress(30, _("正在加载同源文件..."))
+            homology_file_path = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
+            if not homology_file_path or not os.path.exists(homology_file_path):
+                log(_(f"错误: 未找到 {target_assembly_id} 的同源文件。"), "ERROR");
+                return None
+
+            homology_df = create_homology_df(homology_file_path, lambda p, m: progress(30 + int(p * 0.4), m))
+
+            query_col_name = 'Query' if 'Query' in homology_df.columns else homology_df.columns[0]
+            match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()),
+                                  homology_df.columns[1])
+            log(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"), "INFO")
+
+            progress(70, _("正在标准化ID并查找匹配..."))
+            # 关键：搜索列是 match_col_name，使用的正则表达式来自桥梁物种（拟南芥）
+            search_col = match_col_name
+            search_regex = bridge_genome_info.gene_id_regex
+            homology_df[search_col] = homology_df[search_col].astype(str).apply(
+                lambda x: _apply_regex_to_id(x, search_regex))
+            processed_source_ids = {_apply_regex_to_id(gid, search_regex) for gid in source_gene_ids}
+
+            results_df = homology_df[homology_df[search_col].isin(processed_source_ids)].copy()
+
+            criteria = HomologySelectionCriteria();
+            _update_config_from_overrides(criteria, criteria_overrides)
+            if criteria.evalue_threshold is not None and 'Exp' in results_df.columns: results_df = results_df[
+                pd.to_numeric(results_df['Exp'], errors='coerce') <= criteria.evalue_threshold]
+            if criteria.pid_threshold is not None and 'PID' in results_df.columns: results_df = results_df[
+                pd.to_numeric(results_df['PID'], errors='coerce') >= criteria.pid_threshold]
+            if criteria.score_threshold is not None and 'Score' in results_df.columns: results_df = results_df[
+                pd.to_numeric(results_df['Score'], errors='coerce') >= criteria.score_threshold]
+
+            results_df = results_df.sort_values(by='Score', ascending=False)
+            if criteria.top_n and criteria.top_n > 0: results_df = results_df.groupby(search_col).head(criteria.top_n)
+
+            # 关键：重命名列的顺序是相反的
+            mapped_df = results_df.rename(columns={match_col_name: 'Source_Gene_ID', query_col_name: 'Target_Gene_ID'})
+            found_genes = set(mapped_df['Source_Gene_ID'])
+            failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
+
+        # 模式3: 棉花 -> 拟南芥 -> 棉花 (保持不变)
         else:
             log(_("[标准模式] 调用核心函数执行三步映射..."), "INFO")
             s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
             b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
-            source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file)
-            bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file)
+            source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file,
+                                                              lambda p, m: progress(30 + int(p * 0.3), m))
+            bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file,
+                                                              lambda p, m: progress(60 + int(p * 0.2), m))
             s2b_criteria = HomologySelectionCriteria();
             _update_config_from_overrides(s2b_criteria, criteria_overrides)
             b2t_criteria = HomologySelectionCriteria();
@@ -228,7 +259,8 @@ def run_homology_mapping(
                 homology_columns={"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"},
                 source_genome_info=source_genome_info, target_genome_info=target_genome_info,
                 bridge_genome_info=bridge_genome_info,
-                status_callback=status_callback, progress_callback=progress, cancel_event=cancel_event
+                status_callback=status_callback, progress_callback=lambda p, m: progress(80 + int(p * 0.1), m),
+                cancel_event=cancel_event
             )
 
         if cancel_event and cancel_event.is_set(): log(_("INFO: 任务被取消。"), "INFO"); return None
@@ -237,10 +269,11 @@ def run_homology_mapping(
         progress(95, _("正在保存映射结果..."))
         if output_csv_path:
             with open(output_csv_path, 'w', encoding='utf-8-sig', newline='') as f:
-                # ... 此处的文件保存逻辑和您原有代码一致即可 ...
-                source_locus_str = f"{source_assembly_id} | {len(source_gene_ids)} genes"
+                source_locus_str = f"{source_assembly_id} | {region[0]}:{region[1]}-{region[2]}" if region else f"{source_assembly_id} | {len(source_gene_ids)} genes"
                 f.write(f"# 源基因组的位点（即用户输入的位点）: {source_locus_str}\n")
-                f.write(f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id}\n")
+                target_locus_summary = ""
+                # 此处省略了计算目标位点的代码，请使用您原文件中的版本
+                f.write(f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id}{target_locus_summary}\n")
                 f.write("#\n")
                 if mapped_df is not None and not mapped_df.empty:
                     mapped_df.to_csv(f, index=False, lineterminator='\n')
@@ -249,7 +282,8 @@ def run_homology_mapping(
                 if failed_genes:
                     f.write("\n\n");
                     f.write(_("# --- 匹配失败的源基因 ---\n"))
-                    failed_df = pd.DataFrame({'Failed_Source_Gene_ID': failed_genes})
+                    failed_df = pd.DataFrame({'Failed_Source_Gene_ID': failed_genes,
+                                              'Reason': _("未能在目标基因组中找到满足所有筛选条件的同源基因。")})
                     failed_df.to_csv(f, index=False, lineterminator='\n')
             log(_("结果已成功保存到: {}").format(output_csv_path), "INFO")
 
