@@ -202,11 +202,25 @@ class HomologyTab(BaseTab):
             if not (dropdown and dropdown.winfo_exists()): return
             menu = dropdown['menu']
             menu.delete(0, 'end')
-            for value in valid_ids: menu.add_command(label=value, command=lambda v=value, sv=string_var: sv.set(v))
+
+            # --- 从这里开始修改 ---
+            for value in valid_ids:
+                # 默认标签就是值本身
+                label = value
+                # 如果是拟南芥，给它一个特殊的标签
+                if value == "Arabidopsis_thaliana":
+                    label = f"{value} ({_('桥梁物种')})"
+
+                # 注意：command 中传递的 lambda v=value 仍然使用原始的 value ("Arabidopsis_thaliana")
+                # 这样可以确保传递给后端的值是正确的ID，而不仅仅是显示的标签
+                menu.add_command(label=label, command=lambda v=value, sv=string_var: sv.set(v))
+            # --- 修改结束 ---
+
             if string_var.get() not in valid_ids: string_var.set(valid_ids[0])
 
         update_menu(self.source_assembly_dropdown, self.selected_homology_source_assembly)
         update_menu(self.target_assembly_dropdown, self.selected_homology_target_assembly)
+
 
     def _on_homology_gene_input_change(self, event=None):
         self.app.event_handler._auto_identify_genome_version(self.homology_map_genes_textbox,
