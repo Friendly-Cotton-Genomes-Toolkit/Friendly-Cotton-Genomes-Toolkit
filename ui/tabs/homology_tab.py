@@ -1,12 +1,13 @@
 ﻿# 文件路径: ui/tabs/homology_tab.py
 
 import tkinter as tk
-from typing import TYPE_CHECKING, List, Callable
+from typing import TYPE_CHECKING, List, Callable, Any
 
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_homology_mapping
 from .base_tab import BaseTab
+from .. import MessageDialog
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -23,19 +24,19 @@ class HomologyTab(BaseTab):
         self.selected_homology_source_assembly = tk.StringVar()
         self.selected_homology_target_assembly = tk.StringVar()
         self.homology_strict_priority_var = tk.BooleanVar(value=True)
+        self.single_gene_mode_var = tk.BooleanVar(value=False)
 
         # 将 translator 传递给父类
         super().__init__(parent, app, translator=translator)
 
         if self.action_button:
-            # self._ 属性在 super().__init__ 后才可用
             self.action_button.configure(text=self._("开始转换"), command=self._start_homology_task)
         self.update_from_config()
+        self.copy_button.grid_remove()
 
     def _create_widgets(self):
         """
         创建此选项卡内的所有 UI 元件。
-        【修改】将所有需要翻译的元件都储存为 self 的属性，以便 retranslate_ui 方法可以存取它们。
         """
         parent = self.scrollable_frame
         parent.grid_columnconfigure(0, weight=1)
@@ -83,9 +84,14 @@ class HomologyTab(BaseTab):
         self.params_card.grid(row=2, column=0, sticky="new", padx=10, pady=5)
         self.params_card.grid_columnconfigure((1, 3), weight=1)
 
+        self.single_gene_switch = ttkb.Checkbutton(self.params_card, text=_("单基因模式"),
+                                                   variable=self.single_gene_mode_var, bootstyle="round-toggle",
+                                                   command=self._toggle_single_gene_mode)
+        self.single_gene_switch.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+
         self.strict_switch = ttkb.Checkbutton(self.params_card, text=_("严格匹配模式 (同源亚组内优先)"),
                                               variable=self.homology_strict_priority_var, bootstyle="round-toggle")
-        self.strict_switch.grid(row=0, column=0, columnspan=4, padx=10, pady=10, sticky="w")
+        self.strict_switch.grid(row=0, column=2, columnspan=2, padx=10, pady=10, sticky="w")
 
         self.top_n_label = ttkb.Label(self.params_card, text=_("Top N:"), font=self.app.app_font_bold)
         self.pid_label = ttkb.Label(self.params_card, text=_("PID (%):"), font=self.app.app_font_bold)
@@ -112,44 +118,143 @@ class HomologyTab(BaseTab):
         self.output_path_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
         self.homology_output_file_entry = ttkb.Entry(self.output_card, font=self.app.app_font_mono, foreground=text_fg)
         self.homology_output_file_entry.grid(row=0, column=1, padx=0, pady=10, sticky="ew")
+
         self.browse_button = ttkb.Button(self.output_card, text=_("浏览..."), width=12,
                                          command=self._browse_output_file, bootstyle="info-outline")
         self.browse_button.grid(row=0, column=2, padx=(5, 10), pady=10)
 
+        self.copy_button = ttkb.Button(self.output_card, text=_("复制"), width=12,
+                                       command=self._copy_output_to_clipboard, bootstyle="info-outline")
+
+        # 【新增】创建用于显示“复制成功”的标签
+        self.copy_success_label = ttkb.Label(self.output_card, text="", bootstyle="success")
+        self.copy_success_label.grid(row=1, column=1, columnspan=2, sticky="e", padx=(0, 10))
+
+    def _copy_output_to_clipboard(self):
+        text_to_copy = self.homology_output_file_entry.get()
+        if not text_to_copy or text_to_copy == self._("正在查找..."):
+            return
+
+        self.app.clipboard_clear()
+        self.app.clipboard_append(text_to_copy)
+
+        # 【修改】显示下方的成功标签，而不是只改变按钮文字
+        self.copy_success_label.configure(text=self._("复制成功!"))
+
+        # 2秒后自动清除提示
+        self.copy_success_label.after(2000, lambda: self.copy_success_label.configure(text=""))
+
+    def _toggle_single_gene_mode(self):
+        is_single_mode = self.single_gene_mode_var.get()
+        translator = self._
+
+        # 【新增】切换模式时，清除可能存在的“复制成功”提示
+        self.copy_success_label.configure(text="")
+
+        if is_single_mode:
+            self.gene_list_label.configure(text=translator("单一基因ID:"))
+            self.homology_map_genes_textbox.configure(height=1)
+
+            self.output_card.configure(text=translator("输出内容"))
+            self.output_path_label.configure(text=translator("同源基因:"))
+
+            self.homology_output_file_entry.configure(state="readonly")
+
+            self.browse_button.grid_remove()
+            self.copy_button.grid(row=0, column=2, padx=(5, 10), pady=10)
+        else:
+            self.gene_list_label.configure(text=translator("基因ID列表:"))
+            self.homology_map_genes_textbox.configure(height=10)
+
+            self.output_card.configure(text=translator("输出文件 (可选)"))
+            self.output_path_label.configure(text=translator("输出路径:"))
+
+            self.homology_output_file_entry.configure(state="normal")
+            self.update_from_config()
+
+            self.copy_button.grid_remove()
+            self.browse_button.grid()
+
+        self.homology_map_genes_textbox.delete("1.0", tk.END)
+        self.app.ui_manager.refresh_single_placeholder(self.homology_map_genes_textbox, "homology_genes")
+
+        if is_single_mode:
+            self.homology_output_file_entry.configure(state="normal")
+            self.homology_output_file_entry.delete(0, tk.END)
+            self.homology_output_file_entry.configure(state="readonly")
+        else:
+            self.homology_output_file_entry.delete(0, tk.END)
+            if self.app.current_config:
+                self.homology_output_file_entry.insert(0, "homology_results.xlsx")
+
     def retranslate_ui(self, translator: Callable[[str], str]):
-        """
-        【新增】当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
-        """
+        self._ = translator
         self.title_label.configure(text=translator("基因同源转换"))
         self.input_card.configure(text=translator("输入"))
         self.source_genome_label.configure(text=translator("源基因组:"))
         self.target_genome_label.configure(text=translator("目标基因组:"))
-        self.gene_list_label.configure(text=translator("基因ID列表:"))
 
         self.params_card.configure(text=translator("参数设置"))
+        self.single_gene_switch.configure(text=translator("单基因模式"))
         self.strict_switch.configure(text=translator("严格匹配模式 (同源亚组内优先)"))
         self.top_n_label.configure(text=translator("Top N:"))
         self.evalue_label.configure(text=translator("E-value:"))
         self.pid_label.configure(text=translator("PID (%):"))
         self.score_label.configure(text=translator("Score:"))
 
-        self.output_card.configure(text=translator("输出文件 (可选)"))
-        self.output_path_label.configure(text=translator("输出路径:"))
         self.browse_button.configure(text=translator("浏览..."))
+        self.copy_button.configure(text=translator("复制"))
 
         if self.action_button:
             self.action_button.configure(text=translator("开始转换"))
 
-        # 刷新文字输入框中的占位符
-        self.app.ui_manager.add_placeholder(self.homology_map_genes_textbox, "homology_genes")
+        if self.single_gene_mode_var.get():
+            self.gene_list_label.configure(text=translator("单一基因ID:"))
+            self.output_card.configure(text=translator("输出内容"))
+            self.output_path_label.configure(text=translator("同源基因:"))
+        else:
+            self.gene_list_label.configure(text=translator("基因ID列表:"))
+            self.output_card.configure(text=translator("输出文件 (可选)"))
+            self.output_path_label.configure(text=translator("输出路径:"))
+
+        # 【新增】如果提示正在显示，也一并翻译
+        if self.copy_success_label.cget("text"):
+            self.copy_success_label.configure(text=translator("复制成功!"))
 
         self.app.ui_manager.refresh_single_placeholder(self.homology_map_genes_textbox, "homology_genes")
 
     def _browse_output_file(self):
-        # ... (此方法逻辑保持不变) ...
         self.app.event_handler._browse_save_file(self.homology_output_file_entry,
                                                  [(_("Excel 文件"), "*.xlsx"), (_("CSV 文件"), "*.csv"),
                                                   (_("所有文件"), "*.*")])
+
+    def _update_single_gene_output(self, result: List[str]):
+        """
+        后台任务成功后更新UI的回调函数。
+        现在接收一个基因ID列表作为结果。
+        """
+        output_entry = self.homology_output_file_entry
+        output_entry.configure(state="normal")
+        output_entry.delete(0, tk.END)
+
+        if result:
+            # 如果列表不为空，说明找到了同源基因
+            output_text = ", ".join(result)
+            output_entry.insert(0, output_text)
+            self.copy_success_label.configure(text=self._("查找成功!"))
+            self.copy_success_label.after(2000, lambda: self.copy_success_label.configure(text=""))
+        else:
+            # 如果列表为空，说明未找到
+            output_entry.insert(0, self._("未找到同源基因"))
+            # 弹出提示对话框
+            MessageDialog(
+                parent=self.app,
+                title=self._("查询无结果"),
+                message=self._("未能根据当前筛选条件找到任何匹配的同源基因。"),
+                icon_type="info"
+            )
+
+        output_entry.configure(state="readonly")
 
     def _start_homology_task(self):
         if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),
@@ -158,12 +263,22 @@ class HomologyTab(BaseTab):
         is_placeholder = (gene_ids_text == self.app.placeholders.get("homology_genes", ""))
         if not gene_ids_text or is_placeholder: self.app.ui_manager.show_error_message(_("输入缺失"),
                                                                                        _("请输入要映射的源基因ID。")); return
-        gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]
+
+        is_single_mode = self.single_gene_mode_var.get()
+        if is_single_mode:
+            gene_ids = [gene_ids_text.splitlines()[0].strip()]
+            if not gene_ids[0]: self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入有效的基因ID。")); return
+        else:
+            gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]
+
+        if not gene_ids: self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要映射的源基因ID。")); return
+
         source_assembly = self.selected_homology_source_assembly.get()
         target_assembly = self.selected_homology_target_assembly.get()
         if not all([source_assembly, target_assembly]) or _("加载中...") in [source_assembly, target_assembly] or _(
-            "无可用基因组") in [source_assembly, target_assembly]: self.app.ui_manager.show_error_message(_("输入缺失"),
-                                                                                                          _("请选择有效的源和目标基因组。")); return
+                "无可用基因组") in [source_assembly, target_assembly]: self.app.ui_manager.show_error_message(
+            _("输入缺失"),
+            _("请选择有效的源和目标基因组。")); return
         try:
             criteria = {"top_n": int(self.homology_top_n_entry.get()),
                         "evalue_threshold": float(self.homology_evalue_entry.get()),
@@ -173,6 +288,18 @@ class HomologyTab(BaseTab):
         except (ValueError, TypeError):
             self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的阈值必须是有效的数字。"));
             return
+
+        if is_single_mode:
+            output_path = None
+            success_callback = self._update_single_gene_output
+            self.homology_output_file_entry.configure(state="normal")
+            self.homology_output_file_entry.delete(0, tk.END)
+            self.homology_output_file_entry.insert(0, _("正在查找..."))
+            self.homology_output_file_entry.configure(state="readonly")
+        else:
+            output_path = self.homology_output_file_entry.get().strip() or None
+            success_callback = None
+
         self.app.event_handler._start_task(
             task_name=_("基因同源转换"),
             target_func=run_homology_mapping,
@@ -182,15 +309,17 @@ class HomologyTab(BaseTab):
                 'target_assembly_id': target_assembly,
                 'gene_ids': gene_ids,
                 'region': None,
-                'output_csv_path': self.homology_output_file_entry.get().strip() or None,
+                'output_csv_path': output_path,
                 'criteria_overrides': criteria
-            }
+            },
+            on_success=success_callback
         )
 
     def update_from_config(self):
-        if self.app.current_config:
+        if self.app.current_config and not self.single_gene_mode_var.get():
             self.homology_output_file_entry.delete(0, tk.END)
             self.homology_output_file_entry.insert(0, "homology_results.xlsx")
+
         self.update_assembly_dropdowns(
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
@@ -203,24 +332,17 @@ class HomologyTab(BaseTab):
             menu = dropdown['menu']
             menu.delete(0, 'end')
 
-            # --- 从这里开始修改 ---
             for value in valid_ids:
-                # 默认标签就是值本身
                 label = value
-                # 如果是拟南芥，给它一个特殊的标签
                 if value == "Arabidopsis_thaliana":
                     label = f"{value} ({_('桥梁物种')})"
 
-                # 注意：command 中传递的 lambda v=value 仍然使用原始的 value ("Arabidopsis_thaliana")
-                # 这样可以确保传递给后端的值是正确的ID，而不仅仅是显示的标签
                 menu.add_command(label=label, command=lambda v=value, sv=string_var: sv.set(v))
-            # --- 修改结束 ---
 
             if string_var.get() not in valid_ids: string_var.set(valid_ids[0])
 
         update_menu(self.source_assembly_dropdown, self.selected_homology_source_assembly)
         update_menu(self.target_assembly_dropdown, self.selected_homology_target_assembly)
-
 
     def _on_homology_gene_input_change(self, event=None):
         self.app.event_handler._auto_identify_genome_version(self.homology_map_genes_textbox,

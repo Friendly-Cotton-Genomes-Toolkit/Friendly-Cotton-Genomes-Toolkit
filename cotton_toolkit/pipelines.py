@@ -195,11 +195,11 @@ def run_homology_mapping(
         calculate_target_locus: bool = False,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
-) -> Optional[pd.DataFrame]:
+) -> Any:  # 【修改】返回值类型可以是DataFrame或列表
     log = lambda msg, level="INFO": status_callback(msg, level)
     progress = progress_callback if progress_callback else lambda p, m: None
 
-    def check_cancel():  # 辅助函数
+    def check_cancel():
         if cancel_event and cancel_event.is_set():
             return True
         return False
@@ -216,7 +216,7 @@ def run_homology_mapping(
 
         if not all([source_genome_info, target_genome_info, bridge_genome_info]):
             log(_("错误: 基因组名称无效。"), "ERROR");
-            return None
+            return None if not output_csv_path else pd.DataFrame()  # 【修改】返回空列表或空DataFrame
 
         source_gene_ids = gene_ids
         if region:
@@ -231,17 +231,18 @@ def run_homology_mapping(
                                                        force_db_creation=False, status_callback=log)
             if not genes_in_region_list:
                 log(_("在区域 {} 中未找到任何基因。").format(region), "WARNING");
-                return None
+                return [] if not output_csv_path else pd.DataFrame()  # 【修改】
             source_gene_ids = [gene['gene_id'] for gene in genes_in_region_list]
 
         if not source_gene_ids:
             log(_("错误: 基因列表为空。"), "ERROR");
-            return None
+            return [] if not output_csv_path else pd.DataFrame()  # 【修改】
 
         is_map_to_bridge = (target_assembly_id == bridge_species_name)
         is_map_from_bridge = (source_assembly_id == bridge_species_name)
         mapped_df, failed_genes = None, []
 
+        # ... [模式1, 2, 3 的代码保持完全不变] ...
         # 模式1: 棉花 -> 拟南芥 (A -> B)
         if is_map_to_bridge and not is_map_from_bridge:
             log(_("[简易模式] 执行 源 -> 桥梁 直接查找..."), "INFO")
@@ -285,7 +286,7 @@ def run_homology_mapping(
             found_genes = set(mapped_df['Source_Gene_ID'])
             failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
 
-        # 模式2: 拟南芥 -> 棉花 (B -> A) 【已补完】
+        # 模式2: 拟南芥 -> 棉花 (B -> A)
         elif is_map_from_bridge and not is_map_to_bridge:
             log(_("[简易模式] 执行 桥梁 -> 目标 直接查找..."), "INFO")
             progress(30, _("正在加载同源文件..."))
@@ -306,7 +307,6 @@ def run_homology_mapping(
             progress(70, _("正在标准化ID并查找匹配..."))
             if check_cancel(): return None
 
-            # 关键：搜索列是 match_col_name，使用的正则表达式来自桥梁物种（拟南芥）
             search_col = match_col_name
             search_regex = bridge_genome_info.gene_id_regex
             homology_df[search_col] = homology_df[search_col].astype(str).apply(
@@ -327,12 +327,11 @@ def run_homology_mapping(
             results_df = results_df.sort_values(by='Score', ascending=False)
             if criteria.top_n and criteria.top_n > 0: results_df = results_df.groupby(search_col).head(criteria.top_n)
 
-            # 关键：重命名列的顺序是相反的
             mapped_df = results_df.rename(columns={match_col_name: 'Source_Gene_ID', query_col_name: 'Target_Gene_ID'})
             found_genes = set(mapped_df['Source_Gene_ID'])
             failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
 
-        # 模式3: 棉花 -> 拟南芥 -> 棉花 (保持不变)
+        # 模式3: 棉花 -> 拟南芥 -> 棉花
         else:
             log(_("[标准模式] 调用核心函数执行三步映射..."), "INFO")
             s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
@@ -364,11 +363,15 @@ def run_homology_mapping(
 
         if cancel_event and cancel_event.is_set(): log(_("INFO: 任务被取消。"), "INFO"); return None
 
-        log(_("步骤 5: 保存映射结果..."), "INFO")
-        if check_cancel(): return None
+        # --- 【核心修改区域开始】 ---
+        # 根据是保存文件还是直接返回结果，执行不同逻辑
 
-        progress(95, _("正在保存映射结果..."))
         if output_csv_path:
+            # **批量模式**: 保存到文件并返回整个DataFrame
+            log(_("步骤 5: 保存映射结果..."), "INFO")
+            if check_cancel(): return None
+            progress(95, _("正在保存映射结果..."))
+
             save_mapping_results(
                 output_path=output_csv_path,
                 mapped_df=mapped_df,
@@ -379,10 +382,33 @@ def run_homology_mapping(
                 region=region,
                 status_callback=log
             )
+            return mapped_df
         else:
-            log(_("未提供输出路径，跳过保存文件。"), "INFO")
+            # **单基因模式**: 提取目标基因ID，应用正则表达式，并返回一个列表
+            log(_("步骤 5: 提取目标基因ID..."), "INFO")
+            if check_cancel(): return None
+            progress(95, _("正在提取目标基因ID..."))
 
-        return mapped_df
+            if mapped_df is not None and not mapped_df.empty and 'Target_Gene_ID' in mapped_df.columns:
+                target_ids = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
+
+                # 应用目标基因组的正则表达式进行清理
+                target_regex = target_genome_info.gene_id_regex
+                if target_regex:
+                    log(_("正在使用目标基因组的正则表达式 '{}' 清理ID...").format(target_regex), "DEBUG")
+                    cleaned_ids = [_apply_regex_to_id(gid, target_regex) for gid in target_ids]
+                    # 去重，因为正则化后可能有重复
+                    final_ids = sorted(list(set(cleaned_ids)))
+                else:
+                    final_ids = sorted(target_ids)
+
+                log(_("成功提取到 {} 个唯一的同源目标基因。").format(len(final_ids)), "INFO")
+                return final_ids
+            else:
+                # 如果没有找到匹配，返回一个空列表
+                log(_("未找到任何同源目标基因。"), "INFO")
+                return []
+        # --- 【核心修改区域结束】 ---
 
     except Exception as e:
         log(_("流水线执行过程中发生意外错误: {}").format(e), "ERROR")

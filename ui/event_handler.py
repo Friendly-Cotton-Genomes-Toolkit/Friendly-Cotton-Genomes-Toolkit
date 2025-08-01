@@ -174,7 +174,12 @@ class EventHandler:
             app.message_queue.put(("progress", (100, _("初始化完成。"))))
             app.message_queue.put(("hide_progress_dialog", None))
 
-    def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any]):
+    def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
+                    on_success: Optional[Callable] = None):
+        """
+        启动一个后台任务。
+        【已扩展】: 增加一个可选的 on_success 回调，用于处理需要特殊UI更新的成功结果。
+        """
         app = self.app
         _ = self.app._
         if app.active_task_name:
@@ -182,40 +187,55 @@ class EventHandler:
                                                 _("任务 '{}' 正在运行中，请等待其完成后再开始新任务。").format(
                                                     app.active_task_name))
             return
+
+        # 任务启动的UI准备工作 (与原来一致)
         app.ui_manager.update_button_states(is_task_running=True)
         app.active_task_name = task_name
         app.cancel_current_task_event.clear()
         self.app.message_queue.put(("show_progress_dialog", {"title": task_name, "message": _("正在处理..."),
                                                              "on_cancel": app.cancel_current_task_event.set}))
+
+        # 准备传递给后台函数的参数 (与原来一致)
         kwargs.update({'cancel_event': app.cancel_current_task_event, 'status_callback': self.gui_status_callback,
                        'progress_callback': self.gui_progress_callback})
-        threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name), daemon=True).start()
 
-    def _task_wrapper(self, target_func, kwargs, task_name):
+        # 【修改】将 on_success 回调函数传递给线程包装器
+        threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name, on_success),
+                         daemon=True).start()
+
+    def _task_wrapper(self, target_func, kwargs, task_name, on_success: Optional[Callable] = None):
         """
-        【最终修复版】在后台线程中执行任务的包装器。
-        它会捕获任务的各种结束状态，并统一发送给 task_done 处理器。
+        在后台线程中执行任务的包装器。
+        【已扩展】: 如果有 on_success 回调，则在任务成功后执行它。
+        通用完成消息 (task_done) 仍然会被发送。
         """
         _ = self.app._
-        final_data = None
+        result = None  # 初始化result变量
+        e = None  # 初始化exception变量
         try:
-            # 1. 执行任务函数
+            # 1. 执行核心任务函数
             result = target_func(**kwargs)
 
-            # 2. 检查任务是否被用户取消
+            # 2. 【新增】如果提供了成功回调函数，并且任务未被用户取消，
+            #    则通过主UI线程安全地执行这个回调
+            if on_success and not self.app.cancel_current_task_event.is_set():
+                # 使用 app.after() 确保UI更新操作在主线程中执行
+                self.app.after(0, on_success, result)
+
+        except Exception as exc:
+            # 3. 捕获任务执行过程中的任何异常
+            e = exc  # 将异常存起来，以便finally块可以访问
+        finally:
+            # 4. 【重要】无论成功、失败还是取消，最后都把标准化的结果统一发送给 _handle_task_done 处理器
+            final_data = None
             if self.app.cancel_current_task_event.is_set():
-                # 如果是，准备一个 "CANCELLED" 状态的结果
                 final_data = (False, task_name, "CANCELLED")
-            else:
-                # 如果正常完成，准备一个成功的结果
+            elif e:  # 如果捕获到了异常
+                final_data = (False, task_name, e)
+            else:  # 如果成功完成
                 final_data = (True, task_name, result)
 
-        except Exception as e:
-            # 3. 如果任务执行过程中抛出任何异常，准备一个失败的结果
-            #    将异常对象本身作为结果数据，方便后续显示详细错误
-            final_data = (False, task_name, e)
-        finally:
-            # 4. 【重要】无论成功、失败还是取消，最后都把结果统一发送给 task_done 处理器
+            # 这个消息会被通用的 _handle_task_done 接收，用于隐藏进度条、重置按钮等
             if final_data:
                 self.app.message_queue.put(("task_done", final_data))
 
