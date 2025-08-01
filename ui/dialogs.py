@@ -112,7 +112,7 @@ class MessageDialog(ttkb.Toplevel):
                               command=lambda t=text_key: self.on_button_click(_(t)))
             btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Escape>", self._on_escape_close)
 
         self.update_idletasks()
         try:
@@ -126,6 +126,11 @@ class MessageDialog(ttkb.Toplevel):
 
     def on_button_click(self, result: str):
         self.result = result
+        self.destroy()
+
+    def _on_escape_close(self, event=None):
+        """当按下ESC键时调用。"""
+        self.result = "esc_closed"  # 设置一个特定的结果
         self.destroy()
 
 

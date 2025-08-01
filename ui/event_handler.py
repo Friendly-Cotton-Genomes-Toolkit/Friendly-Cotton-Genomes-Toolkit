@@ -37,6 +37,8 @@ class EventHandler:
         self.app = app
         self.ui_manager = app.ui_manager
         self.message_handlers = self._initialize_message_handlers()
+        self.last_ambiguity_text: str = ""
+
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
         """
@@ -358,25 +360,28 @@ class EventHandler:
 
     def _handle_auto_identify_result(self, data: tuple):
         """
-        【已修改】处理所有自动识别结果，并根据情况弹出警告。
+        【已修改】增加状态检查，防止对相同内容重复弹出警告。
         """
         _ = self.app._
-        target_var, result_tuple = data
+        target_var, result_tuple, current_text = data
         assembly_id, warning_message = result_tuple
 
-        # 步骤 1: 更新下拉菜单的选项
-        if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data and isinstance(target_var,
-                                                                                                       tk.StringVar):
+        # 步骤 1: 更新UI下拉菜单 (逻辑不变)
+        if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data and isinstance(target_var, tk.StringVar):
             target_var.set(assembly_id)
 
-        # 步骤 2: 如果存在警告信息，则弹出对话框
+        # 步骤 2: 如果有警告信息，则进行状态检查
         if warning_message:
-            MessageDialog(
-                parent=self.app,
-                title=_("注意：检测到歧义"),
-                message=_(warning_message),  # 直接使用返回的、已翻译的警告信息
-                icon_type="warning"
-            )
+            # 【核心检查】只有当当前文本与上次弹出警告的文本不同时，才显示新的弹窗
+            if current_text != self.last_ambiguity_text:
+                MessageDialog(
+                    parent=self.app,
+                    title=_("注意：检测到歧义"),
+                    message=_(warning_message),
+                    icon_type="warning"
+                )
+                # 显示弹窗后，立刻记录下当前的文本内容
+                self.last_ambiguity_text = current_text
 
 
     def _handle_proxy_test_done(self, data: tuple):
@@ -730,26 +735,36 @@ class EventHandler:
             entry_widget.insert(0, directory_path)
 
     def _auto_identify_genome_version(self, gene_input_textbox: tk.Text, target_assembly_var: tk.StringVar):
+        """
+        【已修改】将当前文本内容也传递给后台线程。
+        """
         current_text = gene_input_textbox.get("1.0", "end").strip()
-        if not current_text or current_text in self.app.placeholders.values(): return
+        if not current_text or current_text in self.app.placeholders.values():
+            # 如果文本框为空或为占位符，重置状态
+            self.last_ambiguity_text = ""
+            return
+
         gene_ids = [g.strip() for g in current_text.replace(",", "\n").splitlines() if g.strip()]
         if not gene_ids or not self.app.genome_sources_data: return
-        threading.Thread(target=self._identify_genome_thread, args=(gene_ids, target_assembly_var), daemon=True).start()
 
-    def _identify_genome_thread(self, gene_ids, target_assembly_var):
+        # 将当前文本内容 (current_text) 作为参数传递给线程
+        threading.Thread(target=self._identify_genome_thread, args=(gene_ids, target_assembly_var, current_text),
+                         daemon=True).start()
+
+
+    def _identify_genome_thread(self, gene_ids, target_assembly_var, current_text):
         """
-        【已修改】现在能处理来自识别函数的元组返回结果。
+        【已修改】将当前文本内容连同识别结果一起放入消息队列。
         """
         try:
-            # identify_genome_from_gene_ids 现在返回一个元组 (assembly_id, warning_message)
             result_tuple = identify_genome_from_gene_ids(
                 gene_ids,
                 self.app.genome_sources_data,
-                status_callback=self.gui_status_callback  # 传递日志回调
+                status_callback=self.gui_status_callback
             )
             if result_tuple:
-                # 将元组结果发送给新的处理器
-                self.app.message_queue.put(("auto_identify_success", (target_assembly_var, result_tuple)))
+                # 将 target_var, result_tuple, 和 current_text 一起发送
+                self.app.message_queue.put(("auto_identify_success", (target_assembly_var, result_tuple, current_text)))
         except Exception as e:
             logger.error(f"自动识别基因组时发生错误: {e}")
 

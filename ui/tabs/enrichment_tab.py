@@ -85,10 +85,13 @@ class EnrichmentTab(BaseTab):
         self.gene_input_text.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.gene_input_text,
                                                                                                 "enrichment_genes_input"))
 
+        # --- 【新增】绑定键盘释放事件，以触发自动识别 ---
+        self.gene_input_text.bind("<KeyRelease>", self._on_gene_input_change)
+
         self.format_card = ttkb.LabelFrame(parent_frame, text=_("输入格式与分析类型"), bootstyle="secondary")
         self.format_card.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         self.format_card.grid_columnconfigure(1, weight=1)
-
+        # ... 后续控件创建代码保持不变 ...
         self.input_format_label = ttk.Label(self.format_card, text=_("输入格式:"), font=self.app.app_font_bold)
         self.input_format_label.grid(row=0, column=0, padx=15, pady=5, sticky="w")
         input_format_frame = ttk.Frame(self.format_card)
@@ -184,8 +187,16 @@ class EnrichmentTab(BaseTab):
                                              self.enrichment_output_dir_entry), bootstyle="info-outline")
         self.browse_button.grid(row=0, column=2, padx=(0, 10), pady=5)
 
+    # --- 【新增】处理键盘事件的函数 ---
+    def _on_gene_input_change(self, event=None):
+        """当基因输入框内容改变时，调用事件处理器中的自动识别函数。"""
+        self.app.event_handler._auto_identify_genome_version(
+            self.gene_input_text,  # 传递文本框本身
+            self.assembly_id_var  # 传递控制下拉菜单的变量
+        )
+
     def retranslate_ui(self, translator: Callable[[str], str]):
-        # --- 更新所有静态文本 ---
+        # ... 此方法保持不变 ...
         self.title_label.config(text=translator("富集分析与绘图"))
         self.input_card.config(text=translator("输入数据"))
         self.assembly_id_label.config(text=translator("基因组版本:"))
@@ -217,25 +228,24 @@ class EnrichmentTab(BaseTab):
         if self.action_button:
             self.action_button.configure(text=translator("开始富集分析"))
 
-            # 【最终修正】直接调用 UIManager 的方法来设置占位符
-            # UIManager 的 _update_placeholders 已经更新了 self.app.placeholders 字典
         new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
         self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
 
         self.app.ui_manager.refresh_single_placeholder(self.gene_input_text, "enrichment_genes_input")
 
     def refresh_placeholders(self):
-        """【新增】此方法现在由UIManager统一调用，以确保占位符被刷新。"""
+        # ... 此方法保持不变 ...
         if hasattr(self, 'gene_input_text') and self.gene_input_text:
             new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
             self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
 
-
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
+        # ... 此方法保持不变 ...
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.assembly_id_var, assembly_ids,
                                                _("无可用基因组"))
 
     def update_from_config(self):
+        # ... 此方法保持不变 ...
         self.update_assembly_dropdowns(
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
         default_dir = os.path.join(os.getcwd(), "enrichment_results")
@@ -244,7 +254,7 @@ class EnrichmentTab(BaseTab):
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def start_enrichment_task(self):
-        # ... [此方法的逻辑与上一版相同] ...
+        # ... 此方法保持不变 ...
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
