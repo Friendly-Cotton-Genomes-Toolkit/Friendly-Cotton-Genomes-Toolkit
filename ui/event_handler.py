@@ -359,20 +359,19 @@ class EventHandler:
             _("测试失败"), message)
 
     def _handle_auto_identify_result(self, data: tuple):
-        """
-        【已修改】增加状态检查，防止对相同内容重复弹出警告。
-        """
+
         _ = self.app._
         target_var, result_tuple, current_text = data
-        assembly_id, warning_message = result_tuple
+
+        assembly_id, warning_message, _d = result_tuple
 
         # 步骤 1: 更新UI下拉菜单 (逻辑不变)
-        if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data and isinstance(target_var, tk.StringVar):
+        if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data and isinstance(target_var,
+                                                                                                       tk.StringVar):
             target_var.set(assembly_id)
 
-        # 步骤 2: 如果有警告信息，则进行状态检查
+        # 步骤 2: 如果有警告信息，则进行状态检查 (逻辑不变)
         if warning_message:
-            # 【核心检查】只有当当前文本与上次弹出警告的文本不同时，才显示新的弹窗
             if current_text != self.last_ambiguity_text:
                 MessageDialog(
                     parent=self.app,
@@ -380,7 +379,6 @@ class EventHandler:
                     message=_(warning_message),
                     icon_type="warning"
                 )
-                # 显示弹窗后，立刻记录下当前的文本内容
                 self.last_ambiguity_text = current_text
 
 
@@ -679,7 +677,7 @@ class EventHandler:
         canvas.bind("<Configure>", resize_content)
         scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-        button_frame = ttkb.Frame(about_win);
+        button_frame = ttkb.Frame(about_win)
         button_frame.pack(side="bottom", fill="x", pady=(10, 15), padx=10)
         ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
         ok_button.pack()
@@ -698,9 +696,9 @@ class EventHandler:
         final_h = min(req_h, max_h)
 
         # 4. 获取主窗口位置，并将“关于”窗口居中
-        parent_x = self.app.winfo_x();
+        parent_x = self.app.winfo_x()
         parent_y = self.app.winfo_y()
-        parent_w = self.app.winfo_width();
+        parent_w = self.app.winfo_width()
         parent_h = self.app.winfo_height()
         x = parent_x + (parent_w - final_w) // 2
         y = parent_y + (parent_h - final_h) // 2
