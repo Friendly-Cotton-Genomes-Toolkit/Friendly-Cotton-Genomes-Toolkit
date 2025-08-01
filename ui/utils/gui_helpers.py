@@ -1,49 +1,49 @@
-﻿import re
-from typing import Any, Optional, Callable
+﻿# File: gui_helpers.py
+
+import re
+import threading
+from typing import Any, Optional, Callable, Tuple
 
 
 def identify_genome_from_gene_ids(
         gene_ids: list[str],
         genome_sources: dict[str, Any],
-        status_callback: Optional[Callable[[str, str], None]] = None # Changed type hint to include level
-) -> Optional[str]:
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        cancel_event: Optional[threading.Event] = None,
+        **kwargs
+) -> Optional[Tuple[str, Optional[str]]]:
     """
     通过基因ID列表识别最可能的基因组版本。
-    增加详细的匹配分数日志，并能检测和警告混合基因组输入。
+    【已修正】: 使用正确的基因组ID进行JGI/UTX歧义判断。
     """
     if not gene_ids or not genome_sources:
         return None
 
-    # Ensure log function accepts level argument
     log = status_callback if status_callback else (lambda msg, level="INFO": print(f"[{level}] {msg}"))
 
+    # ... 前半部分代码保持不变 ...
     gene_ids_to_check = [
         gid for gid in gene_ids
         if gid and not gid.lower().startswith(('scaffold', 'unknown', 'chr'))
     ]
-
     if not gene_ids_to_check:
         log("过滤后没有用于识别的有效基因ID。", "DEBUG")
         return None
-
     scores = {}
     total_valid_ids = len(gene_ids_to_check)
-
-    # 1. 计算每个基因组的匹配分数
     for assembly_id, source_info in genome_sources.items():
-        # 兼容处理字典和对象
+        if cancel_event and cancel_event.is_set():
+            log("基因组自动识别任务被用户取消。", "INFO")
+            return None
         if isinstance(source_info, dict):
             regex_pattern = source_info.get('gene_id_regex')
         else:
             regex_pattern = getattr(source_info, 'gene_id_regex', None)
-
         if not regex_pattern:
             continue
-
         try:
             regex = re.compile(regex_pattern)
             match_count = sum(1 for gene_id in gene_ids_to_check if regex.match(gene_id))
-
             if match_count > 0:
                 score = (match_count / total_valid_ids) * 100
                 scores[assembly_id] = score
@@ -55,28 +55,49 @@ def identify_genome_from_gene_ids(
         log("无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输入ID)。", "INFO")
         return None
 
-    # 2. 对分数进行排序和分析
     sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-
-    # 【新功能】打印详细的诊断日志
     log("基因组自动识别诊断分数:", "DEBUG")
     for assembly_id, score in sorted_scores:
         log(f"  - {assembly_id}: {score:.2f}%", "DEBUG")
 
     best_match_id, highest_score = sorted_scores[0]
+    ambiguity_warning = None
 
-    # 3. 【新功能】检查是否存在混合输入
-    # 找出所有匹配度超过10%的“显著匹配”项
-    significant_matches = [s for s in sorted_scores if s[1] > 10.0]
-    if len(significant_matches) > 1:
-        # 如果存在多于一个显著匹配项，则发出警告
-        top_matches_str = ", ".join([f"{asm_id} ({score:.1f}%)" for asm_id, score in significant_matches[:3]])
-        log(f"检测到混合的基因组ID输入。可能性较高的基因组包括: {top_matches_str}", "WARNING")
+    # --- 【核心修正区域】 ---
+    # 使用与您日志中完全一致的基因组ID进行判断
+    jgi_genome_id = 'JGI_v1.1'
+    utx_genome_id = 'UTX_v2.1'
 
-    # 4. 判断最终结果 (降低识别阈值至50%)
+    if best_match_id == jgi_genome_id:
+        log(f"初步识别结果为 '{jgi_genome_id}'，正在二次校验是否也匹配 '{utx_genome_id}'...", "DEBUG")
+
+        utx_genome_info = genome_sources.get(utx_genome_id)
+        utx_regex_pattern = None
+        if utx_genome_info:
+            if isinstance(utx_genome_info, dict):
+                utx_regex_pattern = utx_genome_info.get('gene_id_regex')
+            else:
+                utx_regex_pattern = getattr(utx_genome_info, 'gene_id_regex', None)
+
+        if utx_regex_pattern:
+            try:
+                utx_regex = re.compile(utx_regex_pattern)
+                if any(utx_regex.match(gid) for gid in gene_ids_to_check):
+                    log(f"二次校验成功：基因同样匹配 '{utx_genome_id}'。将优先选择 UTX。", "WARNING")
+                    best_match_id = utx_genome_id
+                    ambiguity_warning = (
+                        "检测到基因ID同时匹配 'UTX_v2.1' 和 'JGI_v1.1'。\n\n"
+                        "程序已自动优先选择 'UTX_v2.1'。\n\n"
+                        "请您注意甄别，如果需要使用 JGI 版本，请手动从下拉菜单中选择。"
+                    )
+            except re.error as e:
+                log(f"用于二次校验的 '{utx_genome_id}' 正则表达式无效: {e}", "WARNING")
+    # --- 【核心修正区域结束】 ---
+
     if highest_score > 50:
-        log(f"自动识别基因为 '{best_match_id}'，置信度: {highest_score:.2f}%.", "INFO")
-        return best_match_id
+        # 这里的 best_match_id 现在可能是被覆盖后的 'UTX_v2.1'
+        log(f"最终自动识别基因为 '{best_match_id}'，置信度: {highest_score:.2f}%.", "INFO")
+        return (best_match_id, ambiguity_warning)
     else:
         log("无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。", "INFO")
         return None

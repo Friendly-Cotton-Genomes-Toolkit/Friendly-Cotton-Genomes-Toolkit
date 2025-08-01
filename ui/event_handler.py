@@ -40,9 +40,10 @@ class EventHandler:
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
         """
-        【最终修复版】返回消息类型到其处理函数的正确映射。
+        【修改】增加对新消息类型的处理。
         """
-        return {
+        handlers = {
+            # ... 您已有的所有消息处理器 ...
             "startup_complete": self._handle_startup_complete,
             "startup_failed": self._handle_startup_failed,
             "config_load_task_done": self._handle_config_load_task_done,
@@ -52,16 +53,15 @@ class EventHandler:
             "progress": self._handle_progress,
             "ai_models_fetched": self._handle_ai_models_fetched,
             "ai_test_result": self._handle_ai_test_result,
-            "auto_identify_success": self._handle_auto_identify_success,
             "proxy_test_done": self._handle_proxy_test_done,
             "csv_columns_fetched": self._handle_csv_columns_fetched,
-
-            # --- 【核心修正】 ---
-            # 这两个消息处理器必须指向 UIManager 中对应的【函数】，而不是对象
-            # 它们在您的 ui_manager.py 中已经存在
             "show_progress_dialog": self.ui_manager._show_progress_dialog,
             "hide_progress_dialog": self.ui_manager._hide_progress_dialog,
+
+            # 【修改】将原有的处理器重命名，并新增一个处理器
+            "auto_identify_success": self._handle_auto_identify_result,
         }
+        return handlers
 
 
     # --- 语言切换处理 ---
@@ -356,11 +356,28 @@ class EventHandler:
                                               message) if success else self.app.ui_manager.show_error_message(
             _("测试失败"), message)
 
-    def _handle_auto_identify_success(self, data: tuple):
-        target_var, assembly_id = data
+    def _handle_auto_identify_result(self, data: tuple):
+        """
+        【已修改】处理所有自动识别结果，并根据情况弹出警告。
+        """
+        _ = self.app._
+        target_var, result_tuple = data
+        assembly_id, warning_message = result_tuple
+
+        # 步骤 1: 更新下拉菜单的选项
         if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data and isinstance(target_var,
                                                                                                        tk.StringVar):
             target_var.set(assembly_id)
+
+        # 步骤 2: 如果存在警告信息，则弹出对话框
+        if warning_message:
+            MessageDialog(
+                parent=self.app,
+                title=_("注意：检测到歧义"),
+                message=_(warning_message),  # 直接使用返回的、已翻译的警告信息
+                icon_type="warning"
+            )
+
 
     def _handle_proxy_test_done(self, data: tuple):
         _ = self.app._
@@ -720,11 +737,22 @@ class EventHandler:
         threading.Thread(target=self._identify_genome_thread, args=(gene_ids, target_assembly_var), daemon=True).start()
 
     def _identify_genome_thread(self, gene_ids, target_assembly_var):
+        """
+        【已修改】现在能处理来自识别函数的元组返回结果。
+        """
         try:
-            if assembly_id := identify_genome_from_gene_ids(gene_ids, self.app.genome_sources_data):
-                self.app.message_queue.put(("auto_identify_success", (target_assembly_var, assembly_id)))
+            # identify_genome_from_gene_ids 现在返回一个元组 (assembly_id, warning_message)
+            result_tuple = identify_genome_from_gene_ids(
+                gene_ids,
+                self.app.genome_sources_data,
+                status_callback=self.gui_status_callback  # 传递日志回调
+            )
+            if result_tuple:
+                # 将元组结果发送给新的处理器
+                self.app.message_queue.put(("auto_identify_success", (target_assembly_var, result_tuple)))
         except Exception as e:
             logger.error(f"自动识别基因组时发生错误: {e}")
+
 
     def test_proxy_connection(self):
         app = self.app
