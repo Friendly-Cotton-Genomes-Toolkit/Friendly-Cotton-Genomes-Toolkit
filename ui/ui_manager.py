@@ -450,37 +450,58 @@ class UIManager:
     def _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
         """
         【最终修复版】任务结束后，关闭进度条、恢复UI，并根据结果弹出最终提示对话框。
+        此版本修正了因 result_data 为 DataFrame 时导致的布尔值模糊错误。
         """
         _ = self.translator_func
 
-        # 1. 关闭进度弹窗 (这部分不变)
+        # 1. 关闭进度弹窗 (逻辑不变)
         self._hide_progress_dialog()
-        # 2. 恢复所有按钮的状态 (这部分不变)
+        # 2. 恢复所有按钮的状态 (逻辑不变)
         self.update_button_states(is_task_running=False)
         self.app.active_task_name = None
 
         # 3. 【核心修正】根据任务结果，弹出相应的提示对话框
-        if result_data == "CANCELLED":
-            # 如果是用户取消
-            self.show_info_message(
-                _("任务已取消"),
-                _("任务 '{}' 已被用户取消。").format(_(task_display_name))
-            )
-        elif isinstance(result_data, Exception):
-            # 如果是执行失败
+        #    通过重新排序和类型检查，避免对 DataFrame 进行不明确的布尔比较。
+
+        # Case 1: 任务失败并返回了一个 Exception 对象。
+        if isinstance(result_data, Exception):
             self.show_error_message(
                 _("任务失败"),
                 _("任务 '{}' 执行时发生错误:\n\n{}").format(_(task_display_name), str(result_data))
             )
+        # Case 2: 任务被用户明确取消。
+        # 通过先检查类型 `isinstance(result_data, str)`，可以安全地避免 `ValueError`。
+        elif isinstance(result_data, str) and result_data == "CANCELLED":
+            self.show_info_message(
+                _("任务已取消"),
+                _("任务 '{}' 已被用户取消。").format(_(task_display_name))
+            )
+        # Case 3: 任务成功完成。
+        # 此时 result_data 可能是一个 DataFrame，但我们仅依赖 `success` 标志位，因此是安全的。
         elif success:
-            # 如果是成功完成
             self.show_info_message(
                 _("任务完成"),
                 _("任务 '{}' 已成功完成。").format(_(task_display_name))
             )
+        # Case 4 (可选但推荐): 捕获其他所有失败情况 (例如 success=False 但未返回Exception)。
+        else:
+            self.show_error_message(
+                _("任务失败"),
+                _("任务 '{}' 未能成功完成。").format(_(task_display_name))
+            )
 
-        # 4. 更新底部状态栏的文本 (作为辅助提示，保留此功能)
-        status_msg = f"{_(task_display_name)}: {result_data if result_data else (_('完成') if success else _('失败'))}"
+        # 4. 【修复】更新底部状态栏的文本
+        #    重写此部分逻辑，根据任务的最终状态生成摘要，而不是直接评估 result_data。
+        final_status_text = ""
+        if isinstance(result_data, str) and result_data == "CANCELLED":
+            final_status_text = _("已取消")
+        elif success:
+            final_status_text = _("完成")
+        else:
+            final_status_text = _("失败")
+
+        status_msg = f"{_(task_display_name)}: {final_status_text}"
+
         if hasattr(self.app, 'status_label') and self.app.status_label.winfo_exists():
             self.app.status_label.configure(text=status_msg)
 

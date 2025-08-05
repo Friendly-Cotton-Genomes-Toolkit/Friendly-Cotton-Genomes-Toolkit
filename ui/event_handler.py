@@ -9,7 +9,6 @@ import tkinter as tk
 from tkinter import filedialog
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Any
 import requests
-import re
 import ttkbootstrap as ttkb
 
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
@@ -297,17 +296,18 @@ class EventHandler:
         _ = self.app._
         success, task_display_name, result_data = data
 
-        # 1. 直接调用您在 ui_manager.py 中已有的 _finalize_task_ui 函数
-        #    这个函数负责隐藏进度条、恢复UI，并根据结果弹出最终提示
+        # 1. 关闭进度条、恢复UI，并根据结果弹出最终提示
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
 
-        # 2. 如果是特定任务，可以在此之后添加额外的UI更新逻辑
-        if task_display_name in [_("数据下载"), _("预处理注释文件")]:
+        # 2. 【核心修改】在此处添加对BLAST数据库预处理任务的判断
+        #    如果完成的任务是下载或任意一种预处理，则自动刷新下载选项卡的状态
+        if success and task_display_name in [_("数据下载"), _("预处理注释文件"), _("预处理BLAST数据库")]:
             if download_tab := app.tool_tab_instances.get('download'):
                 if hasattr(download_tab, '_update_dynamic_widgets'):
+                    # 使用 after 以确保在主UI线程中安全地执行刷新
                     selected_genome = download_tab.selected_genome_var.get()
-                    app.after(10, lambda: download_tab._update_dynamic_widgets(selected_genome))
-                    app.logger.info(_("数据下载选项卡状态已在任务完成后自动刷新。"))
+                    app.after(50, lambda: download_tab._update_dynamic_widgets(selected_genome))
+                    app.logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
 
         elif "富集分析" in task_display_name and success and result_data:
              if hasattr(self.app.ui_manager, '_show_plot_results'):

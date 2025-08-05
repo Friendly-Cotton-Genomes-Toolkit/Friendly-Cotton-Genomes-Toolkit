@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, Callable, Any
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.config.loader import get_local_downloaded_file_path
-from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files
+from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files, run_build_blast_db_pipeline
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:
@@ -25,15 +25,17 @@ except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins�
 
 
 class DataDownloadTab(BaseTab):
-    # 【修改】构造函数接收 translator 并传递给父类
+    # 【已修正】构造函数现在遵循正确的初始化顺序
     def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
-        self._translator = translator  # 临时保存一下，因为 super().__init__ 会覆盖 self._
+        # 步骤 1: 提前定义所有 _create_widgets() 需要用到的实例变量
         self.selected_genome_var = tk.StringVar()
         self.use_proxy_for_download_var = tk.BooleanVar(value=False)
         self.force_download_var = tk.BooleanVar(value=False)
         self.file_type_vars: Dict[str, tk.BooleanVar] = {}
 
         self.FILE_TYPE_DISPLAY_NAMES_KEYS = {
+            "predicted_cds": _("Predicted CDS"),
+            "predicted_protein": _("Predicted Protein"),
             "gff3": _("注释 (gff3)"),
             "GO": "GO",
             "IPR": "IPR",
@@ -42,25 +44,29 @@ class DataDownloadTab(BaseTab):
             "homology_ath": _("同源关系 (拟南芥)"),
         }
         self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED: Dict[str, str] = {}
-
-        self._genome_option_menu_command = self._on_genome_selection_change
         self.dynamic_widgets = {}
 
-        # 调用父类构造函数，它会设置好 self._
+        # 步骤 2: 调用父类的构造函数。
+        # 父类会调用 _create_widgets()，此时所有需要的变量都已存在。
         super().__init__(parent, app, translator)
 
+        # 步骤 3: 在父类完全初始化后，再配置由父类创建的组件（例如 action_button）
         if self.action_button:
             self.download_button = self.action_button
-            # 【修改】使用 self._
             self.download_button.configure(text=self._("开始下载"), command=self.start_download_task)
             action_frame = self.download_button.master
 
-            # 【修改】使用 self._
-            self.preprocess_button = ttkb.Button(action_frame, text=self._("预处理注释文件"),
-                                                 command=self.start_preprocess_task, bootstyle="primary")
-            self.preprocess_button.grid(row=0, column=0, sticky="se", padx=(0, 10), pady=10)
-            self.download_button.grid(row=0, column=1, sticky="se", padx=(0, 15), pady=10)
+            self.build_blast_db_button = ttkb.Button(action_frame, text=self._("预处理BLAST数据库"),
+                                                     command=self.start_build_blast_db_task, bootstyle="primary")
+            self.build_blast_db_button.grid(row=0, column=0, sticky="se", padx=(0, 10), pady=10)
 
+            self.preprocess_button = ttkb.Button(action_frame, text=self._("预处理注释文件"),
+                                                 command=self.start_preprocess_task, bootstyle="info")
+            self.preprocess_button.grid(row=0, column=1, sticky="se", padx=(0, 10), pady=10)
+
+            self.download_button.grid(row=0, column=2, sticky="se", padx=(0, 15), pady=10)
+
+        # 步骤 4: 最后执行依赖于已创建组件的更新
         self.update_from_config()
 
     def _create_widgets(self):
@@ -163,10 +169,14 @@ class DataDownloadTab(BaseTab):
         }
 
         status_row_idx, checkbox_col_idx, checkbox_row_idx, checkbox_count = 1, 0, 0, 0
-        for key in self.FILE_TYPE_DISPLAY_NAMES_KEYS.keys():
+        all_file_keys = self.FILE_TYPE_DISPLAY_NAMES_KEYS.keys()
+
+        for key in all_file_keys:
             display_name = self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.get(key, key)
             url_attr = f"{key}_url"
+
             if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
+                # Checkbox creation logic remains the same
                 var = tk.BooleanVar(value=True)
                 self.file_type_vars[key] = var
                 ttkb.Checkbutton(checkbox_frame, text=display_name, variable=var, bootstyle="round-toggle").grid(
@@ -175,27 +185,35 @@ class DataDownloadTab(BaseTab):
                 if checkbox_col_idx >= 2: checkbox_col_idx = 0; checkbox_row_idx += 1
                 checkbox_count += 1
 
+                # --- 【核心修改】状态判断逻辑 ---
                 local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
                 status_key = 'not_downloaded'
+
                 if local_path and os.path.exists(local_path):
-                    is_special_excel = local_path.lower().endswith(('.xlsx', '.xlsx.gz'))
-                    if is_special_excel:
+                    is_blast_file = key in ['predicted_cds', 'predicted_protein']
+                    is_anno_excel = key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+
+                    if is_blast_file:
+                        db_fasta_path = local_path.removesuffix('.gz')
+                        db_type = 'prot' if key == 'predicted_protein' else 'nucl'
+                        db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
+                        status_key = 'processed' if os.path.exists(db_fasta_path + db_check_ext) else 'downloaded'
+                    elif is_anno_excel:
                         csv_path = local_path.rsplit('.', 2)[0] + '.csv' if local_path.lower().endswith('.gz') else \
                             local_path.rsplit('.', 1)[0] + '.csv'
                         status_key = 'processed' if os.path.exists(csv_path) else 'downloaded'
-                    else:
+                    else:  # GFF file, etc.
                         status_key = 'processed'
-                status_info = status_map[status_key]
 
+                status_info = status_map.get(status_key, status_map['not_downloaded'])
+
+                # Status label creation remains the same
                 file_type_label = ttkb.Label(status_card, text=f"{display_name}:", font=self.app.app_font_bold,
                                              anchor="e")
                 file_type_label.grid(row=status_row_idx, column=0, sticky="w", padx=(10, 5), pady=2)
-                file_type_label.bind('<Configure>', lambda e, label=file_type_label: label.config(wraplength=e.width))
-
                 status_label = ttk.Label(status_card, text=status_info["text"], foreground=status_info["color"],
                                          anchor="w")
                 status_label.grid(row=status_row_idx, column=1, sticky="ew", padx=5, pady=2)
-                status_label.bind('<Configure>', lambda e, label=status_label: label.config(wraplength=e.width))
 
                 status_row_idx += 1
 
@@ -241,11 +259,25 @@ class DataDownloadTab(BaseTab):
 
     def update_button_state(self, is_running, has_config):
         super().update_button_state(is_running, has_config)
+        if hasattr(self, 'build_blast_db_button'):
+            self.build_blast_db_button.configure(state="disabled" if is_running or not has_config else "normal")
         if hasattr(self, 'preprocess_button'):
             self.preprocess_button.configure(state="disabled" if is_running or not has_config else "normal")
         if 'refresh_button' in self.dynamic_widgets and self.dynamic_widgets['refresh_button'].winfo_exists():
             self.dynamic_widgets['refresh_button'].configure(
                 state="disabled" if is_running or not has_config else "normal")
+
+    def start_build_blast_db_task(self):
+        if not self.app.current_config:
+            self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
+            return
+
+        task_kwargs = {'config': self.app.current_config}
+        self.app.event_handler._start_task(
+            task_name=self._("预处理BLAST数据库"),
+            target_func=run_build_blast_db_pipeline,  # 调用我们即将创建的新函数
+            kwargs=task_kwargs
+        )
 
     def start_download_task(self):
         # 【修改】所有 _() 调用都改为 self._()

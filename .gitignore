@@ -95,3 +95,5 @@ nuitka-crash-report.xml
 main.onefile-build
 main.dist
 main.build
+homology_results.xlsx
+blast_results.xlsx

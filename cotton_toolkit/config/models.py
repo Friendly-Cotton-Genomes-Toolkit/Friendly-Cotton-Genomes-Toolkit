@@ -91,13 +91,6 @@ class AnnotationToolConfig(BaseModel):
     def _default_database_columns() -> Dict[str, str]:
         return {"query": "Query", "match": "Match", "description": "Description"}
 
-class BSAAnalyzerConfig(BaseModel):
-    max_workers: int = 8
-    output_dir_name: str = "bsa_analysis_results"
-    window_size: int = 1000000
-    step_size: int = 100000
-    min_depth: int = 5
-    min_snp_ratio: float = 0.8
 
 class ArabidopsisAnalyzerConfig(BaseModel):
     output_dir_name: str = "arabidopsis_homology_results"
@@ -140,7 +133,6 @@ class MainConfig(BaseModel):
     ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig)
     ai_prompts: AIPromptsConfig = Field(default_factory=AIPromptsConfig)
     annotation_tool: AnnotationToolConfig = Field(default_factory=AnnotationToolConfig)
-    bsa_analyzer: BSAAnalyzerConfig = Field(default_factory=BSAAnalyzerConfig)
     arabidopsis_analyzer: ArabidopsisAnalyzerConfig = Field(default_factory=ArabidopsisAnalyzerConfig)
     batch_ai_processor: BatchAIProcessorConfig = Field(default_factory=BatchAIProcessorConfig)
     locus_conversion: LocusConversionConfig = Field(default_factory=LocusConversionConfig)
@@ -154,6 +146,8 @@ class GenomeSourceItem(BaseModel):
     species_name: str
     genome_type: str = "cotton"
     gff3_url: Optional[str] = None
+    predicted_cds_url: Optional[str] = None
+    predicted_protein_url: Optional[str] = None # <-- 【新增】字段已添加
     GO_url: Optional[str] = None
     IPR_url: Optional[str] = None
     KEGG_pathways_url: Optional[str] = None
@@ -176,10 +170,18 @@ class GenomeSourcesConfig(BaseModel):
     @staticmethod
     def _default_genome_sources() -> Dict[str, GenomeSourceItem]:
         return {
+            "BGI_v1": GenomeSourceItem(
+                species_name="Gossypium hirsutum (AD1) 'TM-1' genome CGP-BGI_v1.0",
+                genome_type="cotton",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CGP-BGI_G.hirsutum_AD1genome/genes/BGI_Gossypium_hirsutum_v1.0.cds.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CGP-BGI_G.hirsutum_AD1genome/genes/BGI_Gossypium_hirsutum_v1.0.pep.gz" # <-- 已更新
+            ),
             "NBI_v1.1": GenomeSourceItem(
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome NAU-NBI_v1.1",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/genes/NBI_Gossypium_hirsutum_v1.1.gene.gff3.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/genes/NBI_Gossypium_hirsutum_v1.1.cds.fa.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/genes/NBI_Gossypium_hirsutum_v1.1.pep.fa.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/functional/G.hirsutum_NBI_v1.1_genes2GO.txt.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/functional/G.hirsutum_NBI_v1.1_genes2IPR.txt.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/functional/G.hirsutum_NBI_v1.1_KEGG.pathways.txt.gz",
@@ -192,6 +194,8 @@ class GenomeSourcesConfig(BaseModel):
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome UTX-JGI-Interim-release_v1.1",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/genes/Tx-JGI_G.hirsutum_v1.1.gene_exons.gff3.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/genes/Tx-JGI_G.hirsutum_v1.1.cds.fa.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/genes/Tx-JGI_G.hirsutum_v1.1.protein.fa.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/functional/G.hirsutum_Tx-JGI_v1.1_genes2GO.txt.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/functional/G.hirsutum_Tx-JGI_v1.1_genes2IPR.txt.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/functional/G.hirsutum_Tx-JGI_v1.1_KEGG-pathways.txt.gz",
@@ -204,6 +208,8 @@ class GenomeSourcesConfig(BaseModel):
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome HAU_v1 (v1.1)",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/genes/Ghirsutum_gene_model.gff3.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/genes/Ghirsutum_gene_CDS.fasta.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/genes/Ghirsutum_gene_peptide.fasta.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_genes2Go.xlsx.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_genes2IPR.xlsx.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_KEGG-pathways.xlsx.gz",
@@ -216,6 +222,8 @@ class GenomeSourcesConfig(BaseModel):
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome ZJU-improved_v2.1_a1",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/genes/TM-1_V2.1.gene.gff.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/genes/TM-1_V2.1.gene.cds.fa.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/genes/TM-1_V2.1.gene.pep.fa.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/functional/AD1_ZJU_v2.1_genes2Go.xlsx.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/functional/AD1_ZJU_v2.1_genes2IPR.xlsx.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/functional/AD1_ZJU_v2.1_KEGG-pathways.xlsx.gz",
@@ -228,9 +236,11 @@ class GenomeSourcesConfig(BaseModel):
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome CRI_v1",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/genes/TM_1.Chr_genome_all_transcripts_final_gene.change.gff.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/genes/TM_1.Chr_genome_all_transcripts_final_gene.change.gff.cds.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/genes/TM_1.Chr_genome_all_transcripts_final_gene.change.gff.pep.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_genes2Go.xlsx.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_genes2IPR.xlsx.gz",
-                KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_KEGG-pathways.xlsx.gz",
+                KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypi_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/homology/blastp_G.hirsutum_CRI_TM1-v1.0_vs_arabidopsis.xlsx.gz",
                 gene_id_regex=r"(Gh_[AD]\d{2}G\d{6})",
@@ -240,6 +250,8 @@ class GenomeSourcesConfig(BaseModel):
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome WHU_v1",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/genes/Ghirsutum_TM-1_WHU_standard.gene.gff3.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/genes/Ghirsutum_TM-1_WHU_standard.gene.cds.fa.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/genes/Ghirsutum_TM-1_WHU_standard.gene.pep.fa.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/functional/Gh_TM1_WHU_v1_a1_genes2Go.xlsx.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/functional/Gh_TM1_WHU_v1_a1_genes2IPR.xlsx.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/functional/Gh_TM1_WHU_v1_a1_KEGG-pathways.xlsx.gz",
@@ -252,6 +264,8 @@ class GenomeSourcesConfig(BaseModel):
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome UTX_v2.1",
                 genome_type="cotton",
                 gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/genes/Ghirsutum_527_v2.1.gene_exons.gff3.gz",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/genes/Ghirsutum_527_v2.1.cds.fa.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/genes/Ghirsutum_527_v2.1.protein.fa.gz", # <-- 已更新
                 GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/functional/Gh_TM1_UTX_v2.1_genes2Go.xlsx.gz",
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/functional/Gh_TM1_UTX_v2.1_genes2IPR.xlsx.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/functional/Gh_TM1_UTX_v2.1_KEGG-pathways.xlsx.gz",

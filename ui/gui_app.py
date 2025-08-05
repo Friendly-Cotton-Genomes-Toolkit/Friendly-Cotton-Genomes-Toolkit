@@ -20,10 +20,13 @@ except ImportError:
 
 from cotton_toolkit.config.loader import save_config, load_config
 from cotton_toolkit.config.models import MainConfig
-from cotton_toolkit.utils.localization import setup_localization
 from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
 from ui.ui_manager import UIManager
+from ui.tabs import (
+    AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab,
+    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, XlsxConverterTab, BlastTab
+)
 
 try:
     from builtins import _
@@ -45,7 +48,7 @@ class CottonToolkitApp(ttkb.Window):
 
     TOOL_TAB_ORDER = [
         "download", "annotation", "enrichment", "xlsx_to_csv", "genome_identifier",
-        "homology", "locus_conversion", "gff_query", "ai_assistant"
+        "homology", "locus_conversion", "gff_query", "blast", "ai_assistant"
     ]
 
     @property
@@ -53,7 +56,8 @@ class CottonToolkitApp(ttkb.Window):
         return {
             "download": _("数据下载"), "annotation": _("功能注释"), "enrichment": _("富集分析与绘图"),
             "xlsx_to_csv": _("XLSX转CSV"), "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
-            "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "ai_assistant": _("AI助手"),
+            "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
+            "ai_assistant": _("AI助手"),
         }
 
 
@@ -485,28 +489,51 @@ class CottonToolkitApp(ttkb.Window):
         return frame
 
     def _populate_tools_ui(self):
+        """用正确的顺序和完整的映射关系来创建所有工具按钮和页面。"""
         for widget in self.tools_nav_frame.winfo_children(): widget.destroy()
         for widget in self.tools_content_frame.winfo_children(): widget.destroy()
+
         self.tool_tab_instances.clear()
-        self.tool_content_pages.clear()
+        # 注意：您之前代码中这行有笔误，这里修正为 self.tool_content_pages
+        self.tool_content_pages = {}
         self.tool_buttons.clear()
-        from ui.tabs import (AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab, GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, XlsxConverterTab)
+
+        # 【核心修正】: 在这个字典中添加 'blast': BlastTab 的映射关系
         tab_map = {
-            "download": DataDownloadTab, "annotation": AnnotationTab, "enrichment": EnrichmentTab, "xlsx_to_csv": XlsxConverterTab,
-            "genome_identifier": GenomeIdentifierTab, "homology": HomologyTab, "locus_conversion": LocusConversionTab, "gff_query": GFFQueryTab,
+            "download": DataDownloadTab,
+            "annotation": AnnotationTab,
+            "enrichment": EnrichmentTab,
+            "xlsx_to_csv": XlsxConverterTab,
+            "genome_identifier": GenomeIdentifierTab,
+            "homology": HomologyTab,
+            "locus_conversion": LocusConversionTab,
+            "gff_query": GFFQueryTab,
+            "blast": BlastTab,  # <-- 关键修正：添加这一行！
             "ai_assistant": AIAssistantTab,
         }
+
         for key in self.TOOL_TAB_ORDER:
             if TabClass := tab_map.get(key):
                 content_page = ttkb.Frame(self.tools_content_frame)
                 instance = TabClass(parent=content_page, app=self, translator=self._)
                 self.tool_tab_instances[key] = instance
                 self.tool_content_pages[key] = content_page
-                content_page.grid(row=0, column=0, sticky='nsew'); content_page.grid_remove()
-                btn = ttkb.Button(master=self.tools_nav_frame, text=self.TAB_TITLE_KEYS[key], bootstyle="outline-info", command=lambda k=key: self.on_tool_button_select(k))
+                content_page.grid(row=0, column=0, sticky='nsew')
+                content_page.grid_remove()
+
+                # 从属性获取标题，确保语言切换时能正确更新
+                btn_text = self.TAB_TITLE_KEYS.get(key, key)
+                btn = ttkb.Button(
+                    master=self.tools_nav_frame,
+                    text=btn_text,
+                    bootstyle="outline-info",
+                    command=lambda k=key: self.on_tool_button_select(k)
+                )
                 btn.pack(fill='x', padx=10, pady=4)
                 self.tool_buttons[key] = btn
+
         if self.TOOL_TAB_ORDER:
+            # 默认选中第一个工具
             self.on_tool_button_select(self.TOOL_TAB_ORDER[0])
 
     def on_tool_button_select(self, selected_key: str):
@@ -515,13 +542,12 @@ class CottonToolkitApp(ttkb.Window):
         self._switch_tool_content_page(selected_key)
 
     def _switch_tool_content_page(self, key_to_show: str):
-        """切换在主内容区显示的工具页面。"""
+        """切换在主内容区显示的工具页面，并确保页面内容被刷新。"""
         for key, page in self.tool_content_pages.items():
             if key == key_to_show:
                 # 显示被选中的页面
                 page.grid()
 
-                # --- 【核心修正】 ---
                 # 当一个页面被选中显示时，获取其实例并调用其刷新函数
                 if instance := self.tool_tab_instances.get(key):
                     if hasattr(instance, 'update_from_config'):
@@ -529,8 +555,6 @@ class CottonToolkitApp(ttkb.Window):
                         # 从而根据最新配置刷新其所有UI组件的状态。
                         instance.update_from_config()
                         self.logger.debug(f"Tab '{key}' has been refreshed upon selection.")
-                # --- 修正结束 ---
-
             else:
                 # 隐藏其他未被选中的页面
                 page.grid_remove()

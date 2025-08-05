@@ -5,6 +5,7 @@ import io
 import logging
 import os
 import re
+import subprocess
 import threading
 import time
 import traceback
@@ -30,7 +31,13 @@ from .tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
 from .tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, plot_enrichment_cnet
 from .utils.gene_utils import map_transcripts_to_genes
 
-# 【核心修改】使用更健壮的方式来设置翻译函数
+import tempfile
+from Bio import SeqIO
+from Bio.Blast.Applications import (NcbiblastnCommandline, NcbiblastpCommandline,
+                                    NcbiblastxCommandline, NcbitblastnCommandline)
+from Bio.SearchIO import parse as blast_parse
+
+
 try:
     from builtins import _
 except ImportError:
@@ -1396,6 +1403,344 @@ def run_xlsx_to_csv(
         return False
 
 
+def run_blast_pipeline(
+        config: MainConfig,
+        blast_type: str,
+        target_assembly_id: str,
+        query_file_path: Optional[str],
+        query_text: Optional[str],
+        output_path: str,
+        evalue: float,
+        word_size: int,
+        max_target_seqs: int,
+        status_callback: Callable,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        cancel_event: Optional[threading.Event] = None
+) -> Optional[str]:
+    """
+    执行本地BLAST搜索的完整流水线。
+    """
+    log = lambda msg, level="INFO": status_callback(msg, level)
+    progress = progress_callback if progress_callback else lambda p, m: None
+
+    def check_cancel():
+        if cancel_event and cancel_event.is_set():
+            return True
+        return False
+
+    try:
+        progress(0, _("BLAST 流程启动..."))
+        if check_cancel(): return _("任务已取消。")
+
+        # --- 1. 验证、解压并准备 BLAST 数据库 ---
+        progress(5, _("正在验证目标基因组数据库..."))
+        log(_("步骤 1: 准备目标数据库 '{}'...").format(target_assembly_id))
+
+        genome_sources = get_genome_data_sources(config, logger_func=log)
+        target_genome_info = genome_sources.get(target_assembly_id)
+        if not target_genome_info:
+            log(_("错误: 无法找到目标基因组 '{}' 的配置。").format(target_assembly_id), "ERROR")
+            return None
+
+        # 根据BLAST程序确定所需的数据库类型 (nucl 或 prot)
+        db_type = 'prot' if blast_type in ['blastp', 'blastx'] else 'nucl'
+        seq_file_key = 'predicted_protein' if db_type == 'prot' else 'predicted_cds'
+
+        log(_("为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。").format(blast_type, db_type, seq_file_key), "INFO")
+
+        # 获取原始（可能被压缩的）文件路径
+        compressed_seq_file = get_local_downloaded_file_path(config, target_genome_info, seq_file_key)
+        if not compressed_seq_file or not os.path.exists(compressed_seq_file):
+            log(_("错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。").format(seq_file_key), "ERROR")
+            return None
+
+        # 处理解压
+        db_fasta_path = compressed_seq_file
+        if compressed_seq_file.endswith('.gz'):
+            decompressed_path = compressed_seq_file.removesuffix('.gz')
+            db_fasta_path = decompressed_path
+
+            # 检查是否需要解压或重新解压
+            if not os.path.exists(decompressed_path) or os.path.getmtime(compressed_seq_file) > os.path.getmtime(
+                    decompressed_path):
+                progress(8, _("文件为gz压缩格式，正在解压..."))
+                log(_("正在解压 {} 到 {}...").format(os.path.basename(compressed_seq_file),
+                                                     os.path.basename(decompressed_path)))
+                try:
+                    with gzip.open(compressed_seq_file, 'rb') as f_in:
+                        with open(decompressed_path, 'wb') as f_out:
+                            f_out.writelines(f_in)
+                    log(_("解压成功。"))
+                except Exception as e:
+                    log(_("解压文件时出错: {}").format(e), "ERROR")
+                    return None
+
+        if check_cancel(): return _("任务已取消。")
+
+        # 检查BLAST数据库是否存在，如果不存在则创建
+        db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
+        if not os.path.exists(db_fasta_path + db_check_ext):
+            progress(10, _("正在创建BLAST数据库... (可能需要一些时间)"))
+            log(_("未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库...").format(os.path.basename(db_fasta_path),
+                                                                                      db_type))
+
+            makeblastdb_cmd = [
+                "makeblastdb",
+                "-in", db_fasta_path,
+                "-dbtype", db_type,
+                "-out", db_fasta_path,
+                "-title", f"{target_assembly_id} {db_type} DB"
+            ]
+            try:
+                # 使用 subprocess.run 来等待命令完成
+                result = subprocess.run(makeblastdb_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
+                log(_("BLAST数据库创建成功。"))
+            except FileNotFoundError:
+                log(_("错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。"),
+                    "ERROR")
+                return None
+            except subprocess.CalledProcessError as e:
+                log(_("创建BLAST数据库失败: {} \nStderror: {}").format(e.stdout, e.stderr), "ERROR")
+                return None
+
+        if check_cancel(): return _("任务已取消。")
+
+        # --- 2. 准备查询序列文件 ---
+        progress(25, _("正在准备查询序列..."))
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".fasta") as tmp_query_file:
+            query_fasta_path = tmp_query_file.name
+            if query_file_path:
+                log(_("正在处理输入文件: {}").format(query_file_path))
+                # 尝试自动识别 FASTA 或 FASTQ
+                file_format = "fasta"
+                try:
+                    with open(query_file_path, "r") as f:
+                        first_char = f.read(1)
+                        if first_char == '@':
+                            file_format = "fastq"
+                except:
+                    pass  # 保持默认为fasta
+
+                if file_format == "fastq":
+                    log(_("检测到FASTQ格式，正在转换为FASTA..."))
+                    SeqIO.convert(query_file_path, "fastq", query_fasta_path, "fasta")
+                else:  # fasta 或 txt
+                    log(_("将输入文件作为FASTA格式处理..."))
+                    with open(query_file_path, 'r') as infile:
+                        tmp_query_file.write(infile.read())
+
+            elif query_text:
+                log(_("正在处理文本输入..."))
+                tmp_query_file.write(query_text)
+
+        if check_cancel():
+            os.remove(query_fasta_path)
+            return _("任务已取消。")
+
+        # --- 3. 执行 BLAST ---
+        progress(40, _("正在执行 {} ...").format(blast_type))
+        log(_("步骤 2: 执行 {} ...").format(blast_type.upper()))
+
+        output_xml_path = query_fasta_path + ".xml"
+
+        blast_map = {
+            'blastn': NcbiblastnCommandline,
+            'blastp': NcbiblastpCommandline,
+            'blastx': NcbiblastxCommandline,
+            'tblastn': NcbitblastnCommandline
+        }
+        blast_cline = blast_map[blast_type](
+            query=query_fasta_path,
+            db=db_fasta_path,
+            out=output_xml_path,
+            outfmt=5,  # XML format for detailed parsing
+            evalue=evalue,
+            word_size=word_size,
+            max_target_seqs=max_target_seqs,
+            num_threads=config.downloader.max_workers  # 复用下载器的线程数设置
+        )
+
+        log(_("BLAST命令: {}").format(str(blast_cline)))
+        stdout, stderr = blast_cline()
+        if stderr:
+            log(_("BLAST运行时发生错误: {}").format(stderr), "ERROR")
+            os.remove(query_fasta_path)
+            return None
+
+        if check_cancel():
+            os.remove(query_fasta_path)
+            if os.path.exists(output_xml_path):
+                os.remove(output_xml_path)
+            return _("任务已取消。")
+
+        # --- 4. 解析结果并保存 ---
+        progress(80, _("正在解析BLAST结果..."))
+        log(_("步骤 3: 解析结果并保存到 {} ...").format(output_path))
+
+        all_hits = []
+        if not os.path.exists(output_xml_path) or os.path.getsize(output_xml_path) == 0:
+            log(_("BLAST运行完毕，但未产生任何结果。"), "WARNING")
+        else:
+            blast_results = blast_parse(output_xml_path, "blast-xml")
+            for query_result in blast_results:
+                for hit in query_result:
+                    for hsp in hit:
+                        # 【最终正确版】使用从诊断日志中确认的属性名
+                        hit_data = {
+                            "Query_ID": query_result.id,
+                            "Query_Length": query_result.seq_len,
+                            "Hit_ID": hit.id,
+                            "Hit_Description": hit.description,
+                            "Hit_Length": hit.seq_len,
+                            "E-value": hsp.evalue,
+                            "Bit_Score": hsp.bitscore,
+                            "Identity (%)": (hsp.ident_num / hsp.aln_span) * 100 if hsp.aln_span > 0 else 0,
+                            # 【核心修正】使用日志中确认的正确属性名 'pos_num'
+                            "Positives (%)": (hsp.pos_num / hsp.aln_span) * 100 if hsp.aln_span > 0 else 0,
+                            "Gaps": hsp.gap_num,
+                            "Alignment_Length": hsp.aln_span,
+                            "Query_Start": hsp.query_start,
+                            "Query_End": hsp.query_end,
+                            "Hit_Start": hsp.hit_start,
+                            "Hit_End": hsp.hit_end,
+                            "Query_Strand": hsp.query_strand,
+                            "Hit_Strand": hsp.hit_strand,
+                            "Query_Sequence": str(hsp.query.seq),
+                            "Hit_Sequence": str(hsp.hit.seq),
+                            "Alignment_Midline": hsp.aln_annotation.get('homology', '')
+                        }
+                        all_hits.append(hit_data)
 
 
+        if not all_hits:
+            log(_("未找到任何显著的BLAST匹配项。"), "INFO")
+        else:
+            results_df = pd.DataFrame(all_hits)
+            # 格式化百分比列
+            results_df['Identity (%)'] = results_df['Identity (%)'].map('{:.2f}'.format)
+            results_df['Positives (%)'] = results_df['Positives (%)'].map('{:.2f}'.format)
 
+            progress(95, _("正在保存到文件..."))
+            if output_path.lower().endswith('.csv'):
+                results_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            elif output_path.lower().endswith('.xlsx'):
+                results_df.to_excel(output_path, index=False, engine='openpyxl')
+
+            log(_("成功找到 {} 条匹配记录。").format(len(results_df)), "INFO")
+
+        # --- 5. 清理 ---
+        os.remove(query_fasta_path)
+        if os.path.exists(output_xml_path):
+            os.remove(output_xml_path)
+
+        progress(100, _("BLAST流程完成。"))
+        return _("BLAST 任务完成！结果已保存到 {}").format(output_path)
+
+    except Exception as e:
+        log(_("BLAST流水线执行过程中发生意外错误: {}").format(e), "ERROR")
+        log(traceback.format_exc(), "DEBUG")
+        return None
+
+def run_build_blast_db_pipeline(
+        config: MainConfig,
+        status_callback: Optional[Callable[[str, str], None]] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        cancel_event: Optional[threading.Event] = None
+) -> bool:
+    """
+    为所有已下载但尚未处理的CDS和Protein文件批量创建BLAST数据库。
+    """
+    log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
+    progress = progress_callback if progress_callback else lambda p, m: None
+
+    def check_cancel():
+        if cancel_event and cancel_event.is_set():
+            return True
+        return False
+
+    progress(0, _("开始预处理BLAST数据库..."))
+    if check_cancel(): return False
+    log(_("开始批量创建BLAST数据库..."), "INFO")
+
+    progress(5, _("正在加载基因组源数据..."))
+    if check_cancel(): return False
+    genome_sources = get_genome_data_sources(config)
+    if not genome_sources:
+        log(_("未能加载基因组源数据。"), "ERROR")
+        progress(100, _("任务终止：未能加载基因组源。"))
+        return False
+
+    tasks_to_run = []
+    BLAST_FILE_KEYS = ['predicted_cds', 'predicted_protein']
+    progress(10, _("正在检查需要预处理的文件..."))
+    if check_cancel(): return False
+
+    for genome_info in genome_sources.values():
+        for key in BLAST_FILE_KEYS:
+            # 检查URL是否存在
+            url_attr = f"{key}_url"
+            if not hasattr(genome_info, url_attr) or not getattr(genome_info, url_attr):
+                continue
+
+            # 检查文件是否已下载
+            compressed_file = get_local_downloaded_file_path(config, genome_info, key)
+            if not compressed_file or not os.path.exists(compressed_file):
+                continue
+
+            # 检查数据库是否已建立
+            db_fasta_path = compressed_file.removesuffix('.gz')
+            db_type = 'prot' if key == 'predicted_protein' else 'nucl'
+            db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
+
+            if not os.path.exists(db_fasta_path + db_check_ext):
+                tasks_to_run.append((compressed_file, db_fasta_path, db_type))
+
+    if not tasks_to_run:
+        log(_("所有BLAST数据库均已是最新状态，无需预处理。"), "INFO")
+        progress(100, _("无需处理，所有文件已是最新。"))
+        return True
+
+    total_tasks = len(tasks_to_run)
+    progress(20, _("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
+    log(_("找到 {} 个BLAST数据库需要创建。").format(total_tasks), "INFO")
+    success_count = 0
+
+    for i, (compressed_file, db_fasta_path, db_type) in enumerate(tasks_to_run):
+        if check_cancel():
+            log(_("任务被用户取消。"), "INFO")
+            progress(100, _("任务已取消。"))
+            return False
+
+        task_progress = 20 + int(((i + 1) / total_tasks) * 75)
+        progress(task_progress, _("正在处理: {} ({}/{})").format(os.path.basename(compressed_file), i + 1, total_tasks))
+
+        try:
+            # 1. 解压
+            if compressed_file.endswith('.gz'):
+                if not os.path.exists(db_fasta_path) or os.path.getmtime(compressed_file) > os.path.getmtime(
+                        db_fasta_path):
+                    log(_("正在解压 {}...").format(os.path.basename(compressed_file)))
+                    with gzip.open(compressed_file, 'rb') as f_in, open(db_fasta_path, 'wb') as f_out:
+                        f_out.writelines(f_in)
+
+            # 2. 建库
+            log(_("正在为 {} 创建 {} 数据库...").format(os.path.basename(db_fasta_path), db_type))
+            makeblastdb_cmd = ["makeblastdb", "-in", db_fasta_path, "-dbtype", db_type, "-out", db_fasta_path]
+
+            result = subprocess.run(makeblastdb_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
+            log(_("数据库 {} 创建成功。").format(os.path.basename(db_fasta_path)), "INFO")
+            success_count += 1
+
+        except FileNotFoundError:
+            log(_("错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。"),
+                "ERROR")
+            # 遇到此致命错误，直接终止后续所有任务
+            return False
+        except subprocess.CalledProcessError as e:
+            log(_("创建数据库 {} 失败: {}").format(os.path.basename(db_fasta_path), e.stderr), "ERROR")
+        except Exception as e:
+            log(_("处理文件 {} 时发生未知错误: {}").format(os.path.basename(compressed_file), e), "ERROR")
+
+    log(_("BLAST数据库预处理完成。成功创建 {}/{} 个数据库。").format(success_count, total_tasks), "INFO")
+    progress(100, _("预处理完成。"))
+    return True
