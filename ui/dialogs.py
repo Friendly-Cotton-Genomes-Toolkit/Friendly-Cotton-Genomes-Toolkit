@@ -76,7 +76,8 @@ class ConfirmationDialog(tk.Toplevel):
 # 【核心修改】升级 MessageDialog 类以支持超链接
 class MessageDialog(ttkb.Toplevel):
     """
-    一个通用的、带主题的消息对话框，现在支持自动识别并点击URL。
+    一个通用的、带主题的消息对话框。
+    宽度能自适应短文本，同时支持自动识别并点击URL。
     """
 
     def __init__(self, parent, title: str, message: str, icon_type: str = "info",
@@ -99,53 +100,48 @@ class MessageDialog(ttkb.Toplevel):
 
         main_frame = ttkb.Frame(self, padding=(30, 25))
         main_frame.pack(expand=True, fill=BOTH)
-        main_frame.grid_columnconfigure(1, weight=1)
 
         icon_label = ttkb.Label(main_frame, text=icon_char, bootstyle=color_name, font=("-size", 28))
-        icon_label.grid(row=0, column=0, rowspan=2, sticky="n", padx=(0, 20), pady=5)
+        icon_label.pack(side="left", fill="y", padx=(0, 20))
 
-        # --- 超链接处理逻辑 ---
-        # 使用 Text 控件代替 Label，以便处理复杂的文本格式
-        message_text = tk.Text(main_frame, wrap="word", height=4, relief="flat", highlightthickness=0,
-                               background=main_frame.master.cget('background'),
-                               font=self.master.style.lookup('TLabel', 'font'))
-        message_text.grid(row=0, column=1, sticky="w")
+        content_frame = ttkb.Frame(main_frame)
+        content_frame.pack(side="left", fill="both", expand=True)
 
-        # 使用正则表达式查找URL
+        # --- 【核心修改】根据消息内容决定使用 Label 还是 Text 控件 ---
         url_pattern = re.compile(r"https?://[^\s]+")
         match = url_pattern.search(message)
 
         if not match:
-            # 如果没有找到URL，像普通Label一样插入文本
-            message_text.insert("1.0", message)
+            # --- 情况1: 无链接，使用 Label ---
+            # wraplength 确保长文本能换行，而短文本则会自动收缩
+            message_widget = ttkb.Label(content_frame, text=message, wraplength=450, justify="left")
+            message_widget.pack(fill="x", expand=True)
         else:
-            # 如果找到URL，分段插入文本并为URL添加超链接样式和行为
+            # --- 情况2: 有链接，使用 Text ---
+            message_widget = tk.Text(content_frame, wrap="word", relief="flat", highlightthickness=0,
+                                     background=main_frame.master.cget('background'),
+                                     font=self.master.style.lookup('TLabel', 'font'))
+            message_widget.pack(fill="x", expand=True)
+
             url = match.group(0)
             pre_text = message[:match.start()]
             post_text = message[match.end():]
 
-            message_text.insert("1.0", pre_text)
+            message_widget.insert("1.0", pre_text)
+            message_widget.tag_configure("hyperlink", foreground="blue", underline=True)
+            message_widget.tag_bind("hyperlink", "<Enter>", lambda e: message_widget.config(cursor="hand2"))
+            message_widget.tag_bind("hyperlink", "<Leave>", lambda e: message_widget.config(cursor=""))
+            message_widget.tag_bind("hyperlink", "<Button-1>", lambda e, link=url: webbrowser.open(link))
+            message_widget.insert(tk.END, url, "hyperlink")
+            message_widget.insert(tk.END, post_text)
 
-            # 创建一个名为 "hyperlink" 的标签
-            message_text.tag_configure("hyperlink", foreground="blue", underline=True)
-            # 为标签绑定事件
-            message_text.tag_bind("hyperlink", "<Enter>", lambda e: message_text.config(cursor="hand2"))
-            message_text.tag_bind("hyperlink", "<Leave>", lambda e: message_text.config(cursor=""))
-            message_text.tag_bind("hyperlink", "<Button-1>", lambda e, link=url: webbrowser.open(link))
+            message_widget.update_idletasks()
+            num_lines = int(message_widget.index('end-1c').split('.')[0])
+            message_widget.config(height=num_lines, state="disabled")
 
-            # 插入URL，并应用 "hyperlink" 标签
-            message_text.insert(tk.END, url, "hyperlink")
-            message_text.insert(tk.END, post_text)
-
-        # 动态调整Text控件的高度以适应内容
-        message_text.update_idletasks()
-        num_lines = int(message_text.index('end-1c').split('.')[0])
-        message_text.config(height=num_lines)
-        message_text.config(state="disabled")  # 设为只读
-
-        # --- 按钮部分保持不变 ---
-        button_frame = ttkb.Frame(main_frame)
-        button_frame.grid(row=1, column=1, sticky="e", pady=(20, 0))
+        # --- 按钮部分 ---
+        button_frame = ttkb.Frame(content_frame)
+        button_frame.pack(anchor="se", pady=(20, 0))
 
         for i, text_key in enumerate(buttons):
             style = color_name if i == 0 else f"{color_name}-outline"
@@ -155,8 +151,10 @@ class MessageDialog(ttkb.Toplevel):
 
         self.bind("<Escape>", self._on_escape_close)
 
+        # --- 居中定位 ---
         self.update_idletasks()
         try:
+            parent.update_idletasks()
             parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
             parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
             w, h = self.winfo_width(), self.winfo_height()
@@ -170,7 +168,6 @@ class MessageDialog(ttkb.Toplevel):
         self.destroy()
 
     def _on_escape_close(self, event=None):
-        """当按下ESC键时调用。"""
         self.result = "esc_closed"
         self.destroy()
 
