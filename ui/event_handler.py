@@ -516,16 +516,13 @@ class EventHandler:
 
     def _show_about_window(self):
         """
-        【中文恢复版】显示一个尺寸动态、内容丰富的“关于”窗口。
+        【已修正】显示一个尺寸动态、内容丰富的“关于”窗口。
         """
         _ = self.app._
 
         about_win = ttkb.Toplevel(self.app)
         about_win.title(_("关于 FCGT"))
-
-        # 【在此处添加代码】将 <Escape> 键事件绑定到窗口销毁函数上
         about_win.bind("<Escape>", lambda e: about_win.destroy())
-
         about_win.minsize(500, 400)
         about_win.transient(self.app)
         about_win.grab_set()
@@ -584,18 +581,14 @@ class EventHandler:
             def add_separator():
                 ttkb.Separator(parent).pack(fill="x", anchor="w", pady=10)
 
-            # --- 内容填充（恢复为中文） ---
             add_label(_("程序名称") + ": Friendly Cotton Genomes Toolkit (FCGT)", content_font)
             add_label(_("版本") + f": {PKG_VERSION}", content_font)
             add_label(_("项目地址") + ":", content_font, wrappable=False)
-
             gh_link = add_label(PKG_PUBLISH_URL, link_font, wrappable=False, bootstyle="info", cursor="hand2")
             gh_link.bind("<Button-1>", lambda e: webbrowser.open(PKG_PUBLISH_URL))
-
             add_separator()
             add_label(_("致谢与引用"), header_font)
             add_label(_("本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"), content_font)
-
             add_label("CottonGen " + _("文章:"), header_font).pack(pady=(10, 5))
             add_label(
                 "• Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.",
@@ -603,7 +596,6 @@ class EventHandler:
             add_label(
                 "• Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.",
                 content_font)
-
             add_label(_("基因组引用文献:"), header_font).pack(pady=(10, 5))
             citations = [
                 "• NAU-NBI_v1.1: Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015",
@@ -620,14 +612,12 @@ class EventHandler:
                 "• HAU_v2.0: Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. \"High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres.\" Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722"
             ]
             for cit in citations: add_label(cit, content_font)
-
             add_separator()
             add_label(_("许可证"), header_font)
             add_label(_("本软件根据 Apache License 2.0 获得许可。"), content_font)
             add_separator()
             add_label(_("免责声明"), header_font)
             add_label(_("上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"), content_font)
-
             bind_all_children_scroll(parent)
 
         def resize_content(event):
@@ -651,7 +641,6 @@ class EventHandler:
         ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
         ok_button.pack()
 
-        # Dynamic sizing and centering logic (remains unchanged)
         about_win.update_idletasks()
         final_w = 750
         about_win.geometry(f'{final_w}x1')
@@ -665,6 +654,7 @@ class EventHandler:
         y = parent_y + (parent_h - final_h) // 2
         about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
 
+        # 【核心修正】函数在此处等待窗口关闭，之后不再执行任何操作
         about_win.wait_window()
 
         def resize_content(event):

@@ -1496,9 +1496,11 @@ def run_blast_pipeline(
                 result = subprocess.run(makeblastdb_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
                 log(_("BLAST数据库创建成功。"))
             except FileNotFoundError:
-                log(_("错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。"),
+                log(_(
+                    "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"),
                     "ERROR")
-                return None
+                # 遇到此致命错误，直接终止后续所有任务
+                return False
             except subprocess.CalledProcessError as e:
                 log(_("创建BLAST数据库失败: {} \nStderror: {}").format(e.stdout, e.stderr), "ERROR")
                 return None
@@ -1732,8 +1734,7 @@ def run_build_blast_db_pipeline(
             success_count += 1
 
         except FileNotFoundError:
-            log(_("错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。"),
-                "ERROR")
+            log(_("错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"), "ERROR")
             # 遇到此致命错误，直接终止后续所有任务
             return False
         except subprocess.CalledProcessError as e:

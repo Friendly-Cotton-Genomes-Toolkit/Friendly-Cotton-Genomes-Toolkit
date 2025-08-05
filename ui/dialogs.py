@@ -1,8 +1,10 @@
 ﻿# 文件路径: ui/dialogs.py
-
+import re
 import tkinter as tk
 import time
 import sys
+import webbrowser
+
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 from typing import Optional, List, Callable
@@ -71,10 +73,12 @@ class ConfirmationDialog(tk.Toplevel):
         self.destroy()
 
 
+# 【核心修改】升级 MessageDialog 类以支持超链接
 class MessageDialog(ttkb.Toplevel):
     """
-    一个通用的、带主题的消息对话框。
+    一个通用的、带主题的消息对话框，现在支持自动识别并点击URL。
     """
+
     def __init__(self, parent, title: str, message: str, icon_type: str = "info",
                  buttons: Optional[List[str]] = None, style=None):
         super().__init__(parent)
@@ -100,9 +104,46 @@ class MessageDialog(ttkb.Toplevel):
         icon_label = ttkb.Label(main_frame, text=icon_char, bootstyle=color_name, font=("-size", 28))
         icon_label.grid(row=0, column=0, rowspan=2, sticky="n", padx=(0, 20), pady=5)
 
-        message_label = ttkb.Label(main_frame, text=message, wraplength=400, justify="left")
-        message_label.grid(row=0, column=1, sticky="w")
+        # --- 超链接处理逻辑 ---
+        # 使用 Text 控件代替 Label，以便处理复杂的文本格式
+        message_text = tk.Text(main_frame, wrap="word", height=4, relief="flat", highlightthickness=0,
+                               background=main_frame.master.cget('background'),
+                               font=self.master.style.lookup('TLabel', 'font'))
+        message_text.grid(row=0, column=1, sticky="w")
 
+        # 使用正则表达式查找URL
+        url_pattern = re.compile(r"https?://[^\s]+")
+        match = url_pattern.search(message)
+
+        if not match:
+            # 如果没有找到URL，像普通Label一样插入文本
+            message_text.insert("1.0", message)
+        else:
+            # 如果找到URL，分段插入文本并为URL添加超链接样式和行为
+            url = match.group(0)
+            pre_text = message[:match.start()]
+            post_text = message[match.end():]
+
+            message_text.insert("1.0", pre_text)
+
+            # 创建一个名为 "hyperlink" 的标签
+            message_text.tag_configure("hyperlink", foreground="blue", underline=True)
+            # 为标签绑定事件
+            message_text.tag_bind("hyperlink", "<Enter>", lambda e: message_text.config(cursor="hand2"))
+            message_text.tag_bind("hyperlink", "<Leave>", lambda e: message_text.config(cursor=""))
+            message_text.tag_bind("hyperlink", "<Button-1>", lambda e, link=url: webbrowser.open(link))
+
+            # 插入URL，并应用 "hyperlink" 标签
+            message_text.insert(tk.END, url, "hyperlink")
+            message_text.insert(tk.END, post_text)
+
+        # 动态调整Text控件的高度以适应内容
+        message_text.update_idletasks()
+        num_lines = int(message_text.index('end-1c').split('.')[0])
+        message_text.config(height=num_lines)
+        message_text.config(state="disabled")  # 设为只读
+
+        # --- 按钮部分保持不变 ---
         button_frame = ttkb.Frame(main_frame)
         button_frame.grid(row=1, column=1, sticky="e", pady=(20, 0))
 
@@ -130,7 +171,7 @@ class MessageDialog(ttkb.Toplevel):
 
     def _on_escape_close(self, event=None):
         """当按下ESC键时调用。"""
-        self.result = "esc_closed"  # 设置一个特定的结果
+        self.result = "esc_closed"
         self.destroy()
 
 

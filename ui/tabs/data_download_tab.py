@@ -119,6 +119,11 @@ class DataDownloadTab(BaseTab):
         self.force_download_check.configure(text=self._("强制重新下载 (覆盖本地已存在文件)"))
         self.use_proxy_check.configure(text=self._("对数据下载使用网络代理 (请在配置编辑器中设置)"))
 
+        if 'checkbox_header' in self.dynamic_widgets and self.dynamic_widgets['checkbox_header'].winfo_exists():
+            self.dynamic_widgets['checkbox_header'].configure(text=self._("选择文件类型"))
+        if 'status_header' in self.dynamic_widgets and self.dynamic_widgets['status_header'].winfo_exists():
+            self.dynamic_widgets['status_header'].configure(text=self._("文件状态"))
+
         self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.clear()
         for key, display_name_key in self.FILE_TYPE_DISPLAY_NAMES_KEYS.items():
             self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED[key] = display_name_key
@@ -139,87 +144,111 @@ class DataDownloadTab(BaseTab):
             self.preprocess_button.configure(text=self._("预处理注释文件"))
 
     def _update_dynamic_widgets(self, genome_id: str):
-        for widget in self.dynamic_content_frame.winfo_children(): widget.destroy()
+        for widget in self.dynamic_content_frame.winfo_children():
+            widget.destroy()
         self.file_type_vars.clear()
         self.dynamic_widgets.clear()
 
-        if not genome_id or not self.app.genome_sources_data: return
+        if not genome_id or not self.app.genome_sources_data or not self.app.current_config:
+            return
         genome_info = self.app.genome_sources_data.get(genome_id)
-        if not genome_info: return
+        if not genome_info:
+            return
 
-        checkbox_frame = ttkb.LabelFrame(self.dynamic_content_frame, text=self._("选择文件类型"), bootstyle="light")
-        checkbox_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        self.dynamic_widgets['checkbox_frame'] = checkbox_frame
-
-        status_card = ttkb.LabelFrame(self.dynamic_content_frame, text=self._("文件状态"), bootstyle="light")
-        status_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        status_card.grid_columnconfigure(1, weight=1)
-        self.dynamic_widgets['status_card'] = status_card
-
-        refresh_button = ttkb.Button(status_card, text=self._("刷新状态"), width=12,
-                                     command=lambda: self._update_dynamic_widgets(self.selected_genome_var.get()),
-                                     bootstyle="info-outline")
-        refresh_button.grid(row=0, column=2, sticky="e", padx=(0, 10), pady=(5, 0))
-        self.dynamic_widgets['refresh_button'] = refresh_button
-
-        status_map = {
-            'not_downloaded': {"text": self._("未下载"), "color": self.app.style.colors.danger},
-            'downloaded': {"text": self._("已下载 (待处理)"), "color": self.app.style.colors.warning},
-            'processed': {"text": self._("已就绪"), "color": self.app.style.colors.success}
+        # 【核心修改 1】定义一套高对比度的颜色方案，确保在亮色和暗色模式下都清晰
+        is_dark = self.app.style.theme.type == 'dark'
+        status_colors = {
+            'not_downloaded': "#e57373" if is_dark else "#d9534f",  # 亮红 / 暗红
+            'downloaded': "#ffb74d" if is_dark else "#f0ad4e",  # 亮橙 / 暗橙
+            'processed': self.app.style.colors.success,  # 使用主题自带的成功色
+        }
+        status_texts = {
+            'not_downloaded': self._("未下载"),
+            'downloaded': self._("已下载 (待处理)"),
+            'processed': self._("已就绪")
         }
 
-        status_row_idx, checkbox_col_idx, checkbox_row_idx, checkbox_count = 1, 0, 0, 0
+        # 【核心修改 2】使用节标题和分隔线代替次级卡片，强化视觉层级
+        # --- 文件类型选择区 ---
+        checkbox_header = ttkb.Label(self.dynamic_content_frame, text=self._("选择文件类型"),
+                                     font=self.app.app_font_bold)
+        checkbox_header.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5), columnspan=3)
+        self.dynamic_widgets['checkbox_header'] = checkbox_header
+
+        sep1 = ttkb.Separator(self.dynamic_content_frame)
+        sep1.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10), columnspan=3)
+
+        checkbox_frame = ttkb.Frame(self.dynamic_content_frame)
+        checkbox_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=0, columnspan=3)
+        self.dynamic_widgets['checkbox_frame'] = checkbox_frame
+
+        # --- 文件状态区 ---
+        status_header = ttkb.Label(self.dynamic_content_frame, text=self._("文件状态"), font=self.app.app_font_bold)
+        status_header.grid(row=3, column=0, sticky="w", padx=10, pady=(20, 5), columnspan=2)
+        self.dynamic_widgets['status_header'] = status_header
+
+        refresh_button = ttkb.Button(self.dynamic_content_frame, text=self._("刷新状态"), width=12,
+                                     command=lambda: self._update_dynamic_widgets(self.selected_genome_var.get()),
+                                     bootstyle="info-outline")
+        refresh_button.grid(row=3, column=2, sticky="e", padx=10, pady=(15, 0))
+        self.dynamic_widgets['refresh_button'] = refresh_button
+
+        sep2 = ttkb.Separator(self.dynamic_content_frame)
+        sep2.grid(row=4, column=0, sticky="ew", padx=10, pady=(0, 10), columnspan=3)
+
+        status_frame = ttkb.Frame(self.dynamic_content_frame)
+        status_frame.grid(row=5, column=0, sticky="ew", padx=10, pady=0, columnspan=3)
+        status_frame.grid_columnconfigure(1, weight=1)
+        self.dynamic_widgets['status_frame'] = status_frame
+
         all_file_keys = self.FILE_TYPE_DISPLAY_NAMES_KEYS.keys()
+
+        checkbox_row_idx, checkbox_col_idx, status_row_idx, checkbox_count = 0, 0, 0, 0
 
         for key in all_file_keys:
             display_name = self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.get(key, key)
             url_attr = f"{key}_url"
 
             if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                # Checkbox creation logic remains the same
+                # Checkbox 渲染逻辑不变
                 var = tk.BooleanVar(value=True)
                 self.file_type_vars[key] = var
                 ttkb.Checkbutton(checkbox_frame, text=display_name, variable=var, bootstyle="round-toggle").grid(
                     row=checkbox_row_idx, column=checkbox_col_idx, sticky='w', padx=5, pady=5)
                 checkbox_col_idx += 1
-                if checkbox_col_idx >= 2: checkbox_col_idx = 0; checkbox_row_idx += 1
+                if checkbox_col_idx >= 3:  # 每行最多3个
+                    checkbox_col_idx = 0
+                    checkbox_row_idx += 1
                 checkbox_count += 1
 
-                # --- 【核心修改】状态判断逻辑 ---
+                # 状态判断逻辑（使用新的颜色方案）
                 local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
                 status_key = 'not_downloaded'
-
                 if local_path and os.path.exists(local_path):
-                    is_blast_file = key in ['predicted_cds', 'predicted_protein']
-                    is_anno_excel = key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
-
-                    if is_blast_file:
+                    if key in ['predicted_cds', 'predicted_protein']:
                         db_fasta_path = local_path.removesuffix('.gz')
                         db_type = 'prot' if key == 'predicted_protein' else 'nucl'
                         db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
                         status_key = 'processed' if os.path.exists(db_fasta_path + db_check_ext) else 'downloaded'
-                    elif is_anno_excel:
+                    elif key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']:
                         csv_path = local_path.rsplit('.', 2)[0] + '.csv' if local_path.lower().endswith('.gz') else \
                             local_path.rsplit('.', 1)[0] + '.csv'
                         status_key = 'processed' if os.path.exists(csv_path) else 'downloaded'
-                    else:  # GFF file, etc.
+                    else:
                         status_key = 'processed'
 
-                status_info = status_map.get(status_key, status_map['not_downloaded'])
+                # 状态标签渲染
+                file_type_label = ttkb.Label(status_frame, text=f"{display_name}:", font=self.app.app_font_bold)
+                file_type_label.grid(row=status_row_idx, column=0, sticky="w", padx=(0, 10), pady=2)
 
-                # Status label creation remains the same
-                file_type_label = ttkb.Label(status_card, text=f"{display_name}:", font=self.app.app_font_bold,
-                                             anchor="e")
-                file_type_label.grid(row=status_row_idx, column=0, sticky="w", padx=(10, 5), pady=2)
-                status_label = ttk.Label(status_card, text=status_info["text"], foreground=status_info["color"],
-                                         anchor="w")
-                status_label.grid(row=status_row_idx, column=1, sticky="ew", padx=5, pady=2)
+                status_label = ttk.Label(status_frame, text=status_texts[status_key],
+                                         foreground=status_colors[status_key])
+                status_label.grid(row=status_row_idx, column=1, sticky="w", padx=0, pady=2)
 
                 status_row_idx += 1
 
         if checkbox_count == 0:
-            no_url_label = ttk.Label(checkbox_frame,
-                                     text=self._("当前基因组版本在配置文件中没有可供下载的URL链接。"))
+            no_url_label = ttk.Label(checkbox_frame, text=self._("当前基因组版本在配置文件中没有可供下载的URL链接。"))
             no_url_label.pack(padx=10, pady=10)
             self.dynamic_widgets['no_url_label'] = no_url_label
 
