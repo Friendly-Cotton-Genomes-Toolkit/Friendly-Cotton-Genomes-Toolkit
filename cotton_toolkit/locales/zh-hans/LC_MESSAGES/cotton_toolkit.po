@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-05 16:15+0800\n"
-"PO-Revision-Date: 2025-08-05 16:15+0800\n"
+"POT-Creation-Date: 2025-08-06 19:26+0800\n"
+"PO-Revision-Date: 2025-08-06 19:26+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Gemini 2.5 Pro\n"
 "Language: zh_CN\n"
@@ -974,14 +974,10 @@ msgid "# --- 匹配失败的源基因 ---\n"
 msgstr "# --- 匹配失败的源基因 ---\n"
 
 #: cotton_toolkit/pipelines.py:103 cotton_toolkit/pipelines.py:124
-#| msgid ""
-#| "未能在目标基因组中找到满足所有筛选条件（如E-value, PID, 严格模式等）的同源"
-#| "基因。"
 msgid "未能在目标基因组中找到满足所有筛选条件的同源基因。"
 msgstr "未能在目标基因组中找到满足所有筛选条件的同源基因。"
 
 #: cotton_toolkit/pipelines.py:119
-#| msgid "# 未找到任何成功的同源匹配。\n"
 msgid "未找到任何成功的同源匹配。"
 msgstr "未找到任何成功的同源匹配。"
 
@@ -1026,12 +1022,10 @@ msgid "配置覆盖警告：在对象 {} 中找不到键 '{}'。"
 msgstr "配置覆盖警告：在对象 {} 中找不到键 '{}'。"
 
 #: cotton_toolkit/pipelines.py:215
-#| msgid "步骤1: 加载配置..."
 msgid "步骤 1: 加载配置..."
 msgstr "步骤 1: 加载配置..."
 
 #: cotton_toolkit/pipelines.py:225
-#| msgid "错误: 一个或多个指定的基因组名称无效。"
 msgid "错误: 基因组名称无效。"
 msgstr "错误: 基因组名称无效。"
 
@@ -1044,7 +1038,6 @@ msgid "在区域 {} 中未找到任何基因。"
 msgstr "在区域 {} 中未找到任何基因。"
 
 #: cotton_toolkit/pipelines.py:245
-#| msgid "错误: 输入的基因列表为空。"
 msgid "错误: 基因列表为空。"
 msgstr "错误: 基因列表为空。"
 
@@ -1070,7 +1063,6 @@ msgid "[标准模式] 调用核心函数执行三步映射..."
 msgstr "[标准模式] 调用核心函数执行三步映射..."
 
 #: cotton_toolkit/pipelines.py:371
-#| msgid "INFO: 任务在分析后被取消。"
 msgid "INFO: 任务被取消。"
 msgstr "INFO: 任务被取消。"
 
@@ -1083,12 +1075,10 @@ msgid "正在保存映射结果..."
 msgstr "正在保存映射结果..."
 
 #: cotton_toolkit/pipelines.py:395
-#| msgid "步骤 2: 从染色体区域提取基因ID..."
 msgid "步骤 5: 提取目标基因ID..."
 msgstr "步骤 5: 提取目标基因ID..."
 
 #: cotton_toolkit/pipelines.py:397
-#| msgid "正在提取基因详细信息..."
 msgid "正在提取目标基因ID..."
 msgstr "正在提取目标基因ID..."
 
@@ -1101,7 +1091,6 @@ msgid "成功提取到 {} 个唯一的同源目标基因。"
 msgstr "成功提取到 {} 个唯一的同源目标基因。"
 
 #: cotton_toolkit/pipelines.py:416
-#| msgid "未找到任何符合条件的基因。"
 msgid "未找到任何同源目标基因。"
 msgstr "未找到任何同源目标基因。"
 
@@ -1776,7 +1765,6 @@ msgid "BLAST 流程启动..."
 msgstr "BLAST 流程启动..."
 
 #: cotton_toolkit/pipelines.py:1436
-#| msgid "正在打开数据库..."
 msgid "正在验证目标基因组数据库..."
 msgstr "正在验证目标基因组数据库..."
 
@@ -1785,7 +1773,6 @@ msgid "步骤 1: 准备目标数据库 '{}'..."
 msgstr "步骤 1: 准备目标数据库 '{}'..."
 
 #: cotton_toolkit/pipelines.py:1442
-#| msgid "错误：无法为目标基因组 {} 找到配置信息。"
 msgid "错误: 无法找到目标基因组 '{}' 的配置。"
 msgstr "错误: 无法找到目标基因组 '{}' 的配置。"
 
@@ -1794,7 +1781,6 @@ msgid "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
 msgstr "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
 
 #: cotton_toolkit/pipelines.py:1454
-#| msgid "错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。"
 msgid "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
 msgstr "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
 
@@ -1803,7 +1789,6 @@ msgid "文件为gz压缩格式，正在解压..."
 msgstr "文件为gz压缩格式，正在解压..."
 
 #: cotton_toolkit/pipelines.py:1467
-#| msgid "正在查询区域: {}..."
 msgid "正在解压 {} 到 {}..."
 msgstr "正在解压 {} 到 {}..."
 
@@ -1812,7 +1797,6 @@ msgid "解压成功。"
 msgstr "解压成功。"
 
 #: cotton_toolkit/pipelines.py:1475
-#| msgid "读取基因列表文件时出错: {}"
 msgid "解压文件时出错: {}"
 msgstr "解压文件时出错: {}"
 
@@ -1851,12 +1835,10 @@ msgstr ""
 "Stderror: {}"
 
 #: cotton_toolkit/pipelines.py:1511
-#| msgid "正在准备GFF数据库..."
 msgid "正在准备查询序列..."
 msgstr "正在准备查询序列..."
 
 #: cotton_toolkit/pipelines.py:1515
-#| msgid "正在打开文件: {}..."
 msgid "正在处理输入文件: {}"
 msgstr "正在处理输入文件: {}"
 
@@ -1869,12 +1851,10 @@ msgid "将输入文件作为FASTA格式处理..."
 msgstr "将输入文件作为FASTA格式处理..."
 
 #: cotton_toolkit/pipelines.py:1535
-#| msgid "正在处理..."
 msgid "正在处理文本输入..."
 msgstr "正在处理文本输入..."
 
 #: cotton_toolkit/pipelines.py:1543
-#| msgid "正在执行功能注释..."
 msgid "正在执行 {} ..."
 msgstr "正在执行 {} ..."
 
@@ -1887,12 +1867,10 @@ msgid "BLAST命令: {}"
 msgstr "BLAST命令: {}"
 
 #: cotton_toolkit/pipelines.py:1568
-#| msgid "查询GFF区域时发生错误: {}"
 msgid "BLAST运行时发生错误: {}"
 msgstr "BLAST运行时发生错误: {}"
 
 #: cotton_toolkit/pipelines.py:1579
-#| msgid "正在解析文件结构..."
 msgid "正在解析BLAST结果..."
 msgstr "正在解析BLAST结果..."
 
@@ -1901,17 +1879,14 @@ msgid "步骤 3: 解析结果并保存到 {} ..."
 msgstr "步骤 3: 解析结果并保存到 {} ..."
 
 #: cotton_toolkit/pipelines.py:1584
-#| msgid "注释完成，但没有生成任何结果。"
 msgid "BLAST运行完毕，但未产生任何结果。"
 msgstr "BLAST运行完毕，但未产生任何结果。"
 
 #: cotton_toolkit/pipelines.py:1618
-#| msgid "# 未找到任何成功的同源匹配。\n"
 msgid "未找到任何显著的BLAST匹配项。"
 msgstr "未找到任何显著的BLAST匹配项。"
 
 #: cotton_toolkit/pipelines.py:1625
-#| msgid "正在保存映射结果..."
 msgid "正在保存到文件..."
 msgstr "正在保存到文件..."
 
@@ -1920,17 +1895,14 @@ msgid "成功找到 {} 条匹配记录。"
 msgstr "成功找到 {} 条匹配记录。"
 
 #: cotton_toolkit/pipelines.py:1638
-#| msgid "下载流程完成。"
 msgid "BLAST流程完成。"
 msgstr "BLAST流程完成。"
 
 #: cotton_toolkit/pipelines.py:1639
-#| msgid "注释成功！结果已保存至: {}"
 msgid "BLAST 任务完成！结果已保存到 {}"
 msgstr "BLAST 任务完成！结果已保存到 {}"
 
 #: cotton_toolkit/pipelines.py:1642
-#| msgid "流水线执行过程中发生意外错误: {}"
 msgid "BLAST流水线执行过程中发生意外错误: {}"
 msgstr "BLAST流水线执行过程中发生意外错误: {}"
 
@@ -1943,27 +1915,22 @@ msgid "开始批量创建BLAST数据库..."
 msgstr "开始批量创建BLAST数据库..."
 
 #: cotton_toolkit/pipelines.py:1701
-#| msgid "所有注释文件均已是最新状态，无需预处理。"
 msgid "所有BLAST数据库均已是最新状态，无需预处理。"
 msgstr "所有BLAST数据库均已是最新状态，无需预处理。"
 
 #: cotton_toolkit/pipelines.py:1706 cotton_toolkit/pipelines.py:1707
-#| msgid "找到 {} 个文件需要下载。"
 msgid "找到 {} 个BLAST数据库需要创建。"
 msgstr "找到 {} 个BLAST数据库需要创建。"
 
 #: cotton_toolkit/pipelines.py:1717
-#| msgid "正在转换: {} ({}/{})"
 msgid "正在处理: {} ({}/{})"
 msgstr "正在处理: {} ({}/{})"
 
 #: cotton_toolkit/pipelines.py:1724
-#| msgid "正在查询区域: {}..."
 msgid "正在解压 {}..."
 msgstr "正在解压 {}..."
 
 #: cotton_toolkit/pipelines.py:1729
-#| msgid "正在准备GFF数据库..."
 msgid "正在为 {} 创建 {} 数据库..."
 msgstr "正在为 {} 创建 {} 数据库..."
 
@@ -1972,17 +1939,14 @@ msgid "数据库 {} 创建成功。"
 msgstr "数据库 {} 创建成功。"
 
 #: cotton_toolkit/pipelines.py:1741
-#| msgid "错误: 创建GFF数据库 '{}' 失败: {}"
 msgid "创建数据库 {} 失败: {}"
 msgstr "创建数据库 {} 失败: {}"
 
 #: cotton_toolkit/pipelines.py:1743
-#| msgid "处理文件 '{}' 时发生错误: {}"
 msgid "处理文件 {} 时发生未知错误: {}"
 msgstr "处理文件 {} 时发生未知错误: {}"
 
 #: cotton_toolkit/pipelines.py:1745
-#| msgid "预处理完成。成功转换 {}/{} 个文件。"
 msgid "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
 msgstr "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
 
@@ -2573,7 +2537,6 @@ msgid "预处理BLAST数据库"
 msgstr "预处理BLAST数据库"
 
 #: ui/event_handler.py:310
-#| msgid "数据下载选项卡状态已在任务完成后自动刷新。"
 msgid "数据下载选项卡状态已在任务 '{}' 完成后自动刷新。"
 msgstr "数据下载选项卡状态已在任务 '{}' 完成后自动刷新。"
 
@@ -2940,15 +2903,10 @@ msgid "例如: A01:1-100000"
 msgstr "例如: A01:1-100000"
 
 #: ui/gui_app.py:106
-#| msgid "在此处粘贴要注释的基因ID，每行一个。"
 msgid "在此处粘贴要注释的基因ID，每行一个"
 msgstr "在此处粘贴要注释的基因ID，每行一个"
 
 #: ui/gui_app.py:107
-#| msgid ""
-#| "在此处粘贴用于富集分析的基因ID，每行一个。\n"
-#| "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
-#| "（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
 msgid ""
 "在此处粘贴用于富集分析的基因ID，每行一个。\n"
 "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
@@ -3413,7 +3371,6 @@ msgid "执行操作"
 msgstr "执行操作"
 
 #: ui/tabs/base_tab.py:101
-#| msgid "处理文件 {} 时发生严重错误: {}"
 msgid "后台任务发生严重错误: {}"
 msgstr "后台任务发生严重错误: {}"
 
@@ -3422,17 +3379,14 @@ msgid "严重错误"
 msgstr "严重错误"
 
 #: ui/tabs/base_tab.py:107
-#| msgid "任务被用户取消。"
 msgid "任务已被用户取消。"
 msgstr "任务已被用户取消。"
 
 #: ui/tabs/base_tab.py:109
-#| msgid "AI任务流程成功完成。"
 msgid "任务成功完成！"
 msgstr "任务成功完成！"
 
 #: ui/tabs/base_tab.py:112
-#| msgid "刷新成功"
 msgid "成功"
 msgstr "成功"
 
@@ -3457,7 +3411,6 @@ msgid "BLAST 类型:"
 msgstr "BLAST 类型:"
 
 #: ui/tabs/blast_tab.py:57
-#| msgid "目标基因组:"
 msgid "目标棉花基因组:"
 msgstr "目标棉花基因组:"
 
@@ -3510,7 +3463,6 @@ msgstr ""
 "用于控制输出结果的大小，防止因匹配项过多而导致结果文件过大。"
 
 #: ui/tabs/blast_tab.py:136
-#| msgid "输入"
 msgid "输出"
 msgstr "输出"
 
@@ -3540,7 +3492,6 @@ msgid "无可用棉花基因组"
 msgstr "无可用棉花基因组"
 
 #: ui/tabs/blast_tab.py:179
-#| msgid "请选择有效的源和目标基因组。"
 msgid "请选择一个有效的目标棉花基因组。"
 msgstr "请选择一个有效的目标棉花基因组。"
 
@@ -3567,7 +3518,6 @@ msgid "缺少文件"
 msgstr "缺少文件"
 
 #: ui/tabs/blast_tab.py:210
-#| msgid "请选择一个基因组版本。"
 msgid "请选择一个查询文件。"
 msgstr "请选择一个查询文件。"
 
@@ -3584,7 +3534,6 @@ msgid "检测到文件输入和文本输入同时存在，请清除其中一个�
 msgstr "检测到文件输入和文本输入同时存在，请清除其中一个。"
 
 #: ui/tabs/blast_tab.py:221
-#| msgid "输出的CSV文件路径。"
 msgid "请指定输出文件路径。"
 msgstr "请指定输出文件路径。"
 
@@ -3595,7 +3544,6 @@ msgid "输入错误"
 msgstr "输入错误"
 
 #: ui/tabs/blast_tab.py:231
-#| msgid "参数设置中的阈值必须是有效的数字。"
 msgid "参数设置中的值必须是有效的数字。"
 msgstr "参数设置中的值必须是有效的数字。"
 
@@ -3869,7 +3817,6 @@ msgid "鉴定结果"
 msgstr "鉴定结果"
 
 #: ui/tabs/genome_identifier_tab.py:132
-#| msgid "鉴定结果将显示在这里。"
 msgid "鉴定结果将显示在这里..."
 msgstr "鉴定结果将显示在这里..."
 
@@ -3878,7 +3825,6 @@ msgid "请输入至少一个基因ID进行鉴定。"
 msgstr "请输入至少一个基因ID进行鉴定。"
 
 #: ui/tabs/genome_identifier_tab.py:160
-#| msgid "正在根目录生成默认配置文件，请稍候..."
 msgid "正在批量鉴定中，请稍候..."
 msgstr "正在批量鉴定中，请稍候..."
 
@@ -4028,7 +3974,6 @@ msgid "请输入要映射的源基因ID。"
 msgstr "请输入要映射的源基因ID。"
 
 #: ui/tabs/homology_tab.py:270
-#| msgid "请输入要注释的基因ID。"
 msgid "请输入有效的基因ID。"
 msgstr "请输入有效的基因ID。"
 
@@ -4185,12 +4130,10 @@ msgid "任务 '{}' 已成功完成。"
 msgstr "任务 '{}' 已成功完成。"
 
 #: ui/ui_manager.py:490
-#| msgid "任务 '{}' 已成功完成。"
 msgid "任务 '{}' 未能成功完成。"
 msgstr "任务 '{}' 未能成功完成。"
 
 #: ui/ui_manager.py:497
-#| msgid "取消"
 msgid "已取消"
 msgstr "已取消"
 
