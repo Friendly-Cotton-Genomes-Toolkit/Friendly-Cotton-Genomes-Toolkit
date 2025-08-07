@@ -53,6 +53,9 @@ python gui_app.py
 
 # View command-line help
 python -m cotton_toolkit.cli --help
+
+# 打包程序/打包程式/Packaging program/パッケージングプログラム
+python -m nuitka --standalone --mingw64 --windows-disable-console --windows-icon-from-ico=ui/assets/logo.ico --plugin-enable=tk-inter --plugin-enable=anti-bloat --lto=yes --include-data-dir=ui/assets=ui/assets --include-package-data=ttkbootstrap --output-dir=dist main.py
 ```
 
 ## Screenshot Preview
