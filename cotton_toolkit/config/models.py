@@ -124,11 +124,10 @@ class HomologySelectionCriteria(BaseModel):
 
 
 class MainConfig(BaseModel):
-    config_version: int = 1
+    config_version: int = 2 # 2： 基因组列表添加BLAST所需的内容
     log_level: str = "INFO"
     i18n_language: str = "zh-hans"
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
-
     downloader: DownloaderConfig = Field(default_factory=DownloaderConfig)
     ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig)
     ai_prompts: AIPromptsConfig = Field(default_factory=AIPromptsConfig)
@@ -162,7 +161,7 @@ class GenomeSourceItem(BaseModel):
         return self.genome_type.lower() == 'cotton'
 
 class GenomeSourcesConfig(BaseModel):
-    list_version: int = 1
+    list_version: int = 2
     genome_sources: Dict[str, GenomeSourceItem] = Field(default_factory=lambda: GenomeSourcesConfig._default_genome_sources())
 
     # --- 【核心修改区域】 ---
@@ -170,12 +169,6 @@ class GenomeSourcesConfig(BaseModel):
     @staticmethod
     def _default_genome_sources() -> Dict[str, GenomeSourceItem]:
         return {
-            "BGI_v1": GenomeSourceItem(
-                species_name="Gossypium hirsutum (AD1) 'TM-1' genome CGP-BGI_v1.0",
-                genome_type="cotton",
-                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CGP-BGI_G.hirsutum_AD1genome/genes/BGI_Gossypium_hirsutum_v1.0.cds.gz",
-                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CGP-BGI_G.hirsutum_AD1genome/genes/BGI_Gossypium_hirsutum_v1.0.pep.gz" # <-- 已更新
-            ),
             "NBI_v1.1": GenomeSourceItem(
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome NAU-NBI_v1.1",
                 genome_type="cotton",

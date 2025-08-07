@@ -9,6 +9,9 @@ import traceback
 import tkinter as tk
 from tkinter import messagebox
 
+from cotton_toolkit.config.compatibility_check import check_config_compatibility, MainConfig
+
+
 # 1. --- 全局异常处理函数 (保持不变) ---
 def show_uncaught_exception(exc_type, exc_value, exc_tb):
     """
@@ -64,9 +67,24 @@ def main():
     try:
         if os.path.exists(DEFAULT_CONFIG_PATH):
             config = load_config(DEFAULT_CONFIG_PATH)
+
             # 确保读取正确的字段名 i18n_language
             lang_code = getattr(config, 'i18n_language', DEFAULT_LANGUAGE)
             logging.info(f"Config file loaded. Startup language set to '{lang_code}'.")
+
+            # --- 检测配置文件兼容性 --- # 偷懒了，也只有简中和英语吧
+            level, message = check_config_compatibility(config, lang_code)
+            if level != 'info':
+                temp_root = tk.Tk()
+                temp_root.withdraw()
+
+                if level == 'warning':
+                    messagebox.showwarning(message=message,parent=temp_root)
+                else:
+                    messagebox.showerror(message=message,parent=temp_root)
+                    temp_root.destroy()
+                    sys.exit(1)
+
         else:
              # 在加载UI设置前尝试读取
             try:
@@ -76,19 +94,19 @@ def main():
                     logging.info(f"UI settings file loaded. Startup language set to '{lang_code}'.")
             except (FileNotFoundError, json.JSONDecodeError):
                  logging.info(f"Config file not found at '{DEFAULT_CONFIG_PATH}'. Using default language '{lang_code}'.")
-    except Exception as e:
-        logging.error(f"Error loading config, falling back to default language. Error: {e}")
-        lang_code = DEFAULT_LANGUAGE
+    except Exception:
+        show_uncaught_exception(*sys.exc_info())
 
     # --- 步骤 2: 使用获取到的语言代码，初始化翻译功能 ---
     # 这会设置全局的 _ 函数
     translator = setup_localization(lang_code)
     builtins._ = translator  # 确保 _ 函数在 builtins 中可用
 
+
     # --- 关键：现在才导入UI相关的类，确保它们在导入时能获得正确的翻译函数 ---
     from ui.gui_app import CottonToolkitApp
 
-    # --- 步骤 3: 启动主应用，并注入 translator ---
+    # --- 步骤 4: 启动主应用，并注入 translator ---
     try:
         app = CottonToolkitApp(translator=translator)
         app.mainloop()
