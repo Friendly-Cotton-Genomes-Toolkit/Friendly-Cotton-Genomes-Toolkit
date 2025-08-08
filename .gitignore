@@ -97,3 +97,7 @@ main.dist
 main.build
 homology_results.xlsx
 blast_results.xlsx
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml

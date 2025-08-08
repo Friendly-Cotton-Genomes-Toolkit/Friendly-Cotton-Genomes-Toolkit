@@ -49,13 +49,10 @@ We have prepared out-of-the-box executables for you on the [**Releases**](https:
 
 ```
 # Run the GUI
-python gui_app.py
+pixi run start
 
-# View command-line help
-python -m cotton_toolkit.cli --help
-
-# 打包程序/打包程式/Packaging program/パッケージングプログラム
-python -m nuitka --standalone --mingw64 --windows-disable-console --windows-icon-from-ico=ui/assets/logo.ico --plugin-enable=tk-inter --plugin-enable=anti-bloat --lto=yes --include-data-dir=ui/assets=ui/assets --include-package-data=ttkbootstrap --output-dir=dist main.py
+# Packaging program
+pixi run build
 ```
 
 ## Screenshot Preview
