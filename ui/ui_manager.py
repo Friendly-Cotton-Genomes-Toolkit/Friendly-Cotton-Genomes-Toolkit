@@ -76,23 +76,6 @@ class UIManager:
         # 调用 app 实例上那个新的、统一的、健壮的方法
         self.app.apply_theme_and_update_dependencies(theme_name)
 
-    # ... 以下是您文件中的其他方法，大部分保持不变 ...
-    def update_language_ui(self, lang_code: str):
-        app = self.app
-        new_translator = setup_localization(language_code=lang_code)
-        self.translator_func = new_translator
-        app._ = new_translator
-
-        self._update_placeholders_dictionary(new_translator)
-        self._retranslate_all_tabs(new_translator)
-        self._retranslate_managed_widgets(new_translator)
-
-        app.logger.info(f"UI language updated to {lang_code}")
-
-    def _retranslate_all_tabs(self, new_translator: Callable[[str], str]):
-        for tab_instance in self.app.tool_tab_instances.values():
-            if hasattr(tab_instance, 'retranslate_ui'):
-                tab_instance.retranslate_ui(translator=new_translator)
 
     def _retranslate_managed_widgets(self, new_translator: Callable[[str], str]):
         app = self.app
@@ -119,18 +102,6 @@ class UIManager:
             else:
                 app.config_path_display_var.set(_("未加载配置"))
 
-    def _update_placeholders_dictionary(self, translator: Callable[[str], str]):
-        _ = translator
-        self.app.placeholders = {
-            "homology_genes": _("粘贴基因ID，每行一个..."),
-            "gff_genes": _("粘贴基因ID，每行一个..."),
-            "gff_region": _("例如: A01:1-100000"),
-            "genes_input": _("在此处粘贴要注释的基因ID，每行一个。"),
-            "enrichment_genes_input": _(
-                "在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"),
-            "custom_prompt": _("在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
-            "default_prompt_empty": _("Default prompt is empty, please set it in the configuration editor.")
-        }
 
     def refresh_single_placeholder(self, widget, key):
         if not widget or not widget.winfo_exists(): return
@@ -162,7 +133,6 @@ class UIManager:
         widget.is_placeholder = True
 
     def setup_initial_ui(self):
-        app = self.app
         self.app.navigation_frame = ttkb.Frame(self.app, style='Sidebar.TFrame')
         self.create_main_layout()
         self.init_pages()

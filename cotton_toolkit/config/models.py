@@ -126,7 +126,7 @@ class HomologySelectionCriteria(BaseModel):
 class MainConfig(BaseModel):
     config_version: int = 2 # 2： 基因组列表添加BLAST所需的内容
     log_level: str = "INFO"
-    i18n_language: str = "zh-hans"
+    i18n_language: str = "en"
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
     downloader: DownloaderConfig = Field(default_factory=DownloaderConfig)
     ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig)

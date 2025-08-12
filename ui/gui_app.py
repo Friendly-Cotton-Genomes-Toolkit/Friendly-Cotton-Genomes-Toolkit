@@ -35,7 +35,7 @@ except ImportError:
 
 
 class CottonToolkitApp(ttkb.Window):
-    LANG_CODE_TO_NAME = {"zh-hans": "简体中文", "zh-hant": "繁體中文", "en": "English", "ja": "日本語"}
+    LANG_CODE_TO_NAME = {"zh-hans": "简体中文", "en": "English"}
     LANG_NAME_TO_CODE = {v: k for k, v in LANG_CODE_TO_NAME.items()}
     DARK_THEMES = ["darkly", "cyborg", "solar", "superhero", "vapor"]
 
@@ -106,7 +106,8 @@ class CottonToolkitApp(ttkb.Window):
             "genes_input":  self._("在此处粘贴要注释的基因ID，每行一个"),
             "enrichment_genes_input": self._("在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"),
             "custom_prompt": self._("在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
-            "default_prompt_empty": self._("Default prompt is empty, please set it in the configuration editor.")
+            "default_prompt_empty": self._("Default prompt is empty, please set it in the configuration editor."),
+            "blast":self._('在此处键入您的FASTA(Q)格式序列')
         }
 
         self.home_widgets: Dict[str, Any] = {}
@@ -498,7 +499,6 @@ class CottonToolkitApp(ttkb.Window):
         self.tool_content_pages = {}
         self.tool_buttons.clear()
 
-        # 【核心修正】: 在这个字典中添加 'blast': BlastTab 的映射关系
         tab_map = {
             "download": DataDownloadTab,
             "annotation": AnnotationTab,
@@ -508,7 +508,7 @@ class CottonToolkitApp(ttkb.Window):
             "homology": HomologyTab,
             "locus_conversion": LocusConversionTab,
             "gff_query": GFFQueryTab,
-            "blast": BlastTab,  # <-- 关键修正：添加这一行！
+            "blast": BlastTab,
             "ai_assistant": AIAssistantTab,
         }
 
@@ -743,10 +743,10 @@ class CottonToolkitApp(ttkb.Window):
             self.logger.error(self._("配置日志级别时出错: {}").format(e))
 
     def restart_app(self):
-        self.logger.info("Application restart requested by user.")
+        self.logger.info(_("Application restart requested by user."))
         try:
             self.destroy()
         except Exception as e:
-            self.logger.error(f"Error during pre-restart cleanup: {e}")
+            self.logger.error(_("Error during pre-restart cleanup: {}").format(e))
         python = sys.executable
         os.execv(python, [python] + sys.argv)

@@ -80,6 +80,14 @@ class BlastTab(BaseTab):
         self.query_textbox = tk.Text(self.text_input_frame, height=10, font=self.app.app_font_mono, wrap="word",
                                      relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg)
         self.query_textbox.grid(row=0, column=0, sticky="nsew")
+        self.app.ui_manager.add_placeholder(self.query_textbox, self.app.placeholders.get('blast',''))
+        self.query_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
+                                                                                                      self.query_textbox,
+                                                                                                      "blast"))
+        self.query_textbox.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e,
+                                                                                                        self.query_textbox,
+                                                                                                        "blast"))
+
 
         self.file_input_frame = ttkb.Frame(self.input_card)
         self.file_input_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=5, sticky="ew")

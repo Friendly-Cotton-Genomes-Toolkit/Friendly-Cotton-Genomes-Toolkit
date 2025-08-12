@@ -15,6 +15,7 @@ from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUB
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
+from cotton_toolkit.utils.localization import setup_localization
 from .dialogs import MessageDialog, ConfirmationDialog
 from .utils.gui_helpers import identify_genome_from_gene_ids
 
@@ -37,7 +38,6 @@ class EventHandler:
         self.ui_manager = app.ui_manager
         self.message_handlers = self._initialize_message_handlers()
         self.last_ambiguity_text: str = ""
-
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
         """
@@ -64,7 +64,6 @@ class EventHandler:
         }
         return handlers
 
-
     # --- 语言切换处理 ---
     def on_language_change(self, language_name: str):
         """当用户从下拉菜单中选择一个新语言时触发。"""
@@ -73,21 +72,24 @@ class EventHandler:
 
         selected_lang_code = app.LANG_NAME_TO_CODE.get(language_name)
         if not selected_lang_code:
-            app.logger.warning(f"Invalid language name selected: {language_name}")
+            app.logger.warning(_("Invalid language name selected: {}").format(language_name))
             return
 
-        app.logger.info(f"Language change requested to: {language_name} ({selected_lang_code})")
+        app.logger.info(_("Language change requested to: {} ({})").format(language_name, selected_lang_code))
 
         # 步骤 1: 更新并保存 UI 配置文件 (ui_settings.json)，这会影响下次启动时的默认语言
         app.ui_settings['language'] = selected_lang_code
         self.ui_manager.save_ui_settings()
 
-        # 步骤 2: 【关键修正】如果当前加载了主配置文件(config.yml)，则更新并保存它
+        # 步骤 2: 如果当前加载了主配置文件(config.yml)，则更新并保存它
+        app._ = setup_localization(language_code=selected_lang_code)
+        _ = app._
         if app.current_config and app.config_path:
             app.current_config.i18n_language = selected_lang_code
             if save_config(app.current_config, app.config_path):
                 app.logger.info(
-                    f"Main config file '{os.path.basename(app.config_path)}' updated with language '{selected_lang_code}'.")
+                    _("Main config file '{}' updated with language '{}'.").format(os.path.basename(app.config_path),
+                                                                                  selected_lang_code))
                 # 更新状态栏提示
                 app.message_queue.put(('show_info', {'title': _("配置已保存"),
                                                      'message': _("语言设置已同步到 {}。").format(
@@ -97,18 +99,17 @@ class EventHandler:
                 app.message_queue.put(
                     ('show_error', {'title': _("保存失败"), 'message': _("无法将语言设置写入配置文件。")}))
 
-        # 步骤 3: 实时更新当前界面的所有文本
-        self.ui_manager.update_language_ui(selected_lang_code)
+        # 步骤 3: 实时更新当前界面的所有文本 反正都要重启
+        # self.ui_manager.update_language_ui(selected_lang_code)
 
         # 步骤 4: 弹出重启提示对话框
         # 使用更新后的翻译函数来创建对话框
-        new_translator = self.app._
         dialog = ConfirmationDialog(
             parent=app,
-            title=new_translator("需要重启"),
-            message=new_translator("语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"),
-            button1_text=new_translator("立即重启"),
-            button2_text=new_translator("稍后重启")
+            title=_("需要重启"),
+            message=_("语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"),
+            button1_text=_("立即重启"),
+            button2_text=_("稍后重启")
         )
 
         # 步骤 5: 根据用户选择决定是否重启
@@ -240,7 +241,6 @@ class EventHandler:
             if final_data:
                 self.app.message_queue.put(("task_done", final_data))
 
-
     def _handle_startup_complete(self, data: dict):
         app = self.app
         _ = self.app._
@@ -310,9 +310,8 @@ class EventHandler:
                     app.logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
 
         elif "富集分析" in task_display_name and success and result_data:
-             if hasattr(self.app.ui_manager, '_show_plot_results'):
+            if hasattr(self.app.ui_manager, '_show_plot_results'):
                 self.app.ui_manager._show_plot_results(result_data)
-
 
     def _handle_error(self, data: str):
         _ = self.app._
@@ -341,7 +340,8 @@ class EventHandler:
                 provider_cfg = self.app.current_config.ai_services.providers.get(provider_key)
                 if provider_cfg:
                     provider_cfg.available_models = ",".join(models_or_error)
-                    self.app.logger.info(f"In-memory config for '{provider_key}' updated with a list of {len(models_or_error)} available models.")
+                    self.app.logger.info(
+                        f"In-memory config for '{provider_key}' updated with a list of {len(models_or_error)} available models.")
             # --- 修正结束 ---
 
             self.app.ui_manager.show_info_message(_("刷新成功"),
@@ -349,7 +349,6 @@ class EventHandler:
         else:
             self.app.ui_manager.update_ai_model_dropdown(provider_key, [])
             self.app.ui_manager.show_error_message(_("刷新失败"), str(models_or_error))
-
 
     def _handle_ai_test_result(self, data: tuple):
         _ = self.app._
@@ -380,7 +379,6 @@ class EventHandler:
                     icon_type="warning"
                 )
                 self.last_ambiguity_text = current_text
-
 
     def _handle_proxy_test_done(self, data: tuple):
         _ = self.app._
@@ -739,7 +737,6 @@ class EventHandler:
         threading.Thread(target=self._identify_genome_thread, args=(gene_ids, target_assembly_var, current_text),
                          daemon=True).start()
 
-
     def _identify_genome_thread(self, gene_ids, target_assembly_var, current_text):
         """
         【已修改】将当前文本内容连同识别结果一起放入消息队列。
@@ -755,7 +752,6 @@ class EventHandler:
                 self.app.message_queue.put(("auto_identify_success", (target_assembly_var, result_tuple, current_text)))
         except Exception as e:
             logger.error(f"自动识别基因组时发生错误: {e}")
-
 
     def test_proxy_connection(self):
         app = self.app
