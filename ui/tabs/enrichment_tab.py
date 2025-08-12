@@ -37,7 +37,7 @@ class EnrichmentTab(BaseTab):
         self.upset_plot_var = tk.BooleanVar(value=False)
         self.cnet_plot_var = tk.BooleanVar(value=False)
         self.top_n_var = tk.IntVar(value=20)
-        self.sort_by_var = tk.StringVar(value="FDR")
+        # self.sort_by_var = tk.StringVar(value="FDR")
         self.show_title_var = tk.BooleanVar(value=True)
         self.width_var = tk.DoubleVar(value=10.0)
         self.height_var = tk.DoubleVar(value=8.0)
@@ -149,11 +149,11 @@ class EnrichmentTab(BaseTab):
         self.top_n_entry = ttk.Entry(self.plot_config_card, textvariable=self.top_n_var, width=10)
         self.top_n_entry.grid(row=1, column=1, sticky="w", padx=10, pady=5)
 
-        self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
-        self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
-        self.sort_by_dropdown = ttkb.OptionMenu(self.plot_config_card, self.sort_by_var, "FDR", "FDR", "PValue",
-                                                "FoldEnrichment", bootstyle="info")
-        self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
+        # self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
+        # self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
+        #self.sort_by_dropdown = ttkb.OptionMenu(self.plot_config_card, self.sort_by_var, "FDR", "FDR", "PValue",
+        #                                        "FoldEnrichment", bootstyle="info")
+        # self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
 
         self.show_title_check = ttkb.Checkbutton(self.plot_config_card, text=_("显示图表标题"),
                                                  variable=self.show_title_var, bootstyle="round-toggle")
@@ -271,7 +271,7 @@ class EnrichmentTab(BaseTab):
             'study_gene_ids': study_gene_ids, 'analysis_type': self.analysis_type_var.get(),
             'plot_types': plot_types, 'output_dir': output_dir,
             'gene_log2fc_map': gene_log2fc_map, 'top_n': self.top_n_var.get(),
-            'sort_by': self.sort_by_var.get(), 'show_title': self.show_title_var.get(),
+            'show_title': self.show_title_var.get(),
             'width': self.width_var.get(), 'height': self.height_var.get(),
             'file_format': self.file_format_var.get(), 'collapse_transcripts': self.collapse_transcripts_var.get()
         }
