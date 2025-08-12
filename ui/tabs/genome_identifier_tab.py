@@ -60,9 +60,9 @@ class GenomeIdentifierTab(BaseTab):
         self.title_label.grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="n")
 
         self.description_label = ttkb.Label(parent_frame,
-                                            text=_("在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的归属。"),
-                                            wraplength=700, justify='left')
-        self.description_label.grid(row=1, column=0, columnspan=2, sticky='w', padx=10, pady=(0, 10))
+                                            text=_("在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"),
+                                            wraplength=700, justify='center')
+        self.description_label.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10))
 
         left_frame = ttkb.LabelFrame(parent_frame, text=_("输入基因列表"), bootstyle="secondary")
         left_frame.grid(row=2, column=0, sticky="nsew", padx=(10, 0), pady=10)

@@ -1,4 +1,4 @@
-PUBLISH_URL = 'https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit'
-HELP_URL = 'https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit/blob/master/docs/HELP.md'
+PUBLISH_URL = 'https://github.com/Friendly-Cotton-Genomes-Toolkit/Friendly-Cotton-Genomes-Toolkit'
+HELP_URL = 'https://github.com/Friendly-Cotton-Genomes-Toolkit/Friendly-Cotton-Genomes-Toolkit/blob/master/docs/HELP.md'
 VERSION = '1.1.1'
 

@@ -304,7 +304,8 @@ class DataDownloadTab(BaseTab):
         task_kwargs = {'config': self.app.current_config}
         self.app.event_handler._start_task(
             task_name=self._("预处理BLAST数据库"),
-            target_func=run_build_blast_db_pipeline,  # 调用我们即将创建的新函数
+            target_func=run_build_blast_db_pipeline,
+            task_key="download",
             kwargs=task_kwargs
         )
 
@@ -328,7 +329,7 @@ class DataDownloadTab(BaseTab):
                               'force': self.force_download_var.get()}
         }
         self.app.event_handler._start_task(task_name=self._("数据下载"), target_func=run_download_pipeline,
-                                           kwargs=task_kwargs)
+                                           task_key="preprocess_anno",kwargs=task_kwargs)
 
     def start_preprocess_task(self):
         # 【修改】所有 _() 调用都改为 self._()
@@ -367,4 +368,4 @@ class DataDownloadTab(BaseTab):
         task_kwargs = {'config': self.app.current_config}
         self.app.event_handler._start_task(task_name=self._("预处理注释文件"),
                                            target_func=run_preprocess_annotation_files,
-                                           kwargs=task_kwargs)
+                                           task_key="preprocess_blast",kwargs=task_kwargs)

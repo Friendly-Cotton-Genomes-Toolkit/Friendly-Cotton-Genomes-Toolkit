@@ -240,6 +240,11 @@ class CottonToolkitApp(ttkb.Window):
         parent.grid_columnconfigure(0, weight=1)
         row_counter = 0
 
+        # --- 【最终修复】根据当前主题是深色还是浅色，定义一个清晰的注释文字颜色 ---
+        is_dark_theme = self.style.theme.type == 'dark'
+        comment_fg_color = "#a0a0a0" if is_dark_theme else "#6c757d"
+
+
         def get_row():
             nonlocal row_counter
             r = row_counter
@@ -256,21 +261,24 @@ class CottonToolkitApp(ttkb.Window):
         self.general_log_level_var = tk.StringVar()
         self.general_log_level_menu = ttkb.OptionMenu(c1, self.general_log_level_var, "INFO", *["DEBUG", "INFO", "WARNING", "ERROR"], bootstyle='info-outline')
         self.general_log_level_menu.grid(row=0, column=1, sticky="ew", padx=5)
-        tip1 = ttkb.Label(c1, text=self._("设置应用程序的日志详细程度。"), font=self.app_comment_font, bootstyle="secondary"); tip1.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色，不再使用bootstyle
+        tip1 = ttkb.Label(c1, text=self._("设置应用程序的日志详细程度。"), font=self.app_comment_font, foreground=comment_fg_color); tip1.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip1] = "设置应用程序的日志详细程度。"
 
         c2 = ttkb.Frame(parent); c2.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5); c2.grid_columnconfigure(1, weight=1)
         lbl2 = ttkb.Label(c2, text=self._("HTTP代理")); lbl2.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl2] = "HTTP代理"
         self.proxy_http_entry = ttkb.Entry(c2); self.proxy_http_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip2 = ttkb.Label(c2, text=self._("例如: http://127.0.0.1:7890"), font=self.app_comment_font, bootstyle="secondary"); tip2.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip2 = ttkb.Label(c2, text=self._("例如: http://127.0.0.1:7890"), font=self.app_comment_font, foreground=comment_fg_color); tip2.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip2] = "例如: http://127.0.0.1:7890"
 
         c3 = ttkb.Frame(parent); c3.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5); c3.grid_columnconfigure(1, weight=1)
         lbl3 = ttkb.Label(c3, text=self._("HTTPS代理")); lbl3.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl3] = "HTTPS代理"
         self.proxy_https_entry = ttkb.Entry(c3); self.proxy_https_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip3 = ttkb.Label(c3, text=self._("例如: https://127.0.0.1:7890"), font=self.app_comment_font, bootstyle="secondary"); tip3.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip3 = ttkb.Label(c3, text=self._("例如: https://127.0.0.1:7890"), font=self.app_comment_font, foreground=comment_fg_color); tip3.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip3] = "例如: https://127.0.0.1:7890"
 
         proxy_button_frame = ttkb.Frame(parent); proxy_button_frame.grid(row=get_row(), column=0, sticky="e", padx=5, pady=5)
@@ -285,14 +293,16 @@ class CottonToolkitApp(ttkb.Window):
         lbl4 = ttkb.Label(c4, text=self._("基因组源文件")); lbl4.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl4] = "基因组源文件"
         self.downloader_sources_file_entry = ttkb.Entry(c4); self.downloader_sources_file_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip4 = ttkb.Label(c4, text=self._("定义基因组下载链接的YAML文件。"), font=self.app_comment_font, bootstyle="secondary"); tip4.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip4 = ttkb.Label(c4, text=self._("定义基因组下载链接的YAML文件。"), font=self.app_comment_font, foreground=comment_fg_color); tip4.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip4] = "定义基因组下载链接的YAML文件。"
 
         c5 = ttkb.Frame(parent); c5.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5); c5.grid_columnconfigure(1, weight=1)
         lbl5 = ttkb.Label(c5, text=self._("下载输出根目录")); lbl5.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl5] = "下载输出根目录"
         self.downloader_output_dir_entry = ttkb.Entry(c5); self.downloader_output_dir_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip5 = ttkb.Label(c5, text=self._("所有下载文件存放的基准目录。"), font=self.app_comment_font, bootstyle="secondary"); tip5.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip5 = ttkb.Label(c5, text=self._("所有下载文件存放的基准目录。"), font=self.app_comment_font, foreground=comment_fg_color); tip5.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip5] = "所有下载文件存放的基准目录。"
 
         c6 = ttkb.Frame(parent); c6.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5); c6.grid_columnconfigure(1, weight=1)
@@ -300,14 +310,16 @@ class CottonToolkitApp(ttkb.Window):
         self.translatable_widgets[lbl6] = "强制重新下载"
         self.downloader_force_download_var = tk.BooleanVar()
         self.downloader_force_download_switch = ttkb.Checkbutton(c6, variable=self.downloader_force_download_var, bootstyle="round-toggle"); self.downloader_force_download_switch.grid(row=0, column=1, sticky="w", padx=5)
-        tip6 = ttkb.Label(c6, text=self._("如果文件已存在，是否覆盖。"), font=self.app_comment_font, bootstyle="secondary"); tip6.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip6 = ttkb.Label(c6, text=self._("如果文件已存在，是否覆盖。"), font=self.app_comment_font, foreground=comment_fg_color); tip6.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip6] = "如果文件已存在，是否覆盖。"
 
         c7 = ttkb.Frame(parent); c7.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5); c7.grid_columnconfigure(1, weight=1)
         lbl7 = ttkb.Label(c7, text=self._("最大下载线程数")); lbl7.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl7] = "最大下载线程数"
         self.downloader_max_workers_entry = ttkb.Entry(c7); self.downloader_max_workers_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip7 = ttkb.Label(c7, text=self._("多线程下载时使用的最大线程数。"), font=self.app_comment_font, bootstyle="secondary"); tip7.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip7 = ttkb.Label(c7, text=self._("多线程下载时使用的最大线程数。"), font=self.app_comment_font, foreground=comment_fg_color); tip7.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip7] = "多线程下载时使用的最大线程数。"
 
         c8 = ttkb.Frame(parent); c8.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5); c8.grid_columnconfigure(1, weight=1)
@@ -315,7 +327,8 @@ class CottonToolkitApp(ttkb.Window):
         self.translatable_widgets[lbl8] = "为下载使用代理"
         self.downloader_use_proxy_var = tk.BooleanVar()
         self.downloader_use_proxy_switch = ttkb.Checkbutton(c8, variable=self.downloader_use_proxy_var, bootstyle="round-toggle"); self.downloader_use_proxy_switch.grid(row=0, column=1, sticky="w", padx=5)
-        tip8 = ttkb.Label(c8, text=self._("是否为数据下载启用代理。"), font=self.app_comment_font, bootstyle="secondary"); tip8.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip8 = ttkb.Label(c8, text=self._("是否为数据下载启用代理。"), font=self.app_comment_font, foreground=comment_fg_color); tip8.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip8] = "是否为数据下载启用代理。"
 
         section_3_title = ttkb.Label(parent, text=f"◇ {self._('AI 服务配置')} ◇", font=self.app_subtitle_font, bootstyle="primary")
@@ -329,14 +342,16 @@ class CottonToolkitApp(ttkb.Window):
         provider_names = [p['name'] for p in self.AI_PROVIDERS.values()]
         self.ai_default_provider_menu = ttkb.OptionMenu(c9, self.ai_default_provider_var, provider_names[0], *provider_names, bootstyle='info-outline')
         self.ai_default_provider_menu.grid(row=0, column=1, sticky="ew", padx=5)
-        tip9 = ttkb.Label(c9, text=self._("选择默认使用的AI模型提供商。"), font=self.app_comment_font, bootstyle="secondary"); tip9.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip9 = ttkb.Label(c9, text=self._("选择默认使用的AI模型提供商。"), font=self.app_comment_font, foreground=comment_fg_color); tip9.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip9] = "选择默认使用的AI模型提供商。"
 
         c10 = ttkb.Frame(parent); c10.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5); c10.grid_columnconfigure(1, weight=1)
         lbl10 = ttkb.Label(c10, text=self._("最大并行AI任务数")); lbl10.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl10] = "最大并行AI任务数"
         self.batch_ai_max_workers_entry = ttkb.Entry(c10); self.batch_ai_max_workers_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip10 = ttkb.Label(c10, text=self._("执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"), font=self.app_comment_font, bootstyle="secondary"); tip10.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip10 = ttkb.Label(c10, text=self._("执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"), font=self.app_comment_font, foreground=comment_fg_color); tip10.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip10] = "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 
         c11 = ttkb.Frame(parent); c11.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5); c11.grid_columnconfigure(1, weight=1)
@@ -344,7 +359,8 @@ class CottonToolkitApp(ttkb.Window):
         self.translatable_widgets[lbl11] = "为AI服务使用代理"
         self.ai_use_proxy_var = tk.BooleanVar()
         self.ai_use_proxy_switch = ttkb.Checkbutton(c11, variable=self.ai_use_proxy_var, bootstyle="round-toggle"); self.ai_use_proxy_switch.grid(row=0, column=1, sticky="w", padx=5)
-        tip11 = ttkb.Label(c11, text=self._("是否为连接AI模型API启用代理。"), font=self.app_comment_font, bootstyle="secondary"); tip11.grid(row=1, column=1, sticky="w", padx=5)
+        # 【最终修复】手动设置前景色
+        tip11 = ttkb.Label(c11, text=self._("是否为连接AI模型API启用代理。"), font=self.app_comment_font, foreground=comment_fg_color); tip11.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip11] = "是否为连接AI模型API启用代理。"
 
         for p_key, p_info in self.AI_PROVIDERS.items():
@@ -388,6 +404,7 @@ class CottonToolkitApp(ttkb.Window):
         self.translatable_widgets[lbl_ana] = "分析提示词"
         self.ai_analysis_prompt_textbox = tk.Text(f_ana, height=7, font=self.app_font_mono, wrap="word", relief="flat", background=bg_t, foreground=fg_t, insertbackground=fg_t)
         self.ai_analysis_prompt_textbox.grid(row=0, column=1, sticky="ew", padx=5)
+
 
     def _apply_config_values_to_editor(self):
         if not self.current_config or not self.editor_ui_built: return
@@ -702,15 +719,19 @@ class CottonToolkitApp(ttkb.Window):
         mono_stack = ["Consolas", "Courier New", "monospace"]
         self.font_family = next((f for f in font_stack if f in tkfont.families()), "sans-serif")
         self.mono_font_family = next((f for f in mono_stack if f in tkfont.families()), "monospace")
-        self.logger.info(self._("UI font set to: {}, Monospace font to: {}").format(self.font_family, self.mono_font_family))
+        self.logger.info(
+            self._("UI font set to: {}, Monospace font to: {}").format(self.font_family, self.mono_font_family))
         self.app_font = tkfont.Font(family=self.font_family, size=12)
         self.app_font_italic = tkfont.Font(family=self.font_family, size=12, slant="italic")
         self.app_font_bold = tkfont.Font(family=self.font_family, size=13, weight="bold")
         self.app_subtitle_font = tkfont.Font(family=self.font_family, size=16, weight="bold")
         self.app_title_font = tkfont.Font(family=self.font_family, size=24, weight="bold")
-        self.app_comment_font = tkfont.Font(family=self.font_family, size=11)
+
+        self.app_comment_font = tkfont.Font(family=self.font_family, size=10)
+
         self.app_font_mono = tkfont.Font(family=self.mono_font_family, size=12)
-        for style_name in ['TButton', 'TCheckbutton', 'TMenubutton', 'TLabel', 'TEntry', 'Toolbutton', 'Labelframe.TLabel']:
+        for style_name in ['TButton', 'TCheckbutton', 'TMenubutton', 'TLabel', 'TEntry', 'Toolbutton',
+                           'Labelframe.TLabel']:
             self.style.configure(style_name, font=self.app_font)
         self.style.configure('success.TButton', font=self.app_font_bold)
         self.style.configure('outline.TButton', font=self.app_font)

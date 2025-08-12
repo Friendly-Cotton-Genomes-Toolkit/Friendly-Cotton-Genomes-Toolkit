@@ -43,9 +43,8 @@ class XlsxConverterTab(BaseTab):
 
         self.description_label = ttkb.Label(parent_frame, text=_(
             "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n适用于所有工作表表头一致的情况。"),
-                                            wraplength=700, justify="center", bootstyle="secondary")
+                                            wraplength=700, justify="center")  # <--- 【优化】移除了 bootstyle="secondary"
 
-        # 【核心修改】移除了 sticky="ew"，让标签本身在水平方向上居中
         self.description_label.grid(row=1, column=0, padx=10, pady=(0, 20))
 
         self.main_card = ttkb.LabelFrame(parent_frame, text=_("文件路径"), bootstyle="secondary")

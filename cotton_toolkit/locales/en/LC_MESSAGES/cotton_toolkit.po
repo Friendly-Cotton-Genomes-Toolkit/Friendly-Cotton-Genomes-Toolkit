@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-06 19:32+0800\n"
-"PO-Revision-Date: 2025-08-06 19:32+0800\n"
+"POT-Creation-Date: 2025-08-12 17:38+0800\n"
+"PO-Revision-Date: 2025-08-12 17:38+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Gemini 2.5 Pro\n"
 "Language: en_US\n"
@@ -22,12 +22,15 @@ msgstr ""
 "X-Poedit-Basepath: ../../../..\n"
 "X-Poedit-KeywordsList: translator\n"
 "X-Poedit-SourceCharset: UTF-8\n"
-"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPath-0: cotton_toolkit\n"
+"X-Poedit-SearchPath-1: ui\n"
 "X-Poedit-SearchPathExcluded-0: .git\n"
 "X-Poedit-SearchPathExcluded-1: .idea\n"
 "X-Poedit-SearchPathExcluded-2: build_temp\n"
 "X-Poedit-SearchPathExcluded-3: dist\n"
 "X-Poedit-SearchPathExcluded-4: release\n"
+"X-Poedit-SearchPathExcluded-5: tests\n"
+"X-Poedit-SearchPathExcluded-6: tmp\n"
 
 #: cotton_toolkit/cli.py:39
 msgid "错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。"
@@ -493,7 +496,7 @@ msgstr "Project Open Source Address: "
 msgid "数据来源与引文"
 msgstr "Data Sources and Citations"
 
-#: cotton_toolkit/cli.py:514 ui/event_handler.py:591
+#: cotton_toolkit/cli.py:514 ui/event_handler.py:589
 msgid "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"
 msgstr ""
 "This tool relies on authoritative data provided by CottonGen. We thank their "
@@ -503,7 +506,7 @@ msgstr ""
 msgid "CottonGen 主要引文:"
 msgstr "Main CottonGen Citation:"
 
-#: cotton_toolkit/cli.py:522 ui/event_handler.py:599
+#: cotton_toolkit/cli.py:522 ui/event_handler.py:597
 msgid "基因组引用文献:"
 msgstr "Genome Reference Citations:"
 
@@ -1783,7 +1786,7 @@ msgid "开始预处理注释文件（转换为CSV）..."
 msgstr "Starting to preprocess annotation files (converting to CSV)..."
 
 #: cotton_toolkit/pipelines.py:1324 cotton_toolkit/pipelines.py:1667
-#: ui/event_handler.py:166
+#: ui/event_handler.py:167
 msgid "正在加载基因组源数据..."
 msgstr "Loading genome source data..."
 
@@ -2487,99 +2490,119 @@ msgstr "Warning: Failed to apply regex for gene ID normalization. Reason: {}"
 msgid "全局日志系统已初始化，级别设置为: {}"
 msgstr "Global logging system initialized, level set to: {}"
 
-#: cotton_toolkit/utils/logger.py:96 ui/gui_app.py:741
+#: cotton_toolkit/utils/logger.py:96 ui/gui_app.py:762
 msgid "全局日志级别已更新为: {}"
 msgstr "Global log level updated to: {}"
-
-#: main.py:29
-msgid "程序发生致命错误 (Fatal Error)"
-msgstr "程序发生致命错误 (Fatal Error)"
-
-#: main.py:31
-msgid "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
-msgstr ""
-"An unhandled exception caused the program to terminate unexpectedly. Please "
-"report the following information to the developer:"
 
 #: ui/dialogs.py:191
 msgid "正在准备任务..."
 msgstr "Preparing task..."
 
-#: ui/dialogs.py:199 ui/event_handler.py:130 ui/event_handler.py:142
+#: ui/dialogs.py:199 ui/event_handler.py:131 ui/event_handler.py:143
 msgid "取消"
 msgstr "Cancel"
 
-#: ui/event_handler.py:92
+#: ui/event_handler.py:75
+msgid "Invalid language name selected: {}"
+msgstr ""
+
+#: ui/event_handler.py:78
+msgid "Language change requested to: {} ({})"
+msgstr ""
+
+#: ui/event_handler.py:91
+msgid "Main config file '{}' updated with language '{}'."
+msgstr ""
+
+#: ui/event_handler.py:94
 msgid "配置已保存"
 msgstr "Configuration saved"
 
-#: ui/event_handler.py:93
+#: ui/event_handler.py:95
 msgid "语言设置已同步到 {}。"
 msgstr "Language settings have been synchronized to {}."
 
-#: ui/event_handler.py:98 ui/event_handler.py:288 ui/gui_app.py:452
+#: ui/event_handler.py:100 ui/event_handler.py:288 ui/gui_app.py:470
 msgid "保存失败"
 msgstr "Save Failed"
 
-#: ui/event_handler.py:98
+#: ui/event_handler.py:100
 msgid "无法将语言设置写入配置文件。"
 msgstr "Failed to write language settings to the configuration file."
 
-#: ui/event_handler.py:127 ui/event_handler.py:139
+#: ui/event_handler.py:109
+msgid "需要重启"
+msgstr "Restart required"
+
+#: ui/event_handler.py:110
+msgid "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
+msgstr ""
+"Language settings have been changed. To ensure all changes take effect, it "
+"is recommended that you restart the application."
+
+#: ui/event_handler.py:111
+msgid "立即重启"
+msgstr "Restart immediately"
+
+#: ui/event_handler.py:112
+msgid "稍后重启"
+msgstr "Restart later"
+
+#: ui/event_handler.py:128 ui/event_handler.py:140
 msgid "确认退出"
 msgstr "Confirm exit"
 
-#: ui/event_handler.py:128
+#: ui/event_handler.py:129
 msgid "任务'{}'正在运行中，确定要强制退出吗？"
 msgstr "Task '{}' is currently running. Are you sure you want to force quit?"
 
-#: ui/event_handler.py:129
+#: ui/event_handler.py:130
 msgid "强制退出"
 msgstr "Force quit"
 
-#: ui/event_handler.py:140
+#: ui/event_handler.py:141
 msgid "您确定要退出吗？"
 msgstr "Are you sure you want to exit?"
 
-#: ui/event_handler.py:141
+#: ui/event_handler.py:142
 msgid "退出"
 msgstr "Confirm exit"
 
-#: ui/event_handler.py:150
+#: ui/event_handler.py:151
 msgid "图形界面启动中..."
 msgstr "GUI starting up..."
 
-#: ui/event_handler.py:151
+#: ui/event_handler.py:152
 msgid "正在初始化应用程序和加载配置，请稍候..."
 msgstr "Initializing application and loading configuration, please wait..."
 
-#: ui/event_handler.py:161 ui/event_handler.py:449
+#: ui/event_handler.py:162 ui/event_handler.py:447
 msgid "正在加载配置文件..."
 msgstr "Loading configuration file..."
 
-#: ui/event_handler.py:168
+#: ui/event_handler.py:169
 msgid "启动完成准备..."
 msgstr "Startup preparation complete..."
 
-#: ui/event_handler.py:173
+#: ui/event_handler.py:174
 msgid "应用启动失败"
 msgstr "Application startup failed"
 
-#: ui/event_handler.py:175
+#: ui/event_handler.py:176
 msgid "初始化完成。"
 msgstr "Initialization complete."
 
-#: ui/event_handler.py:187 ui/event_handler.py:796
+#: ui/event_handler.py:188 ui/event_handler.py:792
 msgid "任务进行中"
 msgstr "Task in Progress"
 
-#: ui/event_handler.py:188 ui/event_handler.py:797
+#: ui/event_handler.py:189 ui/event_handler.py:793
 msgid "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
 msgstr ""
 "Task '{}' is currently running. Please wait for it to complete before "
 "starting a new task."
 
-#: ui/event_handler.py:196
+#: ui/event_handler.py:197
 msgid "正在处理..."
 msgstr "Processing..."
 
@@ -2645,11 +2668,11 @@ msgstr ""
 "The data download tab status has been automatically refreshed after the task "
 "'{}' completed."
 
-#: ui/event_handler.py:319
+#: ui/event_handler.py:318
 msgid "任务执行出错"
 msgstr "Task execution error"
 
-#: ui/event_handler.py:320
+#: ui/event_handler.py:319
 msgid "未知任务"
 msgstr "Unknown Task"
 
@@ -2665,302 +2688,302 @@ msgstr "Successfully retrieved and updated the model list for {}."
 msgid "刷新失败"
 msgstr "Refresh Failed"
 
-#: ui/event_handler.py:357
+#: ui/event_handler.py:356
 msgid "测试成功"
 msgstr "Test Successful"
 
-#: ui/event_handler.py:359
+#: ui/event_handler.py:358
 msgid "测试失败"
 msgstr "Test Failed"
 
-#: ui/event_handler.py:378 ui/tabs/genome_identifier_tab.py:208
+#: ui/event_handler.py:377 ui/tabs/genome_identifier_tab.py:208
 msgid "注意：检测到歧义"
 msgstr "Note: Ambiguity detected"
 
-#: ui/event_handler.py:389
+#: ui/event_handler.py:387
 msgid "代理测试成功"
 msgstr "Proxy Test Successful"
 
-#: ui/event_handler.py:391
+#: ui/event_handler.py:389
 msgid "代理测试失败"
 msgstr "Proxy Test Failed"
 
-#: ui/event_handler.py:397 ui/ui_manager.py:56 ui/ui_manager.py:344
+#: ui/event_handler.py:395 ui/ui_manager.py:59 ui/ui_manager.py:334
 msgid "浅色"
 msgstr "Light"
 
-#: ui/event_handler.py:398 ui/ui_manager.py:56 ui/ui_manager.py:344
+#: ui/event_handler.py:396 ui/ui_manager.py:59 ui/ui_manager.py:334
 msgid "深色"
 msgstr "Dark"
 
-#: ui/event_handler.py:399 ui/ui_manager.py:56 ui/ui_manager.py:344
+#: ui/event_handler.py:397 ui/ui_manager.py:59 ui/ui_manager.py:334
 msgid "跟随系统"
 msgstr "Follow system"
 
-#: ui/event_handler.py:431
+#: ui/event_handler.py:429
 msgid "隐藏日志"
 msgstr "Hide Logs"
 
-#: ui/event_handler.py:431 ui/ui_manager.py:221
+#: ui/event_handler.py:429 ui/ui_manager.py:211
 msgid "显示日志"
 msgstr "Show Logs"
 
-#: ui/event_handler.py:439
+#: ui/event_handler.py:437
 msgid "操作日志已清除。"
 msgstr "Operation log has been cleared."
 
-#: ui/event_handler.py:444
+#: ui/event_handler.py:442
 msgid "选择配置文件"
 msgstr "Select Configuration File"
 
-#: ui/event_handler.py:449 ui/tabs/annotation_tab.py:48
+#: ui/event_handler.py:447 ui/tabs/annotation_tab.py:48
 #: ui/tabs/annotation_tab.py:162 ui/tabs/blast_tab.py:61
-#: ui/tabs/blast_tab.py:177 ui/tabs/enrichment_tab.py:68
-#: ui/tabs/enrichment_tab.py:271 ui/tabs/gff_query_tab.py:102
-#: ui/tabs/gff_query_tab.py:200 ui/tabs/homology_tab.py:56
-#: ui/tabs/homology_tab.py:62 ui/tabs/homology_tab.py:278
+#: ui/tabs/blast_tab.py:188 ui/tabs/enrichment_tab.py:68
+#: ui/tabs/enrichment_tab.py:221 ui/tabs/gff_query_tab.py:108
+#: ui/tabs/gff_query_tab.py:201 ui/tabs/homology_tab.py:65
+#: ui/tabs/homology_tab.py:71 ui/tabs/homology_tab.py:277
 #: ui/tabs/locus_conversion_tab.py:53 ui/tabs/locus_conversion_tab.py:59
 #: ui/tabs/locus_conversion_tab.py:130
 msgid "加载中..."
 msgstr "Loading..."
 
-#: ui/event_handler.py:460
+#: ui/event_handler.py:458
 msgid "加载完成。"
 msgstr "Loading complete."
 
-#: ui/event_handler.py:474
+#: ui/event_handler.py:472
 msgid " 和 "
 msgstr "and "
 
-#: ui/event_handler.py:475
+#: ui/event_handler.py:473
 msgid "文件已存在"
 msgstr "File Exists"
 
-#: ui/event_handler.py:476
+#: ui/event_handler.py:474
 msgid "文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?"
 msgstr ""
 "File {} already exists in the program root directory. Do you want to "
 "overwrite them and generate new default configurations?"
 
-#: ui/event_handler.py:478
+#: ui/event_handler.py:476
 msgid "是，覆盖"
 msgstr "Yes, overwrite"
 
-#: ui/event_handler.py:478
+#: ui/event_handler.py:476
 msgid "否，取消"
 msgstr "No, cancel"
 
-#: ui/event_handler.py:480
+#: ui/event_handler.py:478
 msgid "用户取消了生成默认配置文件的操作。"
 msgstr ""
 "The user canceled the operation to generate the default configuration file."
 
-#: ui/event_handler.py:482
+#: ui/event_handler.py:480
 msgid "生成配置文件中..."
 msgstr "Generating configuration file..."
 
-#: ui/event_handler.py:483
+#: ui/event_handler.py:481
 msgid "正在根目录生成默认配置文件，请稍候..."
 msgstr ""
 "Generating default configuration file in the root directory, please wait..."
 
-#: ui/event_handler.py:490
+#: ui/event_handler.py:488
 msgid "正在生成主配置文件..."
 msgstr "Generating main configuration file..."
 
-#: ui/event_handler.py:492
+#: ui/event_handler.py:490
 msgid "生成其他配置文件..."
 msgstr "Generating other configuration files..."
 
-#: ui/event_handler.py:494
+#: ui/event_handler.py:492
 msgid "配置文件生成完成。"
 msgstr "Configuration file generation complete."
 
-#: ui/event_handler.py:496
+#: ui/event_handler.py:494
 msgid "生成默认配置"
 msgstr "Generate Default Configuration"
 
-#: ui/event_handler.py:498
+#: ui/event_handler.py:496
 msgid "生成默认配置文件失败。"
 msgstr "Failed to generate default configuration file."
 
-#: ui/event_handler.py:500
+#: ui/event_handler.py:498
 msgid "生成默认配置文件时发生错误:"
 msgstr "Error generating default configuration file:"
 
-#: ui/event_handler.py:509
+#: ui/event_handler.py:507
 msgid "生成成功"
 msgstr "Generation Successful"
 
-#: ui/event_handler.py:510
+#: ui/event_handler.py:508
 msgid "默认配置文件已成功生成。"
 msgstr "Default configuration file generated successfully."
 
-#: ui/event_handler.py:510
+#: ui/event_handler.py:508
 msgid "是否立即加载?"
 msgstr "Load it now?"
 
-#: ui/event_handler.py:511
+#: ui/event_handler.py:509
 msgid "是"
 msgstr "Yes"
 
-#: ui/event_handler.py:511
+#: ui/event_handler.py:509
 msgid "否"
 msgstr "No"
 
-#: ui/event_handler.py:524
+#: ui/event_handler.py:522
 msgid "关于 FCGT"
 msgstr "About FCGT"
 
-#: ui/event_handler.py:584
+#: ui/event_handler.py:582
 msgid "程序名称"
 msgstr "Program name"
 
-#: ui/event_handler.py:585
+#: ui/event_handler.py:583
 msgid "版本"
 msgstr "Version"
 
-#: ui/event_handler.py:586
+#: ui/event_handler.py:584
 msgid "项目地址"
 msgstr "Project address "
 
-#: ui/event_handler.py:590
+#: ui/event_handler.py:588
 msgid "致谢与引用"
 msgstr "Acknowledgments and citations"
 
-#: ui/event_handler.py:592
+#: ui/event_handler.py:590
 msgid "文章:"
 msgstr "Articles:"
 
-#: ui/event_handler.py:616
+#: ui/event_handler.py:614
 msgid "许可证"
 msgstr "License"
 
-#: ui/event_handler.py:617
+#: ui/event_handler.py:615
 msgid "本软件根据 Apache License 2.0 获得许可。"
 msgstr "This software is licensed under the Apache License 2.0."
 
-#: ui/event_handler.py:619
+#: ui/event_handler.py:617
 msgid "免责声明"
 msgstr "Disclaimer"
 
-#: ui/event_handler.py:620
+#: ui/event_handler.py:618
 msgid "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
 msgstr ""
 "The genomic data download and processing are executed by the user, and this "
 "tool only provides framework services."
 
-#: ui/event_handler.py:641 ui/event_handler.py:672
+#: ui/event_handler.py:639 ui/event_handler.py:670
 msgid "确定"
 msgstr "OK"
 
-#: ui/event_handler.py:704 ui/gui_app.py:420 ui/tabs/ai_assistant_tab.py:383
-#: ui/tabs/annotation_tab.py:139 ui/tabs/blast_tab.py:171
+#: ui/event_handler.py:702 ui/gui_app.py:438 ui/tabs/ai_assistant_tab.py:383
+#: ui/tabs/annotation_tab.py:139 ui/tabs/blast_tab.py:182
 #: ui/tabs/data_download_tab.py:301 ui/tabs/data_download_tab.py:313
 #: ui/tabs/data_download_tab.py:336 ui/tabs/data_download_tab.py:345
-#: ui/tabs/enrichment_tab.py:259 ui/tabs/genome_identifier_tab.py:148
-#: ui/tabs/gff_query_tab.py:164 ui/tabs/homology_tab.py:260
+#: ui/tabs/enrichment_tab.py:209 ui/tabs/genome_identifier_tab.py:148
+#: ui/tabs/gff_query_tab.py:165 ui/tabs/homology_tab.py:259
 #: ui/tabs/locus_conversion_tab.py:122
 msgid "错误"
 msgstr "Error"
 
-#: ui/event_handler.py:704
+#: ui/event_handler.py:702
 msgid "无法打开帮助链接: {}"
 msgstr "Cannot open help link: {}"
 
-#: ui/event_handler.py:708
+#: ui/event_handler.py:706
 msgid "选择文件"
 msgstr "Select File"
 
-#: ui/event_handler.py:714
+#: ui/event_handler.py:712
 msgid "保存文件为"
 msgstr "Save File As"
 
-#: ui/event_handler.py:721
+#: ui/event_handler.py:719
 msgid "选择目录"
 msgstr "Select Directory"
 
-#: ui/event_handler.py:766
+#: ui/event_handler.py:762
 msgid "信息"
 msgstr "Information"
 
-#: ui/event_handler.py:766
+#: ui/event_handler.py:762
 msgid "请先填写HTTP或HTTPS代理地址。"
 msgstr "Please fill in the HTTP or HTTPS proxy address first."
 
-#: ui/event_handler.py:770
+#: ui/event_handler.py:766
 msgid "正在测试代理..."
 msgstr "Testing proxy..."
 
-#: ui/event_handler.py:770
+#: ui/event_handler.py:766
 msgid "尝试通过代理连接到测试站点..."
 msgstr "Attempting to connect to the test site via proxy..."
 
-#: ui/event_handler.py:778
+#: ui/event_handler.py:774
 msgid "发送请求..."
 msgstr "Sending request..."
 
-#: ui/event_handler.py:782
+#: ui/event_handler.py:778
 msgid "连接成功！"
 msgstr "Connection successful!"
 
-#: ui/event_handler.py:782
+#: ui/event_handler.py:778
 msgid "测试站点报告的IP地址是:"
 msgstr "The IP address reported by the test site is:"
 
-#: ui/event_handler.py:784
+#: ui/event_handler.py:780
 msgid "测试完成。"
 msgstr "Test complete."
 
-#: ui/event_handler.py:786
+#: ui/event_handler.py:782
 msgid "连接失败。"
 msgstr "Connection failed."
 
-#: ui/event_handler.py:786
+#: ui/event_handler.py:782
 msgid "错误详情:"
 msgstr "Error details:"
 
-#: ui/event_handler.py:787
+#: ui/event_handler.py:783
 msgid "测试失败。"
 msgstr "Test failed."
 
-#: ui/event_handler.py:805
+#: ui/event_handler.py:801
 msgid "UI错误"
 msgstr "UI Error"
 
-#: ui/event_handler.py:805
+#: ui/event_handler.py:801
 msgid "配置编辑器UI尚未完全加载。"
 msgstr "The configuration editor UI has not fully loaded yet."
 
-#: ui/event_handler.py:808
+#: ui/event_handler.py:804
 msgid "缺少API Key"
 msgstr "Missing API Key"
 
-#: ui/event_handler.py:809
+#: ui/event_handler.py:805
 msgid "请先在编辑器中为 '{}' 填写有效的API Key。"
 msgstr "Please fill in a valid API Key for '{}' in the editor first."
 
-#: ui/event_handler.py:815
+#: ui/event_handler.py:811
 msgid "刷新模型列表"
 msgstr "Refresh Model List"
 
-#: ui/event_handler.py:818
+#: ui/event_handler.py:814
 msgid "正在获取模型..."
 msgstr "Fetching models..."
 
-#: ui/event_handler.py:818
+#: ui/event_handler.py:814
 msgid "连接到 {}..."
 msgstr "Connecting to {}..."
 
-#: ui/event_handler.py:833
+#: ui/event_handler.py:829
 msgid "开始连接AI服务..."
 msgstr "Starting to connect to AI service..."
 
-#: ui/event_handler.py:841
+#: ui/event_handler.py:837
 msgid "数据处理中..."
 msgstr "Data processing..."
 
-#: ui/event_handler.py:846 ui/gui_app.py:235
+#: ui/event_handler.py:842 ui/gui_app.py:236
 msgid "刷新完成。"
 msgstr "Refresh complete."
 
@@ -2973,11 +2996,11 @@ msgstr "Generic OpenAI-Compatible Interface"
 msgid "功能注释"
 msgstr "Functional Annotation"
 
-#: ui/gui_app.py:57 ui/tabs/enrichment_tab.py:58 ui/tabs/enrichment_tab.py:200
+#: ui/gui_app.py:57 ui/tabs/enrichment_tab.py:58
 msgid "富集分析与绘图"
 msgstr "Enrichment Analysis and Plotting"
 
-#: ui/gui_app.py:58 ui/tabs/xlsx_converter_tab.py:113
+#: ui/gui_app.py:58 ui/tabs/xlsx_converter_tab.py:112
 msgid "XLSX转CSV"
 msgstr "XLSX to CSV"
 
@@ -3005,12 +3028,11 @@ msgstr "Local BLAST"
 msgid "AI助手"
 msgstr "AI assistant"
 
-#: ui/gui_app.py:103 ui/gui_app.py:104 ui/ui_manager.py:125
-#: ui/ui_manager.py:126
+#: ui/gui_app.py:103 ui/gui_app.py:104
 msgid "粘贴基因ID，每行一个..."
 msgstr "Paste gene IDs, one per line..."
 
-#: ui/gui_app.py:105 ui/ui_manager.py:127
+#: ui/gui_app.py:105
 msgid "例如: A01:1-100000"
 msgstr "e.g., A01:1-100000"
 
@@ -3029,183 +3051,186 @@ msgstr ""
 "(Note: Use tab as separator. Columns copied directly from Excel are already "
 "tab-delimited)."
 
-#: ui/gui_app.py:108 ui/ui_manager.py:131
+#: ui/gui_app.py:108
 #, python-brace-format
 msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
 msgstr ""
 "Enter your custom prompt template here. It must include the {text} "
 "placeholder..."
 
-#: ui/gui_app.py:109 ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:132
-#: ui/ui_manager.py:571
+#: ui/gui_app.py:109 ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:580
 msgid "Default prompt is empty, please set it in the configuration editor."
 msgstr "Default prompt is empty, please set it in the configuration editor."
 
-#: ui/gui_app.py:248
+#: ui/gui_app.py:110
+msgid "在此处键入您的FASTA(Q)格式序列"
+msgstr ""
+
+#: ui/gui_app.py:254
 msgid "通用设置"
 msgstr "General Settings"
 
-#: ui/gui_app.py:253
+#: ui/gui_app.py:259
 msgid "日志级别"
 msgstr "Log Level"
 
-#: ui/gui_app.py:258
+#: ui/gui_app.py:265
 msgid "设置应用程序的日志详细程度。"
 msgstr "Set the verbosity level of the application's logs."
 
-#: ui/gui_app.py:262
+#: ui/gui_app.py:269
 msgid "HTTP代理"
 msgstr "HTTP Proxy"
 
-#: ui/gui_app.py:265
+#: ui/gui_app.py:273
 msgid "例如: http://127.0.0.1:7890"
 msgstr "e.g., http://127.0.0.1:7890"
 
-#: ui/gui_app.py:269
+#: ui/gui_app.py:277
 msgid "HTTPS代理"
 msgstr "HTTPS Proxy"
 
-#: ui/gui_app.py:272
+#: ui/gui_app.py:281
 msgid "例如: https://127.0.0.1:7890"
 msgstr "e.g., https://127.0.0.1:7890"
 
-#: ui/gui_app.py:276
+#: ui/gui_app.py:285
 msgid "测试代理连接"
 msgstr "Test Proxy Connection"
 
-#: ui/gui_app.py:279
+#: ui/gui_app.py:288
 msgid "数据下载器配置"
 msgstr "Data Downloader Configuration"
 
-#: ui/gui_app.py:284
+#: ui/gui_app.py:293
 msgid "基因组源文件"
 msgstr "Genome Source File"
 
-#: ui/gui_app.py:287
+#: ui/gui_app.py:297
 msgid "定义基因组下载链接的YAML文件。"
 msgstr "YAML file that defines the genome download links."
 
-#: ui/gui_app.py:291
+#: ui/gui_app.py:301
 msgid "下载输出根目录"
 msgstr "Download Output Root Directory"
 
-#: ui/gui_app.py:294
+#: ui/gui_app.py:305
 msgid "所有下载文件存放的基准目录。"
 msgstr "Base directory where all downloaded files are stored."
 
-#: ui/gui_app.py:298
+#: ui/gui_app.py:309
 msgid "强制重新下载"
 msgstr "Force Re-download"
 
-#: ui/gui_app.py:302
+#: ui/gui_app.py:314
 msgid "如果文件已存在，是否覆盖。"
 msgstr "Whether to overwrite if the file already exists."
 
-#: ui/gui_app.py:306
+#: ui/gui_app.py:318
 msgid "最大下载线程数"
 msgstr "Maximum Download Threads"
 
-#: ui/gui_app.py:309
+#: ui/gui_app.py:322
 msgid "多线程下载时使用的最大线程数。"
 msgstr "Maximum number of threads to use for multi-threaded downloads."
 
-#: ui/gui_app.py:313
+#: ui/gui_app.py:326
 msgid "为下载使用代理"
 msgstr "Use Proxy for Downloads"
 
-#: ui/gui_app.py:317
+#: ui/gui_app.py:331
 msgid "是否为数据下载启用代理。"
 msgstr "Whether to enable proxy for data downloads."
 
-#: ui/gui_app.py:320
+#: ui/gui_app.py:334
 msgid "AI 服务配置"
 msgstr "AI Service Configuration"
 
-#: ui/gui_app.py:325
+#: ui/gui_app.py:339
 msgid "默认AI服务商"
 msgstr "Default AI Provider"
 
-#: ui/gui_app.py:331
+#: ui/gui_app.py:346
 msgid "选择默认使用的AI模型提供商。"
 msgstr "Select the default AI model provider to use."
 
-#: ui/gui_app.py:335
+#: ui/gui_app.py:350
 msgid "最大并行AI任务数"
 msgstr "Maximum Parallel AI Tasks"
 
-#: ui/gui_app.py:338
+#: ui/gui_app.py:354
 msgid "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 msgstr ""
 "The maximum number of parallel processes for AI tasks. It is recommended to "
 "set this based on CPU cores and network conditions."
 
-#: ui/gui_app.py:342
+#: ui/gui_app.py:358
 msgid "为AI服务使用代理"
 msgstr "Use Proxy for AI Services"
 
-#: ui/gui_app.py:346
+#: ui/gui_app.py:363
 msgid "是否为连接AI模型API启用代理。"
 msgstr "Whether to enable proxy for connecting to the AI model API."
 
-#: ui/gui_app.py:361 ui/ui_manager.py:595
+#: ui/gui_app.py:378 ui/ui_manager.py:604
 msgid "点击刷新获取列表"
 msgstr "Click refresh to get the list"
 
-#: ui/gui_app.py:362
+#: ui/gui_app.py:379
 msgid "点击刷新..."
 msgstr "Click to refresh..."
 
-#: ui/gui_app.py:365
+#: ui/gui_app.py:382
 msgid "刷新"
 msgstr "Refresh"
 
-#: ui/gui_app.py:367
+#: ui/gui_app.py:384
 msgid "代理刷新"
 msgstr "Refresh with Proxy"
 
-#: ui/gui_app.py:374
+#: ui/gui_app.py:391
 msgid "AI 提示词模板"
 msgstr "AI Prompt Templates"
 
-#: ui/gui_app.py:379
+#: ui/gui_app.py:396
 msgid "翻译提示词"
 msgstr "Translation Prompt"
 
-#: ui/gui_app.py:386
+#: ui/gui_app.py:403
 msgid "分析提示词"
 msgstr "Analysis Prompt"
 
-#: ui/gui_app.py:416
+#: ui/gui_app.py:434
 msgid "配置已应用到编辑器UI。"
 msgstr "Configuration has been applied to the editor UI."
 
-#: ui/gui_app.py:420
+#: ui/gui_app.py:438
 msgid "没有加载配置文件，无法保存。"
 msgstr "No configuration file loaded, cannot save."
 
-#: ui/gui_app.py:438
+#: ui/gui_app.py:456
 msgid "无效的最大工作线程数值，已重置为默认值 4。"
 msgstr ""
 "Invalid value for max worker threads, has been reset to the default value of "
 "4."
 
-#: ui/gui_app.py:449
+#: ui/gui_app.py:467
 msgid "保存成功"
 msgstr "Save Successful"
 
-#: ui/gui_app.py:449
+#: ui/gui_app.py:467
 msgid "配置文件已更新。"
 msgstr "Configuration file has been updated."
 
-#: ui/gui_app.py:452
+#: ui/gui_app.py:470
 msgid "写入文件时发生未知错误。"
 msgstr "An unknown error occurred while writing to the file."
 
-#: ui/gui_app.py:454
+#: ui/gui_app.py:472
 msgid "保存错误"
 msgstr "Save Error"
 
-#: ui/gui_app.py:454
+#: ui/gui_app.py:472
 msgid ""
 "保存配置时发生错误:\n"
 "{}"
@@ -3213,56 +3238,64 @@ msgstr ""
 "An error occurred while saving the configuration:\n"
 "{}"
 
-#: ui/gui_app.py:464
+#: ui/gui_app.py:482
 msgid "配置文件"
 msgstr "Configuration file"
 
-#: ui/gui_app.py:466
+#: ui/gui_app.py:484
 msgid "加载配置文件..."
 msgstr "Loading configuration file..."
 
-#: ui/gui_app.py:468
+#: ui/gui_app.py:486
 msgid "生成默认配置..."
 msgstr "Generating default configuration..."
 
-#: ui/gui_app.py:470
+#: ui/gui_app.py:488
 msgid "帮助与支持"
 msgstr "Help and support"
 
-#: ui/gui_app.py:472
+#: ui/gui_app.py:490
 msgid "在线帮助文档"
 msgstr "Online help documentation"
 
-#: ui/gui_app.py:474
+#: ui/gui_app.py:492
 msgid "关于本软件"
 msgstr "About this software"
 
-#: ui/gui_app.py:608
+#: ui/gui_app.py:625
 msgid "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 msgstr ""
 "!! WARNING: The configuration file may contain sensitive information. Please "
 "do not share it lightly."
 
-#: ui/gui_app.py:613
+#: ui/gui_app.py:630
 msgid "应用并保存"
 msgstr "Apply and Save"
 
-#: ui/gui_app.py:680
+#: ui/gui_app.py:697
 msgid "请先从“主页”加载或生成一个配置文件。"
 msgstr ""
 "Please first load or generate a configuration file from the 'Home' page."
 
-#: ui/gui_app.py:705
+#: ui/gui_app.py:723
 msgid "UI font set to: {}, Monospace font to: {}"
 msgstr "UI font set to: {}, Monospace font to: {}"
 
-#: ui/gui_app.py:732
+#: ui/gui_app.py:753
 msgid "处理消息队列时出错: {}"
 msgstr "Error processing message queue: {}"
 
-#: ui/gui_app.py:743
+#: ui/gui_app.py:764
 msgid "配置日志级别时出错: {}"
 msgstr "Error configuring log level: {}"
+
+#: ui/gui_app.py:767
+msgid "Application restart requested by user."
+msgstr ""
+
+#: ui/gui_app.py:771
+msgid "Error during pre-restart cleanup: {}"
+msgstr ""
 
 #: ui/tabs/ai_assistant_tab.py:42 ui/tabs/ai_assistant_tab.py:181
 msgid "开始处理CSV文件"
@@ -3323,13 +3356,12 @@ msgstr "CSV File Path:"
 
 #: ui/tabs/ai_assistant_tab.py:127 ui/tabs/ai_assistant_tab.py:173
 #: ui/tabs/annotation_tab.py:92 ui/tabs/annotation_tab.py:105
-#: ui/tabs/blast_tab.py:90 ui/tabs/blast_tab.py:142 ui/tabs/blast_tab.py:273
-#: ui/tabs/blast_tab.py:278 ui/tabs/enrichment_tab.py:185
-#: ui/tabs/enrichment_tab.py:226 ui/tabs/gff_query_tab.py:111
-#: ui/tabs/gff_query_tab.py:128 ui/tabs/homology_tab.py:122
-#: ui/tabs/homology_tab.py:205 ui/tabs/locus_conversion_tab.py:77
-#: ui/tabs/locus_conversion_tab.py:95 ui/tabs/xlsx_converter_tab.py:61
-#: ui/tabs/xlsx_converter_tab.py:88
+#: ui/tabs/blast_tab.py:101 ui/tabs/blast_tab.py:153 ui/tabs/blast_tab.py:284
+#: ui/tabs/blast_tab.py:289 ui/tabs/enrichment_tab.py:186
+#: ui/tabs/gff_query_tab.py:117 ui/tabs/gff_query_tab.py:134
+#: ui/tabs/homology_tab.py:137 ui/tabs/homology_tab.py:172
+#: ui/tabs/locus_conversion_tab.py:77 ui/tabs/locus_conversion_tab.py:95
+#: ui/tabs/xlsx_converter_tab.py:60 ui/tabs/xlsx_converter_tab.py:87
 msgid "浏览..."
 msgstr "Browse..."
 
@@ -3384,25 +3416,25 @@ msgid "无可用模型"
 msgstr "No models available"
 
 #: ui/tabs/ai_assistant_tab.py:384 ui/tabs/annotation_tab.py:139
-#: ui/tabs/blast_tab.py:171 ui/tabs/data_download_tab.py:301
+#: ui/tabs/blast_tab.py:182 ui/tabs/data_download_tab.py:301
 #: ui/tabs/data_download_tab.py:314 ui/tabs/data_download_tab.py:336
-#: ui/tabs/enrichment_tab.py:259 ui/tabs/genome_identifier_tab.py:148
-#: ui/tabs/gff_query_tab.py:164 ui/tabs/homology_tab.py:261
+#: ui/tabs/enrichment_tab.py:209 ui/tabs/genome_identifier_tab.py:148
+#: ui/tabs/gff_query_tab.py:165 ui/tabs/homology_tab.py:260
 #: ui/tabs/locus_conversion_tab.py:122
 msgid "请先加载配置文件。"
 msgstr "Please load a configuration file first."
 
 #: ui/tabs/ai_assistant_tab.py:395 ui/tabs/ai_assistant_tab.py:398
 #: ui/tabs/annotation_tab.py:160 ui/tabs/annotation_tab.py:163
-#: ui/tabs/annotation_tab.py:166 ui/tabs/blast_tab.py:179
-#: ui/tabs/blast_tab.py:210 ui/tabs/blast_tab.py:213 ui/tabs/blast_tab.py:221
-#: ui/tabs/enrichment_tab.py:267 ui/tabs/enrichment_tab.py:272
-#: ui/tabs/enrichment_tab.py:277 ui/tabs/enrichment_tab.py:284
-#: ui/tabs/enrichment_tab.py:316 ui/tabs/genome_identifier_tab.py:153
-#: ui/tabs/gff_query_tab.py:172 ui/tabs/gff_query_tab.py:181
-#: ui/tabs/gff_query_tab.py:201 ui/tabs/homology_tab.py:264
-#: ui/tabs/homology_tab.py:270 ui/tabs/homology_tab.py:274
-#: ui/tabs/homology_tab.py:280 ui/tabs/locus_conversion_tab.py:133
+#: ui/tabs/annotation_tab.py:166 ui/tabs/blast_tab.py:190
+#: ui/tabs/blast_tab.py:221 ui/tabs/blast_tab.py:224 ui/tabs/blast_tab.py:232
+#: ui/tabs/enrichment_tab.py:217 ui/tabs/enrichment_tab.py:222
+#: ui/tabs/enrichment_tab.py:227 ui/tabs/enrichment_tab.py:234
+#: ui/tabs/enrichment_tab.py:266 ui/tabs/genome_identifier_tab.py:153
+#: ui/tabs/gff_query_tab.py:173 ui/tabs/gff_query_tab.py:182
+#: ui/tabs/gff_query_tab.py:202 ui/tabs/homology_tab.py:263
+#: ui/tabs/homology_tab.py:269 ui/tabs/homology_tab.py:273
+#: ui/tabs/homology_tab.py:279 ui/tabs/locus_conversion_tab.py:133
 msgid "输入缺失"
 msgstr "Input Missing"
 
@@ -3448,19 +3480,19 @@ msgid "开始功能注释"
 msgstr "Start Functional Annotation"
 
 #: ui/tabs/annotation_tab.py:43 ui/tabs/annotation_tab.py:100
-#: ui/tabs/enrichment_tab.py:62 ui/tabs/enrichment_tab.py:201
+#: ui/tabs/enrichment_tab.py:62
 msgid "输入数据"
 msgstr "Input Data"
 
 #: ui/tabs/annotation_tab.py:46 ui/tabs/annotation_tab.py:101
 #: ui/tabs/data_download_tab.py:85 ui/tabs/data_download_tab.py:116
-#: ui/tabs/enrichment_tab.py:66 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/enrichment_tab.py:66
 msgid "基因组版本:"
 msgstr "Genome Version:"
 
 #: ui/tabs/annotation_tab.py:51 ui/tabs/annotation_tab.py:102
-#: ui/tabs/homology_tab.py:65 ui/tabs/homology_tab.py:166
-#: ui/tabs/homology_tab.py:216
+#: ui/tabs/homology_tab.py:74 ui/tabs/homology_tab.py:162
+#: ui/tabs/homology_tab.py:212
 msgid "基因ID列表:"
 msgstr "Gene ID List:"
 
@@ -3476,20 +3508,20 @@ msgstr "Output File (Optional):"
 msgid "请输入要注释的基因ID。"
 msgstr "Please enter the gene IDs to be annotated."
 
-#: ui/tabs/annotation_tab.py:162 ui/tabs/blast_tab.py:177
-#: ui/tabs/blast_tab.py:306 ui/tabs/data_download_tab.py:135
+#: ui/tabs/annotation_tab.py:162 ui/tabs/blast_tab.py:188
+#: ui/tabs/blast_tab.py:317 ui/tabs/data_download_tab.py:135
 #: ui/tabs/data_download_tab.py:262 ui/tabs/data_download_tab.py:270
 #: ui/tabs/data_download_tab.py:316 ui/tabs/data_download_tab.py:339
-#: ui/tabs/enrichment_tab.py:245 ui/tabs/enrichment_tab.py:271
-#: ui/tabs/gff_query_tab.py:147 ui/tabs/gff_query_tab.py:200
-#: ui/tabs/homology_tab.py:279 ui/tabs/homology_tab.py:328
+#: ui/tabs/enrichment_tab.py:203 ui/tabs/enrichment_tab.py:221
+#: ui/tabs/gff_query_tab.py:148 ui/tabs/gff_query_tab.py:201
+#: ui/tabs/homology_tab.py:278 ui/tabs/homology_tab.py:331
 #: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:132
-#: ui/ui_manager.py:576
+#: ui/ui_manager.py:585
 msgid "无可用基因组"
 msgstr "No genomes available"
 
-#: ui/tabs/annotation_tab.py:163 ui/tabs/enrichment_tab.py:272
-#: ui/tabs/gff_query_tab.py:201
+#: ui/tabs/annotation_tab.py:163 ui/tabs/enrichment_tab.py:222
+#: ui/tabs/gff_query_tab.py:202
 msgid "请选择一个基因组版本。"
 msgstr "Please select a genome version."
 
@@ -3525,40 +3557,40 @@ msgstr "Success"
 msgid "任务执行完毕，但未返回成功状态或结果。"
 msgstr "The task completed but did not return a success status or result."
 
-#: ui/tabs/blast_tab.py:36 ui/tabs/blast_tab.py:267
+#: ui/tabs/blast_tab.py:36 ui/tabs/blast_tab.py:278
 msgid "执行 BLAST"
 msgstr "Run BLAST"
 
-#: ui/tabs/blast_tab.py:44 ui/tabs/blast_tab.py:235 ui/tabs/blast_tab.py:265
+#: ui/tabs/blast_tab.py:44 ui/tabs/blast_tab.py:246 ui/tabs/blast_tab.py:276
 msgid "本地 BLAST"
 msgstr "Local BLAST"
 
-#: ui/tabs/blast_tab.py:47 ui/tabs/blast_tab.py:268
+#: ui/tabs/blast_tab.py:47 ui/tabs/blast_tab.py:279
 msgid "输入与参数"
 msgstr "Input and Parameters"
 
-#: ui/tabs/blast_tab.py:51 ui/tabs/blast_tab.py:269
+#: ui/tabs/blast_tab.py:51 ui/tabs/blast_tab.py:280
 msgid "BLAST 类型:"
 msgstr "BLAST type:"
 
-#: ui/tabs/blast_tab.py:57 ui/tabs/blast_tab.py:270
+#: ui/tabs/blast_tab.py:57 ui/tabs/blast_tab.py:281
 msgid "目标棉花基因组:"
 msgstr "Target Cotton Genome:"
 
-#: ui/tabs/blast_tab.py:66 ui/tabs/blast_tab.py:271
+#: ui/tabs/blast_tab.py:66 ui/tabs/blast_tab.py:282
 msgid "粘贴序列"
 msgstr "Paste Sequence"
 
-#: ui/tabs/blast_tab.py:69 ui/tabs/blast_tab.py:272
+#: ui/tabs/blast_tab.py:69 ui/tabs/blast_tab.py:283
 msgid "文件输入"
 msgstr "File Input"
 
-#: ui/tabs/blast_tab.py:100 ui/tabs/blast_tab.py:274 ui/tabs/homology_tab.py:98
-#: ui/tabs/homology_tab.py:201
+#: ui/tabs/blast_tab.py:111 ui/tabs/blast_tab.py:285
+#: ui/tabs/homology_tab.py:113 ui/tabs/homology_tab.py:168
 msgid "E-value:"
 msgstr "E-value:"
 
-#: ui/tabs/blast_tab.py:107 ui/tabs/blast_tab.py:109
+#: ui/tabs/blast_tab.py:118 ui/tabs/blast_tab.py:120
 msgid ""
 "期望值(E-value)衡量匹配的统计显著性。\n"
 "值越小，匹配结果越有意义，偶然匹配的可能性越低。\n"
@@ -3569,11 +3601,11 @@ msgstr ""
 "probability of a random match.\n"
 "For example: 1e-10 is more stringent than 1e-5."
 
-#: ui/tabs/blast_tab.py:112 ui/tabs/blast_tab.py:275
+#: ui/tabs/blast_tab.py:123 ui/tabs/blast_tab.py:286
 msgid "Word Size:"
 msgstr "Word Size:"
 
-#: ui/tabs/blast_tab.py:119 ui/tabs/blast_tab.py:121
+#: ui/tabs/blast_tab.py:130 ui/tabs/blast_tab.py:132
 msgid ""
 "初始匹配的种子序列长度。\n"
 "对于核酸(blastn)，增大此值可加快速度但可能降低灵敏度。\n"
@@ -3584,11 +3616,11 @@ msgstr ""
 "reduce sensitivity.\n"
 "For protein (blastp), the default is typically 3."
 
-#: ui/tabs/blast_tab.py:124 ui/tabs/blast_tab.py:276
+#: ui/tabs/blast_tab.py:135 ui/tabs/blast_tab.py:287
 msgid "Max Hits:"
 msgstr "Max Hits:"
 
-#: ui/tabs/blast_tab.py:131 ui/tabs/blast_tab.py:133
+#: ui/tabs/blast_tab.py:142 ui/tabs/blast_tab.py:144
 msgid ""
 "在最终结果中显示的最大匹配序列数量。\n"
 "用于控制输出结果的大小，防止因匹配项过多而导致结果文件过大。"
@@ -3597,50 +3629,50 @@ msgstr ""
 "Controls the output size to prevent excessively large result files due to "
 "too many matches."
 
-#: ui/tabs/blast_tab.py:136 ui/tabs/blast_tab.py:277
+#: ui/tabs/blast_tab.py:147 ui/tabs/blast_tab.py:288
 msgid "输出"
 msgstr "Output"
 
-#: ui/tabs/blast_tab.py:156
+#: ui/tabs/blast_tab.py:167
 msgid "序列文件"
 msgstr "Sequence File"
 
-#: ui/tabs/blast_tab.py:157 ui/tabs/homology_tab.py:229
+#: ui/tabs/blast_tab.py:168 ui/tabs/homology_tab.py:235
 msgid "所有文件"
 msgstr "All Files"
 
-#: ui/tabs/blast_tab.py:159
+#: ui/tabs/blast_tab.py:170
 msgid "选择查询序列文件"
 msgstr "Select query sequence file"
 
-#: ui/tabs/blast_tab.py:166 ui/tabs/homology_tab.py:228
+#: ui/tabs/blast_tab.py:177 ui/tabs/homology_tab.py:234
 msgid "Excel 文件"
 msgstr "Excel Files"
 
-#: ui/tabs/blast_tab.py:166 ui/tabs/gff_query_tab.py:113
-#: ui/tabs/homology_tab.py:228
+#: ui/tabs/blast_tab.py:177 ui/tabs/gff_query_tab.py:119
+#: ui/tabs/homology_tab.py:234
 msgid "CSV 文件"
 msgstr "CSV Files"
 
-#: ui/tabs/blast_tab.py:178 ui/tabs/blast_tab.py:314
+#: ui/tabs/blast_tab.py:189 ui/tabs/blast_tab.py:325
 msgid "无可用棉花基因组"
 msgstr "No available cotton genome"
 
-#: ui/tabs/blast_tab.py:179
+#: ui/tabs/blast_tab.py:190
 msgid "请选择一个有效的目标棉花基因组。"
 msgstr "Please select a valid target cotton genome."
 
-#: ui/tabs/blast_tab.py:191
+#: ui/tabs/blast_tab.py:202
 msgid "基因组版本 '{}' 不支持 '{}'，因为它缺少必需的 '{}' 数据源。"
 msgstr ""
 "Genome version '{}' does not support '{}' because it lacks the required '{}' "
 "data source."
 
-#: ui/tabs/blast_tab.py:194
+#: ui/tabs/blast_tab.py:205
 msgid "数据不支持"
 msgstr "Data not supported"
 
-#: ui/tabs/blast_tab.py:200
+#: ui/tabs/blast_tab.py:211
 msgid ""
 "执行 '{}' 所需的文件 '{}' 尚未下载。\n"
 "\n"
@@ -3650,37 +3682,37 @@ msgstr ""
 "\n"
 "Please go to the \"Data Download\" tab to download the file."
 
-#: ui/tabs/blast_tab.py:203 ui/tabs/data_download_tab.py:364
+#: ui/tabs/blast_tab.py:214 ui/tabs/data_download_tab.py:364
 msgid "缺少文件"
 msgstr "Missing Files"
 
-#: ui/tabs/blast_tab.py:210
+#: ui/tabs/blast_tab.py:221
 msgid "请选择一个查询文件。"
 msgstr "Please select a query file."
 
-#: ui/tabs/blast_tab.py:213
+#: ui/tabs/blast_tab.py:224
 msgid "请粘贴查询序列。"
 msgstr "Please paste the query sequence."
 
-#: ui/tabs/blast_tab.py:216 ui/tabs/gff_query_tab.py:184
+#: ui/tabs/blast_tab.py:227 ui/tabs/gff_query_tab.py:185
 msgid "输入冲突"
 msgstr "Input Conflict"
 
-#: ui/tabs/blast_tab.py:216
+#: ui/tabs/blast_tab.py:227
 msgid "检测到文件输入和文本输入同时存在，请清除其中一个。"
 msgstr "Both file input and text input are detected. Please clear one of them."
 
-#: ui/tabs/blast_tab.py:221
+#: ui/tabs/blast_tab.py:232
 msgid "请指定输出文件路径。"
 msgstr "Please specify the output file path."
 
-#: ui/tabs/blast_tab.py:231 ui/tabs/gff_query_tab.py:197
-#: ui/tabs/homology_tab.py:289 ui/tabs/locus_conversion_tab.py:141
-#: ui/tabs/xlsx_converter_tab.py:103
+#: ui/tabs/blast_tab.py:242 ui/tabs/gff_query_tab.py:198
+#: ui/tabs/homology_tab.py:288 ui/tabs/locus_conversion_tab.py:141
+#: ui/tabs/xlsx_converter_tab.py:102
 msgid "输入错误"
 msgstr "Input Error"
 
-#: ui/tabs/blast_tab.py:231
+#: ui/tabs/blast_tab.py:242
 msgid "参数设置中的值必须是有效的数字。"
 msgstr "The value in the parameter settings must be a valid number."
 
@@ -3809,39 +3841,39 @@ msgstr ""
 "\n"
 "Please download them first."
 
-#: ui/tabs/enrichment_tab.py:51 ui/tabs/enrichment_tab.py:229
+#: ui/tabs/enrichment_tab.py:51
 msgid "开始富集分析"
 msgstr "Start Enrichment Analysis"
 
-#: ui/tabs/enrichment_tab.py:72 ui/tabs/enrichment_tab.py:203
+#: ui/tabs/enrichment_tab.py:72
 msgid "基因ID列表 (或基因ID,Log2FC):"
 msgstr "Gene ID List (or GeneID,Log2FC):"
 
-#: ui/tabs/enrichment_tab.py:91 ui/tabs/enrichment_tab.py:204
+#: ui/tabs/enrichment_tab.py:92
 msgid "输入格式与分析类型"
 msgstr "Input Format and Analysis Type"
 
-#: ui/tabs/enrichment_tab.py:95 ui/tabs/enrichment_tab.py:205
+#: ui/tabs/enrichment_tab.py:96
 msgid "输入格式:"
 msgstr "Input Format:"
 
-#: ui/tabs/enrichment_tab.py:99 ui/tabs/enrichment_tab.py:206
+#: ui/tabs/enrichment_tab.py:100
 msgid "包含表头"
 msgstr "Contains Header"
 
-#: ui/tabs/enrichment_tab.py:102 ui/tabs/enrichment_tab.py:207
+#: ui/tabs/enrichment_tab.py:103
 msgid "包含Log2FC"
 msgstr "Contains Log2FC"
 
-#: ui/tabs/enrichment_tab.py:106 ui/tabs/enrichment_tab.py:208
+#: ui/tabs/enrichment_tab.py:107
 msgid "分析类型:"
 msgstr "Analysis Type:"
 
-#: ui/tabs/enrichment_tab.py:117 ui/tabs/enrichment_tab.py:209
+#: ui/tabs/enrichment_tab.py:118
 msgid "合并转录本到基因"
 msgstr "Collapse Transcripts to Genes"
 
-#: ui/tabs/enrichment_tab.py:121 ui/tabs/enrichment_tab.py:211
+#: ui/tabs/enrichment_tab.py:122
 msgid ""
 "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n"
 "例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"
@@ -3851,92 +3883,92 @@ msgstr ""
 "For example: Ghir_D02G021470.1 / Ghir_D02G021470.2 will both be treated as "
 "Ghir_D02G021470."
 
-#: ui/tabs/enrichment_tab.py:125 ui/tabs/enrichment_tab.py:212
+#: ui/tabs/enrichment_tab.py:126
 msgid "绘图设置"
 msgstr "Plotting Settings"
 
-#: ui/tabs/enrichment_tab.py:129 ui/tabs/enrichment_tab.py:213
+#: ui/tabs/enrichment_tab.py:130
 msgid "绘图类型:"
 msgstr "Plot Type:"
 
-#: ui/tabs/enrichment_tab.py:133 ui/tabs/enrichment_tab.py:214
+#: ui/tabs/enrichment_tab.py:134
 msgid "气泡图"
 msgstr "Bubble Plot"
 
-#: ui/tabs/enrichment_tab.py:136 ui/tabs/enrichment_tab.py:215
+#: ui/tabs/enrichment_tab.py:137
 msgid "条形图"
 msgstr "Bar Plot"
 
-#: ui/tabs/enrichment_tab.py:139 ui/tabs/enrichment_tab.py:216
+#: ui/tabs/enrichment_tab.py:140
 msgid "Upset图"
 msgstr "Upset Plot"
 
-#: ui/tabs/enrichment_tab.py:142 ui/tabs/enrichment_tab.py:217
+#: ui/tabs/enrichment_tab.py:143
 msgid "网络图(Cnet)"
 msgstr "Cnet Plot"
 
-#: ui/tabs/enrichment_tab.py:146 ui/tabs/enrichment_tab.py:218
+#: ui/tabs/enrichment_tab.py:147
 msgid "显示前N项:"
 msgstr "Show Top N:"
 
-#: ui/tabs/enrichment_tab.py:151 ui/tabs/enrichment_tab.py:219
+#: ui/tabs/enrichment_tab.py:152
 msgid "排序依据:"
 msgstr "Sort By:"
 
-#: ui/tabs/enrichment_tab.py:157 ui/tabs/enrichment_tab.py:220
+#: ui/tabs/enrichment_tab.py:158
 msgid "显示图表标题"
 msgstr "Show Plot Title"
 
-#: ui/tabs/enrichment_tab.py:161 ui/tabs/enrichment_tab.py:221
+#: ui/tabs/enrichment_tab.py:162
 msgid "图表宽度 (英寸):"
 msgstr "Plot Width (inches):"
 
-#: ui/tabs/enrichment_tab.py:166 ui/tabs/enrichment_tab.py:222
+#: ui/tabs/enrichment_tab.py:167
 msgid "图表高度 (英寸):"
 msgstr "Plot Height (inches):"
 
-#: ui/tabs/enrichment_tab.py:171 ui/tabs/enrichment_tab.py:223
+#: ui/tabs/enrichment_tab.py:172
 msgid "文件格式:"
 msgstr "File Format:"
 
-#: ui/tabs/enrichment_tab.py:177 ui/tabs/enrichment_tab.py:224
-#: ui/tabs/locus_conversion_tab.py:68 ui/tabs/locus_conversion_tab.py:93
+#: ui/tabs/enrichment_tab.py:178 ui/tabs/locus_conversion_tab.py:68
+#: ui/tabs/locus_conversion_tab.py:93
 msgid "输出设置"
 msgstr "Output Settings"
 
-#: ui/tabs/enrichment_tab.py:181 ui/tabs/enrichment_tab.py:225
+#: ui/tabs/enrichment_tab.py:182
 msgid "输出目录:"
 msgstr "Output Directory:"
 
-#: ui/tabs/enrichment_tab.py:267
+#: ui/tabs/enrichment_tab.py:217
 msgid "请输入要分析的基因ID。"
 msgstr "Please enter the gene IDs to be analyzed."
 
-#: ui/tabs/enrichment_tab.py:277
+#: ui/tabs/enrichment_tab.py:227
 msgid "请选择图表的输出目录。"
 msgstr "Please select an output directory for the plots."
 
-#: ui/tabs/enrichment_tab.py:284
+#: ui/tabs/enrichment_tab.py:234
 msgid "请至少选择一种图表类型。"
 msgstr "Please select at least one plot type."
 
-#: ui/tabs/enrichment_tab.py:302
+#: ui/tabs/enrichment_tab.py:252
 msgid "第 {i + 1} 行Log2FC值无效:"
 msgstr "Invalid Log2FC value at line {i + 1}:"
 
-#: ui/tabs/enrichment_tab.py:304
+#: ui/tabs/enrichment_tab.py:254
 msgid "第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):"
 msgstr "Format error at line {i + 1}, two columns required (Gene, Log2FC):"
 
-#: ui/tabs/enrichment_tab.py:311
+#: ui/tabs/enrichment_tab.py:261
 msgid "输入格式错误"
 msgstr "Input Format Error"
 
-#: ui/tabs/enrichment_tab.py:316
+#: ui/tabs/enrichment_tab.py:266
 msgid "解析后未发现有效基因ID。"
 msgstr "No valid gene ID was found after parsing."
 
-#: ui/tabs/enrichment_tab.py:330
+#: ui/tabs/enrichment_tab.py:280
 msgid "{} 富集分析"
 msgstr "Enrichment Analysis"
 
@@ -3948,11 +3980,10 @@ msgstr "Start Identification"
 msgid "基因组类别鉴定工具"
 msgstr "Genome Category Identification Tool"
 
-#: ui/tabs/genome_identifier_tab.py:63 ui/tabs/genome_identifier_tab.py:113
-msgid "在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的归属。"
+#: ui/tabs/genome_identifier_tab.py:63
+msgid ""
+"在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
 msgstr ""
-"Paste one or more gene IDs here (one per line), and the tool will identify "
-"their origins one by one."
 
 #: ui/tabs/genome_identifier_tab.py:67 ui/tabs/genome_identifier_tab.py:118
 msgid "输入基因列表"
@@ -3961,6 +3992,12 @@ msgstr "Input Gene List"
 #: ui/tabs/genome_identifier_tab.py:72 ui/tabs/genome_identifier_tab.py:120
 msgid "鉴定结果"
 msgstr "Identification Result"
+
+#: ui/tabs/genome_identifier_tab.py:113
+msgid "在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的归属。"
+msgstr ""
+"Paste one or more gene IDs here (one per line), and the tool will identify "
+"their origins one by one."
 
 #: ui/tabs/genome_identifier_tab.py:132
 msgid "鉴定结果将显示在这里..."
@@ -3982,144 +4019,150 @@ msgstr "Batch Genome Identification"
 msgid "未能识别"
 msgstr "Failed to recognize"
 
-#: ui/tabs/gff_query_tab.py:34 ui/tabs/gff_query_tab.py:131
+#: ui/tabs/gff_query_tab.py:34 ui/tabs/gff_query_tab.py:137
 msgid "开始基因查询"
 msgstr "Start Gene Query"
 
-#: ui/tabs/gff_query_tab.py:47 ui/tabs/gff_query_tab.py:120
+#: ui/tabs/gff_query_tab.py:47 ui/tabs/gff_query_tab.py:126
 msgid "基因/区域位点查询"
 msgstr "Gene/Region Locus Query"
 
-#: ui/tabs/gff_query_tab.py:57 ui/tabs/gff_query_tab.py:121
+#: ui/tabs/gff_query_tab.py:57 ui/tabs/gff_query_tab.py:127
 #: ui/tabs/locus_conversion_tab.py:47 ui/tabs/locus_conversion_tab.py:88
 msgid "输入参数"
 msgstr "Input Parameters"
 
-#: ui/tabs/gff_query_tab.py:62 ui/tabs/gff_query_tab.py:122
+#: ui/tabs/gff_query_tab.py:62 ui/tabs/gff_query_tab.py:128
 msgid "输入基因ID (多行或逗号分隔):"
 msgstr "Input Gene IDs (multi-line or comma-separated):"
 
-#: ui/tabs/gff_query_tab.py:81 ui/tabs/gff_query_tab.py:123
+#: ui/tabs/gff_query_tab.py:84 ui/tabs/gff_query_tab.py:129
 msgid "或 输入染色体区域:"
 msgstr "OR Input Chromosome Region:"
 
-#: ui/tabs/gff_query_tab.py:94 ui/tabs/gff_query_tab.py:125
+#: ui/tabs/gff_query_tab.py:100 ui/tabs/gff_query_tab.py:131
 msgid "配置与输出"
 msgstr "Configuration and Output"
 
-#: ui/tabs/gff_query_tab.py:98 ui/tabs/gff_query_tab.py:126
+#: ui/tabs/gff_query_tab.py:104 ui/tabs/gff_query_tab.py:132
 msgid "选择基因组版本:"
 msgstr "Select Genome Version:"
 
-#: ui/tabs/gff_query_tab.py:105 ui/tabs/gff_query_tab.py:127
+#: ui/tabs/gff_query_tab.py:111 ui/tabs/gff_query_tab.py:133
 #: ui/tabs/locus_conversion_tab.py:72 ui/tabs/locus_conversion_tab.py:94
 msgid "结果输出CSV文件:"
 msgstr "Result Output CSV File:"
 
-#: ui/tabs/gff_query_tab.py:172
+#: ui/tabs/gff_query_tab.py:173
 msgid "请指定结果文件的保存路径。"
 msgstr "Please specify the save path for the result file."
 
-#: ui/tabs/gff_query_tab.py:181
+#: ui/tabs/gff_query_tab.py:182
 msgid "必须输入基因ID列表或染色体区域之一。"
 msgstr "You must enter either a list of gene IDs or a chromosome region."
 
-#: ui/tabs/gff_query_tab.py:184
+#: ui/tabs/gff_query_tab.py:185
 msgid "将优先使用基因ID列表进行查询。"
 msgstr "The gene ID list will be prioritized for the query."
 
-#: ui/tabs/gff_query_tab.py:197
+#: ui/tabs/gff_query_tab.py:198
 msgid "区域格式不正确。请使用 'Chr:Start-End' 格式。"
 msgstr "Incorrect region format. Please use 'Chr:Start-End' format."
 
-#: ui/tabs/gff_query_tab.py:211
+#: ui/tabs/gff_query_tab.py:212
 msgid "GFF基因查询"
 msgstr "GFF Gene Query"
 
-#: ui/tabs/homology_tab.py:33 ui/tabs/homology_tab.py:209
+#: ui/tabs/homology_tab.py:33 ui/tabs/homology_tab.py:176
 #: ui/tabs/locus_conversion_tab.py:32 ui/tabs/locus_conversion_tab.py:98
-#: ui/tabs/xlsx_converter_tab.py:28 ui/tabs/xlsx_converter_tab.py:92
+#: ui/tabs/xlsx_converter_tab.py:28 ui/tabs/xlsx_converter_tab.py:91
 msgid "开始转换"
 msgstr "Start Conversion"
 
-#: ui/tabs/homology_tab.py:45 ui/tabs/homology_tab.py:192
-#: ui/tabs/homology_tab.py:304
-msgid "基因同源转换"
-msgstr "Gene Homology Conversion"
+#: ui/tabs/homology_tab.py:46 ui/tabs/homology_tab.py:153
+#: ui/tabs/homology_tab.py:303
+msgid "快速基因同源转换"
+msgstr ""
 
-#: ui/tabs/homology_tab.py:48 ui/tabs/homology_tab.py:193
+#: ui/tabs/homology_tab.py:52 ui/tabs/homology_tab.py:157
+msgid ""
+"该工具通过拟南芥作为桥梁将两种棉花基因组连接起来。\n"
+"如需获取更加准确的结果，请使用BLAST"
+msgstr ""
+
+#: ui/tabs/homology_tab.py:57 ui/tabs/homology_tab.py:159
 msgid "输入"
 msgstr "Input"
 
-#: ui/tabs/homology_tab.py:53 ui/tabs/homology_tab.py:194
+#: ui/tabs/homology_tab.py:62 ui/tabs/homology_tab.py:160
 #: ui/tabs/locus_conversion_tab.py:51 ui/tabs/locus_conversion_tab.py:89
 msgid "源基因组:"
 msgstr "Source Genome:"
 
-#: ui/tabs/homology_tab.py:59 ui/tabs/homology_tab.py:195
+#: ui/tabs/homology_tab.py:68 ui/tabs/homology_tab.py:161
 #: ui/tabs/locus_conversion_tab.py:57 ui/tabs/locus_conversion_tab.py:90
 msgid "目标基因组:"
 msgstr "Target Genome:"
 
-#: ui/tabs/homology_tab.py:83 ui/tabs/homology_tab.py:197
+#: ui/tabs/homology_tab.py:98 ui/tabs/homology_tab.py:163
 msgid "参数设置"
 msgstr "Parameter Settings"
 
-#: ui/tabs/homology_tab.py:87 ui/tabs/homology_tab.py:198
+#: ui/tabs/homology_tab.py:102 ui/tabs/homology_tab.py:164
 msgid "单基因模式"
 msgstr "Single Gene Mode"
 
-#: ui/tabs/homology_tab.py:92 ui/tabs/homology_tab.py:199
+#: ui/tabs/homology_tab.py:107 ui/tabs/homology_tab.py:165
 msgid "严格匹配模式 (同源亚组内优先)"
 msgstr "Strict Match Mode (prioritize within homologous subgenome)"
 
-#: ui/tabs/homology_tab.py:96 ui/tabs/homology_tab.py:200
+#: ui/tabs/homology_tab.py:111 ui/tabs/homology_tab.py:166
 msgid "Top N:"
 msgstr "Top N:"
 
-#: ui/tabs/homology_tab.py:97 ui/tabs/homology_tab.py:202
+#: ui/tabs/homology_tab.py:112 ui/tabs/homology_tab.py:167
 msgid "PID (%):"
 msgstr "PID (%):"
 
-#: ui/tabs/homology_tab.py:99 ui/tabs/homology_tab.py:203
+#: ui/tabs/homology_tab.py:114 ui/tabs/homology_tab.py:169
 msgid "Score:"
 msgstr "Score:"
 
-#: ui/tabs/homology_tab.py:113 ui/tabs/homology_tab.py:169
-#: ui/tabs/homology_tab.py:217
+#: ui/tabs/homology_tab.py:128 ui/tabs/homology_tab.py:170
+#: ui/tabs/homology_tab.py:214
 msgid "输出文件 (可选)"
 msgstr "Output File (Optional)"
 
-#: ui/tabs/homology_tab.py:117 ui/tabs/homology_tab.py:170
-#: ui/tabs/homology_tab.py:218
+#: ui/tabs/homology_tab.py:132 ui/tabs/homology_tab.py:171
+#: ui/tabs/homology_tab.py:215
 msgid "输出路径:"
 msgstr "Output Path:"
 
-#: ui/tabs/homology_tab.py:126 ui/tabs/homology_tab.py:206
+#: ui/tabs/homology_tab.py:141 ui/tabs/homology_tab.py:173
 msgid "复制"
 msgstr "Copy"
 
-#: ui/tabs/homology_tab.py:135 ui/tabs/homology_tab.py:297
+#: ui/tabs/homology_tab.py:188 ui/tabs/homology_tab.py:296
 msgid "正在查找..."
 msgstr "Searching..."
 
-#: ui/tabs/homology_tab.py:142 ui/tabs/homology_tab.py:222
+#: ui/tabs/homology_tab.py:194
 msgid "复制成功!"
 msgstr "Copied successfully!"
 
-#: ui/tabs/homology_tab.py:155 ui/tabs/homology_tab.py:212
+#: ui/tabs/homology_tab.py:204
 msgid "单一基因ID:"
 msgstr "Single Gene ID:"
 
-#: ui/tabs/homology_tab.py:158 ui/tabs/homology_tab.py:213
+#: ui/tabs/homology_tab.py:206
 msgid "输出内容"
 msgstr "Output content"
 
-#: ui/tabs/homology_tab.py:159 ui/tabs/homology_tab.py:214
+#: ui/tabs/homology_tab.py:207
 msgid "同源基因:"
 msgstr "Homologous genes:"
 
-#: ui/tabs/homology_tab.py:244
+#: ui/tabs/homology_tab.py:245
 msgid "查找成功!"
 msgstr "Successfully found!"
 
@@ -4127,32 +4170,32 @@ msgstr "Successfully found!"
 msgid "未找到同源基因"
 msgstr "No homologous genes found"
 
-#: ui/tabs/homology_tab.py:252
+#: ui/tabs/homology_tab.py:251
 msgid "查询无结果"
 msgstr "No results found"
 
-#: ui/tabs/homology_tab.py:253
+#: ui/tabs/homology_tab.py:252
 msgid "未能根据当前筛选条件找到任何匹配的同源基因。"
 msgstr ""
 "No matching homologous genes were found based on the current filter criteria."
 
-#: ui/tabs/homology_tab.py:265 ui/tabs/homology_tab.py:274
+#: ui/tabs/homology_tab.py:264 ui/tabs/homology_tab.py:273
 msgid "请输入要映射的源基因ID。"
 msgstr "Please enter the source gene IDs to map."
 
-#: ui/tabs/homology_tab.py:270
+#: ui/tabs/homology_tab.py:269
 msgid "请输入有效的基因ID。"
 msgstr "Please enter a valid gene ID."
 
-#: ui/tabs/homology_tab.py:281
+#: ui/tabs/homology_tab.py:280
 msgid "请选择有效的源和目标基因组。"
 msgstr "Please select valid source and target genomes."
 
-#: ui/tabs/homology_tab.py:289
+#: ui/tabs/homology_tab.py:288
 msgid "参数设置中的阈值必须是有效的数字。"
 msgstr "Thresholds in the parameter settings must be valid numbers."
 
-#: ui/tabs/homology_tab.py:338
+#: ui/tabs/homology_tab.py:341
 msgid "桥梁物种"
 msgstr "Bridge species"
 
@@ -4174,11 +4217,11 @@ msgstr ""
 msgid "区域格式不正确，请使用 'Chr:Start-End' 格式。"
 msgstr "Incorrect region format, please use 'Chr:Start-End' format."
 
-#: ui/tabs/xlsx_converter_tab.py:40 ui/tabs/xlsx_converter_tab.py:82
+#: ui/tabs/xlsx_converter_tab.py:40 ui/tabs/xlsx_converter_tab.py:81
 msgid "Excel (.xlsx) 转 CSV 工具"
 msgstr "Excel (.xlsx) to CSV Converter Tool"
 
-#: ui/tabs/xlsx_converter_tab.py:45 ui/tabs/xlsx_converter_tab.py:84
+#: ui/tabs/xlsx_converter_tab.py:45 ui/tabs/xlsx_converter_tab.py:83
 msgid ""
 "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
 "适用于所有工作表表头一致的情况。"
@@ -4187,94 +4230,79 @@ msgstr ""
 "single CSV file.\n"
 "Suitable for cases where all worksheets have the same headers."
 
-#: ui/tabs/xlsx_converter_tab.py:51 ui/tabs/xlsx_converter_tab.py:85
+#: ui/tabs/xlsx_converter_tab.py:50 ui/tabs/xlsx_converter_tab.py:84
 msgid "文件路径"
 msgstr "File Path"
 
-#: ui/tabs/xlsx_converter_tab.py:55 ui/tabs/xlsx_converter_tab.py:86
+#: ui/tabs/xlsx_converter_tab.py:54 ui/tabs/xlsx_converter_tab.py:85
 msgid "输入Excel文件:"
 msgstr "Input Excel File:"
 
-#: ui/tabs/xlsx_converter_tab.py:66 ui/tabs/xlsx_converter_tab.py:87
+#: ui/tabs/xlsx_converter_tab.py:65 ui/tabs/xlsx_converter_tab.py:86
 msgid "输出CSV文件:"
 msgstr "Output CSV File:"
 
-#: ui/tabs/xlsx_converter_tab.py:72 ui/tabs/xlsx_converter_tab.py:89
+#: ui/tabs/xlsx_converter_tab.py:71 ui/tabs/xlsx_converter_tab.py:88
 msgid "另存为..."
 msgstr "Save As..."
 
-#: ui/tabs/xlsx_converter_tab.py:103
+#: ui/tabs/xlsx_converter_tab.py:102
 msgid "请输入一个有效的Excel文件路径。"
 msgstr "Please enter a valid Excel file path."
 
-#: ui/tabs/xlsx_converter_tab.py:110
+#: ui/tabs/xlsx_converter_tab.py:109
 msgid "自动生成输出路径:"
 msgstr "Auto-generate output path:"
 
-#: ui/tabs/xlsx_converter_tab.py:118
+#: ui/tabs/xlsx_converter_tab.py:117
 msgid "转换失败"
 msgstr "Conversion Failed"
 
-#: ui/tabs/xlsx_converter_tab.py:118
+#: ui/tabs/xlsx_converter_tab.py:117
 msgid "一个未预料的错误发生:"
 msgstr "An unexpected error occurred:"
 
-#: ui/ui_manager.py:118 ui/ui_manager.py:522
+#: ui/ui_manager.py:108 ui/ui_manager.py:512
 msgid "当前配置: {}"
 msgstr "Current Config: {}"
 
-#: ui/ui_manager.py:120 ui/ui_manager.py:523
+#: ui/ui_manager.py:110 ui/ui_manager.py:513
 msgid "未加载配置"
 msgstr "No Configuration Loaded"
 
-#: ui/ui_manager.py:128
-msgid "在此处粘贴要注释的基因ID，每行一个。"
-msgstr "Paste gene IDs to be annotated here, one per line."
-
-#: ui/ui_manager.py:130
-msgid ""
-"在此处粘贴用于富集分析的基因ID，每行一个。\n"
-"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
-"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
-msgstr ""
-"Paste the gene IDs for enrichment analysis here, one per line.\n"
-"If including Log2FC, the format should be: GeneID Log2FC\n"
-"(Note: Use tab as separator. Columns copied directly from Excel are already "
-"tab-delimited)."
-
-#: ui/ui_manager.py:216
+#: ui/ui_manager.py:206
 msgid "操作日志"
 msgstr "Operation Log"
 
-#: ui/ui_manager.py:225
+#: ui/ui_manager.py:215
 msgid "清空日志"
 msgstr "Clear logs"
 
-#: ui/ui_manager.py:328
+#: ui/ui_manager.py:318
 msgid "主页"
 msgstr "Home"
 
-#: ui/ui_manager.py:328
+#: ui/ui_manager.py:318
 msgid "配置编辑器"
 msgstr "Config Editor"
 
-#: ui/ui_manager.py:329
+#: ui/ui_manager.py:319
 msgid "数据工具"
 msgstr "Data Tools"
 
-#: ui/ui_manager.py:346
+#: ui/ui_manager.py:336
 msgid "语言"
 msgstr "Language"
 
-#: ui/ui_manager.py:348
+#: ui/ui_manager.py:338
 msgid "外观模式"
 msgstr "Facade Pattern"
 
-#: ui/ui_manager.py:469 ui/ui_manager.py:489
+#: ui/ui_manager.py:459 ui/ui_manager.py:479
 msgid "任务失败"
 msgstr "Task failed"
 
-#: ui/ui_manager.py:470
+#: ui/ui_manager.py:460
 msgid ""
 "任务 '{}' 执行时发生错误:\n"
 "\n"
@@ -4284,39 +4312,39 @@ msgstr ""
 "\n"
 "{}"
 
-#: ui/ui_manager.py:476
+#: ui/ui_manager.py:466
 msgid "任务已取消"
 msgstr "Task canceled"
 
-#: ui/ui_manager.py:477
+#: ui/ui_manager.py:467
 msgid "任务 '{}' 已被用户取消。"
 msgstr "The task '{}' has been canceled by the user."
 
-#: ui/ui_manager.py:483
+#: ui/ui_manager.py:473
 msgid "任务完成"
 msgstr "Task completed"
 
-#: ui/ui_manager.py:484
+#: ui/ui_manager.py:474
 msgid "任务 '{}' 已成功完成。"
 msgstr "The task '{}' has been successfully completed."
 
-#: ui/ui_manager.py:490
+#: ui/ui_manager.py:480
 msgid "任务 '{}' 未能成功完成。"
 msgstr "Task '{}' failed to complete successfully."
 
-#: ui/ui_manager.py:497
+#: ui/ui_manager.py:487
 msgid "已取消"
 msgstr "Canceled"
 
-#: ui/ui_manager.py:499
+#: ui/ui_manager.py:489
 msgid "完成"
 msgstr "Done"
 
-#: ui/ui_manager.py:501
+#: ui/ui_manager.py:491
 msgid "失败"
 msgstr "Failed"
 
-#: ui/ui_manager.py:526
+#: ui/ui_manager.py:516
 msgid ""
 "无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
 "动的早期阶段。"
@@ -4324,13 +4352,34 @@ msgstr ""
 "Cannot set config_path_display_var: variable is not ready or None. This "
 "usually occurs early in the application startup."
 
-#: ui/ui_manager.py:537
+#: ui/ui_manager.py:527
 msgid "UI已根据当前配置刷新。"
 msgstr "UI has been refreshed according to the current configuration."
 
-#: ui/ui_manager.py:587
+#: ui/ui_manager.py:596
 msgid "刷新失败或无可用模型"
 msgstr "Refresh failed or no available model"
+
+#~ msgid "程序发生致命错误 (Fatal Error)"
+#~ msgstr "程序发生致命错误 (Fatal Error)"
+
+#~ msgid "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
+#~ msgstr ""
+#~ "An unhandled exception caused the program to terminate unexpectedly. "
+#~ "Please report the following information to the developer:"
+
+#~ msgid "在此处粘贴要注释的基因ID，每行一个。"
+#~ msgstr "Paste gene IDs to be annotated here, one per line."
+
+#~ msgid ""
+#~ "在此处粘贴用于富集分析的基因ID，每行一个。\n"
+#~ "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+#~ "（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
+#~ msgstr ""
+#~ "Paste the gene IDs for enrichment analysis here, one per line.\n"
+#~ "If including Log2FC, the format should be: GeneID Log2FC\n"
+#~ "(Note: Use tab as separator. Columns copied directly from Excel are "
+#~ "already tab-delimited)."
 
 #~ msgid "配置错误: 在同源文件中找不到匹配列 '{}'。可用列: {}"
 #~ msgstr ""
@@ -4431,20 +4480,6 @@ msgstr "Refresh failed or no available model"
 
 #~ msgid "加载主窗口图标失败: {}。"
 #~ msgstr "Failed to load main window icon: {}."
-
-#~ msgid "需要重启"
-#~ msgstr "Restart required"
-
-#~ msgid "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
-#~ msgstr ""
-#~ "Language settings have been changed. To ensure all changes take effect, "
-#~ "it is recommended that you restart the application."
-
-#~ msgid "立即重启"
-#~ msgstr "Restart immediately"
-
-#~ msgid "稍后重启"
-#~ msgstr "Restart later"
 
 #~ msgid "退出程序"
 #~ msgstr "Exit Program"

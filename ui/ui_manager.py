@@ -35,8 +35,11 @@ class UIManager:
         self.style = app.style
         self.icon_cache = {}
         self.style.configure('Sidebar.TFrame', background=self.style.colors.secondary)
+        # 创建一个字典来跟踪所有支持占位符的控件及其key
+        self.placeholder_widgets: Dict[tk.Widget, str] = {}
+        self.style.configure('Sidebar.TFrame', background=self.style.colors.secondary)
 
-    # 【核心修改点 1】将加载设置和应用主题分开
+
     def load_settings(self):
         """仅从文件加载UI设置，不应用任何主题。"""
         app = self.app
@@ -57,13 +60,13 @@ class UIManager:
         app.selected_appearance_var.set(display_map.get(mode_key, mode_key))
 
     def apply_initial_theme(self):
-        """【核心修改点 2】根据加载的设置，应用初始主题。"""
+        """ 根据加载的设置，应用初始主题。"""
         initial_mode = self.app.ui_settings.get("appearance_mode", "System")
         self.apply_theme_from_mode(initial_mode)
 
     def apply_theme_from_mode(self, mode: str):
         """
-        【核心修改点 3】根据外观模式计算主题名称，并调用App实例的中心方法来应用。
+        根据外观模式计算主题名称，并调用App实例的中心方法来应用。
         """
         if mode == "Dark":
             theme_name = self.app.ui_settings.get("dark_mode_theme", "darkly")
@@ -75,6 +78,10 @@ class UIManager:
 
         # 调用 app 实例上那个新的、统一的、健壮的方法
         self.app.apply_theme_and_update_dependencies(theme_name)
+
+        # 使用 after() 将刷新操作推迟到下一个事件循环
+        # 确保在所有主题样式都应用完毕后，再执行占位符的样式刷新
+        self.app.after(20, self.refresh_all_placeholder_styles)
 
 
     def _retranslate_managed_widgets(self, new_translator: Callable[[str], str]):
@@ -119,19 +126,30 @@ class UIManager:
 
     def add_placeholder(self, widget, text):
         if not widget or not widget.winfo_exists(): return
-        is_dark = self.style.theme.type == 'dark'
-        ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
-        widget.configure(state="normal")
+
         widget.is_placeholder = True
 
+        # 对于 Entry 控件，保持原有的样式切换逻辑（如果它工作正常）
         if isinstance(widget, (tk.Entry, ttkb.Entry)):
+            widget.configure(state="normal")
             widget.delete(0, tk.END)
             widget.insert(0, text)
             widget.configure(style='Placeholder.TEntry')
+
+        # 对于 Text 控件，使用 Tags
         elif isinstance(widget, tk.Text):
+            is_dark = self.style.theme.type == 'dark'
+            ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
+
+            # 1. 定义或更新名为 "placeholder" 的标签(Tag)的样式
+            widget.tag_configure("placeholder", font=self.app.app_font_italic, foreground=ph_color)
+
+            # 2. 插入文本，并为其应用 "placeholder" 标签
+            widget.configure(state="normal")
             widget.delete("1.0", tk.END)
-            widget.insert("1.0", text)
-            widget.configure(font=self.app.app_font_italic, foreground=ph_color)
+            widget.insert("1.0", text, "placeholder")
+            # 保持 state 为 normal，以便用户可以点击并触发 FocusIn 事件
+            # 如果需要只读外观，可以在这里设为 disabled，但在 FocusIn 时再设为 normal
 
 
     def setup_initial_ui(self):
@@ -508,21 +526,43 @@ class UIManager:
         self.update_button_states()
         app._log_to_viewer(_("UI已根据当前配置刷新。"))
 
-
     def _clear_placeholder(self, widget, key):
         if not widget or not widget.winfo_exists(): return
+
         if getattr(widget, 'is_placeholder', False):
+            # 对于 Entry，恢复默认样式
             if isinstance(widget, (tk.Entry, ttkb.Entry)):
                 widget.delete(0, tk.END)
+                widget.configure(style='TEntry')
+            # 对于 Text，只需清空内容
             elif isinstance(widget, tk.Text):
                 widget.delete("1.0", tk.END)
-            widget.configure(foreground=self.app.default_text_color)
-            if isinstance(widget, tk.Text):
-                widget.configure(font=self.app.app_font_mono)
+
             widget.is_placeholder = False
 
     def _handle_focus_in(self, event, widget, key):
+        # 如果控件尚未注册，则记录下来
+        if widget not in self.placeholder_widgets:
+            self.placeholder_widgets[widget] = key
+
         self._clear_placeholder(widget, key)
+
+    def refresh_all_placeholder_styles(self):
+        """
+        遍历所有已知的占位符控件，并刷新它们的样式。
+        此方法在主题切换后调用。修复切换深色白色模式后样式变化异常的问题
+        """
+        # 1. 更新 ttk.Entry 的占位符样式（如果需要）
+        is_dark = self.style.theme.type == 'dark'
+        ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
+        self.style.configure('Placeholder.TEntry', foreground=ph_color) # 假设 'Placeholder.TEntry' 样式存在
+
+        # 2. 遍历所有注册的控件，更新它们的 'placeholder' 标签(Tag)样式
+        for widget, key in self.placeholder_widgets.items():
+            if widget.winfo_exists() and isinstance(widget, tk.Text) and getattr(widget, 'is_placeholder', False):
+                # 只更新标签(Tag)的定义，应用了该标签的文本会自动更新样式
+                widget.tag_configure("placeholder", font=self.app.app_font_italic, foreground=ph_color)
+
 
     def _handle_focus_out(self, event, widget, key):
         _ = self.translator_func

@@ -177,10 +177,10 @@ class EventHandler:
             app.message_queue.put(("hide_progress_dialog", None))
 
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
-                    on_success: Optional[Callable] = None):
+                    on_success: Optional[Callable] = None, task_key: Optional[str] = None):
         """
         启动一个后台任务。
-        【已扩展】: 增加一个可选的 on_success 回调，用于处理需要特殊UI更新的成功结果。
+        【已扩展】: 增加一个可选的、语言无关的 task_key。
         """
         app = self.app
         _ = self.app._
@@ -190,56 +190,49 @@ class EventHandler:
                                                     app.active_task_name))
             return
 
-        # 任务启动的UI准备工作 (与原来一致)
+        # 如果没有提供 task_key，则默认使用 task_name
+        if task_key is None:
+            task_key = task_name
+
         app.ui_manager.update_button_states(is_task_running=True)
         app.active_task_name = task_name
         app.cancel_current_task_event.clear()
         self.app.message_queue.put(("show_progress_dialog", {"title": task_name, "message": _("正在处理..."),
                                                              "on_cancel": app.cancel_current_task_event.set}))
 
-        # 准备传递给后台函数的参数 (与原来一致)
         kwargs.update({'cancel_event': app.cancel_current_task_event, 'status_callback': self.gui_status_callback,
                        'progress_callback': self.gui_progress_callback})
 
-        # 【修改】将 on_success 回调函数传递给线程包装器
-        threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name, on_success),
+        # 将 task_key 传递给线程包装器
+        threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name, task_key, on_success),
                          daemon=True).start()
 
-    def _task_wrapper(self, target_func, kwargs, task_name, on_success: Optional[Callable] = None):
+    def _task_wrapper(self, target_func, kwargs, task_name, task_key, on_success: Optional[Callable] = None):
         """
         在后台线程中执行任务的包装器。
-        【已扩展】: 如果有 on_success 回调，则在任务成功后执行它。
-        通用完成消息 (task_done) 仍然会被发送。
+        【已扩展】: 传递 task_key。
         """
         _ = self.app._
-        result = None  # 初始化result变量
-        e = None  # 初始化exception变量
+        result = None
+        e = None
         try:
-            # 1. 执行核心任务函数
             result = target_func(**kwargs)
-
-            # 2. 【新增】如果提供了成功回调函数，并且任务未被用户取消，
-            #    则通过主UI线程安全地执行这个回调
             if on_success and not self.app.cancel_current_task_event.is_set():
-                # 使用 app.after() 确保UI更新操作在主线程中执行
                 self.app.after(0, on_success, result)
-
         except Exception as exc:
-            # 3. 捕获任务执行过程中的任何异常
-            e = exc  # 将异常存起来，以便finally块可以访问
+            e = exc
         finally:
-            # 4. 【重要】无论成功、失败还是取消，最后都把标准化的结果统一发送给 _handle_task_done 处理器
             final_data = None
             if self.app.cancel_current_task_event.is_set():
-                final_data = (False, task_name, "CANCELLED")
-            elif e:  # 如果捕获到了异常
-                final_data = (False, task_name, e)
-            else:  # 如果成功完成
-                final_data = (True, task_name, result)
+                final_data = (False, task_name, "CANCELLED", task_key)
+            elif e:
+                final_data = (False, task_name, e, task_key)
+            else:
+                final_data = (True, task_name, result, task_key)
 
-            # 这个消息会被通用的 _handle_task_done 接收，用于隐藏进度条、重置按钮等
             if final_data:
                 self.app.message_queue.put(("task_done", final_data))
+
 
     def _handle_startup_complete(self, data: dict):
         app = self.app
@@ -290,21 +283,19 @@ class EventHandler:
 
     def _handle_task_done(self, data: tuple):
         """
-        【最终修复版】处理所有后台任务的完成事件，并调用 UIManager 来显示最终状态。
+        使用语言无关的 task_key 来判断是否需要刷新。
         """
         app = self.app
         _ = self.app._
-        success, task_display_name, result_data = data
+        success, task_display_name, result_data, task_key = data
 
-        # 1. 关闭进度条、恢复UI，并根据结果弹出最终提示
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
 
-        # 2. 【核心修改】在此处添加对BLAST数据库预处理任务的判断
-        #    如果完成的任务是下载或任意一种预处理，则自动刷新下载选项卡的状态
-        if success and task_display_name in [_("数据下载"), _("预处理注释文件"), _("预处理BLAST数据库")]:
+        # --- 使用 task_key 进行判断 ---
+        refresh_trigger_keys = ["download", "preprocess_anno", "preprocess_blast"]
+        if success and task_key in refresh_trigger_keys:
             if download_tab := app.tool_tab_instances.get('download'):
                 if hasattr(download_tab, '_update_dynamic_widgets'):
-                    # 使用 after 以确保在主UI线程中安全地执行刷新
                     selected_genome = download_tab.selected_genome_var.get()
                     app.after(50, lambda: download_tab._update_dynamic_widgets(selected_genome))
                     app.logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
