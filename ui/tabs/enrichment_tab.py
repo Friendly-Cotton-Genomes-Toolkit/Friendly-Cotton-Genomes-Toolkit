@@ -78,8 +78,9 @@ class EnrichmentTab(BaseTab):
         self.gene_input_text = tk.Text(self.input_card, height=10, font=self.app.app_font_mono, wrap="word",
                                        relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg)
         self.gene_input_text.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
-        self.app.ui_manager.add_placeholder(self.gene_input_text,
-                                            self.app.placeholders.get("enrichment_genes_input", "..."))
+        self.gene_input_text.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.gene_input_text,self.app.placeholders.get("enrichment_genes_input", "...")))
+
         self.gene_input_text.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e, self.gene_input_text,
                                                                                               "enrichment_genes_input"))
         self.gene_input_text.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.gene_input_text,
@@ -195,63 +196,12 @@ class EnrichmentTab(BaseTab):
             self.assembly_id_var  # 传递控制下拉菜单的变量
         )
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        # ... 此方法保持不变 ...
-        self.title_label.config(text=translator("富集分析与绘图"))
-        self.input_card.config(text=translator("输入数据"))
-        self.assembly_id_label.config(text=translator("基因组版本:"))
-        self.gene_list_label.config(text=translator("基因ID列表 (或基因ID,Log2FC):"))
-        self.format_card.config(text=translator("输入格式与分析类型"))
-        self.input_format_label.config(text=translator("输入格式:"))
-        self.has_header_check.config(text=translator("包含表头"))
-        self.has_log2fc_check.config(text=translator("包含Log2FC"))
-        self.analysis_type_label.config(text=translator("分析类型:"))
-        self.collapse_check.config(text=translator("合并转录本到基因"))
-        self.collapse_note_label.config(text=translator(
-            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"))
-        self.plot_config_card.configure(text=translator("绘图设置"))
-        self.plot_type_label.configure(text=translator("绘图类型:"))
-        self.bubble_check.configure(text=translator("气泡图"))
-        self.bar_check.configure(text=translator("条形图"))
-        self.upset_check.configure(text=translator("Upset图"))
-        self.cnet_check.configure(text=translator("网络图(Cnet)"))
-        self.top_n_label.configure(text=translator("显示前N项:"))
-        self.sort_by_label.configure(text=translator("排序依据:"))
-        self.show_title_check.configure(text=translator("显示图表标题"))
-        self.width_label.configure(text=translator("图表宽度 (英寸):"))
-        self.height_label.configure(text=translator("图表高度 (英寸):"))
-        self.file_format_label.configure(text=translator("文件格式:"))
-        self.output_dir_card.configure(text=translator("输出设置"))
-        self.output_dir_label.configure(text=translator("输出目录:"))
-        self.browse_button.configure(text=translator("浏览..."))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始富集分析"))
-
-        new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
-        self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
-
-        self.app.ui_manager.refresh_single_placeholder(self.gene_input_text, "enrichment_genes_input")
-
-    def refresh_placeholders(self):
-        # ... 此方法保持不变 ...
-        if hasattr(self, 'gene_input_text') and self.gene_input_text:
-            new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
-            self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         # ... 此方法保持不变 ...
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.assembly_id_var, assembly_ids,
                                                _("无可用基因组"))
 
-    def update_from_config(self):
-        # ... 此方法保持不变 ...
-        self.update_assembly_dropdowns(
-            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-        default_dir = os.path.join(os.getcwd(), "enrichment_results")
-        self.enrichment_output_dir_entry.delete(0, tk.END)
-        self.enrichment_output_dir_entry.insert(0, default_dir)
-        self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def start_enrichment_task(self):
         # ... 此方法保持不变 ...

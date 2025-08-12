@@ -69,7 +69,10 @@ class GFFQueryTab(BaseTab):
                                                relief="flat", background=text_bg, foreground=text_fg,
                                                insertbackground=text_fg)
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
-        self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
+        self.gff_query_genes_textbox.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.gff_query_genes_textbox,
+            self.app.placeholders.get("gff_genes", "...")
+        ))
         self.gff_query_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                       self.gff_query_genes_textbox,
                                                                                                       "gff_genes"))
@@ -82,7 +85,10 @@ class GFFQueryTab(BaseTab):
         self.region_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
         self.gff_query_region_entry = ttkb.Entry(self.input_frame, font=self.app.app_font_mono, foreground=text_fg)
         self.gff_query_region_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 10))
-        self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
+        self.gff_query_region_entry.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.gff_query_region_entry,
+            self.app.placeholders.get("gff_region", "...")
+        ))
         self.gff_query_region_entry.bind("<FocusIn>",
                                          lambda e: self.app.ui_manager._handle_focus_in(e, self.gff_query_region_entry,
                                                                                         "gff_region"))
@@ -137,11 +143,6 @@ class GFFQueryTab(BaseTab):
         self.app.ui_manager.refresh_single_placeholder(self.gff_query_genes_textbox, "gff_genes")
         self.app.ui_manager.refresh_single_placeholder(self.gff_query_region_entry, "gff_region")
 
-
-    def update_from_config(self):
-        self.update_assembly_dropdowns(
-            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-        self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         valid_ids = assembly_ids or [_("无可用基因组")]

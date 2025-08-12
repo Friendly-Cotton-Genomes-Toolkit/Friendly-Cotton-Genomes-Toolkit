@@ -122,15 +122,17 @@ class UIManager:
         is_dark = self.style.theme.type == 'dark'
         ph_color = self.app.placeholder_color[1] if is_dark else self.app.placeholder_color[0]
         widget.configure(state="normal")
+        widget.is_placeholder = True
+
         if isinstance(widget, (tk.Entry, ttkb.Entry)):
             widget.delete(0, tk.END)
             widget.insert(0, text)
-            widget.configure(foreground=ph_color)
+            widget.configure(style='Placeholder.TEntry')
         elif isinstance(widget, tk.Text):
             widget.delete("1.0", tk.END)
             widget.insert("1.0", text)
             widget.configure(font=self.app.app_font_italic, foreground=ph_color)
-        widget.is_placeholder = True
+
 
     def setup_initial_ui(self):
         self.app.navigation_frame = ttkb.Frame(self.app, style='Sidebar.TFrame')
@@ -506,9 +508,6 @@ class UIManager:
         self.update_button_states()
         app._log_to_viewer(_("UI已根据当前配置刷新。"))
 
-    def _remove_placeholder(self, widget):
-        if not widget.winfo_exists(): return
-        widget.config(foreground=self.app.style.lookup('TLabel', 'foreground'))
 
     def _clear_placeholder(self, widget, key):
         if not widget or not widget.winfo_exists(): return

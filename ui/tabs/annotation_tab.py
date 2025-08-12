@@ -57,9 +57,9 @@ class AnnotationTab(BaseTab):
                                                 insertbackground=text_fg)
         self.annotation_genes_textbox.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
 
-        # 【修正】在创建时就正确地从字典获取文本
         initial_placeholder_text = self.app.placeholders.get("genes_input", "...")
-        self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, initial_placeholder_text)
+        self.annotation_genes_textbox.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.annotation_genes_textbox, initial_placeholder_text))
 
         self.annotation_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                        self.annotation_genes_textbox,
