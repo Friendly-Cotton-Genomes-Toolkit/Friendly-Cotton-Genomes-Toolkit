@@ -168,7 +168,6 @@ class DataDownloadTab(BaseTab):
             'processed': self._("已就绪")
         }
 
-        # 【核心修改 2】使用节标题和分隔线代替次级卡片，强化视觉层级
         # --- 文件类型选择区 ---
         checkbox_header = ttkb.Label(self.dynamic_content_frame, text=self._("选择文件类型"),
                                      font=self.app.app_font_bold)
@@ -297,11 +296,62 @@ class DataDownloadTab(BaseTab):
                 state="disabled" if is_running or not has_config else "normal")
 
     def start_build_blast_db_task(self):
+        """
+        启动构建BLAST数据库的任务，并在开始前进行文件存在性检查。
+        """
+        # 1. 基本检查：确保配置已加载且基因组已选择
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
             return
 
-        task_kwargs = {'config': self.app.current_config}
+        selected_genome_id = self.selected_genome_var.get()
+        if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
+            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组。"))
+            return
+
+        genome_info = self.app.genome_sources_data.get(selected_genome_id)
+        if not genome_info:
+            msg = self._("找不到基因组 '{}' 的信息。").format(selected_genome_id)
+            self.app.ui_manager.show_error_message(self._("错误"), msg)
+            return
+
+        # 2. 获取源文件和已处理文件的路径
+        cds_path = get_local_downloaded_file_path(self.app.current_config, genome_info, 'predicted_cds')
+        protein_path = get_local_downloaded_file_path(self.app.current_config, genome_info, 'predicted_protein')
+
+        cds_source_exists = cds_path and os.path.exists(cds_path)
+        protein_source_exists = protein_path and os.path.exists(protein_path)
+
+        # 检查BLAST数据库文件是否已存在
+        db_ready = False
+        if cds_source_exists:
+            # 移除 .gz 后缀
+            db_fasta_path = cds_path.removesuffix('.gz')
+            # 检查blast数据库文件
+            if os.path.exists(db_fasta_path + '.nhr'):
+                db_ready = True
+        if not db_ready and protein_source_exists:
+            # 移除 .gz 后缀
+            db_fasta_path = protein_path.removesuffix('.gz')
+            # 检查blast数据库文件
+            if os.path.exists(db_fasta_path + '.phr'):
+                db_ready = True
+
+        # 3. 执行条件逻辑
+        if db_ready:
+            self.app.ui_manager.show_info_message(
+                self._("已就绪"), self._("BLAST数据库已全部预处理完成，无需再次运行。"))
+            return
+
+        if not cds_source_exists and not protein_source_exists:
+            msg = self._(
+                "无法开始预处理BLAST数据库，因为没有找到可用的预测CDS或蛋白质文件。\n请先在下载选项中选择并下载这些文件。")
+            self.app.ui_manager.show_warning_message(self._("缺少文件"), msg)
+            return
+
+        # 4. 如果源文件存在且数据库未就绪，则启动任务
+        task_kwargs = {'config': self.app.current_config,
+                       'selected_assembly_id': selected_genome_id}
         self.app.event_handler._start_task(
             task_name=self._("预处理BLAST数据库"),
             target_func=run_build_blast_db_pipeline,
@@ -332,7 +382,6 @@ class DataDownloadTab(BaseTab):
                                            task_key="preprocess_anno",kwargs=task_kwargs)
 
     def start_preprocess_task(self):
-        # 【修改】所有 _() 调用都改为 self._()
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"));
             return
@@ -346,6 +395,7 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_error_message(self._("错误"), msg);
             return
 
+        # 检查是否有未下载的文件
         excel_anno_keys = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
         missing_files_display_names = []
         for key in excel_anno_keys:
@@ -358,14 +408,38 @@ class DataDownloadTab(BaseTab):
         if missing_files_display_names:
             file_list_formatted = "\n- ".join(missing_files_display_names)
 
-            # 【修改】使用 self._() 来翻译，并移除所有调试用的 print 语句
             msg = self._("无法开始预处理，以下必需的注释文件尚未下载：\n\n- {file_list}\n\n请先下载它们。").format(
                 file_list=file_list_formatted)
 
             self.app.ui_manager.show_warning_message(self._("缺少文件"), msg)
             return
 
-        task_kwargs = {'config': self.app.current_config}
+        all_processed = True
+        for key in excel_anno_keys:
+            url_attr = f"{key}_url"
+            # 仅检查配置文件中存在的 URL
+            if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
+                local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
+                if local_path and os.path.exists(local_path):
+                    # 使用和_update_dynamic_widgets相同的逻辑来判断是否已处理
+                    csv_path = local_path.rsplit('.', 2)[0] + '.csv' if local_path.lower().endswith('.gz') else \
+                        local_path.rsplit('.', 1)[0] + '.csv'
+                    if not os.path.exists(csv_path):
+                        all_processed = False
+                        break
+                else:
+                    # 如果文件不存在，也算作未处理
+                    all_processed = False
+                    break
+
+        if all_processed:
+            self.app.ui_manager.show_info_message(self._("已就绪"), self._("注释文件已全部预处理完成，无需再次运行。"))
+            return
+
+        task_kwargs = {
+            'config': self.app.current_config,
+            'selected_assembly_id': selected_genome_id
+        }
         self.app.event_handler._start_task(task_name=self._("预处理注释文件"),
                                            target_func=run_preprocess_annotation_files,
-                                           task_key="preprocess_blast",kwargs=task_kwargs)
+                                           task_key="preprocess_blast", kwargs=task_kwargs)

@@ -23,6 +23,7 @@ from .config.models import (
 from .core.ai_wrapper import AIWrapper
 from .core.convertXlsx2csv import convert_excel_to_standard_csv
 from .core.downloader import download_genome_data
+from .core.file_normalizer import normalize_to_csv
 from .core.gff_parser import get_genes_in_region, extract_gene_details, create_gff_database, get_gene_info_by_ids, \
     _apply_regex_to_id
 from .core.homology_mapper import map_genes_via_bridge
@@ -1670,6 +1671,7 @@ def run_enrichment_pipeline(
 
 def run_preprocess_annotation_files(
         config: MainConfig,
+        selected_assembly_id: Optional[str] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
@@ -1696,19 +1698,29 @@ def run_preprocess_annotation_files(
         progress(100, _("任务终止：未能加载基因组源。"))
         return False
 
+    # 如果指定了特定基因组，则只处理它
+    genomes_to_process = [genome_sources[selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
+
     tasks_to_run = []
-    ALL_ANNO_KEYS = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs']
+    ALL_ANNO_KEYS = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
     progress(10, _("正在检查需要预处理的文件..."))
     if check_cancel(): return False
 
-    for genome_info in genome_sources.values():
+    for genome_info in genomes_to_process:
         if check_cancel(): break
         for key in ALL_ANNO_KEYS:
             source_path = get_local_downloaded_file_path(config, genome_info, key)
-            if source_path and os.path.exists(source_path) and source_path.lower().endswith(('.xlsx', '.xlsx.gz')):
-                base_path = source_path.replace('.xlsx.gz', '').replace('.xlsx', '')
+
+            if source_path and os.path.exists(source_path) and source_path.lower().endswith(
+                    ('.xlsx', '.xlsx.gz', '.txt', '.txt.gz')):
+
+                if source_path.lower().endswith('.gz'):
+                    base_path = source_path.rsplit('.', 2)[0]
+                else:
+                    base_path = source_path.rsplit('.', 1)[0]
                 output_path = base_path + '.csv'
-                # 检查CSV是否存在或Excel是否比CSV新
+
+                # 检查CSV是否存在或源文件是否比CSV新
                 if not os.path.exists(output_path) or os.path.getmtime(source_path) > os.path.getmtime(output_path):
                     tasks_to_run.append((source_path, output_path))
 
@@ -1721,28 +1733,25 @@ def run_preprocess_annotation_files(
 
     total_tasks = len(tasks_to_run)
     progress(20, _("找到 {} 个文件需要进行预处理。").format(total_tasks))
-    if check_cancel(): return False
-
     log(_("找到 {} 个文件需要进行预处理。").format(total_tasks), "INFO")
     success_count = 0
 
     for i, (source, output) in enumerate(tasks_to_run):
         if check_cancel(): return False
 
-        # 将进度映射到 20% 到 95% 之间
         progress_percentage = 20 + int(((i + 1) / total_tasks) * 75)
         progress(progress_percentage, _("正在转换: {} ({}/{})").format(os.path.basename(source), i + 1, total_tasks))
 
-        # convert_excel_to_standard_csv 内部也应该有自己的进度回调，这里不再嵌套
-        if convert_excel_to_standard_csv(source, output, log, cancel_event=cancel_event):
+        # 【核心修改4】这里不需要再进行类型判断，因为 `normalize_to_csv` 可以自动处理所有类型
+        log(_("INFO: Starting intelligent conversion for: {}").format(os.path.basename(source)))
+        if normalize_to_csv(source, output):
             success_count += 1
         else:
-            # If conversion failed, it might be due to cancellation.
-            if check_cancel(): return False
+            log(_("ERROR: Conversion failed for: {}").format(os.path.basename(source)), "ERROR")
 
     log(_("预处理完成。成功转换 {}/{} 个文件。").format(success_count, total_tasks), "INFO")
     progress(100, _("预处理完成。"))
-    return True
+    return success_count == total_tasks
 
 
 def run_xlsx_to_csv(
@@ -1991,6 +2000,7 @@ def run_blast_pipeline(
 
 def run_build_blast_db_pipeline(
         config: MainConfig,
+        selected_assembly_id: Optional[str] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
@@ -2018,12 +2028,14 @@ def run_build_blast_db_pipeline(
         progress(100, _("任务终止：未能加载基因组源。"))
         return False
 
+    genomes_to_process = [genome_sources[selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
+
     tasks_to_run = []
     BLAST_FILE_KEYS = ['predicted_cds', 'predicted_protein']
     progress(10, _("正在检查需要预处理的文件..."))
     if check_cancel(): log(_("任务被取消。"), "INFO"); return False
 
-    for genome_info in genome_sources.values():
+    for genome_info in genomes_to_process:
         if check_cancel(): break
         for key in BLAST_FILE_KEYS:
             url_attr = f"{key}_url"

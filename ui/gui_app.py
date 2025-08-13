@@ -606,10 +606,10 @@ class CottonToolkitApp(ttkb.Window):
             # 如果加载过程中出现任何其他错误，也记录下来
             self.logger.warning(f"加载主窗口图标失败: {e}")
 
-
     def _update_wraplength(self, event):
         wraplength = event.width - 20
-        if hasattr(self, 'config_warning_label'): self.config_warning_label.configure(wraplength=wraplength)
+        if hasattr(self, 'config_warning_label'):
+            self.config_warning_label.configure(wraplength=wraplength, justify="left")
 
     def _create_editor_frame(self, parent):
         page = ttkb.Frame(parent)
