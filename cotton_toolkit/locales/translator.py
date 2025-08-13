@@ -185,17 +185,21 @@ def detect_best_ui_language():
 def translate_text(client, text, target_lang, source_lang, model):
     if not text.strip(): return ""
     prompt = (f"Translate the following text for a software interface from {source_lang} to {target_lang}. "
-              "Do not add any extra explanations, comments, or quotation marks. "
-              "Only return the translated text. "
+              "Only return the translated text. **Do not** add any extra explanations, comments, or quotation marks. "
+              "**Crucially, do not format the output with Markdown code blocks (`...`) or any other formatting.** "
               "If the original text contains placeholders like %s, %d, or {{name}}, "
               "preserve them exactly as they are in the translation.\n\n"
-              f"Original text:\n```\n{text}\n```")
+              f"Original text:\n{text}")
     response = client.chat.completions.create(model=model, messages=[
         {"role": "system", "content": "You are a professional translator for software localization."},
         {"role": "user", "content": prompt}], temperature=0.3, max_tokens=2048, timeout=30)
     translation = response.choices[0].message.content.strip()
     if translation.startswith(('"', "'")) and translation.endswith(('"', "'")):
         translation = translation[1:-1]
+
+    if translation.startswith('```') and translation.endswith('```'):
+        translation = '\n'.join(translation.split('\n')[1:-1]).strip()
+
     return translation
 
 
