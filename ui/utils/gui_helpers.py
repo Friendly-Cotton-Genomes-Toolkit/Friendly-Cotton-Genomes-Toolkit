@@ -94,7 +94,7 @@ def identify_genome_from_gene_ids(
                 log(_(f"用于二次校验的 '{utx_genome_id}' 正则表达式无效: {e}"), "WARNING")
 
     if highest_score > 50:
-        log(_(f"最终自动识别基因为 '{best_match_id}'，置信度: {highest_score:.2f}%.")), "INFO")
+        log(_(f"最终自动识别基因为 '{best_match_id}'，置信度: {highest_score:.2f}%."), "INFO")
         return (best_match_id, ambiguity_warning, highest_score)
     else:
         log(_("无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。"), "INFO")
