@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-13 17:53+0800\n"
-"PO-Revision-Date: 2025-08-13 18:22+0800\n"
+"POT-Creation-Date: 2025-08-13 18:33+0800\n"
+"PO-Revision-Date: 2025-08-13 18:33+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Gemini 2.5 Pro\n"
 "Language: zh_CN\n"
@@ -23,9 +23,20 @@ msgstr ""
 "X-Poedit-SourceCharset: UTF-8\n"
 "X-Poedit-SearchPath-0: cotton_toolkit\n"
 "X-Poedit-SearchPath-1: ui\n"
-"X-Poedit-SearchPathExcluded-0: build_temp\n"
-"X-Poedit-SearchPathExcluded-1: release\n"
-"X-Poedit-SearchPathExcluded-2: dist\n"
+"X-Poedit-SearchPathExcluded-0: .pixi\n"
+"X-Poedit-SearchPathExcluded-1: docs\n"
+"X-Poedit-SearchPathExcluded-2: main.build\n"
+"X-Poedit-SearchPathExcluded-3: dist\n"
+"X-Poedit-SearchPathExcluded-4: genomes\n"
+"X-Poedit-SearchPathExcluded-5: tests\n"
+"X-Poedit-SearchPathExcluded-6: .venv\n"
+"X-Poedit-SearchPathExcluded-7: .git\n"
+"X-Poedit-SearchPathExcluded-8: .idea\n"
+"X-Poedit-SearchPathExcluded-9: tmp\n"
+"X-Poedit-SearchPathExcluded-10: assets\n"
+"X-Poedit-SearchPathExcluded-11: data\n"
+"X-Poedit-SearchPathExcluded-12: gff_databases_cache\n"
+"X-Poedit-SearchPathExcluded-13: cotton_toolkit/locales/.pixi\n"
 
 #: cotton_toolkit/cli.py:39
 msgid "错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。"
@@ -367,8 +378,10 @@ msgid "准备预处理..."
 msgstr "准备预处理..."
 
 #: cotton_toolkit/cli.py:441
-msgid "要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"
-msgstr "要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"
+msgid ""
+"要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"
+msgstr ""
+"要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"
 
 #: cotton_toolkit/cli.py:447
 msgid "正在测试服务商: {}..."
@@ -391,8 +404,18 @@ msgid "软件简介"
 msgstr "软件简介"
 
 #: cotton_toolkit/cli.py:491
-msgid "FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、功能注释、富集分析和AI助手等。"
-msgstr "FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、功能注释、富集分析和AI助手等。"
+msgid ""
+"FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计"
+"的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面"
+"（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即"
+"用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因"
+"映射（Liftover）、功能注释、富集分析和AI助手等。"
+msgstr ""
+"FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计"
+"的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面"
+"（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即"
+"用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因"
+"映射（Liftover）、功能注释、富集分析和AI助手等。"
 
 #: cotton_toolkit/cli.py:496
 msgid "核心亮点"
@@ -463,8 +486,12 @@ msgid "致谢"
 msgstr "致谢"
 
 #: cotton_toolkit/cli.py:555
-msgid "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。"
-msgstr "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI 协助开发，功能持续迭代，欢迎学术交流和贡献。"
+msgid ""
+"感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI "
+"协助开发，功能持续迭代，欢迎学术交流和贡献。"
+msgstr ""
+"感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI "
+"协助开发，功能持续迭代，欢迎学术交流和贡献。"
 
 #: cotton_toolkit/config/loader.py:70
 msgid "配置文件已成功保存到: {}"
@@ -540,8 +567,12 @@ msgid "AI服务商、API Key和模型名称不能为空。"
 msgstr "AI服务商、API Key和模型名称不能为空。"
 
 #: cotton_toolkit/core/ai_wrapper.py:77 cotton_toolkit/core/ai_wrapper.py:161
-msgid "缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安装。"
-msgstr "缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安装。"
+msgid ""
+"缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安"
+"装。"
+msgstr ""
+"缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安"
+"装。"
 
 #: cotton_toolkit/core/ai_wrapper.py:95 cotton_toolkit/core/ai_wrapper.py:183
 msgid "不支持的服务商或缺少Base URL:"
@@ -632,8 +663,10 @@ msgid "SUCCESS: Successfully converted and saved to: {}"
 msgstr "SUCCESS: Successfully converted and saved to: {}"
 
 #: cotton_toolkit/core/convertXlsx2csv.py:100
-msgid "ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}"
-msgstr "ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}"
+msgid ""
+"ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}"
+msgstr ""
+"ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}"
 
 #: cotton_toolkit/core/downloader.py:37
 msgid "DEBUG: Successfully decompressed '{}' to temporary file."
@@ -688,8 +721,12 @@ msgid "INFO: Task cancelled before downloading {}."
 msgstr "INFO: Task cancelled before downloading {}."
 
 #: cotton_toolkit/core/downloader.py:131
-msgid "WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back to species name for directory."
-msgstr "WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back to species name for directory."
+msgid ""
+"WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back to "
+"species name for directory."
+msgstr ""
+"WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back to "
+"species name for directory."
 
 #: cotton_toolkit/core/downloader.py:139
 msgid "ERROR: Failed to create directory {}. Reason: {}"
@@ -724,8 +761,12 @@ msgid "INFO: Download for {} was cancelled by user."
 msgstr "INFO: Download for {} was cancelled by user."
 
 #: cotton_toolkit/core/downloader.py:217
-msgid "WARNING: Downloaded size for {} is less than expected. The file might be incomplete."
-msgstr "WARNING: Downloaded size for {} is less than expected. The file might be incomplete."
+msgid ""
+"WARNING: Downloaded size for {} is less than expected. The file might be "
+"incomplete."
+msgstr ""
+"WARNING: Downloaded size for {} is less than expected. The file might be "
+"incomplete."
 
 #: cotton_toolkit/core/downloader.py:224
 msgid "INFO: Download for {} was cancelled during request setup."
@@ -1663,10 +1704,12 @@ msgstr ""
 #: cotton_toolkit/pipelines.py:1665
 msgid ""
 "\n"
-"✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 '{}' 子文件夹中。"
+"✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 "
+"'{}' 子文件夹中。"
 msgstr ""
 "\n"
-"✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 '{}' 子文件夹中。"
+"✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 "
+"'{}' 子文件夹中。"
 
 #: cotton_toolkit/pipelines.py:1687 cotton_toolkit/pipelines.py:1689
 msgid "开始预处理注释文件（转换为CSV）..."
@@ -1795,12 +1838,14 @@ msgstr "BLAST数据库创建成功。"
 
 #: cotton_toolkit/pipelines.py:1871 cotton_toolkit/pipelines.py:2094
 msgid ""
-"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n"
+"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
+"PATH 环境变量中。\n"
 "\n"
 "官方下载地址:\n"
 "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"
 msgstr ""
-"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n"
+"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
+"PATH 环境变量中。\n"
 "\n"
 "官方下载地址:\n"
 "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"
@@ -2244,8 +2289,10 @@ msgid "Warning: Enrichment DataFrame is empty for upset plot."
 msgstr "Warning: Enrichment DataFrame is empty for upset plot."
 
 #: cotton_toolkit/tools/visualizer.py:238
-msgid "Error: Missing required columns for upset plot: {}. Available columns: {}"
-msgstr "Error: Missing required columns for upset plot: {}. Available columns: {}"
+msgid ""
+"Error: Missing required columns for upset plot: {}. Available columns: {}"
+msgstr ""
+"Error: Missing required columns for upset plot: {}. Available columns: {}"
 
 #: cotton_toolkit/tools/visualizer.py:245
 msgid "Warning: DataFrame is empty after sorting and head for upset plot."
@@ -3775,8 +3822,10 @@ msgid "基因组类别鉴定工具"
 msgstr "基因组类别鉴定工具"
 
 #: ui/tabs/genome_identifier_tab.py:63
-msgid "在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
-msgstr "在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
+msgid ""
+"在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
+msgstr ""
+"在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
 
 #: ui/tabs/genome_identifier_tab.py:67
 msgid "输入基因列表"
@@ -3871,7 +3920,9 @@ msgstr "快速基因同源转换"
 msgid ""
 "该工具通过拟南芥作为桥梁将两种棉花基因组连接起来。\n"
 "如需获取更加准确的结果，请使用BLAST"
-msgstr "该工具以拟南芥为媒介将两种棉花基因组关联起来。如需获取更精确的结果，请使用BLAST"
+msgstr ""
+"该工具以拟南芥为媒介将两种棉花基因组关联起来。如需获取更精确的结果，请使用"
+"BLAST"
 
 #: ui/tabs/homology_tab.py:55
 msgid "输入"
@@ -4108,8 +4159,12 @@ msgid "失败"
 msgstr "失败"
 
 #: ui/ui_manager.py:516
-msgid "无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"
-msgstr "无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"
+msgid ""
+"无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
+"动的早期阶段。"
+msgstr ""
+"无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
+"动的早期阶段。"
 
 #: ui/ui_manager.py:527
 msgid "UI已根据当前配置刷新。"
@@ -4118,6 +4173,46 @@ msgstr "UI已根据当前配置刷新。"
 #: ui/ui_manager.py:596
 msgid "刷新失败或无可用模型"
 msgstr "刷新失败或无可用模型"
+
+#: ui/utils/gui_helpers.py:36
+#| msgid "解析后未发现有效基因ID。"
+msgid "过滤后没有用于识别的有效基因ID。"
+msgstr "过滤后没有用于识别的有效基因ID。"
+
+#: ui/utils/gui_helpers.py:42
+#| msgid "任务被用户取消。"
+msgid "基因组自动识别任务被用户取消。"
+msgstr "基因组自动识别任务被用户取消。"
+
+#: ui/utils/gui_helpers.py:60
+msgid ""
+"无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输"
+"入ID)。"
+msgstr ""
+"无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输"
+"入ID)。"
+
+#: ui/utils/gui_helpers.py:64
+msgid "基因组自动识别诊断分数:"
+msgstr "基因组自动识别诊断分数:"
+
+#: ui/utils/gui_helpers.py:89
+msgid ""
+"检测到基因ID同时匹配 'UTX_v2.1' 和 'JGI_v1.1'。\n"
+"\n"
+"程序已自动优先选择 'UTX_v2.1'。\n"
+"\n"
+"请您注意甄别，如果需要使用 JGI 版本，请手动从下拉菜单中选择。"
+msgstr ""
+"检测到基因ID同时匹配 'UTX_v2.1' 和 'JGI_v1.1'。\n"
+"\n"
+"程序已自动优先选择 'UTX_v2.1'。\n"
+"\n"
+"请您注意甄别，如果需要使用 JGI 版本，请手动从下拉菜单中选择。"
+
+#: ui/utils/gui_helpers.py:100
+msgid "无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。"
+msgstr "无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。"
 
 #~ msgid "任务在注释阶段被用户取消。"
 #~ msgstr "任务在注释阶段被用户取消。"
@@ -4161,11 +4256,17 @@ msgstr "刷新失败或无可用模型"
 #~ msgid "流程完成。在 '{}' 中成功生成 {} 个图表。"
 #~ msgstr "流程完成。在 '{}' 中成功生成 {} 个图表。"
 
-#~ msgid "Error: Neither '{}' nor common alternatives found in DataFrame columns for sorting. Available columns: {}"
-#~ msgstr "Error: Neither '{}' nor common alternatives found in DataFrame columns for sorting. Available columns: {}"
+#~ msgid ""
+#~ "Error: Neither '{}' nor common alternatives found in DataFrame columns "
+#~ "for sorting. Available columns: {}"
+#~ msgstr ""
+#~ "Error: Neither '{}' nor common alternatives found in DataFrame columns "
+#~ "for sorting. Available columns: {}"
 
-#~ msgid "Error: Missing required columns for bubble plot: {}. Available columns: {}"
-#~ msgstr "Error: Missing required columns for bubble plot: {}. Available columns: {}"
+#~ msgid ""
+#~ "Error: Missing required columns for bubble plot: {}. Available columns: {}"
+#~ msgstr ""
+#~ "Error: Missing required columns for bubble plot: {}. Available columns: {}"
 
 #~ msgid "Warning: DataFrame is empty after sorting and head for cnet plot."
 #~ msgstr "Warning: DataFrame is empty after sorting and head for cnet plot."
@@ -4188,8 +4289,10 @@ msgstr "刷新失败或无可用模型"
 #~ msgid "Warning: Enrichment DataFrame is empty for cnet plot."
 #~ msgstr "Warning: Enrichment DataFrame is empty for cnet plot."
 
-#~ msgid "Error: Missing required columns for cnet plot: {}. Available columns: {}"
-#~ msgstr "Error: Missing required columns for cnet plot: {}. Available columns: {}"
+#~ msgid ""
+#~ "Error: Missing required columns for cnet plot: {}. Available columns: {}"
+#~ msgstr ""
+#~ "Error: Missing required columns for cnet plot: {}. Available columns: {}"
 
 #~ msgid "Error plotting cnet chart: {}"
 #~ msgstr "Error plotting cnet chart: {}"
@@ -4333,11 +4436,13 @@ msgstr "刷新失败或无可用模型"
 
 #, python-brace-format
 #~ msgid ""
-#~ "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并提供一个简洁的总结。基因功能描述：\n"
+#~ "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，"
+#~ "并提供一个简洁的总结。基因功能描述：\n"
 #~ "\n"
 #~ "{text}\n"
 #~ msgstr ""
-#~ "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，并提供一个简洁的总结。基因功能描述：\n"
+#~ "我正在研究生物学领域的课题，请分析以下基因功能描述与我的研究方向有何关联，"
+#~ "并提供一个简洁的总结。基因功能描述：\n"
 #~ "\n"
 #~ "{text}\n"
 
@@ -4365,8 +4470,14 @@ msgstr "刷新失败或无可用模型"
 #~ msgid "非生物信息专业背景"
 #~ msgstr "非生物信息专业背景"
 
-#~ msgid "的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可"
-#~ msgstr "的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可"
+#~ msgid ""
+#~ "的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程"
+#~ "封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置"
+#~ "和代码编写，即可"
+#~ msgstr ""
+#~ "的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程"
+#~ "封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置"
+#~ "和代码编写，即可"
 
 #~ msgid "开箱即用"
 #~ msgstr "开箱即用"
@@ -4379,10 +4490,14 @@ msgstr "刷新失败或无可用模型"
 #~ "\n"
 
 #~ msgid ""
-#~ "本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的得力助手。\n"
+#~ "本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映"
+#~ "射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据"
+#~ "等。它旨在成为您日常科研工作中不可或缺的得力助手。\n"
 #~ "\n"
 #~ msgstr ""
-#~ "本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的得力助手。\n"
+#~ "本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映"
+#~ "射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据"
+#~ "等。它旨在成为您日常科研工作中不可或缺的得力助手。\n"
 #~ "\n"
 
 #~ msgid "核心亮点与功能\n"
