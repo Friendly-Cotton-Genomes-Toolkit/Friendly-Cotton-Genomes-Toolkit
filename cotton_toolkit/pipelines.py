@@ -13,6 +13,7 @@ from concurrent.futures import as_completed, ThreadPoolExecutor
 from dataclasses import asdict
 from typing import List, Dict, Any, Optional, Callable, Tuple
 
+import numpy as np
 import pandas as pd
 
 from .config.loader import get_genome_data_sources, get_local_downloaded_file_path
@@ -1153,6 +1154,344 @@ def run_download_pipeline(
     progress(100, _("下载流程完成。"))
 
 
+# in pipelines.py
+
+# in pipelines.py
+
+def _generate_r_script_and_data(
+        enrichment_df: pd.DataFrame,
+        r_output_dir: str,
+        file_prefix: str,
+        plot_type: str,
+        plot_kwargs: Dict[str, Any],
+        analysis_title: str,
+        log: Callable,
+        gene_log2fc_map: Optional[Dict[str, float]] = None
+) -> Optional[List[str]]:
+    """
+    Generates a readable R script and its corresponding data file for a given plot type.
+    """
+    try:
+        if not os.path.exists(r_output_dir):
+            os.makedirs(r_output_dir)
+
+        top_n = plot_kwargs.get('top_n', 20)
+        sort_by = plot_kwargs.get('sort_by', 'FDR').lower()
+
+        df_plot = enrichment_df.copy()
+        sort_col = 'FDR'
+        if sort_by == 'pvalue':
+            sort_col = 'PValue'
+        elif sort_by == 'foldenrichment':
+            sort_col = 'RichFactor'
+
+        ascending = sort_by in ['fdr', 'pvalue']
+        current_top_n = plot_kwargs.get('top_n', 10) if plot_type == 'upset' else top_n
+        df_plot = df_plot.sort_values(by=sort_col, ascending=ascending).head(current_top_n)
+
+        if df_plot.empty:
+            log(f"WARNING: DataFrame is empty for plot type '{plot_type}'. Cannot generate R script.", "WARNING")
+            return None
+
+        if 'FDR' in df_plot.columns:
+            fdr_numeric = pd.to_numeric(df_plot['FDR'], errors='coerce').replace(0, np.finfo(float).tiny)
+            df_plot['log10FDR'] = -np.log10(fdr_numeric)
+
+        if plot_type != 'upset':
+            df_plot = df_plot.iloc[::-1].copy()
+
+        data_path = os.path.join(r_output_dir, f"{file_prefix}_{plot_type}_data.csv")
+        script_path = os.path.join(r_output_dir, f"{file_prefix}_{plot_type}_script.R")
+        r_script_content = ""
+        log2fc_data_path = None
+        df_plot.to_csv(data_path, index=False, encoding='utf-8-sig')
+
+        if plot_type == 'bubble':
+            r_script_content = f"""
+# R Script: Bubble Plot for Enrichment Analysis
+
+# 1. Load required packages
+# install.packages(c("ggplot2", "dplyr", "stringr"))
+library(ggplot2)
+library(dplyr)
+library(stringr)
+
+# 2. Load the data
+enrich_data <- read.csv("{os.path.basename(data_path)}", stringsAsFactors = FALSE)
+
+# 3. Prepare data for plotting
+# Convert 'Description' to a factor to preserve the sorting order from Python.
+enrich_data$Description <- factor(enrich_data$Description, levels = unique(enrich_data$Description))
+# Wrap long labels to prevent overlap.
+levels(enrich_data$Description) <- str_wrap(levels(enrich_data$Description), width = 50)
+
+# 4. Create the bubble plot
+bubble_plot <- ggplot(enrich_data, aes(x = RichFactor, y = Description, size = GeneNumber, color = {sort_col})) +
+  geom_point(alpha = 0.8, shape = 16) +
+  scale_color_viridis_c(direction = -1, name = "{sort_col}") +
+  scale_size_continuous(name = "Gene Count", range = c(3, 10)) +
+  labs(
+    title = "{analysis_title}",
+    subtitle = "Top {current_top_n} Enriched Terms by {sort_by.upper()}",
+    x = "Rich Factor",
+    y = "Term Description"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+    plot.subtitle = element_text(hjust = 0.5),
+    axis.text = element_text(colour = "black"),
+    panel.grid.minor = element_blank()
+  )
+
+# 5. Save the plot
+ggsave(
+  "{file_prefix}_bubble_plot_from_R.png",
+  plot = bubble_plot,
+  width = {plot_kwargs.get('width', 10)},
+  height = {plot_kwargs.get('height', 8)},
+  dpi = 300,
+  bg = "white"
+)
+"""
+        elif plot_type == 'bar':
+            use_log2fc = False
+            if gene_log2fc_map and 'Genes' in df_plot.columns:
+                use_log2fc = True
+                avg_fc_list = [np.mean(
+                    [gene_log2fc_map.get(g) for g in re.sub(r'\.\d+$', '', str(gene_str)).split(';') if
+                     g and gene_log2fc_map.get(g) is not None] or [0]) for gene_str in df_plot['Genes']]
+                df_with_fc = df_plot.copy();
+                df_with_fc['avg_log2FC'] = avg_fc_list
+                df_with_fc.to_csv(data_path, index=False, encoding='utf-8-sig')
+            r_script_content = f"""
+# R Script: Bar Plot for Enrichment Analysis
+
+# 1. Load required packages
+library(ggplot2)
+library(dplyr)
+library(stringr)
+
+# 2. Load the data
+enrich_data <- read.csv("{os.path.basename(data_path)}", stringsAsFactors = FALSE)
+
+# 3. Prepare data for plotting
+enrich_data$Description <- factor(enrich_data$Description, levels = unique(enrich_data$Description))
+levels(enrich_data$Description) <- str_wrap(levels(enrich_data$Description), width = 40)
+
+# 4. Create the bar plot
+use_log2fc_color <- {'TRUE' if use_log2fc else 'FALSE'}
+bar_plot <- ggplot(enrich_data, aes(x = log10FDR, y = Description)) +
+  labs(
+    title = "{analysis_title}",
+    subtitle = "Top {current_top_n} Enriched Terms by {sort_by.upper()}",
+    x = "-log10(FDR)",
+    y = "Term Description"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size=16),
+      plot.subtitle = element_text(hjust = 0.5),
+      axis.text = element_text(colour = "black"),
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank()
+  )
+
+# 5. Set fill color based on log2FC availability
+if (use_log2fc_color) {{
+  # Calculate the mean of the log2FC values to create a relative, high-contrast color scale.
+  midpoint_val <- mean(enrich_data$avg_log2FC, na.rm = TRUE)
+  
+  final_plot <- bar_plot +
+    geom_col(aes(fill = avg_log2FC)) +
+    # Use the calculated midpoint to ensure a diverging scale (blue to red), similar to Python's.
+    scale_fill_gradient2(
+      low = "blue",
+      mid = "white",
+      high = "red",
+      midpoint = midpoint_val,
+      name = "Average log2FC"
+    )
+}} else {{
+  final_plot <- bar_plot + geom_col(fill = "skyblue")
+}}
+
+# 6. Save the plot
+ggsave(
+  "{file_prefix}_bar_plot_from_R.png",
+  plot = final_plot,
+  width = {plot_kwargs.get('width', 10)},
+  height = {plot_kwargs.get('height', 8)},
+  dpi = 300,
+  bg = "white"
+)
+"""
+        elif plot_type == 'cnet':
+            cnet_top_n = plot_kwargs.get('top_n', 5)
+            if gene_log2fc_map:
+                log2fc_data_path = os.path.join(r_output_dir, f"{file_prefix}_cnet_log2fc_data.csv")
+                cleaned_fc_data = []
+                processed_keys = set()
+                for k, v in gene_log2fc_map.items():
+                    if not isinstance(k, str): continue
+                    cleaned_key = re.sub(r'\.\d+$', '', k)
+                    if cleaned_key not in processed_keys:
+                        cleaned_fc_data.append({'GeneID': cleaned_key, 'log2FC': v})
+                        processed_keys.add(cleaned_key)
+                if cleaned_fc_data:
+                    pd.DataFrame(cleaned_fc_data).to_csv(log2fc_data_path, index=False, encoding='utf-8-sig')
+
+            r_script_content = f"""
+# R Script: Gene-Concept Network (cnet) Plot (Manual Version)
+
+# 1. Load required packages
+library(ggplot2)
+library(dplyr)
+library(ggraph)
+library(igraph)
+library(tidyr)
+
+# 2. Load data
+enrich_data <- read.csv("{os.path.basename(data_path)}", stringsAsFactors = FALSE)
+gene_log2fc <- NULL
+log2fc_file <- "{os.path.basename(log2fc_data_path) if log2fc_data_path else 'NULL'}"
+if (!is.null(log2fc_file) && file.exists(log2fc_file)) {{
+  log2fc_data <- read.csv(log2fc_file)
+  gene_log2fc <- setNames(log2fc_data$log2FC, log2fc_data$GeneID)
+}}
+
+# 3. Prepare data for network graphing
+edge_list <- enrich_data %>%
+  select(Description, Genes) %>%
+  rename(from = Description, to = Genes) %>%
+  separate_rows(to, sep = ";")
+graph_obj <- graph_from_data_frame(edge_list, directed = FALSE)
+
+# 4. Prepare node attributes
+V(graph_obj)$type <- ifelse(V(graph_obj)$name %in% enrich_data$Description, "Term", "Gene")
+
+if (!is.null(gene_log2fc)) {{
+  # Map log2FC values to each node. Terms will have NA.
+  V(graph_obj)$logFC <- gene_log2fc[V(graph_obj)$name]
+}} else {{
+  V(graph_obj)$logFC <- as.numeric(NA)
+}}
+
+# Set node size based on degree
+node_degrees <- degree(graph_obj, V(graph_obj))
+V(graph_obj)$size <- ifelse(V(graph_obj)$type == "Term", node_degrees, 3)
+
+# 5. Create the plot using ggraph
+set.seed(123)
+cnet_plot <- ggraph(graph_obj, layout = 'fr') +
+  geom_edge_link(alpha = 0.4, colour = 'grey50') +
+  # Map color aesthetic directly to the numeric logFC attribute
+  geom_node_point(aes(color = logFC, size = size), alpha = 0.8) +
+  geom_node_text(aes(label = name), repel = TRUE, size = 3) +
+
+  # Add the color scale, which will create the legend and color the nodes.
+  # 'na.value' sets the color for Term nodes (where logFC is NA).
+  scale_color_gradient2(
+    name = "log2FC",
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0,
+    na.value = "skyblue"
+  ) +
+
+  scale_size_continuous(name = "Gene Count", range = c(3, 15)) +
+  labs(
+    title = "{analysis_title}",
+    subtitle = "Gene-Concept Network"
+  ) +
+  theme_graph() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face="bold"),
+    legend.position = "right"
+  ) +
+  guides(size = guide_legend(order=1), color = guide_colorbar(order=2))
+
+if (!is.null(gene_log2fc)) {{
+  valid_fc_values <- na.omit(V(graph_obj)$logFC[V(graph_obj)$type == 'Gene'])
+  if(length(valid_fc_values) > 0) {{
+    midpoint_val <- mean(valid_fc_values, na.rm = TRUE)
+    cnet_plot <- cnet_plot +
+      scale_color_gradient2(
+        name = "log2FC",
+        low = "blue",
+        mid = "white",
+        high = "red",
+        midpoint = midpoint_val,
+        na.value = "skyblue"
+      )
+  }}
+}} else {{
+    # If there is no logFC data, ensure terms are still colored
+    cnet_plot <- cnet_plot + scale_color_continuous(na.value = "skyblue")
+}}
+
+# 6. Save the plot
+ggsave(
+  "{file_prefix}_cnet_plot_from_R.png",
+  plot = cnet_plot,
+  width = 12, height = 12, dpi = 300, bg = "white"
+)
+"""
+
+        elif plot_type == 'upset':
+            r_script_content = f"""
+# R Script: Upset Plot for Gene Set Intersections
+
+# 1. Load required packages
+# install.packages(c("UpSetR", "stringr"))
+library(UpSetR)
+library(stringr)
+
+# 2. Load the data
+enrich_data <- read.csv("{os.path.basename(data_path)}", stringsAsFactors = FALSE)
+
+# 3. Prepare data for UpSetR
+# Wrap long set names to prevent overlap
+enrich_data$Description <- str_wrap(enrich_data$Description, width = 40)
+
+# Create a named list where names are terms and values are gene vectors.
+gene_list <- strsplit(enrich_data$Genes, ";")
+names(gene_list) <- enrich_data$Description
+
+# 4. Create and save the Upset plot
+png("{file_prefix}_upset_plot_from_R.png", width = 1200, height = 700, res = 100)
+upset(
+  fromList(gene_list),
+  sets = enrich_data$Description,
+  nsets = nrow(enrich_data),
+  nintersects = 40,
+  order.by = "freq",
+
+  # mb.ratio controls the height ratio of the main bar plot to the matrix.
+  # c(0.4, 0.6) gives 40% height to the bar plot and 60% to the matrix.
+  mb.ratio = c(0.4, 0.6),
+  text.scale = 1.3,
+  mainbar.y.label = "Intersection Size",
+  sets.x.label = "Set Size"
+)
+dev.off() # Close the PNG device
+"""
+
+        if r_script_content:
+            with open(script_path, 'w', encoding='utf-8') as f:
+                f.write(r_script_content)
+            generated_files = [data_path, script_path]
+            if log2fc_data_path: generated_files.append(log2fc_data_path)
+            log(f"INFO: Successfully generated R script and data for '{plot_type}' plot.", "INFO")
+            return generated_files
+        return None
+    except Exception as e:
+        log(f"ERROR: An error occurred while generating the R script for plot type '{plot_type}': {e}", "ERROR")
+        log(traceback.format_exc(), "DEBUG")
+        return None
+
+
 def run_enrichment_pipeline(
         config: MainConfig,
         assembly_id: str,
@@ -1171,29 +1510,25 @@ def run_enrichment_pipeline(
         width: float = 10,
         height: float = 8,
         file_format: str = 'png'
-) -> Optional[List[str]]:
+) -> Optional[str]:
     log = lambda msg, level="INFO": status_callback(msg, level)
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            log(_("任务已被用户取消。"), "INFO")
-            progress(100, _("任务已取消。"))
+            log(_("任务已被用户取消。"), "INFO");
+            progress(100, _("任务已取消。"));
             return True
         return False
 
     progress(0, _("富集分析与可视化流程启动。"))
     if check_cancel(): return None
-
-    log(_("INFO: {} 富集与可视化流程启动。").format(analysis_type.upper()))
+    log(_("INFO: {} 富集与可视化流程启动。").format(analysis_type.upper()), "INFO")
 
     if collapse_transcripts:
         original_count = len(study_gene_ids)
-        progress(5, _("正在将RNA合并到基因..."))
-        if check_cancel(): return None
-        log(_("INFO: 正在将RNA合并到基因..."), "INFO")
         study_gene_ids = map_transcripts_to_genes(study_gene_ids)
-        log(_("INFO: 基因列表已从 {} 个RNA合并为 {} 个唯一基因。").format(original_count, len(study_gene_ids)))
+        log(_("INFO: 基因列表已从 {} 个RNA合并为 {} 个唯一基因。").format(original_count, len(study_gene_ids)), "INFO")
 
     try:
         progress(10, _("正在获取基因组信息..."))
@@ -1201,16 +1536,17 @@ def run_enrichment_pipeline(
         genome_sources = get_genome_data_sources(config, logger_func=log)
         genome_info = genome_sources.get(assembly_id)
         if not genome_info:
-            log(_("ERROR: 无法在配置中找到基因组 '{}'。").format(assembly_id))
-            progress(100, _("任务终止：基因组配置错误。"))
+            log(_("ERROR: 无法在配置中找到基因组 '{}'。").format(assembly_id), "ERROR");
+            progress(100, _("任务终止：基因组配置错误。"));
             return None
         gene_id_regex = genome_info.gene_id_regex if hasattr(genome_info, 'gene_id_regex') else None
     except Exception as e:
-        log(_("ERROR: 获取基因组源数据时失败: {}").format(e))
-        progress(100, _("任务终止：获取基因组信息失败。"))
+        log(_("ERROR: 获取基因组源数据时失败: {}").format(e), "ERROR");
+        progress(100, _("任务终止：获取基因组信息失败。"));
         return None
 
     os.makedirs(output_dir, exist_ok=True)
+    r_output_dir = os.path.join(output_dir, "R_scripts_and_data")
     enrichment_df = None
 
     if analysis_type == 'go':
@@ -1218,148 +1554,118 @@ def run_enrichment_pipeline(
         if check_cancel(): return None
         gaf_path = get_local_downloaded_file_path(config, genome_info, 'GO')
         if not gaf_path or not os.path.exists(gaf_path):
-            log(_("ERROR: 未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。").format(assembly_id))
-            progress(100, _("任务终止：缺少GO注释文件。"))
+            log(_("ERROR: 未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。").format(assembly_id), "ERROR");
+            progress(100, _("任务终止：缺少GO注释文件。"));
             return None
         enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, go_annotation_path=gaf_path,
                                           output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex,
                                           progress_callback=lambda p, m: progress(20 + int(p * 0.4),
-                                                                                  _("GO富集: {}").format(m)))  # 20%-60%
-
+                                                                                  _("GO富集: {}").format(m)))
     elif analysis_type == 'kegg':
         progress(20, _("正在执行KEGG富集分析..."))
         if check_cancel(): return None
         pathways_path = get_local_downloaded_file_path(config, genome_info, 'KEGG_pathways')
         if not pathways_path or not os.path.exists(pathways_path):
-            log(_("ERROR: 未找到 '{}' 的KEGG通路文件。请先下载数据。").format(assembly_id))
-            progress(100, _("任务终止：缺少KEGG通路文件。"))
+            log(_("ERROR: 未找到 '{}' 的KEGG通路文件。请先下载数据。").format(assembly_id), "ERROR");
+            progress(100, _("任务终止：缺少KEGG通路文件。"));
             return None
         enrichment_df = run_kegg_enrichment(study_gene_ids=study_gene_ids, kegg_pathways_path=pathways_path,
                                             output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex,
                                             progress_callback=lambda p, m: progress(20 + int(p * 0.4),
-                                                                                    _("KEGG富集: {}").format(
-                                                                                        m)))  # 20%-60%
-
-
-    else:
-        log(_("ERROR: 未知的分析类型 '{}'。").format(analysis_type))
-        progress(100, _("任务终止：分析类型未知。"))
-        return None
+                                                                                    _("KEGG富集: {}").format(m)))
 
     if check_cancel(): return None
-
     if enrichment_df is None or enrichment_df.empty:
-        log(_("WARNING: 富集分析未发现任何显著结果，流程终止。"))
-        progress(100, _("任务完成：无显著结果。"))
-        return []
+        log(_("WARNING: 富集分析未发现任何显著结果，流程终止。"), "WARNING");
+        progress(100, _("任务完成：无显著结果。"));
+        return "Enrichment analysis completed with no significant results."
 
     progress(60, _("富集分析完成，正在生成图表..."))
-    if check_cancel(): return None
 
     generated_plots = []
-    total_plot_types = len(plot_types)
-    current_plot_index = 0
+    plot_kwargs_common = {'top_n': top_n, 'show_title': show_title, 'width': width, 'height': height,
+                          'sort_by': sort_by}
 
-    plot_kwargs_common = {
-        'top_n': top_n, 'show_title': show_title, 'width': width, 'height': height
-    }
-
-    if analysis_type == 'go' and 'Namespace' in enrichment_df.columns:
-        namespaces = enrichment_df['Namespace'].unique()
-        for ns in namespaces:
-            if check_cancel(): break
-            df_sub = enrichment_df[enrichment_df['Namespace'] == ns]
-            if df_sub.empty: continue
-
-            title_ns = f"GO Enrichment - {ns}"
-
-            # 统一计算每个图的进度
-            def get_progress():
-                nonlocal current_plot_index
-                progress_each_plot = (40 / total_plot_types) / len(namespaces) if total_plot_types > 0 else 0
-                current_plot_index += 1
-                return 60 + int(progress_each_plot * (current_plot_index - 1))
-
-            if 'bubble' in plot_types:
-                if check_cancel(): break
-                progress(get_progress(), _("生成气泡图 ({})").format(ns))
-                output_path = os.path.join(output_dir, f"go_enrichment_{ns}_bubble.{file_format}")
-                plot_path = plot_enrichment_bubble(enrichment_df=df_sub, output_path=output_path, title=title_ns,
-                                                   sort_by=sort_by, **plot_kwargs_common)
-                if plot_path: generated_plots.append(plot_path)
-
-            if 'bar' in plot_types:
-                if check_cancel(): break
-                progress(get_progress(), _("生成条形图 ({})").format(ns))
-                output_path = os.path.join(output_dir, f"go_enrichment_{ns}_bar.{file_format}")
-                plot_path = plot_enrichment_bar(enrichment_df=df_sub, output_path=output_path, title=title_ns,
-                                                sort_by=sort_by, gene_log2fc_map=gene_log2fc_map, **plot_kwargs_common)
-                if plot_path: generated_plots.append(plot_path)
-
-            if 'upset' in plot_types:
-                if check_cancel(): break
-                progress(get_progress(), _("生成Upset图 ({})").format(ns))
-                output_path = os.path.join(output_dir, f"go_enrichment_{ns}_upset.{file_format}")
-                plot_path = plot_enrichment_upset(enrichment_df=df_sub, output_path=output_path,
-                                                  top_n=plot_kwargs_common.get('top_n', 10))
-                if plot_path: generated_plots.append(plot_path)
-
-            if 'cnet' in plot_types:
-                if check_cancel(): break
-                progress(get_progress(), _("生成网络图(Cnet) ({})").format(ns))
-                output_path = os.path.join(output_dir, f"go_enrichment_{ns}_cnet.{file_format}")
-                plot_path = plot_enrichment_cnet(enrichment_df=df_sub, output_path=output_path,
-                                                 top_n=plot_kwargs_common.get('top_n', 5),
-                                                 gene_log2fc_map=gene_log2fc_map)
-                if plot_path: generated_plots.append(plot_path)
-
-    else:  # 非GO分析，不分命名空间
-        title = f"{analysis_type.upper()} Enrichment"
-        file_prefix = f"{analysis_type}_enrichment"
-
-        def get_progress():
-            nonlocal current_plot_index
-            progress_each_plot = (40 / total_plot_types) if total_plot_types > 0 else 0
-            current_plot_index += 1
-            return 60 + int(progress_each_plot * (current_plot_index - 1))
-
+    def process_python_plots(df_sub, title_prefix, file_prefix_ns):
+        """Helper function to run all selected python plotting functions."""
         if 'bubble' in plot_types:
-            if check_cancel(): return None
-            progress(get_progress(), _("生成气泡图..."))
-            output_path = os.path.join(output_dir, f"{file_prefix}_bubble.{file_format}")
-            plot_path = plot_enrichment_bubble(enrichment_df=enrichment_df, output_path=output_path, title=title,
-                                               sort_by=sort_by, **plot_kwargs_common)
+            plot_path = plot_enrichment_bubble(df_sub,
+                                               os.path.join(output_dir, f"{file_prefix_ns}_bubble.{file_format}"),
+                                               title=f"{title_prefix} Bubble Plot", **plot_kwargs_common)
             if plot_path: generated_plots.append(plot_path)
 
         if 'bar' in plot_types:
-            if check_cancel(): return None
-            progress(get_progress(), _("生成条形图..."))
-            output_path = os.path.join(output_dir, f"{file_prefix}_bar.{file_format}")
-            plot_path = plot_enrichment_bar(enrichment_df=enrichment_df, output_path=output_path, title=title,
-                                            sort_by=sort_by, gene_log2fc_map=gene_log2fc_map, **plot_kwargs_common)
+            plot_path = plot_enrichment_bar(df_sub, os.path.join(output_dir, f"{file_prefix_ns}_bar.{file_format}"),
+                                            title=f"{title_prefix} Bar Plot", gene_log2fc_map=gene_log2fc_map,
+                                            **plot_kwargs_common)
             if plot_path: generated_plots.append(plot_path)
 
         if 'upset' in plot_types:
-            if check_cancel(): return None
-            progress(get_progress(), _("生成Upset图..."))
-            output_path = os.path.join(output_dir, f"{file_prefix}_upset.{file_format}")
-            plot_path = plot_enrichment_upset(enrichment_df=enrichment_df, output_path=output_path,
+            plot_path = plot_enrichment_upset(df_sub, os.path.join(output_dir, f"{file_prefix_ns}_upset.{file_format}"),
                                               top_n=plot_kwargs_common.get('top_n', 10))
             if plot_path: generated_plots.append(plot_path)
 
         if 'cnet' in plot_types:
-            if check_cancel(): return None
-            progress(get_progress(), _("生成网络图(Cnet)..."))
-            output_path = os.path.join(output_dir, f"{file_prefix}_cnet.{file_format}")
-            plot_path = plot_enrichment_cnet(enrichment_df=enrichment_df, output_path=output_path,
+            plot_path = plot_enrichment_cnet(df_sub, os.path.join(output_dir, f"{file_prefix_ns}_cnet.{file_format}"),
                                              top_n=plot_kwargs_common.get('top_n', 5), gene_log2fc_map=gene_log2fc_map)
             if plot_path: generated_plots.append(plot_path)
 
+    if analysis_type == 'go' and 'Namespace' in enrichment_df.columns:
+        for ns in enrichment_df['Namespace'].unique():
+            if check_cancel(): break
+            df_sub = enrichment_df[enrichment_df['Namespace'] == ns]
+            if df_sub.empty: continue
+            process_python_plots(df_sub, f"GO Enrichment - {ns}", f"go_enrichment_{ns}")
+    else:
+        process_python_plots(enrichment_df, f"{analysis_type.upper()} Enrichment",
+                             f"{analysis_type.lower()}_enrichment")
 
-    progress(100, _("所有图表已生成。"))
-    log(_("流程完成。在 '{}' 中成功生成 {} 个图表。").format(output_dir, len(generated_plots)), "INFO")
+    progress(95, _("正在生成 R 脚本和数据..."))
+    if check_cancel(): return None
+    log(_("INFO: 正在为绘图生成 R 脚本和配套数据..."), "INFO")
 
-    return generated_plots
+    generated_files = generated_plots
+    r_plot_types = plot_types
+
+    if r_plot_types:
+        try:
+            os.makedirs(r_output_dir, exist_ok=True)
+            readme_path = os.path.join(r_output_dir, "readme.md")
+            readme_content = "Due to inconsistencies in some of the libraries or algorithms used by R and Python, the generated plots may not be completely identical."
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(readme_content)
+            generated_files.append(readme_path)
+        except Exception as e:
+            log(f"WARNING: Could not write readme.md file. Reason: {e}", "WARNING")
+
+    def generate_r_scripts(df_sub, title_prefix, file_prefix_ns):
+        for plot_type in r_plot_types:
+            if check_cancel(): break
+            r_files = _generate_r_script_and_data(
+                enrichment_df=df_sub, r_output_dir=r_output_dir, file_prefix=file_prefix_ns,
+                plot_type=plot_type, plot_kwargs=plot_kwargs_common, analysis_title=title_prefix,
+                log=log, gene_log2fc_map=gene_log2fc_map
+            )
+            if r_files: generated_files.extend(r_files)
+
+    if analysis_type == 'go' and 'Namespace' in enrichment_df.columns:
+        for ns in enrichment_df['Namespace'].unique():
+            if check_cancel(): break
+            df_sub = enrichment_df[enrichment_df['Namespace'] == ns]
+            if df_sub.empty: continue
+            generate_r_scripts(df_sub, f"GO Enrichment - {ns}", f"go_enrichment_{ns}")
+    else:
+        generate_r_scripts(enrichment_df, f"{analysis_type.upper()} Enrichment", f"{analysis_type.lower()}_enrichment")
+
+    progress(100, _("所有图表和脚本已生成。"))
+    final_message = _("富集分析成功！\n\n在输出目录 '{}' 中共生成 {} 个文件。\n").format(os.path.abspath(output_dir),
+                                                                                       len(generated_files))
+    if any(f.endswith('_script.R') for f in generated_files):
+        final_message += _(
+            "\n✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 '{}' 子文件夹中。").format(
+            os.path.basename(r_output_dir))
+    log(final_message, "SUCCESS")
+    return final_message
 
 
 def run_preprocess_annotation_files(

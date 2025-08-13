@@ -37,7 +37,7 @@ class EnrichmentTab(BaseTab):
         self.upset_plot_var = tk.BooleanVar(value=False)
         self.cnet_plot_var = tk.BooleanVar(value=False)
         self.top_n_var = tk.IntVar(value=20)
-        # self.sort_by_var = tk.StringVar(value="FDR")
+        self.sort_by_var = tk.StringVar(value="FDR")
         self.show_title_var = tk.BooleanVar(value=True)
         self.width_var = tk.DoubleVar(value=10.0)
         self.height_var = tk.DoubleVar(value=8.0)
@@ -79,14 +79,14 @@ class EnrichmentTab(BaseTab):
                                        relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg)
         self.gene_input_text.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
         self.gene_input_text.after(10, lambda: self.app.ui_manager.add_placeholder(
-            self.gene_input_text,self.app.placeholders.get("enrichment_genes_input", "...")))
+            self.gene_input_text, self.app.placeholders.get("enrichment_genes_input", "...")))
 
         self.gene_input_text.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e, self.gene_input_text,
                                                                                               "enrichment_genes_input"))
         self.gene_input_text.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.gene_input_text,
                                                                                                 "enrichment_genes_input"))
 
-        # --- 【新增】绑定键盘释放事件，以触发自动识别 ---
+        # --- 绑定键盘释放事件，以触发自动识别 ---
         self.gene_input_text.bind("<KeyRelease>", self._on_gene_input_change)
 
         self.format_card = ttkb.LabelFrame(parent_frame, text=_("输入格式与分析类型"), bootstyle="secondary")
@@ -149,11 +149,16 @@ class EnrichmentTab(BaseTab):
         self.top_n_entry = ttk.Entry(self.plot_config_card, textvariable=self.top_n_var, width=10)
         self.top_n_entry.grid(row=1, column=1, sticky="w", padx=10, pady=5)
 
-        # self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
-        # self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
+        #self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
+        #self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
         #self.sort_by_dropdown = ttkb.OptionMenu(self.plot_config_card, self.sort_by_var, "FDR", "FDR", "PValue",
-        #                                        "FoldEnrichment", bootstyle="info")
-        # self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
+        #                                        bootstyle="info")
+        #self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
+
+        self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
+        self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
+        self.sort_by_value_label = ttk.Label(self.plot_config_card, text="FDR", font=self.app.app_font)
+        self.sort_by_value_label.grid(row=2, column=1, sticky="w", padx=10, pady=5)
 
         self.show_title_check = ttkb.Checkbutton(self.plot_config_card, text=_("显示图表标题"),
                                                  variable=self.show_title_var, bootstyle="round-toggle")
@@ -196,15 +201,11 @@ class EnrichmentTab(BaseTab):
             self.assembly_id_var  # 传递控制下拉菜单的变量
         )
 
-
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        # ... 此方法保持不变 ...
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.assembly_id_var, assembly_ids,
                                                _("无可用基因组"))
 
-
     def start_enrichment_task(self):
-        # ... 此方法保持不变 ...
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
@@ -271,6 +272,7 @@ class EnrichmentTab(BaseTab):
             'study_gene_ids': study_gene_ids, 'analysis_type': self.analysis_type_var.get(),
             'plot_types': plot_types, 'output_dir': output_dir,
             'gene_log2fc_map': gene_log2fc_map, 'top_n': self.top_n_var.get(),
+            'sort_by': self.sort_by_var.get(),
             'show_title': self.show_title_var.get(),
             'width': self.width_var.get(), 'height': self.height_var.get(),
             'file_format': self.file_format_var.get(), 'collapse_transcripts': self.collapse_transcripts_var.get()

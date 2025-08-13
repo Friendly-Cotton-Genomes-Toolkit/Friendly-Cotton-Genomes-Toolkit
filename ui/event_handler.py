@@ -578,6 +578,7 @@ class EventHandler:
             add_separator()
             add_label(_("致谢与引用"), header_font)
             add_label(_("本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"), content_font)
+
             add_label("CottonGen " + _("文章:"), header_font).pack(pady=(10, 5))
             add_label(
                 "• Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.",
@@ -585,6 +586,12 @@ class EventHandler:
             add_label(
                 "• Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.",
                 content_font)
+
+            add_label("BLAST+ " + _("文章:"), header_font).pack(pady=(10, 5))
+            add_label(
+                "• Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. BLAST+: architecture and applications. BMC Bioinformatics. 2009 Dec 15;10:421. doi: 10.1186/1471-2105-10-421. PMID: 20003500; PMCID: PMC2803857.",
+                content_font)
+
             add_label(_("基因组引用文献:"), header_font).pack(pady=(10, 5))
             citations = [
                 "• NAU-NBI_v1.1: Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015",
@@ -631,7 +638,7 @@ class EventHandler:
         ok_button.pack()
 
         about_win.update_idletasks()
-        final_w = 750
+        final_w = 1000
         about_win.geometry(f'{final_w}x1')
         about_win.update_idletasks()
         req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45
@@ -663,7 +670,7 @@ class EventHandler:
 
         # --- 最终版动态尺寸与居中 ---
         # 1. 先设置一个固定的宽度
-        final_w = 750
+        final_w = 1000
         about_win.geometry(f'{final_w}x1')  # 用最小高度强制设定宽度
         about_win.update_idletasks()  # 强制UI刷新，使文字根据新宽度换行
 

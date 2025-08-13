@@ -192,8 +192,15 @@ def run_go_enrichment(
             if len(background_df.columns) > 2: rename_map[background_df.columns[2]] = 'Description'
             if len(background_df.columns) > 3: rename_map[background_df.columns[3]] = 'Namespace'
             background_df.rename(columns=rename_map, inplace=True)
-            if 'Namespace' not in background_df.columns:
+
+            # 利用 Description 列中的信息来推断 Namespace，而不是使用硬编码的 'GO'
+            if 'Namespace' not in background_df.columns and 'Description' in background_df.columns:
+                background_df['Namespace'] = background_df['Description'].apply(
+                    lambda x: x.split(':')[0] if isinstance(x, str) and ':' in x else 'GO'
+                )
+            elif 'Namespace' not in background_df.columns:
                 background_df['Namespace'] = 'GO'
+
     except Exception as e:
         log(_("读取或重命名GO背景文件失败: {}").format(e), "ERROR")
         progress(100, _("任务终止：读取GO背景失败。"))
@@ -205,7 +212,7 @@ def run_go_enrichment(
         status_callback,
         output_dir,
         gene_id_regex=gene_id_regex,
-        progress_callback=progress  # 将回调函数传递下去
+        progress_callback=progress
     )
 
 
@@ -259,3 +266,5 @@ def run_kegg_enrichment(
         gene_id_regex=gene_id_regex,
         progress_callback=progress  # 将回调函数传递下去
     )
+
+
