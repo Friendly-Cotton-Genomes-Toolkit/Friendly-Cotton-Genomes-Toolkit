@@ -8,7 +8,8 @@ from upsetplot import from_contents, UpSet
 from typing import List, Optional, Dict
 import os
 import textwrap
-import re  # 【新增】导入re模块
+import re
+import logging # 修改: 导入 logging
 
 try:
     import builtins
@@ -17,6 +18,9 @@ try:
 except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
+
+# 修改: 创建 logger 实例
+logger = logging.getLogger("cotton_toolkit.tools.visualizer")
 
 
 def plot_enrichment_bubble(
@@ -33,17 +37,16 @@ def plot_enrichment_bubble(
     Generates an enrichment bubble plot with an R/ggplot2-like style.
     """
     if enrichment_df.empty:
-        print(_("Warning: Enrichment DataFrame is empty for bubble plot."))
+        # 修改: 使用 logger.warning
+        logger.warning(_("Warning: Enrichment DataFrame is empty for bubble plot."))
         return None
 
     df = enrichment_df.copy()
     fig, ax = None, None
 
     try:
-        # 使用更接近ggplot2的样式
         plt.style.use('seaborn-v0_8-whitegrid')
 
-        # --- 数据准备 ---
         actual_sort_by_col = 'FDR'
         if sort_by.lower() == 'pvalue':
             possible_cols = ['PValue', 'p_value', 'P-value']
@@ -72,7 +75,6 @@ def plot_enrichment_bubble(
             dynamic_height = 8 + (num_terms - 10) * 0.5
         df = df.iloc[::-1]
 
-        # --- 绘图 ---
         fig, ax = plt.subplots(figsize=(width, dynamic_height))
 
         scatter = ax.scatter(
@@ -80,12 +82,8 @@ def plot_enrichment_bubble(
             c=df[actual_sort_by_col], cmap='viridis_r', alpha=0.9, edgecolors="black", linewidth=0.5
         )
 
-        # --- 优化图例和整体布局以模仿ggplot2风格 ---
-
-        # 1. 调整子图布局，为右侧图例和顶部标题留出空间
         fig.subplots_adjust(right=0.78, top=0.85)
 
-        # 2. 创建 Gene Count (大小) 图例
         min_size = df['GeneNumber'].min()
         max_size = df['GeneNumber'].max()
         legend_labels = [int(i) for i in np.linspace(min_size, max_size, 4)]
@@ -101,19 +99,17 @@ def plot_enrichment_bubble(
             loc='upper left',
             bbox_to_anchor=(1.04, 1.02),
             frameon=False,
-            labelspacing=1.5,  # 修改：减小行距使其更紧凑
+            labelspacing=1.5,
             title_fontsize=12,
             fontsize=10
         )
         ax.add_artist(legend1)
 
-        # 3. 创建 FDR (颜色) 图例 (Colorbar)
         cbar_ax = fig.add_axes([0.86, 0.2, 0.03, 0.35])
         cbar = plt.colorbar(scatter, cax=cbar_ax, orientation='vertical')
         cbar.ax.set_title('FDR', pad=10, fontsize=12)
         cbar.outline.set_visible(False)
 
-        # --- 坐标轴标签和网格线 ---
         ax.set_xlabel("Rich Factor", fontsize=12)
         ax.set_ylabel("Term Description", fontsize=12)
         y_labels = [textwrap.fill(label, width=50, break_long_words=False) for label in df['Description']]
@@ -122,7 +118,6 @@ def plot_enrichment_bubble(
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-        # --- 标题和副标题 ---
         if show_title:
             main_title_x_pos = 0.5 * (fig.subplotpars.right)
             fig.suptitle(title, fontsize=16, fontweight='bold', x=main_title_x_pos, y=0.98)
@@ -131,7 +126,8 @@ def plot_enrichment_bubble(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(_("Error plotting bubble chart: {}").format(e))
+        # 修改: 使用 logger.error
+        logger.error(_("Error plotting bubble chart: {}").format(e))
         return None
     finally:
         if fig is not None:
@@ -149,14 +145,15 @@ def plot_enrichment_bar(
         height: float = 8,
         gene_log2fc_map: Optional[Dict[str, float]] = None
 ) -> Optional[str]:
-    if enrichment_df is None or enrichment_df.empty: return None
+    if enrichment_df is None or enrichment_df.empty:
+        # 修改: 使用 logger.warning
+        logger.warning(_("Warning: Enrichment DataFrame is empty for bar plot."))
+        return None
     fig, ax = None, None
     try:
-        # --- STYLE MODIFICATION: Switch to 'whitegrid' for consistency ---
         plt.style.use('seaborn-v0_8-whitegrid')
 
         df_plot = enrichment_df.copy()
-        # Data preparation (remains the same)
         actual_sort_by_col = 'FDR'
         if sort_by.lower() == 'pvalue':
             actual_sort_by_col = 'PValue'
@@ -185,7 +182,6 @@ def plot_enrichment_bar(
         fig, ax = plt.subplots(figsize=(width, height))
         y_pos = range(len(df_plot))
 
-        # The 'coolwarm' diverging palette is a strong academic choice for up/down regulation
         if use_log2fc_color:
             norm = plt.Normalize(df_plot['avg_log2FC'].min(), df_plot['avg_log2FC'].max())
             cmap = plt.get_cmap('coolwarm')
@@ -203,7 +199,6 @@ def plot_enrichment_bar(
         ax.set_xlabel('-log10(FDR)', fontsize=12)
         ax.tick_params(axis='x', labelsize=10)
 
-        # Customize grid for bar chart
         ax.grid(True, which='major', axis='x', linestyle='--', linewidth=0.5, color='grey', alpha=0.6)
         ax.grid(False, which='major', axis='y')
 
@@ -215,7 +210,8 @@ def plot_enrichment_bar(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(_("Error plotting bar chart: {}").format(e))
+        # 修改: 使用 logger.error
+        logger.error(_("Error plotting bar chart: {}").format(e))
         return None
     finally:
         if fig is not None:
@@ -228,32 +224,34 @@ def plot_enrichment_upset(
         top_n: int = 10
 ) -> Optional[str]:
     if enrichment_df is None or enrichment_df.empty:
-        print(_("Warning: Enrichment DataFrame is empty for upset plot."))
+        # 修改: 使用 logger.warning
+        logger.warning(_("Warning: Enrichment DataFrame is empty for upset plot."))
         return None
     fig = None
     try:
         required_cols = ['FDR', 'Description', 'Genes']
         if not all(col in enrichment_df.columns for col in required_cols):
             missing_cols = [col for col in required_cols if col not in enrichment_df.columns]
-            print(_("Error: Missing required columns for upset plot: {}. Available columns: {}").format(missing_cols,
+            # 修改: 使用 logger.error
+            logger.error(_("Error: Missing required columns for upset plot: {}. Available columns: {}").format(missing_cols,
                                                                                                         enrichment_df.columns.tolist()))
             return None
 
         df_plot = enrichment_df.sort_values(by='FDR').head(top_n)
 
         if df_plot.empty:
-            print(_("Warning: DataFrame is empty after sorting and head for upset plot."))
+            # 修改: 使用 logger.warning
+            logger.warning(_("Warning: DataFrame is empty after sorting and head for upset plot."))
             return None
 
         gene_sets = {row['Description']: set(row['Genes'].split(';')) for index, row in df_plot.iterrows()}
         upset_data = from_contents(gene_sets)
 
-        # 【优化】Upset图的字体大小和图表大小
         plt.style.use('seaborn-v0_8-whitegrid')
-        fig = plt.figure(figsize=(12, 7 + top_n * 0.2))  # 根据富集项数量调整高度
+        fig = plt.figure(figsize=(12, 7 + top_n * 0.2))
 
         upset = UpSet(upset_data, orientation='horizontal', sort_by='degree',
-                      show_counts=True, element_size=40)  # 调整元素大小
+                      show_counts=True, element_size=40)
         upset.plot(fig=fig)
 
         plt.suptitle("Gene Overlap in Enriched Terms", fontsize=16, y=0.98)
@@ -262,7 +260,8 @@ def plot_enrichment_upset(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(_("Error plotting upset chart: {}").format(e))
+        # 修改: 使用 logger.error
+        logger.error(_("Error plotting upset chart: {}").format(e))
         return None
     finally:
         if fig is not None:
@@ -302,8 +301,7 @@ def plot_enrichment_cnet(
                       G.nodes(data=True)]
 
         node_colors = []
-        # --- STYLE MODIFICATION: Use a more neutral color for terms to emphasize genes ---
-        term_color = '#D3D3D3'  # Light Grey
+        term_color = '#D3D3D3'
         gene_default_color = 'lightgrey'
         cmap = plt.get_cmap('coolwarm')
         norm = None
@@ -319,7 +317,6 @@ def plot_enrichment_cnet(
                 else:
                     node_colors.append(gene_default_color)
 
-        # Use a clean, blank style for network plots
         plt.style.use('default')
         fig, ax = plt.subplots(figsize=(14, 14))
         ax.grid(False)
@@ -354,7 +351,8 @@ def plot_enrichment_cnet(
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         return output_path
     except Exception as e:
-        print(_(f"Error plotting cnet chart: {e}"))
+        # 修改: 使用 logger.error
+        logger.error(_(f"Error plotting cnet chart: {e}"))
         return None
     finally:
         if fig is not None:

@@ -70,7 +70,6 @@ def load_and_map_homology(homology_df: pd.DataFrame, homology_columns: Dict[str,
     return homology_map
 
 
-# 【新增】核心逻辑执行函数
 def _execute_full_mapping_logic(
         source_gene_ids: List[str],
         source_genome_info: GenomeSourceItem,
@@ -81,7 +80,6 @@ def _execute_full_mapping_logic(
         selection_criteria_s_to_b: Dict[str, Any],
         selection_criteria_b_to_t: Dict[str, Any],
         homology_columns: Dict[str, str],
-        log: Callable,
         progress: Callable
 ) -> Tuple[Optional[pd.DataFrame], List[str]]:
     # 这部分包含了您文件中原有的、能够成功运行的完整A->B->C逻辑
@@ -124,7 +122,8 @@ def _execute_full_mapping_logic(
     secondary_sort_cols, ascending_flags = [score_s2b_col, score_b2t_col], [False, False]
 
     if strict_mode and is_cotton_to_cotton:
-        log(_("已启用严格模式：仅保留同亚组、同染色体编号的匹配。"), "INFO")
+        # 修改：使用标准logger
+        logger.info(_("已启用严格模式：仅保留同亚组、同染色体编号的匹配。"))
         merged_df['Source_Parsed'] = merged_df['Source_Gene_ID'].apply(parse_gene_id)
         merged_df['Target_Parsed'] = merged_df['Target_Gene_ID'].apply(parse_gene_id)
         condition = ((merged_df['Source_Parsed'].notna()) & (merged_df['Target_Parsed'].notna()) & (
@@ -132,7 +131,8 @@ def _execute_full_mapping_logic(
                                  merged_df['Source_Parsed'].str[1] == merged_df['Target_Parsed'].str[1]))
         sorted_df = merged_df[condition].sort_values(by=secondary_sort_cols, ascending=ascending_flags)
     else:
-        log(_("严格模式已关闭，使用常规双分数排序规则。"), "INFO")
+        # 修改：使用标准logger
+        logger.info(_("严格模式已关闭，使用常规双分数排序规则。"))
         sorted_df = merged_df.sort_values(by=secondary_sort_cols, ascending=ascending_flags)
 
     progress(90, _("正在筛选 Top N 结果..."))
@@ -142,13 +142,14 @@ def _execute_full_mapping_logic(
 
     successfully_mapped_genes = set(final_df['Source_Gene_ID'].unique())
     failed_genes = [gid for gid in source_gene_ids if gid not in successfully_mapped_genes]
-    if failed_genes: log(_("信息: {} 个源基因未能找到符合条件的同源匹配。").format(len(failed_genes)), "INFO")
+    if failed_genes:
+        # 修改：使用标准logger
+        logger.info(_("信息: {} 个源基因未能找到符合条件的同源匹配。").format(len(failed_genes)))
 
     final_df = final_df.drop(columns=['Source_Parsed', 'Target_Parsed'], errors='ignore').reset_index(drop=True)
     return final_df, failed_genes
 
 
-# 【重构后】的智能函数
 def map_genes_via_bridge(
         source_gene_ids: List[str],
         source_assembly_name: str,
@@ -161,11 +162,10 @@ def map_genes_via_bridge(
         homology_columns: Dict[str, str],
         source_genome_info: GenomeSourceItem,
         target_genome_info: GenomeSourceItem,
-        status_callback: Optional[Callable[[str, str], None]] = None,
         progress_callback: Optional[Callable] = None,
         **kwargs
 ) -> Tuple[Optional[pd.DataFrame], List[str]]:
-    log = status_callback if status_callback else lambda msg, level="INFO": logger.info(f"[{level}] {msg}")
+    # 修改：不再使用 log 回调，直接使用 logger
     progress = progress_callback if progress_callback else lambda p, m: None
     bridge_genome_info = kwargs.get('bridge_genome_info')
     if not bridge_genome_info: raise ValueError("Bridge genome info is required.")
@@ -173,10 +173,9 @@ def map_genes_via_bridge(
     is_map_to_bridge = (target_assembly_name == bridge_species_name)
     is_map_from_bridge = (source_assembly_name == bridge_species_name)
 
-    # 模式1: 棉花 -> 拟南芥 (A -> B)
     if is_map_to_bridge and not is_map_from_bridge:
-        log(_("智能映射: 检测到 [源 -> 桥梁] 模式，构建虚拟流程..."), "INFO")
-        # 创建一个虚拟的 B->B 自身映射表
+        # 修改：使用标准logger
+        logger.info(_("智能映射: 检测到 [源 -> 桥梁] 模式，构建虚拟流程..."))
         bridge_col = homology_columns.get("match", "Match")
         query_col = homology_columns.get("query", "Query")
         possible_hits = source_to_bridge_homology_df[source_to_bridge_homology_df[query_col].isin(source_gene_ids)]
@@ -189,25 +188,22 @@ def map_genes_via_bridge(
             homology_columns.get("pid", "PID"): [100.0] * len(bridge_genes),
         })
 
-        # 对虚拟步骤放宽筛选
         relaxed_b2t_criteria = {**selection_criteria_b_to_t, 'top_n': 1, 'evalue_threshold': None,
                                 'pid_threshold': None, 'score_threshold': None}
 
         final_df, failed_genes = _execute_full_mapping_logic(
             source_gene_ids=source_gene_ids,
             source_genome_info=source_genome_info,
-            target_genome_info=bridge_genome_info,  # 目标信息用桥梁的
+            target_genome_info=bridge_genome_info,
             bridge_genome_info=bridge_genome_info,
             source_to_bridge_homology_df=source_to_bridge_homology_df,
-            bridge_to_target_homology_df=dummy_b2t_df,  # 使用虚拟数据
+            bridge_to_target_homology_df=dummy_b2t_df,
             selection_criteria_s_to_b=selection_criteria_s_to_b,
             selection_criteria_b_to_t=relaxed_b2t_criteria,
             homology_columns=homology_columns,
-            log=log, progress=progress
+            progress=progress
         )
-        # 清理虚拟步骤产生的冗余列
         if 'Target_Gene_ID' in final_df.columns and 'Bridge_Gene_ID' in final_df.columns:
-            # 比较前先确保数据类型一致且无空值
             bridge_ids = final_df['Bridge_Gene_ID'].dropna()
             target_ids = final_df['Target_Gene_ID'].dropna()
             if len(bridge_ids) == len(target_ids) and all(bridge_ids == target_ids):
@@ -215,38 +211,35 @@ def map_genes_via_bridge(
 
         return final_df, failed_genes
 
-    # 模式2: 拟南芥 -> 棉花 (B -> C)
     elif is_map_from_bridge and not is_map_to_bridge:
-        log(_("智能映射: 检测到 [桥梁 -> 目标] 模式，构建虚拟流程..."), "INFO")
-        # 创建一个虚拟的 B->B 自身映射表
+        # 修改：使用标准logger
+        logger.info(_("智能映射: 检测到 [桥梁 -> 目标] 模式，构建虚拟流程..."))
         query_col = homology_columns.get("query", "Query")
         match_col = homology_columns.get("match", "Match")
         dummy_s2b_df = pd.DataFrame({
-            query_col: source_gene_ids,  # 源基因就是桥梁基因
+            query_col: source_gene_ids,
             match_col: source_gene_ids,
             homology_columns.get("score", "Score"): [9999] * len(source_gene_ids),
             homology_columns.get("evalue", "Exp"): [0] * len(source_gene_ids),
             homology_columns.get("pid", "PID"): [100.0] * len(source_gene_ids),
         })
-        # 对虚拟步骤放宽筛选
         relaxed_s2b_criteria = {**selection_criteria_s_to_b, 'top_n': 1, 'evalue_threshold': None,
                                 'pid_threshold': None, 'score_threshold': None}
 
         final_df, failed_genes = _execute_full_mapping_logic(
             source_gene_ids=source_gene_ids,
-            source_genome_info=bridge_genome_info,  # 源信息用桥梁的
+            source_genome_info=bridge_genome_info,
             target_genome_info=target_genome_info,
             bridge_genome_info=bridge_genome_info,
-            source_to_bridge_homology_df=dummy_s2b_df,  # 使用虚拟数据
+            source_to_bridge_homology_df=dummy_s2b_df,
             bridge_to_target_homology_df=bridge_to_target_homology_df,
             selection_criteria_s_to_b=relaxed_s2b_criteria,
             selection_criteria_b_to_t=selection_criteria_b_to_t,
             homology_columns=homology_columns,
-            log=log, progress=progress
+            progress=progress
         )
         return final_df, failed_genes
 
-    # 模式3: 标准 A -> B -> C
     else:
         return _execute_full_mapping_logic(
             source_gene_ids=source_gene_ids,
@@ -258,5 +251,5 @@ def map_genes_via_bridge(
             selection_criteria_s_to_b=selection_criteria_s_to_b,
             selection_criteria_b_to_t=selection_criteria_b_to_t,
             homology_columns=homology_columns,
-            log=log, progress=progress
+            progress=progress
         )

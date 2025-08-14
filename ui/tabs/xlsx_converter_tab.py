@@ -95,7 +95,6 @@ class XlsxConverterTab(BaseTab):
         super().update_button_state(is_task_running, True)
 
     def start_xlsx_to_csv_conversion(self):
-        # ... (此方法逻辑保持不变) ...
         input_path = self.xlsx_input_entry.get().strip()
         output_path = self.csv_output_entry.get().strip()
         if not input_path or not os.path.exists(input_path):
@@ -106,7 +105,7 @@ class XlsxConverterTab(BaseTab):
             output_path = os.path.join(os.path.dirname(input_path), f"{base_name}_merged.csv")
             self.csv_output_entry.delete(0, tk.END)
             self.csv_output_entry.insert(0, output_path)
-            self.app._log_to_viewer(f"{_('自动生成输出路径:')} {output_path}", "INFO")
+            self.app._log_to_viewer('ui.xlsx_tab',f"{_('自动生成输出路径:')} {output_path}", "INFO")
         try:
             self.app.event_handler._start_task(
                 task_name=_("XLSX转CSV"),

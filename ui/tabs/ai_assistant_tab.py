@@ -221,7 +221,7 @@ class AIAssistantTab(BaseTab):
             config_changed = True
 
         if config_changed:
-            self.app._log_to_viewer(_("提示词已更新，正在后台保存配置..."), "DEBUG")
+            self.app._log_to_viewer('ui.ai_tab',_("提示词已更新，正在后台保存配置..."), "DEBUG")
             config_to_save = copy.deepcopy(self.app.current_config)
             # 假设您有一个非阻塞的保存方法
             # threading.Thread(target=self.app.event_handler.save_config_file_non_blocking, args=(config_to_save, self.app.config_path), daemon=True).start()

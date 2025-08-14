@@ -63,8 +63,7 @@ def save_mapping_results(
         source_assembly_id: str,
         target_assembly_id: str,
         source_gene_ids_count: int,
-        region: Optional[Tuple[str, int, int]],
-        status_callback: Callable
+        region: Optional[Tuple[str, int, int]]
 ) -> bool:
     """
     将同源映射结果以智能格式保存到CSV或XLSX文件。
@@ -77,15 +76,12 @@ def save_mapping_results(
         target_assembly_id (str): 目标基因组ID.
         source_gene_ids_count (int): 输入的源基因总数.
         region (Optional[Tuple[str, int, int]]): 源染色体区域 (可选).
-        status_callback (Callable): 用于记录日志的回调函数.
 
     Returns:
         bool: 保存是否成功.
     """
-    log = status_callback
     output_path_lower = output_path.lower()
 
-    # --- 保存为 CSV 格式 ---
     if output_path_lower.endswith('.csv'):
         try:
             with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
@@ -105,13 +101,14 @@ def save_mapping_results(
                     reason = _("未能在目标基因组中找到满足所有筛选条件的同源基因。")
                     failed_df = pd.DataFrame({'Failed_Source_Gene_ID': failed_genes, 'Reason': reason})
                     failed_df.to_csv(f, index=False, lineterminator='\n')
-            log(_(f"结果已成功保存到 CSV 文件: {output_path}"), "INFO")
+            # 修改: 使用 logger
+            logger.info(_(f"结果已成功保存到 CSV 文件: {output_path}"))
             return True
         except Exception as e:
-            log(_(f"保存到 CSV 文件时出错: {e}"), "ERROR")
+            # 修改: 使用 logger
+            logger.error(_(f"保存到 CSV 文件时出错: {e}"))
             return False
 
-    # --- 保存为 XLSX 格式 ---
     elif output_path_lower.endswith('.xlsx'):
         try:
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
@@ -126,15 +123,17 @@ def save_mapping_results(
                     reason = _("未能在目标基因组中找到满足所有筛选条件的同源基因。")
                     failed_df = pd.DataFrame({'Failed_Source_Gene_ID': failed_genes, 'Reason': reason})
                     failed_df.to_excel(writer, sheet_name='Failed_Genes', index=False)
-            log(_(f"结果已成功保存到 XLSX 文件: {output_path}"), "INFO")
+            # 修改: 使用 logger
+            logger.info(_(f"结果已成功保存到 XLSX 文件: {output_path}"))
             return True
         except Exception as e:
-            log(_(f"保存到 XLSX 文件时出错: {e}"), "ERROR")
+            # 修改: 使用 logger
+            logger.error(_(f"保存到 XLSX 文件时出错: {e}"))
             return False
 
-    # --- 不支持的格式 ---
     else:
-        log(_(f"错误: 不支持的输出文件格式: {output_path}。请使用 .csv 或 .xlsx。"), "ERROR")
+        # 修改: 使用 logger
+        logger.error(_(f"错误: 不支持的输出文件格式: {output_path}。请使用 .csv 或 .xlsx。"))
         return False
 
 
@@ -161,7 +160,7 @@ def create_homology_df(file_path: str, progress_callback: Optional[Callable] = N
                 for i, sheet_name in enumerate(xls.sheet_names):
                     if cancel_event and cancel_event.is_set():
                         logger.info("Cancellation requested during Excel sheet processing.")
-                        return pd.DataFrame()  # Return empty DataFrame on cancellation
+                        return pd.DataFrame()
                     progress(20 + int(60 * (i / num_sheets)), _("正在处理工作表: {}...").format(sheet_name))
                     preview_df = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=5)
                     header_row_index = _find_header_row(preview_df, header_keywords)
@@ -177,8 +176,6 @@ def create_homology_df(file_path: str, progress_callback: Optional[Callable] = N
             else:
                 if cancel_event and cancel_event.is_set(): return pd.DataFrame()
                 progress(50, _("正在读取文本数据..."))
-                # Note: pd.read_csv is atomic and cannot be interrupted mid-read.
-                # The check is placed before the call.
                 return pd.read_csv(file_obj, sep=r'\s+', engine='python', comment='#')
         except Exception as e:
             logger.error(_("读取同源文件 '{}' 时出错: {}").format(file_path, e))
@@ -208,79 +205,82 @@ def run_homology_mapping(
         region: Optional[Tuple[str, int, int]],
         output_csv_path: Optional[str],
         criteria_overrides: Optional[Dict[str, Any]],
-        status_callback: Callable,
         calculate_target_locus: bool = False,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
-) -> Any:  # 【修改】返回值类型可以是DataFrame或列表
-    log = lambda msg, level="INFO": status_callback(msg, level)
+) -> Any:
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
+            # 修改: 直接使用 logger
+            logger.info(_("任务被取消。"))
             return True
         return False
 
     try:
         progress(5, _("步骤 1: 加载配置..."))
-        if check_cancel(): log(_("任务被取消。"), "INFO"); return None
-
-        genome_sources = get_genome_data_sources(config, logger_func=log)
+        if check_cancel(): return None
+        # 修改: get_genome_data_sources 不再需要 logger_func 参数
+        genome_sources = get_genome_data_sources(config)
         source_genome_info = genome_sources.get(source_assembly_id)
         target_genome_info = genome_sources.get(target_assembly_id)
         bridge_species_name = "Arabidopsis_thaliana"
         bridge_genome_info = genome_sources.get(bridge_species_name)
 
         if not all([source_genome_info, target_genome_info, bridge_genome_info]):
-            log(_("错误: 基因组名称无效。"), "ERROR");
-            return None if not output_csv_path else pd.DataFrame()  # 【修改】返回空列表或空DataFrame
+            # 修改: 直接使用 logger
+            logger.error(_("错误: 基因组名称无效。"))
+            return None if not output_csv_path else pd.DataFrame()
 
         source_gene_ids = gene_ids
         if region:
             progress(15, _("步骤 2: 从染色体区域提取基因ID..."))
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            if check_cancel(): return None
 
             gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
             gff_db_cache_dir = os.path.join(os.path.dirname(config.config_file_abs_path_),
                                             config.locus_conversion.gff_db_storage_dir)
+            # 修改: get_genes_in_region 不再需要 status_callback
             genes_in_region_list = get_genes_in_region(assembly_id=source_assembly_id, gff_filepath=gff_path,
                                                        db_storage_dir=gff_db_cache_dir, region=region,
-                                                       force_db_creation=False, status_callback=log)
+                                                       force_db_creation=False)
             if not genes_in_region_list:
-                log(_("在区域 {} 中未找到任何基因。").format(region), "WARNING");
-                return [] if not output_csv_path else pd.DataFrame()  # 【修改】
+                # 修改: 直接使用 logger
+                logger.warning(_("在区域 {} 中未找到任何基因。").format(region))
+                return [] if not output_csv_path else pd.DataFrame()
             source_gene_ids = [gene['gene_id'] for gene in genes_in_region_list]
 
         if not source_gene_ids:
-            log(_("错误: 基因列表为空。"), "ERROR");
-            return [] if not output_csv_path else pd.DataFrame()  # 【修改】
+            # 修改: 直接使用 logger
+            logger.error(_("错误: 基因列表为空。"))
+            return [] if not output_csv_path else pd.DataFrame()
 
         is_map_to_bridge = (target_assembly_id == bridge_species_name)
         is_map_from_bridge = (source_assembly_id == bridge_species_name)
         mapped_df, failed_genes = None, []
 
-        # ... [模式1, 2, 3 的代码保持完全不变] ...
-        # 模式1: 棉花 -> 拟南芥 (A -> B)
         if is_map_to_bridge and not is_map_from_bridge:
-            log(_("[简易模式] 执行 源 -> 桥梁 直接查找..."), "INFO")
+            logger.info(_("[简易模式] 执行 源 -> 桥梁 直接查找..."))
             progress(30, _("正在加载同源文件..."))
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            if check_cancel(): return None
             homology_file_path = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
             if not homology_file_path or not os.path.exists(homology_file_path):
-                log(_(f"错误: 未找到 {source_assembly_id} 的同源文件。"), "ERROR");
+                logger.error(_(f"错误: 未找到 {source_assembly_id} 的同源文件。"))
                 return None
 
             homology_df = create_homology_df(homology_file_path, lambda p, m: progress(30 + int(p * 0.4), m),
                                              cancel_event)
-            if check_cancel() or homology_df.empty: log(_("任务被取消或文件读取失败。"), "INFO"); return None
+            if check_cancel() or homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return None
 
             query_col_name = 'Query' if 'Query' in homology_df.columns else homology_df.columns[0]
             match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()),
                                   homology_df.columns[1])
-            log(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"), "INFO")
+            logger.info(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"))
 
             progress(70, _("正在标准化ID并查找匹配..."))
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            if check_cancel(): return None
 
             search_col = query_col_name
             search_regex = source_genome_info.gene_id_regex
@@ -306,28 +306,27 @@ def run_homology_mapping(
             found_genes = set(mapped_df['Source_Gene_ID'])
             failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
 
-        # 模式2: 拟南芥 -> 棉花 (B -> A)
         elif is_map_from_bridge and not is_map_to_bridge:
-            log(_("[简易模式] 执行 桥梁 -> 目标 直接查找..."), "INFO")
+            logger.info(_("[简易模式] 执行 桥梁 -> 目标 直接查找..."))
             progress(30, _("正在加载同源文件..."))
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            if check_cancel(): return None
 
             homology_file_path = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
             if not homology_file_path or not os.path.exists(homology_file_path):
-                log(_(f"错误: 未找到 {target_assembly_id} 的同源文件。"), "ERROR");
+                logger.error(_(f"错误: 未找到 {target_assembly_id} 的同源文件。"))
                 return None
 
             homology_df = create_homology_df(homology_file_path, lambda p, m: progress(30 + int(p * 0.4), m),
                                              cancel_event)
-            if check_cancel() or homology_df.empty: log(_("任务被取消或文件读取失败。"), "INFO"); return None
+            if check_cancel() or homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return None
 
             query_col_name = 'Query' if 'Query' in homology_df.columns else homology_df.columns[0]
             match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()),
                                   homology_df.columns[1])
-            log(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"), "INFO")
+            logger.info(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"))
 
             progress(70, _("正在标准化ID并查找匹配..."))
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            if check_cancel(): return None
 
             search_col = match_col_name
             search_regex = bridge_genome_info.gene_id_regex
@@ -353,30 +352,30 @@ def run_homology_mapping(
             found_genes = set(mapped_df['Source_Gene_ID'])
             failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
 
-        # 模式3: 棉花 -> 拟南芥 -> 棉花
         else:
-            log(_("[标准模式] 调用核心函数执行三步映射..."), "INFO")
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            logger.info(_("[标准模式] 调用核心函数执行三步映射..."))
+            if check_cancel(): return None
             s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
             b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
 
             source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file,
                                                               lambda p, m: progress(30 + int(p * 0.3), m), cancel_event)
-            if check_cancel() or source_to_bridge_homology_df.empty: log(_("任务被取消或文件读取失败。"),
-                                                                         "INFO"); return None
+            if check_cancel() or source_to_bridge_homology_df.empty: logger.info(
+                _("任务被取消或文件读取失败。")); return None
 
             bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file,
                                                               lambda p, m: progress(60 + int(p * 0.2), m), cancel_event)
-            if check_cancel() or bridge_to_target_homology_df.empty: log(_("任务被取消或文件读取失败。"),
-                                                                         "INFO"); return None
+            if check_cancel() or bridge_to_target_homology_df.empty: logger.info(
+                _("任务被取消或文件读取失败。")); return None
 
             s2b_criteria = HomologySelectionCriteria()
             _update_config_from_overrides(s2b_criteria, criteria_overrides)
             b2t_criteria = HomologySelectionCriteria()
             _update_config_from_overrides(b2t_criteria, criteria_overrides)
 
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            if check_cancel(): logger.info(_("任务被取消。")); return None
 
+            # 修改: map_genes_via_bridge 不再需要 status_callback
             mapped_df, failed_genes = map_genes_via_bridge(
                 source_gene_ids=source_gene_ids, source_assembly_name=source_assembly_id,
                 target_assembly_name=target_assembly_id,
@@ -387,21 +386,17 @@ def run_homology_mapping(
                 homology_columns={"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"},
                 source_genome_info=source_genome_info, target_genome_info=target_genome_info,
                 bridge_genome_info=bridge_genome_info,
-                status_callback=status_callback, progress_callback=lambda p, m: progress(80 + int(p * 0.1), m),
+                progress_callback=lambda p, m: progress(80 + int(p * 0.1), m),
                 cancel_event=cancel_event
             )
 
-        if check_cancel(): log(_("INFO: 任务被取消。"), "INFO"); return None
-
-        # --- 【核心修改区域开始】 ---
-        # 根据是保存文件还是直接返回结果，执行不同逻辑
+        if check_cancel(): logger.info(_("任务被取消。")); return None
 
         if output_csv_path:
-            # **批量模式**: 保存到文件并返回整个DataFrame
-            log(_("步骤 5: 保存映射结果..."), "INFO")
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            logger.info(_("步骤 5: 保存映射结果..."))
+            if check_cancel(): return None
             progress(95, _("正在保存映射结果..."))
-
+            # 修改: save_mapping_results 不再需要 status_callback
             save_mapping_results(
                 output_path=output_csv_path,
                 mapped_df=mapped_df,
@@ -409,40 +404,32 @@ def run_homology_mapping(
                 source_assembly_id=source_assembly_id,
                 target_assembly_id=target_assembly_id,
                 source_gene_ids_count=len(source_gene_ids),
-                region=region,
-                status_callback=log
+                region=region
             )
             return mapped_df
         else:
-            # **单基因模式**: 提取目标基因ID，应用正则表达式，并返回一个列表
-            log(_("步骤 5: 提取目标基因ID..."), "INFO")
-            if check_cancel(): log(_("任务被取消。"), "INFO"); return None
+            logger.info(_("步骤 5: 提取目标基因ID..."))
+            if check_cancel(): return None
             progress(95, _("正在提取目标基因ID..."))
 
             if mapped_df is not None and not mapped_df.empty and 'Target_Gene_ID' in mapped_df.columns:
                 target_ids = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
-
-                # 应用目标基因组的正则表达式进行清理
                 target_regex = target_genome_info.gene_id_regex
                 if target_regex:
-                    log(_("正在使用目标基因组的正则表达式 '{}' 清理ID...").format(target_regex), "DEBUG")
+                    logger.debug(_("正在使用目标基因组的正则表达式 '{}' 清理ID...").format(target_regex))
                     cleaned_ids = [_apply_regex_to_id(gid, target_regex) for gid in target_ids]
-                    # 去重，因为正则化后可能有重复
                     final_ids = sorted(list(set(cleaned_ids)))
                 else:
                     final_ids = sorted(target_ids)
 
-                log(_("成功提取到 {} 个唯一的同源目标基因。").format(len(final_ids)), "INFO")
+                logger.info(_("成功提取到 {} 个唯一的同源目标基因。").format(len(final_ids)))
                 return final_ids
             else:
-                # 如果没有找到匹配，返回一个空列表
-                log(_("未找到任何同源目标基因。"), "INFO")
+                logger.info(_("未找到任何同源目标基因。"))
                 return []
-        # --- 【核心修改区域结束】 ---
 
     except Exception as e:
-        log(_("流水线执行过程中发生意外错误: {}").format(e), "ERROR")
-        log(traceback.format_exc(), "DEBUG")
+        logger.exception(_("流水线执行过程中发生意外错误: {}").format(e))
         return None
 
 
@@ -452,27 +439,27 @@ def run_locus_conversion(
         target_assembly_id: str,
         region: Tuple[str, int, int],
         output_path: str,
-        status_callback: Callable,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         criteria_overrides: Optional[Dict[str, Any]] = None,
-        cancel_event: Optional[threading.Event] = None,  # 确保接收 cancel_event
+        cancel_event: Optional[threading.Event] = None,
         **kwargs
 ) -> Optional[str]:
-    log = lambda msg, level="INFO": status_callback(msg, level)
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
-    # 定义一个辅助函数，简化重复的检查代码
     def check_cancel():
         if cancel_event and cancel_event.is_set():
+            logger.info(_("任务已取消。"))
             return True
         return False
 
     try:
         progress(5, _("流程开始，正在加载基因组配置..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
-        log(_("步骤1: 加载配置..."), "INFO")
-        genome_sources = get_genome_data_sources(config, logger_func=log)
+        logger.info(_("步骤1: 加载配置..."))
+        # 修改: get_genome_data_sources 不再需要 logger_func
+        genome_sources = get_genome_data_sources(config)
         source_genome_info = genome_sources.get(source_assembly_id)
         target_genome_info = genome_sources.get(target_assembly_id)
 
@@ -482,13 +469,13 @@ def run_locus_conversion(
             bridge_genome_info = genome_sources.get(bridge_species_name.replace(' ', '_'))
 
         if not all([source_genome_info, target_genome_info, bridge_genome_info]):
-            log(_("错误: 无法为 {}, {} 或 {} 找到配置。").format(source_assembly_id, target_assembly_id,
-                                                                bridge_species_name), "ERROR")
+            logger.error(_("错误: 无法为 {}, {} 或 {} 找到配置。").format(source_assembly_id, target_assembly_id,
+                                                                         bridge_species_name))
             progress(100, _("任务终止：基因组配置错误。"))
             return None
 
         progress(15, _("正在从GFF文件中提取基因..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
         gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
         gff_db_cache_dir = config.locus_conversion.gff_db_storage_dir
@@ -497,49 +484,48 @@ def run_locus_conversion(
         source_gene_list = get_genes_in_region(
             assembly_id=source_assembly_id, gff_filepath=gff_path,
             db_storage_dir=gff_db_cache_dir, region=region,
-            status_callback=log,
             gene_id_regex=source_genome_info.gene_id_regex,
-            progress_callback=lambda p, m: progress(15 + int(p * 0.1), _("提取基因: {}").format(m))  # 15%-25%
+            progress_callback=lambda p, m: progress(15 + int(p * 0.1), _("提取基因: {}").format(m))
         )
         if not source_gene_list:
-            log(_("在区域 {} 中未找到任何基因。").format(region), "WARNING")
+            logger.warning(_("在区域 {} 中未找到任何基因。").format(region))
             progress(100, _("任务终止：区域内无基因。"))
             return _("在指定区域未找到任何基因。")
         source_gene_ids = [gene['gene_id'] for gene in source_gene_list]
 
         progress(30, _("正在加载同源文件..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
         s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
         b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
 
-        if not s_to_b_homology_file or not os.path.exists(
-                s_to_b_homology_file) or not b_to_t_homology_file or not os.path.exists(b_to_t_homology_file):
-            log(_("错误: 缺少必要的同源文件。请先为相关基因组下载数据。"), "ERROR")
+        if not all([s_to_b_homology_file, b_to_t_homology_file, os.path.exists(s_to_b_homology_file),
+                    os.path.exists(b_to_t_homology_file)]):
+            logger.error(_("错误: 缺少必要的同源文件。请先为相关基因组下载数据。"))
             progress(100, _("任务终止：缺少同源文件。"))
             return None
 
         progress(40, _("正在解析源到桥梁的同源文件..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
         source_to_bridge_homology_df = create_homology_df(s_to_b_homology_file,
                                                           progress_callback=lambda p, m: progress(40 + int(p * 0.2),
                                                                                                   _("解析同源文件 (S->B): {}").format(
                                                                                                       m)),
-                                                          cancel_event=cancel_event)  # 40%-60%
-        if check_cancel() or source_to_bridge_homology_df.empty: log(_("任务被取消或文件读取失败。"),
-                                                                     "INFO"); return None
+                                                          cancel_event=cancel_event)
+        if check_cancel() or source_to_bridge_homology_df.empty: logger.info(
+            _("任务被取消或文件读取失败。")); return None
 
         progress(60, _("正在解析桥梁到目标的同源文件..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
         bridge_to_target_homology_df = create_homology_df(b_to_t_homology_file,
                                                           progress_callback=lambda p, m: progress(60 + int(p * 0.1),
                                                                                                   _("解析同源文件 (B->T): {}").format(
                                                                                                       m)),
-                                                          cancel_event=cancel_event)  # 60%-70%
-        if check_cancel() or bridge_to_target_homology_df.empty: log(_("任务被取消或文件读取失败。"),
-                                                                     "INFO"); return None
+                                                          cancel_event=cancel_event)
+        if check_cancel() or bridge_to_target_homology_df.empty: logger.info(
+            _("任务被取消或文件读取失败。")); return None
 
         homology_columns = {"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"}
         if homology_columns['query'] not in source_to_bridge_homology_df.columns:
@@ -550,8 +536,9 @@ def run_locus_conversion(
         selection_criteria_b_to_t = {"top_n": 1, "evalue_threshold": 1e-10}
 
         progress(75, _("正在执行核心同源映射..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
+        # 修改: map_genes_via_bridge 不再需要 status_callback
         mapped_df, failed_genes = map_genes_via_bridge(
             source_gene_ids=source_gene_ids,
             source_assembly_name=source_assembly_id,
@@ -565,18 +552,17 @@ def run_locus_conversion(
             source_genome_info=source_genome_info,
             target_genome_info=target_genome_info,
             bridge_genome_info=bridge_genome_info,
-            status_callback=status_callback,
-            progress_callback=lambda p, m: progress(75 + int(p * 0.15), _("基因映射: {}").format(m)),  # 75%-90%
+            progress_callback=lambda p, m: progress(75 + int(p * 0.15), _("基因映射: {}").format(m)),
             cancel_event=kwargs.get('cancel_event')
         )
 
         if kwargs.get('cancel_event') and kwargs['cancel_event'].is_set():
-            log(_("任务在同源映射阶段被用户取消。"), "INFO")
+            logger.info(_("任务在同源映射阶段被用户取消。"))
             progress(100, _("任务已取消。"))
             return None
 
         progress(95, _("映射完成，正在整理并保存结果..."))
-        if check_cancel(): log(_("任务已取消。"), "INFO"); return None
+        if check_cancel(): logger.info(_("任务已取消。")); return None
 
         output_dir = os.path.dirname(output_path)
         if output_dir: os.makedirs(output_dir, exist_ok=True)
@@ -594,12 +580,12 @@ def run_locus_conversion(
 
         progress(100, _("全部完成！"))
         success_message = _("位点转换结果已成功保存到:\n{}").format(os.path.abspath(output_path))
-        log(success_message, "INFO")
+        logger.info(success_message)
         return success_message
 
     except Exception as e:
-        log(_("位点转换流程出错: {}").format(e), "ERROR")
-        log(traceback.format_exc(), "DEBUG")
+        logger.error(_("位点转换流程出错: {}").format(e))
+        logger.debug(traceback.format_exc())
         progress(100, _("任务因错误而终止。"))
         return None
 
@@ -612,26 +598,23 @@ def run_ai_task(
         task_type: str,
         custom_prompt_template: Optional[str],
         cli_overrides: Optional[Dict[str, Any]],
-        status_callback: Callable,
         cancel_event: Optional[threading.Event] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         output_file: Optional[str] = None
 ):
-    # 初始化日志和进度回调 (这部分不变)
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
-    log = lambda msg, level="INFO": status_callback(msg, level)
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            log("INFO: 任务已被用户取消。", "INFO");
+            logger.info(_("任务已被用户取消。"));
             return True
         return False
 
     progress(0, _("AI任务流程开始..."))
-    log(_("AI任务流程开始..."), "INFO")
+    logger.info(_("AI任务流程开始..."))
     if check_cancel(): return
 
-    # AI客户端和服务商的初始化逻辑 (这部分不变)
     progress(5, _("正在解析AI服务配置..."))
     if check_cancel(): return
 
@@ -640,13 +623,13 @@ def run_ai_task(
     model_name = cli_overrides.get('ai_model') if cli_overrides else None
     provider_cfg_obj = ai_cfg.providers.get(provider_name)
     if not provider_cfg_obj:
-        log(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name), "ERROR");
+        logger.error(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name));
         return
     if not model_name: model_name = provider_cfg_obj.model
     api_key = provider_cfg_obj.api_key
     base_url = provider_cfg_obj.base_url
     if not api_key or "YOUR_API_KEY" in api_key:
-        log(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name), "ERROR");
+        logger.error(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name));
         return
 
     proxies_to_use = config.proxies.model_dump(
@@ -655,56 +638,47 @@ def run_ai_task(
     progress(10, _("正在初始化AI客户端..."))
     if check_cancel(): return
 
-    log(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model_name))
+    logger.info(_("正在初始化AI客户端... 服务商: {}, 模型: {}").format(provider_name, model_name))
     ai_client = AIWrapper(provider=provider_name, api_key=api_key, model=model_name, base_url=base_url,
                           proxies=proxies_to_use, max_workers=config.batch_ai_processor.max_workers)
 
-    # 确定要使用的提示词 (这部分不变)
     prompt_to_use = custom_prompt_template or (
         config.ai_prompts.translation_prompt if task_type == 'translate' else config.ai_prompts.analysis_prompt)
 
-    # 根据 "另存为新文件" 的选择，来决定最终的输出目录和输出路径
     final_output_path = None
     if output_file is not None:
-        # 情况1: “另存为”开关关闭，此时 output_file 带有完整路径，表示在原文件上修改。
         output_directory = os.path.dirname(output_file)
         final_output_path = output_file
-        log(_("将在原文件上修改: {}").format(output_file), "INFO")
+        logger.info(_("将在原文件上修改: {}").format(output_file))
     else:
-        # 情况2: “另存为”开关开启，此时 output_file 为 None。
-        # 我们将输出目录设置为源文件的目录。
         output_directory = os.path.dirname(input_file)
-        # final_output_path 保持为 None，让下游函数自动生成新文件名。
-        log(_("将创建新文件并保存于源文件目录: {}").format(output_directory), "INFO")
+        logger.info(_("将创建新文件并保存于源文件目录: {}").format(output_directory))
 
-    # 确保目录存在
     os.makedirs(output_directory, exist_ok=True)
 
-    # 开始处理文件
     progress(15, _("正在处理CSV文件并调用AI服务..."))
     if check_cancel(): return
 
+    # 修改: process_single_csv_file 不再需要 status_callback
     process_single_csv_file(
         client=ai_client,
         input_csv_path=input_file,
-        output_csv_directory=output_directory,  # 使用我们新确定的目录
+        output_csv_directory=output_directory,
         source_column_name=source_column,
         new_column_name=new_column,
         user_prompt_template=prompt_to_use,
         task_identifier=f"{os.path.basename(input_file)}_{task_type}",
         max_row_workers=config.batch_ai_processor.max_workers,
-        status_callback=status_callback,
         progress_callback=lambda p, m: progress(15 + int(p * 0.8), _("AI处理: {}").format(m)),
         cancel_event=cancel_event,
-        output_csv_path=final_output_path  # 传递最终路径
+        output_csv_path=final_output_path
     )
 
     if cancel_event and cancel_event.is_set():
-        # The check_cancel function already logs this.
         return
 
     progress(100, _("任务完成。"))
-    log(_("AI任务流程成功完成。"), "INFO")
+    logger.info(_("AI任务流程成功完成。"))
 
 
 def run_functional_annotation(
@@ -713,7 +687,6 @@ def run_functional_annotation(
         target_genome: str,
         bridge_species: str,
         annotation_types: List[str],
-        status_callback: Callable[[str, str], None],
         output_dir: Optional[str] = None,
         output_path: Optional[str] = None,
         gene_list_path: Optional[str] = None,
@@ -722,12 +695,12 @@ def run_functional_annotation(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> None:
-    log = lambda msg, level="INFO": status_callback(msg, level)
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            log(_("任务被取消。"), "INFO")
+            logger.info(_("任务被取消。"))
             return True
         return False
 
@@ -737,26 +710,26 @@ def run_functional_annotation(
     source_gene_ids = []
     if gene_ids:
         source_gene_ids = list(set(gene_ids))
-        log(_("INFO: 从参数直接获取了 {} 个唯一基因ID。").format(len(source_gene_ids)))
+        logger.info(_("从参数直接获取了 {} 个唯一基因ID。").format(len(source_gene_ids)))
     elif gene_list_path and os.path.exists(gene_list_path):
         try:
             progress(5, _("正在从文件读取基因列表..."))
             if check_cancel(): return
-            log(_("INFO: 正在从文件 '{}' 中读取基因列表...").format(os.path.basename(gene_list_path)))
+            logger.info(_("正在从文件 '{}' 中读取基因列表...").format(os.path.basename(gene_list_path)))
             study_genes_df = pd.read_csv(gene_list_path)
             source_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
-            log(_("INFO: 从文件中读取了 {} 个唯一基因ID。").format(len(source_gene_ids)))
+            logger.info(_("从文件中读取了 {} 个唯一基因ID。").format(len(source_gene_ids)))
         except Exception as e:
-            log(_("读取基因列表文件时出错: {}").format(e), "ERROR")
+            logger.error(_("读取基因列表文件时出错: {}").format(e))
             progress(100, _("任务终止：读取基因列表失败。"))
             return
     else:
-        log(_("错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"), "ERROR")
+        logger.error(_("错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"))
         progress(100, _("任务终止：缺少基因输入。"))
         return
 
     if not source_gene_ids:
-        log(_("输入的基因列表为空，流程终止。"), "ERROR")
+        logger.error(_("输入的基因列表为空，流程终止。"))
         progress(100, _("任务终止：基因列表为空。"))
         return
 
@@ -767,15 +740,15 @@ def run_functional_annotation(
     if check_cancel(): return
 
     if source_genome != target_genome:
-        log(_("源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。").format(source_genome, target_genome), "INFO")
+        logger.info(_("源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。").format(source_genome, target_genome))
 
-        genome_sources = get_genome_data_sources(config, logger_func=log)
+        genome_sources = get_genome_data_sources(config)
         source_genome_info = genome_sources.get(source_genome)
         target_genome_info = genome_sources.get(target_genome)
         bridge_genome_info = genome_sources.get(bridge_species)
 
         if not all([source_genome_info, target_genome_info, bridge_genome_info]):
-            log(_("一个或多个基因组名称无效，无法找到配置信息。"), "ERROR")
+            logger.error(_("一个或多个基因组名称无效，无法找到配置信息。"))
             progress(100, _("任务终止：基因组配置错误。"))
             return
 
@@ -787,7 +760,7 @@ def run_functional_annotation(
 
         if not all([s_to_b_homology_file, b_to_t_homology_file, os.path.exists(s_to_b_homology_file),
                     os.path.exists(b_to_t_homology_file)]):
-            log(_("缺少必要的同源文件，无法进行转换。请先下载数据。"), "ERROR")
+            logger.error(_("缺少必要的同源文件，无法进行转换。请先下载数据。"))
             progress(100, _("任务终止：缺少同源文件。"))
             return
 
@@ -798,8 +771,8 @@ def run_functional_annotation(
                                                           progress_callback=lambda p, m: progress(25 + int(p * 0.1),
                                                                                                   _("加载同源数据: {}").format(
                                                                                                       m)),
-                                                          cancel_event=cancel_event)  # 25%-35%
-        if check_cancel() or source_to_bridge_homology_df.empty: log(_("任务被取消或文件读取失败。"), "INFO"); return
+                                                          cancel_event=cancel_event)
+        if check_cancel() or source_to_bridge_homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return
 
         progress(35, _("正在解析桥梁到目标的同源文件..."))
         if check_cancel(): return
@@ -808,8 +781,8 @@ def run_functional_annotation(
                                                           progress_callback=lambda p, m: progress(35 + int(p * 0.1),
                                                                                                   _("加载同源数据: {}").format(
                                                                                                       m)),
-                                                          cancel_event=cancel_event)  # 35%-45%
-        if check_cancel() or bridge_to_target_homology_df.empty: log(_("任务被取消或文件读取失败。"), "INFO"); return
+                                                          cancel_event=cancel_event)
+        if check_cancel() or bridge_to_target_homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return
 
         selection_criteria_s_to_b = HomologySelectionCriteria().model_dump()
         selection_criteria_b_to_t = HomologySelectionCriteria().model_dump()
@@ -833,18 +806,16 @@ def run_functional_annotation(
             source_genome_info=source_genome_info,
             target_genome_info=target_genome_info,
             bridge_genome_info=bridge_genome_info,
-            status_callback=status_callback,
-            progress_callback=lambda p, m: progress(50 + int(p * 0.2), _("基因映射: {}").format(m)),  # 50%-70%
+            progress_callback=lambda p, m: progress(50 + int(p * 0.2), _("基因映射: {}").format(m)),
             cancel_event=cancel_event
         )
 
         if cancel_event and cancel_event.is_set():
-            # This is already handled by the check_cancel function's logging.
             progress(100, _("任务已取消。"))
             return
 
         if mapped_df is None or mapped_df.empty:
-            log(_("同源转换未能映射到任何基因，流程终止。"), "WARNING")
+            logger.warning(_("同源转换未能映射到任何基因，流程终止。"))
             progress(100, _("任务终止：同源映射失败。"))
             return
 
@@ -854,20 +825,19 @@ def run_functional_annotation(
     progress(75, _("初始化注释器..."))
     if check_cancel(): return
 
-    genome_sources = get_genome_data_sources(config, logger_func=log)
+    genome_sources = get_genome_data_sources(config)
     target_genome_info = genome_sources.get(target_genome)
     if not target_genome_info:
-        log(_("错误：无法为目标基因组 {} 找到配置信息。").format(target_genome), "ERROR")
+        logger.error(_("错误：无法为目标基因组 {} 找到配置信息。").format(target_genome))
         progress(100, _("任务终止：目标基因组配置错误。"))
         return
 
-    # Annotator 内部应该也使用 progress_callback
+    # 修改: Annotator 不再需要 status_callback
     annotator = Annotator(
         main_config=config,
         genome_id=target_genome,
         genome_info=target_genome_info,
-        status_callback=status_callback,
-        progress_callback=lambda p, m: progress(75 + int(p * 0.15), _("执行注释: {}").format(m)),  # 75%-90%
+        progress_callback=lambda p, m: progress(75 + int(p * 0.15), _("执行注释: {}").format(m)),
         custom_db_dir=custom_db_dir
     )
 
@@ -877,7 +847,6 @@ def run_functional_annotation(
     result_df = annotator.annotate_genes(genes_to_annotate, annotation_types)
 
     if cancel_event and cancel_event.is_set():
-        # Already logged by check_cancel
         progress(100, _("任务已取消。"))
         return
 
@@ -902,20 +871,20 @@ def run_functional_annotation(
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             final_output_path = os.path.join(output_dir, f"{base_name}_{timestamp}.csv")
         else:
-            log(_("错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"), "ERROR")
+            logger.error(_("错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"))
             progress(100, _("任务终止：未提供输出路径。"))
             return
 
         try:
             final_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-            log(_("注释成功！结果已保存至: {}").format(final_output_path), "INFO")
+            logger.info(_("注释成功！结果已保存至: {}").format(final_output_path))
         except Exception as e:
-            log(_("保存结果到 {} 时发生错误: {}").format(final_output_path, e), "ERROR")
+            logger.error(_("保存结果到 {} 时发生错误: {}").format(final_output_path, e))
             progress(100, _("任务终止：保存结果失败。"))
             return
 
     else:
-        log(_("注释完成，但没有生成任何结果。"), "WARNING")
+        logger.warning(_("注释完成，但没有生成任何结果。"))
         progress(100, _("任务完成：无结果。"))
 
     progress(100, _("功能注释流程结束。"))
@@ -927,43 +896,43 @@ def run_gff_lookup(
         gene_ids: Optional[List[str]] = None,
         region: Optional[Tuple[str, int, int]] = None,
         output_csv_path: Optional[str] = None,
-        status_callback: Optional[Callable[[str, str], None]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    log = status_callback if status_callback else lambda msg, level="INFO": print(f"[{level}] {msg}")
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            log(_("任务已被用户取消。"), "INFO")
+            logger.info(_("任务已被用户取消。"))
             progress(100, _("任务已取消。"))
             return True
         return False
 
     if not gene_ids and not region:
-        log(_("错误: 必须提供基因ID列表或染色体区域进行查询。"), "ERROR")
+        logger.error(_("错误: 必须提供基因ID列表或染色体区域进行查询。"))
         progress(100, _("任务终止：缺少查询参数。"))
         return False
 
     progress(0, _("流程开始，正在初始化配置..."))
     if check_cancel(): return False
-    log(_("开始GFF基因查询流程..."), "INFO")
+    logger.info(_("开始GFF基因查询流程..."))
 
     project_root = '.'
     if hasattr(config, 'config_file_abs_path_') and config.config_file_abs_path_:
         project_root = os.path.dirname(config.config_file_abs_path_)
 
-    genome_sources = get_genome_data_sources(config, logger_func=log)
+    # 修改: get_genome_data_sources 不再需要 logger_func
+    genome_sources = get_genome_data_sources(config)
     selected_genome_info = genome_sources.get(assembly_id)
     if not selected_genome_info:
-        log(_("错误: 基因组 '{}' 未在基因组源列表中找到。").format(assembly_id), "ERROR")
+        logger.error(_("错误: 基因组 '{}' 未在基因组源列表中找到。").format(assembly_id))
         progress(100, _("任务终止：基因组配置错误。"))
         return False
 
     gff_file_path = get_local_downloaded_file_path(config, selected_genome_info, 'gff3')
     if not gff_file_path or not os.path.exists(gff_file_path):
-        log(_("错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。").format(assembly_id), "ERROR")
+        logger.error(_("错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。").format(assembly_id))
         progress(100, _("任务终止：GFF文件缺失。"))
         return False
 
@@ -972,27 +941,29 @@ def run_gff_lookup(
     gff_db_dir = config.locus_conversion.gff_db_storage_dir
     os.makedirs(gff_db_dir, exist_ok=True)
 
-    force_creation = False  # 保持为False，除非有UI选项控制
+    force_creation = False
 
     results_df = pd.DataFrame()
     progress(40, _("正在数据库中查询..."))
     if check_cancel(): return False
     if gene_ids:
-        log(_("按基因ID查询 {} 个基因...").format(len(gene_ids)), "INFO")
+        logger.info(_("按基因ID查询 {} 个基因...").format(len(gene_ids)))
+        # 修改: get_gene_info_by_ids 不再需要 status_callback
         results_df = get_gene_info_by_ids(
             assembly_id=assembly_id, gff_filepath=gff_file_path,
             db_storage_dir=gff_db_dir, gene_ids=gene_ids,
-            force_db_creation=force_creation, status_callback=log,
-            progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询基因ID: {}").format(m))  # 40%-80%
+            force_db_creation=force_creation,
+            progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询基因ID: {}").format(m))
         )
     elif region:
         chrom, start, end = region
-        log(_("按区域 {}:{}-{} 查询基因...").format(chrom, start, end), "INFO")
+        logger.info(_("按区域 {}:{}-{} 查询基因...").format(chrom, start, end))
+        # 修改: get_genes_in_region 不再需要 status_callback
         genes_in_region_list = get_genes_in_region(
             assembly_id=assembly_id, gff_filepath=gff_file_path,
             db_storage_dir=gff_db_dir, region=region,
-            force_db_creation=force_creation, status_callback=log,
-            progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询区域基因: {}").format(m))  # 40%-80%
+            force_db_creation=force_creation,
+            progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询区域基因: {}").format(m))
         )
         if genes_in_region_list:
             results_df = pd.DataFrame(genes_in_region_list)
@@ -1003,10 +974,10 @@ def run_gff_lookup(
     if check_cancel(): return False
 
     if results_df.empty:
-        log(_("未找到任何符合条件的基因。"), "WARNING")
+        logger.warning(_("未找到任何符合条件的基因。"))
         progress(100, _("任务完成：未找到结果。"))
     else:
-        log(_("查询完成，找到 {} 个基因记录。").format(len(results_df)), "INFO")
+        logger.info(_("查询完成，找到 {} 个基因记录。").format(len(results_df)))
 
         final_output_path = output_csv_path
         if not final_output_path:
@@ -1018,9 +989,9 @@ def run_gff_lookup(
 
         try:
             results_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-            log(_("GFF基因查询结果已保存到: {}").format(final_output_path), "INFO")
+            logger.info(_("GFF基因查询结果已保存到: {}").format(final_output_path))
         except Exception as e:
-            log(_("保存结果时出错: {}").format(e), "ERROR")
+            logger.error(_("保存结果时出错: {}").format(e))
             progress(100, _("任务终止：保存结果失败。"))
             return False
 
@@ -1031,19 +1002,19 @@ def run_gff_lookup(
 def run_download_pipeline(
         config: MainConfig,
         cli_overrides: Optional[Dict[str, Any]] = None,
-        status_callback: Optional[Callable] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ):
-    log = lambda msg, level="INFO": status_callback(msg, level)
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     progress(0, _("下载流程开始..."))
-    if cancel_event and cancel_event.is_set(): log(_("任务在启动时被取消。"), "INFO"); return
-    log(_("INFO: 下载流程开始..."), "INFO")
+    if cancel_event and cancel_event.is_set(): logger.info(_("任务在启动时被取消。")); return
+    logger.info(_("下载流程开始..."))
 
     downloader_cfg = config.downloader
-    genome_sources = get_genome_data_sources(config, logger_func=log)
+    # 修改: get_genome_data_sources 不再需要 logger_func
+    genome_sources = get_genome_data_sources(config)
     if cli_overrides is None: cli_overrides = {}
 
     versions_to_download = cli_overrides.get("versions") or list(genome_sources.keys())
@@ -1057,29 +1028,29 @@ def run_download_pipeline(
     if use_proxy_for_this_run:
         if config.proxies and (config.proxies.http or config.proxies.https):
             proxies_to_use = config.proxies.model_dump(exclude_none=True)
-            log(_("INFO: 本次下载将使用代理: {}").format(proxies_to_use))
+            logger.info(_("本次下载将使用代理: {}").format(proxies_to_use))
         else:
-            log(_("WARNING: 下载代理开关已打开，但配置文件中未设置代理地址。"))
+            logger.warning(_("下载代理开关已打开，但配置文件中未设置代理地址。"))
 
     progress(5, _("正在准备下载任务列表..."))
-    if cancel_event and cancel_event.is_set(): log(_("任务被取消。"), "INFO"); return
+    if cancel_event and cancel_event.is_set(): logger.info(_("任务被取消。")); return
 
-    log(_("INFO: 将尝试下载的基因组版本: {}").format(', '.join(versions_to_download)))
+    logger.info(_("将尝试下载的基因组版本: {}").format(', '.join(versions_to_download)))
 
     all_download_tasks = []
     if not file_keys_to_process:
         all_possible_keys = [f.name.replace('_url', '') for f in GenomeSourceItem.model_fields.values() if
                              f.name.endswith('_url')]
-        log(_("DEBUG: 未从UI指定文件类型，将尝试检查所有可能的类型: {}").format(all_possible_keys))
+        logger.debug(_("未从UI指定文件类型，将尝试检查所有可能的类型: {}").format(all_possible_keys))
     else:
         all_possible_keys = file_keys_to_process
-        log(_("DEBUG: 将根据UI的选择，精确下载以下文件类型: {}").format(all_possible_keys))
+        logger.debug(_("将根据UI的选择，精确下载以下文件类型: {}").format(all_possible_keys))
 
     for version_id in versions_to_download:
         if cancel_event and cancel_event.is_set(): break
         genome_info = genome_sources.get(version_id)
         if not genome_info:
-            log(_("WARNING: 在基因组源中未找到版本 '{}'，已跳过。").format(version_id))
+            logger.warning(_("在基因组源中未找到版本 '{}'，已跳过。").format(version_id))
             continue
 
         for file_key in all_possible_keys:
@@ -1094,16 +1065,16 @@ def run_download_pipeline(
                         "url": url
                     })
 
-    if cancel_event and cancel_event.is_set(): log(_("任务在任务列表创建期间被取消。"), "INFO"); return
+    if cancel_event and cancel_event.is_set(): logger.info(_("任务在任务列表创建期间被取消。")); return
 
     if not all_download_tasks:
-        log(_("WARNING: 根据您的选择，没有找到任何有效的URL可供下载。"))
+        logger.warning(_("根据您的选择，没有找到任何有效的URL可供下载。"))
         progress(100, _("任务完成：无文件可下载。"))
         return
 
     progress(10, _("找到 {} 个文件需要下载。").format(len(all_download_tasks)))
-    if cancel_event and cancel_event.is_set(): log(_("任务被取消。"), "INFO"); return
-    log(_("INFO: 准备下载 {} 个文件...").format(len(all_download_tasks)))
+    if cancel_event and cancel_event.is_set(): logger.info(_("任务被取消。")); return
+    logger.info(_("准备下载 {} 个文件...").format(len(all_download_tasks)))
 
     successful_downloads, failed_downloads = 0, 0
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -1117,7 +1088,6 @@ def run_download_pipeline(
                 url=task["url"],
                 force=force_download,
                 proxies=proxies_to_use,
-                status_callback=log,
                 cancel_event=cancel_event,
             ): task for task in all_download_tasks
         }
@@ -1126,9 +1096,8 @@ def run_download_pipeline(
         current_completed_tasks = 0
         for future in as_completed(future_to_task):
             if cancel_event and cancel_event.is_set():
-                log("INFO: 下载任务已被用户取消。")
+                logger.info(_("下载任务已被用户取消。"))
                 progress(100, _("任务已取消。"))
-                # Actively cancel remaining futures
                 for f in future_to_task:
                     f.cancel()
                 break
@@ -1141,23 +1110,18 @@ def run_download_pipeline(
                     failed_downloads += 1
             except Exception as exc:
                 if not isinstance(exc, threading.CancelledError):
-                    log(_("ERROR: 下载 {} 的 {} 文件时发生严重错误: {}").format(task_info['version_id'],
-                                                                                task_info['file_key'], exc), "ERROR")
+                    logger.error(_("下载 {} 的 {} 文件时发生严重错误: {}").format(task_info['version_id'],
+                                                                                  task_info['file_key'], exc))
                 failed_downloads += 1
             finally:
                 current_completed_tasks += 1
-                # 将进度映射到 10% 到 95% 之间
                 progress_percentage = 10 + int((current_completed_tasks / total_tasks) * 85)
                 progress(progress_percentage,
                          f"{_('总体下载进度')} ({current_completed_tasks}/{total_tasks}) - {task_info['version_id']} {task_info['file_key']}")
 
-    log(_("INFO: 所有指定的下载任务已完成。成功: {}, 失败: {}。").format(successful_downloads, failed_downloads), "INFO")
+    logger.info(_("所有指定的下载任务已完成。成功: {}, 失败: {}。").format(successful_downloads, failed_downloads))
     progress(100, _("下载流程完成。"))
 
-
-# in pipelines.py
-
-# in pipelines.py
 
 def _generate_r_script_and_data(
         enrichment_df: pd.DataFrame,
@@ -1166,12 +1130,9 @@ def _generate_r_script_and_data(
         plot_type: str,
         plot_kwargs: Dict[str, Any],
         analysis_title: str,
-        log: Callable,
         gene_log2fc_map: Optional[Dict[str, float]] = None
 ) -> Optional[List[str]]:
-    """
-    Generates a readable R script and its corresponding data file for a given plot type.
-    """
+    # 修改: 移除 log 参数
     try:
         if not os.path.exists(r_output_dir):
             os.makedirs(r_output_dir)
@@ -1191,7 +1152,7 @@ def _generate_r_script_and_data(
         df_plot = df_plot.sort_values(by=sort_col, ascending=ascending).head(current_top_n)
 
         if df_plot.empty:
-            log(f"WARNING: DataFrame is empty for plot type '{plot_type}'. Cannot generate R script.", "WARNING")
+            logger.warning(f"DataFrame is empty for plot type '{plot_type}'. Cannot generate R script.")
             return None
 
         if 'FDR' in df_plot.columns:
@@ -1302,7 +1263,7 @@ bar_plot <- ggplot(enrich_data, aes(x = log10FDR, y = Description)) +
 if (use_log2fc_color) {{
   # Calculate the mean of the log2FC values to create a relative, high-contrast color scale.
   midpoint_val <- mean(enrich_data$avg_log2FC, na.rm = TRUE)
-  
+
   final_plot <- bar_plot +
     geom_col(aes(fill = avg_log2FC)) +
     # Use the calculated midpoint to ensure a diverging scale (blue to red), similar to Python's.
@@ -1484,12 +1445,14 @@ dev.off() # Close the PNG device
                 f.write(r_script_content)
             generated_files = [data_path, script_path]
             if log2fc_data_path: generated_files.append(log2fc_data_path)
-            log(f"INFO: Successfully generated R script and data for '{plot_type}' plot.", "INFO")
+            # 修改: 使用 logger
+            logger.info(f"Successfully generated R script and data for '{plot_type}' plot.")
             return generated_files
         return None
     except Exception as e:
-        log(f"ERROR: An error occurred while generating the R script for plot type '{plot_type}': {e}", "ERROR")
-        log(traceback.format_exc(), "DEBUG")
+        # 修改: 使用 logger
+        logger.error(f"An error occurred while generating the R script for plot type '{plot_type}': {e}")
+        logger.debug(traceback.format_exc())
         return None
 
 
@@ -1500,7 +1463,6 @@ def run_enrichment_pipeline(
         analysis_type: str,
         plot_types: List[str],
         output_dir: str,
-        status_callback: Optional[Callable] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None,
         gene_log2fc_map: Optional[Dict[str, float]] = None,
@@ -1512,37 +1474,38 @@ def run_enrichment_pipeline(
         height: float = 8,
         file_format: str = 'png'
 ) -> Optional[str]:
-    log = lambda msg, level="INFO": status_callback(msg, level)
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            log(_("任务已被用户取消。"), "INFO");
-            progress(100, _("任务已取消。"));
+            logger.info(_("任务已被用户取消。"));
+            progress(100, _("任务已取消."));
             return True
         return False
 
     progress(0, _("富集分析与可视化流程启动。"))
     if check_cancel(): return None
-    log(_("INFO: {} 富集与可视化流程启动。").format(analysis_type.upper()), "INFO")
+    logger.info(_("{} 富集与可视化流程启动。").format(analysis_type.upper()))
 
     if collapse_transcripts:
         original_count = len(study_gene_ids)
         study_gene_ids = map_transcripts_to_genes(study_gene_ids)
-        log(_("INFO: 基因列表已从 {} 个RNA合并为 {} 个唯一基因。").format(original_count, len(study_gene_ids)), "INFO")
+        logger.info(_("基因列表已从 {} 个RNA合并为 {} 个唯一基因。").format(original_count, len(study_gene_ids)))
 
     try:
         progress(10, _("正在获取基因组信息..."))
         if check_cancel(): return None
-        genome_sources = get_genome_data_sources(config, logger_func=log)
+        # 修改: get_genome_data_sources 不再需要 logger_func
+        genome_sources = get_genome_data_sources(config)
         genome_info = genome_sources.get(assembly_id)
         if not genome_info:
-            log(_("ERROR: 无法在配置中找到基因组 '{}'。").format(assembly_id), "ERROR");
+            logger.error(_("无法在配置中找到基因组 '{}'。").format(assembly_id));
             progress(100, _("任务终止：基因组配置错误。"));
             return None
         gene_id_regex = genome_info.gene_id_regex if hasattr(genome_info, 'gene_id_regex') else None
     except Exception as e:
-        log(_("ERROR: 获取基因组源数据时失败: {}").format(e), "ERROR");
+        logger.error(_("获取基因组源数据时失败: {}").format(e));
         progress(100, _("任务终止：获取基因组信息失败。"));
         return None
 
@@ -1555,11 +1518,12 @@ def run_enrichment_pipeline(
         if check_cancel(): return None
         gaf_path = get_local_downloaded_file_path(config, genome_info, 'GO')
         if not gaf_path or not os.path.exists(gaf_path):
-            log(_("ERROR: 未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。").format(assembly_id), "ERROR");
+            logger.error(_("未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。").format(assembly_id));
             progress(100, _("任务终止：缺少GO注释文件。"));
             return None
+        # 修改: run_go_enrichment 不再需要 status_callback
         enrichment_df = run_go_enrichment(study_gene_ids=study_gene_ids, go_annotation_path=gaf_path,
-                                          output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex,
+                                          output_dir=output_dir, gene_id_regex=gene_id_regex,
                                           progress_callback=lambda p, m: progress(20 + int(p * 0.4),
                                                                                   _("GO富集: {}").format(m)))
     elif analysis_type == 'kegg':
@@ -1567,17 +1531,18 @@ def run_enrichment_pipeline(
         if check_cancel(): return None
         pathways_path = get_local_downloaded_file_path(config, genome_info, 'KEGG_pathways')
         if not pathways_path or not os.path.exists(pathways_path):
-            log(_("ERROR: 未找到 '{}' 的KEGG通路文件。请先下载数据。").format(assembly_id), "ERROR");
+            logger.error(_("未找到 '{}' 的KEGG通路文件。请先下载数据。").format(assembly_id));
             progress(100, _("任务终止：缺少KEGG通路文件。"));
             return None
+        # 修改: run_kegg_enrichment 不再需要 status_callback
         enrichment_df = run_kegg_enrichment(study_gene_ids=study_gene_ids, kegg_pathways_path=pathways_path,
-                                            output_dir=output_dir, status_callback=log, gene_id_regex=gene_id_regex,
+                                            output_dir=output_dir, gene_id_regex=gene_id_regex,
                                             progress_callback=lambda p, m: progress(20 + int(p * 0.4),
                                                                                     _("KEGG富集: {}").format(m)))
 
     if check_cancel(): return None
     if enrichment_df is None or enrichment_df.empty:
-        log(_("WARNING: 富集分析未发现任何显著结果，流程终止。"), "WARNING");
+        logger.warning(_("富集分析未发现任何显著结果，流程终止。"));
         progress(100, _("任务完成：无显著结果。"));
         return "Enrichment analysis completed with no significant results."
 
@@ -1623,7 +1588,7 @@ def run_enrichment_pipeline(
 
     progress(95, _("正在生成 R 脚本和数据..."))
     if check_cancel(): return None
-    log(_("INFO: 正在为绘图生成 R 脚本和配套数据..."), "INFO")
+    logger.info(_("正在为绘图生成 R 脚本和配套数据..."))
 
     generated_files = generated_plots
     r_plot_types = plot_types
@@ -1637,15 +1602,16 @@ def run_enrichment_pipeline(
                 f.write(readme_content)
             generated_files.append(readme_path)
         except Exception as e:
-            log(f"WARNING: Could not write readme.md file. Reason: {e}", "WARNING")
+            logger.warning(f"Could not write readme.md file. Reason: {e}")
 
     def generate_r_scripts(df_sub, title_prefix, file_prefix_ns):
         for plot_type in r_plot_types:
             if check_cancel(): break
+            # 修改: _generate_r_script_and_data 不再需要 log
             r_files = _generate_r_script_and_data(
                 enrichment_df=df_sub, r_output_dir=r_output_dir, file_prefix=file_prefix_ns,
                 plot_type=plot_type, plot_kwargs=plot_kwargs_common, analysis_title=title_prefix,
-                log=log, gene_log2fc_map=gene_log2fc_map
+                gene_log2fc_map=gene_log2fc_map
             )
             if r_files: generated_files.extend(r_files)
 
@@ -1665,41 +1631,41 @@ def run_enrichment_pipeline(
         final_message += _(
             "\n✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 '{}' 子文件夹中。").format(
             os.path.basename(r_output_dir))
-    log(final_message, "SUCCESS")
+    logger.info(final_message)
     return final_message
 
 
 def run_preprocess_annotation_files(
         config: MainConfig,
         selected_assembly_id: Optional[str] = None,
-        status_callback: Optional[Callable[[str, str], None]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            log(_("任务已被用户取消。"), "INFO")
+            logger.info(_("任务已被用户取消。"))
             progress(100, _("任务已取消。"))
             return True
         return False
 
     progress(0, _("开始预处理注释文件（转换为CSV）..."))
     if check_cancel(): return False
-    log(_("开始预处理注释文件（转换为CSV）..."), "INFO")
+    logger.info(_("开始预处理注释文件（转换为CSV）..."))
 
     progress(5, _("正在加载基因组源数据..."))
     if check_cancel(): return False
+    # 修改: get_genome_data_sources 不再需要回调函数
     genome_sources = get_genome_data_sources(config)
     if not genome_sources:
-        log(_("未能加载基因组源数据。"), "ERROR")
+        logger.error(_("未能加载基因组源数据。"))
         progress(100, _("任务终止：未能加载基因组源。"))
         return False
 
-    # 如果指定了特定基因组，则只处理它
-    genomes_to_process = [genome_sources[selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
+    genomes_to_process = [genome_sources[
+                              selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
 
     tasks_to_run = []
     ALL_ANNO_KEYS = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
@@ -1720,20 +1686,19 @@ def run_preprocess_annotation_files(
                     base_path = source_path.rsplit('.', 1)[0]
                 output_path = base_path + '.csv'
 
-                # 检查CSV是否存在或源文件是否比CSV新
                 if not os.path.exists(output_path) or os.path.getmtime(source_path) > os.path.getmtime(output_path):
                     tasks_to_run.append((source_path, output_path))
 
     if check_cancel(): return False
 
     if not tasks_to_run:
-        log(_("所有注释文件均已是最新状态，无需预处理。"), "INFO")
+        logger.info(_("所有注释文件均已是最新状态，无需预处理。"))
         progress(100, _("无需处理，所有文件已是最新。"))
         return True
 
     total_tasks = len(tasks_to_run)
     progress(20, _("找到 {} 个文件需要进行预处理。").format(total_tasks))
-    log(_("找到 {} 个文件需要进行预处理。").format(total_tasks), "INFO")
+    logger.info(_("找到 {} 个文件需要进行预处理。").format(total_tasks))
     success_count = 0
 
     for i, (source, output) in enumerate(tasks_to_run):
@@ -1742,14 +1707,14 @@ def run_preprocess_annotation_files(
         progress_percentage = 20 + int(((i + 1) / total_tasks) * 75)
         progress(progress_percentage, _("正在转换: {} ({}/{})").format(os.path.basename(source), i + 1, total_tasks))
 
-        # 【核心修改4】这里不需要再进行类型判断，因为 `normalize_to_csv` 可以自动处理所有类型
-        log(_("INFO: Starting intelligent conversion for: {}").format(os.path.basename(source)))
+        logger.info(_("Starting intelligent conversion for: {}").format(os.path.basename(source)))
+        # 修改: normalize_to_csv 不再需要回调函数
         if normalize_to_csv(source, output):
             success_count += 1
         else:
-            log(_("ERROR: Conversion failed for: {}").format(os.path.basename(source)), "ERROR")
+            logger.error(_("Conversion failed for: {}").format(os.path.basename(source)))
 
-    log(_("预处理完成。成功转换 {}/{} 个文件。").format(success_count, total_tasks), "INFO")
+    logger.info(_("预处理完成。成功转换 {}/{} 个文件。").format(success_count, total_tasks))
     progress(100, _("预处理完成。"))
     return success_count == total_tasks
 
@@ -1757,32 +1722,28 @@ def run_preprocess_annotation_files(
 def run_xlsx_to_csv(
         excel_path: str,
         output_csv_path: str,
-        status_callback: Optional[Callable[[str, str], None]] = None,
         cancel_event: Optional[threading.Event] = None,
         **kwargs) -> bool:
-    """
-    流水线函数：将一个Excel文件转换为标准的CSV文件。
-    """
-    log = status_callback if status_callback else lambda msg, level="INFO": print(f"[{level}] {msg}")
+    # 修改: 移除 status_callback 参数
     try:
-        log(_("开始将 '{}' 转换为CSV...").format(os.path.basename(excel_path)), "INFO")
+        logger.info(_("开始将 '{}' 转换为CSV...").format(os.path.basename(excel_path)))
         if cancel_event and cancel_event.is_set():
-            log(_("任务在开始前被取消。"), "INFO")
+            logger.info(_("任务在开始前被取消。"))
             return False
+        # 修改: convert_excel_to_standard_csv 不再需要 status_callback
         success = convert_excel_to_standard_csv(
             excel_path=excel_path,
             output_csv_path=output_csv_path,
-            status_callback=log,
             cancel_event=cancel_event
         )
         if success:
-            log(_("成功将文件转换为CSV格式: {}").format(output_csv_path), "INFO")
+            logger.info(_("成功将文件转换为CSV格式: {}").format(output_csv_path))
         else:
             if not (cancel_event and cancel_event.is_set()):
-                log(_("转换文件时失败。"), "ERROR")
+                logger.error(_("转换文件时失败。"))
         return success
     except Exception as e:
-        log(_("执行Excel到CSV转换流水线时发生错误: {}").format(e), "ERROR")
+        logger.error(_("执行Excel到CSV转换流水线时发生错误: {}").format(e))
         return False
 
 
@@ -1796,19 +1757,15 @@ def run_blast_pipeline(
         evalue: float,
         word_size: int,
         max_target_seqs: int,
-        status_callback: Callable,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> Optional[str]:
-    """
-    执行本地BLAST搜索的完整流水线。
-    """
-    log = lambda msg, level="INFO": status_callback(msg, level)
+    # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel(message: str = "任务已取消。"):
         if cancel_event and cancel_event.is_set():
-            log(message, "INFO")
+            logger.info(message)
             return True
         return False
 
@@ -1817,24 +1774,24 @@ def run_blast_pipeline(
         progress(0, _("BLAST 流程启动..."))
         if check_cancel(): return _("任务已取消。")
 
-        # --- 1. 验证、解压并准备 BLAST 数据库 ---
         progress(5, _("正在验证目标基因组数据库..."))
-        log(_("步骤 1: 准备目标数据库 '{}'...").format(target_assembly_id))
+        logger.info(_("步骤 1: 准备目标数据库 '{}'...").format(target_assembly_id))
 
-        genome_sources = get_genome_data_sources(config, logger_func=log)
+        # 修改: get_genome_data_sources 不再需要 logger_func
+        genome_sources = get_genome_data_sources(config)
         target_genome_info = genome_sources.get(target_assembly_id)
         if not target_genome_info:
-            log(_("错误: 无法找到目标基因组 '{}' 的配置。").format(target_assembly_id), "ERROR")
+            logger.error(_("错误: 无法找到目标基因组 '{}' 的配置。").format(target_assembly_id))
             return None
 
         db_type = 'prot' if blast_type in ['blastp', 'blastx'] else 'nucl'
         seq_file_key = 'predicted_protein' if db_type == 'prot' else 'predicted_cds'
 
-        log(_("为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。").format(blast_type, db_type, seq_file_key), "INFO")
+        logger.info(_("为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。").format(blast_type, db_type, seq_file_key))
 
         compressed_seq_file = get_local_downloaded_file_path(config, target_genome_info, seq_file_key)
         if not compressed_seq_file or not os.path.exists(compressed_seq_file):
-            log(_("错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。").format(seq_file_key), "ERROR")
+            logger.error(_("错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。").format(seq_file_key))
             return None
 
         db_fasta_path = compressed_seq_file
@@ -1844,20 +1801,19 @@ def run_blast_pipeline(
             if not os.path.exists(decompressed_path) or os.path.getmtime(compressed_seq_file) > os.path.getmtime(
                     decompressed_path):
                 progress(8, _("文件为gz压缩格式，正在解压..."))
-                log(_("正在解压 {} 到 {}...").format(os.path.basename(compressed_seq_file),
-                                                     os.path.basename(decompressed_path)))
+                logger.info(_("正在解压 {} 到 {}...").format(os.path.basename(compressed_seq_file),
+                                                             os.path.basename(decompressed_path)))
                 try:
                     with gzip.open(compressed_seq_file, 'rb') as f_in, open(decompressed_path, 'wb') as f_out:
-                        # Uncompress in chunks to allow for cancellation
                         while True:
                             if check_cancel(_("解压过程被取消。")): return None
-                            chunk = f_in.read(1024 * 1024)  # 1MB chunks
+                            chunk = f_in.read(1024 * 1024)
                             if not chunk:
                                 break
                             f_out.write(chunk)
-                    log(_("解压成功。"))
+                    logger.info(_("解压成功。"))
                 except Exception as e:
-                    log(_("解压文件时出错: {}").format(e), "ERROR")
+                    logger.error(_("解压文件时出错: {}").format(e))
                     return None
 
         if check_cancel(): return _("任务已取消。")
@@ -1865,36 +1821,34 @@ def run_blast_pipeline(
         db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
         if not os.path.exists(db_fasta_path + db_check_ext):
             progress(10, _("正在创建BLAST数据库... (可能需要一些时间)"))
-            log(_("未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库...").format(os.path.basename(db_fasta_path),
+            logger.info(
+                _("未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库...").format(os.path.basename(db_fasta_path),
                                                                                       db_type))
 
             makeblastdb_cmd = ["makeblastdb", "-in", db_fasta_path, "-dbtype", db_type, "-out", db_fasta_path, "-title",
                                f"{target_assembly_id} {db_type} DB"]
             try:
-                # subprocess.run is blocking, cancellation can only be checked before it runs.
                 if check_cancel(_("数据库创建过程在开始前被取消。")): return None
                 result = subprocess.run(makeblastdb_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
-                log(_("BLAST数据库创建成功。"))
+                logger.info(_("BLAST数据库创建成功。"))
             except FileNotFoundError:
-                log(_(
-                    "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"),
-                    "ERROR")
+                logger.error(_(
+                    "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"))
                 return False
             except subprocess.CalledProcessError as e:
-                log(_("创建BLAST数据库失败: {} \nStderror: {}").format(e.stdout, e.stderr), "ERROR")
+                logger.error(_("创建BLAST数据库失败: {} \nStderror: {}").format(e.stdout, e.stderr))
                 return None
 
         if check_cancel(): return _("任务已取消。")
 
-        # --- 2. 准备查询序列文件 ---
         progress(25, _("正在准备查询序列..."))
         tmp_query_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".fasta")
-        tmp_query_file_to_clean = tmp_query_file.name  # Keep track for cleanup
+        tmp_query_file_to_clean = tmp_query_file.name
         with tmp_query_file:
             query_fasta_path = tmp_query_file.name
             if query_file_path:
                 if check_cancel(): return _("任务已取消。")
-                log(_("正在处理输入文件: {}").format(query_file_path))
+                logger.info(_("正在处理输入文件: {}").format(query_file_path))
                 file_format = "fasta"
                 try:
                     with open(query_file_path, "r") as f:
@@ -1902,22 +1856,21 @@ def run_blast_pipeline(
                 except:
                     pass
                 if file_format == "fastq":
-                    log(_("检测到FASTQ格式，正在转换为FASTA..."))
+                    logger.info(_("检测到FASTQ格式，正在转换为FASTA..."))
                     SeqIO.convert(query_file_path, "fastq", query_fasta_path, "fasta")
                 else:
-                    log(_("将输入文件作为FASTA格式处理..."))
+                    logger.info(_("将输入文件作为FASTA格式处理..."))
                     with open(query_file_path, 'r') as infile:
                         tmp_query_file.write(infile.read())
             elif query_text:
                 if check_cancel(): return _("任务已取消。")
-                log(_("正在处理文本输入..."))
+                logger.info(_("正在处理文本输入..."))
                 tmp_query_file.write(query_text)
 
         if check_cancel(): return _("任务已取消。")
 
-        # --- 3. 执行 BLAST ---
         progress(40, _("正在执行 {} ...").format(blast_type))
-        log(_("步骤 2: 执行 {} ...").format(blast_type.upper()))
+        logger.info(_("步骤 2: 执行 {} ...").format(blast_type.upper()))
 
         output_xml_path = query_fasta_path + ".xml"
 
@@ -1927,23 +1880,21 @@ def run_blast_pipeline(
                                             evalue=evalue, word_size=word_size, max_target_seqs=max_target_seqs,
                                             num_threads=config.downloader.max_workers)
 
-        log(_("BLAST命令: {}").format(str(blast_cline)))
-        # Again, blast is a blocking call. Check before running.
+        logger.info(_("BLAST命令: {}").format(str(blast_cline)))
         if check_cancel(_("BLAST在执行前被取消。")): return None
         stdout, stderr = blast_cline()
         if stderr:
-            log(_("BLAST运行时发生错误: {}").format(stderr), "ERROR")
+            logger.error(_("BLAST运行时发生错误: {}").format(stderr))
             return None
 
         if check_cancel(): return _("任务已取消。")
 
-        # --- 4. 解析结果并保存 ---
         progress(80, _("正在解析BLAST结果..."))
-        log(_("步骤 3: 解析结果并保存到 {} ...").format(output_path))
+        logger.info(_("步骤 3: 解析结果并保存到 {} ...").format(output_path))
 
         all_hits = []
         if not os.path.exists(output_xml_path) or os.path.getsize(output_xml_path) == 0:
-            log(_("BLAST运行完毕，但未产生任何结果。"), "WARNING")
+            logger.warning(_("BLAST运行完毕，但未产生任何结果。"))
         else:
             blast_results = blast_parse(output_xml_path, "blast-xml")
             for query_result in blast_results:
@@ -1968,7 +1919,7 @@ def run_blast_pipeline(
         if check_cancel(): return _("任务已取消。")
 
         if not all_hits:
-            log(_("未找到任何显著的BLAST匹配项。"), "INFO")
+            logger.info(_("未找到任何显著的BLAST匹配项。"))
         else:
             results_df = pd.DataFrame(all_hits)
             results_df['Identity (%)'] = results_df['Identity (%)'].map('{:.2f}'.format)
@@ -1980,17 +1931,16 @@ def run_blast_pipeline(
             elif output_path.lower().endswith('.xlsx'):
                 results_df.to_excel(output_path, index=False, engine='openpyxl')
 
-            log(_("成功找到 {} 条匹配记录。").format(len(results_df)), "INFO")
+            logger.info(_("成功找到 {} 条匹配记录。").format(len(results_df)))
 
         progress(100, _("BLAST流程完成。"))
         return _("BLAST 任务完成！结果已保存到 {}").format(output_path)
 
     except Exception as e:
-        log(_("BLAST流水线执行过程中发生意外错误: {}").format(e), "ERROR")
-        log(traceback.format_exc(), "DEBUG")
+        logger.error(_("BLAST流水线执行过程中发生意外错误: {}").format(e))
+        logger.debug(traceback.format_exc())
         return None
     finally:
-        # --- 5. 清理 ---
         if tmp_query_file_to_clean and os.path.exists(tmp_query_file_to_clean):
             os.remove(tmp_query_file_to_clean)
             output_xml_path = tmp_query_file_to_clean + ".xml"
@@ -2001,39 +1951,38 @@ def run_blast_pipeline(
 def run_build_blast_db_pipeline(
         config: MainConfig,
         selected_assembly_id: Optional[str] = None,
-        status_callback: Optional[Callable[[str, str], None]] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    """
-    为所有已下载但尚未处理的CDS和Protein文件批量创建BLAST数据库。
-    """
-    log = status_callback if status_callback else lambda msg, level: print(f"[{level}] {msg}")
+    # 修改: 移除 status_callback
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
+            logger.info(_("任务已被用户取消。"))
             return True
         return False
 
     progress(0, _("开始预处理BLAST数据库..."))
-    if check_cancel(): log(_("任务被取消。"), "INFO"); return False
-    log(_("开始批量创建BLAST数据库..."), "INFO")
+    if check_cancel(): logger.info(_("任务被取消。")); return False
+    logger.info(_("开始批量创建BLAST数据库..."))
 
     progress(5, _("正在加载基因组源数据..."))
-    if check_cancel(): log(_("任务被取消。"), "INFO"); return False
+    if check_cancel(): logger.info(_("任务被取消。")); return False
+    # 修改: get_genome_data_sources 不再需要回调函数
     genome_sources = get_genome_data_sources(config)
     if not genome_sources:
-        log(_("未能加载基因组源数据。"), "ERROR")
+        logger.error(_("未能加载基因组源数据。"))
         progress(100, _("任务终止：未能加载基因组源。"))
         return False
 
-    genomes_to_process = [genome_sources[selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
+    genomes_to_process = [genome_sources[
+                              selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
 
     tasks_to_run = []
     BLAST_FILE_KEYS = ['predicted_cds', 'predicted_protein']
     progress(10, _("正在检查需要预处理的文件..."))
-    if check_cancel(): log(_("任务被取消。"), "INFO"); return False
+    if check_cancel(): logger.info(_("任务被取消。")); return False
 
     for genome_info in genomes_to_process:
         if check_cancel(): break
@@ -2053,64 +2002,60 @@ def run_build_blast_db_pipeline(
             if not os.path.exists(db_fasta_path + db_check_ext):
                 tasks_to_run.append((compressed_file, db_fasta_path, db_type))
 
-    if check_cancel(): log(_("任务在文件检查后被取消。"), "INFO"); return False
+    if check_cancel(): logger.info(_("任务在文件检查后被取消。")); return False
 
     if not tasks_to_run:
-        log(_("所有BLAST数据库均已是最新状态，无需预处理。"), "INFO")
+        logger.info(_("所有BLAST数据库均已是最新状态，无需预处理。"))
         progress(100, _("无需处理，所有文件已是最新。"))
         return True
 
     total_tasks = len(tasks_to_run)
     progress(20, _("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
-    log(_("找到 {} 个BLAST数据库需要创建。").format(total_tasks), "INFO")
+    logger.info(_("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
     success_count = 0
 
     for i, (compressed_file, db_fasta_path, db_type) in enumerate(tasks_to_run):
         if check_cancel():
-            log(_("任务被用户取消。"), "INFO")
-            progress(100, _("任务已取消。"))
+            logger.info(_("任务被用户取消。"));
+            progress(100, _("任务已取消。"));
             return False
 
         task_progress = 20 + int(((i + 1) / total_tasks) * 75)
         progress(task_progress, _("正在处理: {} ({}/{})").format(os.path.basename(compressed_file), i + 1, total_tasks))
 
         try:
-            # 1. 解压
             if compressed_file.endswith('.gz'):
                 if not os.path.exists(db_fasta_path) or os.path.getmtime(compressed_file) > os.path.getmtime(
                         db_fasta_path):
-                    log(_("正在解压 {}...").format(os.path.basename(compressed_file)))
+                    logger.info(_("正在解压 {}...").format(os.path.basename(compressed_file)))
                     with gzip.open(compressed_file, 'rb') as f_in, open(db_fasta_path, 'wb') as f_out:
-                        # Uncompress in chunks to allow for cancellation
                         while True:
                             if check_cancel(): raise InterruptedError("Decompression cancelled")
-                            chunk = f_in.read(1024 * 1024)  # 1MB chunks
+                            chunk = f_in.read(1024 * 1024)
                             if not chunk: break
                             f_out.write(chunk)
 
             if check_cancel(): continue
 
-            # 2. 建库
-            log(_("正在为 {} 创建 {} 数据库...").format(os.path.basename(db_fasta_path), db_type))
+            logger.info(_("正在为 {} 创建 {} 数据库...").format(os.path.basename(db_fasta_path), db_type))
             makeblastdb_cmd = ["makeblastdb", "-in", db_fasta_path, "-dbtype", db_type, "-out", db_fasta_path]
 
             result = subprocess.run(makeblastdb_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
-            log(_("数据库 {} 创建成功。").format(os.path.basename(db_fasta_path)), "INFO")
+            logger.info(_("数据库 {} 创建成功。").format(os.path.basename(db_fasta_path)))
             success_count += 1
 
         except InterruptedError:
-            log(_("任务在解压时被取消: {}").format(os.path.basename(compressed_file)), "INFO")
+            logger.info(_("任务在解压时被取消: {}").format(os.path.basename(compressed_file)))
             return False
         except FileNotFoundError:
-            log(_(
-                "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"),
-                "ERROR")
-            return False  # Fatal error, stop all subsequent tasks
+            logger.error(_(
+                "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"))
+            return False
         except subprocess.CalledProcessError as e:
-            log(_("创建数据库 {} 失败: {}").format(os.path.basename(db_fasta_path), e.stderr), "ERROR")
+            logger.error(_("创建数据库 {} 失败: {}").format(os.path.basename(db_fasta_path), e.stderr))
         except Exception as e:
-            log(_("处理文件 {} 时发生未知错误: {}").format(os.path.basename(compressed_file), e), "ERROR")
+            logger.error(_("处理文件 {} 时发生未知错误: {}").format(os.path.basename(compressed_file), e))
 
-    log(_("BLAST数据库预处理完成。成功创建 {}/{} 个数据库。").format(success_count, total_tasks), "INFO")
+    logger.info(_("BLAST数据库预处理完成。成功创建 {}/{} 个数据库。").format(success_count, total_tasks))
     progress(100, _("预处理完成。"))
     return True

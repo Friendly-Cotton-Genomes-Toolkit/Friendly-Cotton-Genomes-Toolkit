@@ -10,7 +10,7 @@ from ..config.models import MainConfig, GenomeSourceItem
 from ..config.loader import get_local_downloaded_file_path
 from ..utils.file_utils import smart_load_file
 
-logger = logging.getLogger("cotton_toolkit.annotator")
+logger = logging.getLogger("cotton_toolkit.tools.annotator")
 
 
 try:
@@ -28,28 +28,25 @@ class Annotator:
     - 使用基因组专属的正则表达式进行精确匹配。
     """
 
-    # __init__ 方法保持不变
     def __init__(
             self,
             main_config: MainConfig,
             genome_id: str,
             genome_info: GenomeSourceItem,
-            status_callback: Optional[Callable[[str, str], None]] = None,
             progress_callback: Optional[Callable[[int, str], None]] = None,
             custom_db_dir: Optional[str] = None
     ):
         self.config = main_config
         self.genome_id = genome_id
         self.genome_info = genome_info
-        self.log = status_callback if status_callback else lambda msg, level="INFO": logger.info(f"[{level}] {msg}")
+        # 修改: 移除对 status_callback 的依赖，直接使用 logger
         self.progress = progress_callback if progress_callback else lambda p, m: logger.info(f"[{p}%] {m}")
         self.db_cache: Dict[str, pd.DataFrame] = {}
         self.custom_db_dir = custom_db_dir
         if self.custom_db_dir:
-            self.log(_("INFO: 将优先使用自定义注释数据库目录: {}").format(self.custom_db_dir))
+            logger.info(_("将优先使用自定义注释数据库目录: {}").format(self.custom_db_dir))
 
 
-    # --- 以下函数是本次修改的核心 ---
     def _load_annotation_db(self, db_key: str) -> Optional[pd.DataFrame]:
         """
         只加载预处理后的 .csv 注释文件，并强制重命名表头。
@@ -62,7 +59,6 @@ class Annotator:
             logger.warning(_("警告: 在配置中未找到 {} 的下载信息。").format(db_key))
             return None
 
-        # 准确地推断出预处理后的CSV文件路径
         if original_path.endswith('.xlsx.gz'):
             base_path = original_path.replace('.xlsx.gz', '')
         elif original_path.endswith('.txt.gz'):
@@ -73,14 +69,14 @@ class Annotator:
 
         processed_csv_path = base_path + '.csv'
 
-        # 只检查 .csv 文件是否存在
         if not os.path.exists(processed_csv_path):
             logger.error(_("未找到预处理好的注释文件 '{}'。").format(os.path.basename(processed_csv_path)))
             logger.error(_("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"))
             return None
 
         logger.info(_("正在加载预处理的注释文件: {}").format(os.path.basename(processed_csv_path)))
-        df = smart_load_file(processed_csv_path, logger_func=self.log)
+        # 修改: smart_load_file 内部使用统一logger，因此无需传递 logger_func
+        df = smart_load_file(processed_csv_path)
 
         if df is not None and not df.empty:
             logger.debug(_("从CSV加载的原始列名: {}").format(df.columns.tolist()))
@@ -97,12 +93,7 @@ class Annotator:
             logger.error(_("无法加载文件或文件为空: {}。").format(processed_csv_path))
             return None
 
-    # annotate_genes 方法保持不变，因为它已经是最终形态
     def annotate_genes(self, gene_ids: List[str], annotation_types: List[str]) -> pd.DataFrame:
-        """
-        【最终专业版】使用正则表达式提取核心ID，进行精确匹配。
-        """
-        # ... (此函数的代码与上一轮回复中的完全相同，无需修改) ...
         if not gene_ids:
             return pd.DataFrame()
 

@@ -4,6 +4,7 @@ import pandas as pd
 from scipy.stats import hypergeom
 from statsmodels.stats.multitest import multipletests
 from typing import List, Optional, Callable
+import logging
 
 from .data_loader import load_annotation_data
 from ..core.convertXlsx2csv import convert_excel_to_standard_csv
@@ -15,11 +16,13 @@ try:
 except ImportError:
     _ = lambda text: str(text)
 
+# 修改: 创建 logger 实例
+logger = logging.getLogger("cotton_toolkit.tools.enrichment_analyzer")
+
 
 def _perform_hypergeometric_test(
         study_gene_ids: List[str],
         background_df: pd.DataFrame,
-        status_callback: Callable,
         output_dir: str,
         gene_id_regex: Optional[str] = None,
         alpha: float = 0.05,
@@ -27,19 +30,12 @@ def _perform_hypergeometric_test(
 ) -> Optional[pd.DataFrame]:
     """
     一个通用的、执行超几何检验的核心函数，并支持进度报告。
-
-    :param study_gene_ids: 用户输入的研究基因列表。
-    :param background_df: 一个包含 ['GeneID', 'TermID', 'Description'] 列的DataFrame，代表全基因组的注释背景。
-    :param status_callback: 用于记录日志的回调函数。
-    :param alpha: 显著性水平阈值。
-    :param progress_callback: 用于报告进度的回调函数。
-    :return: 包含富集结果的DataFrame。
     """
-    log = status_callback
     progress = progress_callback if progress_callback else lambda p, m: None
 
     progress(5, _("正在准备富集分析背景数据..."))
-    log("INFO: 正在准备富集分析背景数据...")
+    # 修改: 直接使用 logger
+    logger.info(_("正在准备富集分析背景数据..."))
 
     original_input_set = set(study_gene_ids)
     background_gene_id_col = 'GeneID'
@@ -90,12 +86,15 @@ def _perform_hypergeometric_test(
         report_path = os.path.join(output_dir, "gene_matching_report.csv")
         report_df.to_csv(report_path, index=False, encoding='utf-8-sig')
 
-        log(_("INFO: 详细注释报告已保存至: {}").format(os.path.basename(report_path)))
+        # 修改: 直接使用 logger
+        logger.info(_("详细注释报告已保存至: {}").format(os.path.basename(report_path)))
     except Exception as e:
-        log(_("WARNING: 创建基因匹配报告时发生错误: {}").format(e))
+        # 修改: 直接使用 logger
+        logger.warning(_("创建基因匹配报告时发生错误: {}").format(e))
 
     if N == 0:
-        log(_("WARNING: 经过标准化和背景过滤后，没有有效的基因用于富集分析。"))
+        # 修改: 直接使用 logger
+        logger.warning(_("经过标准化和背景过滤后，没有有效的基因用于富集分析。"))
         progress(100, _("任务终止：无有效基因。"))
         return None
 
@@ -107,7 +106,6 @@ def _perform_hypergeometric_test(
     progress(20, _("开始超几何检验..."))
 
     for i, (term_id, n) in enumerate(term_counts.items()):
-        # 在循环中更新进度 (从20%到80%)
         if i % 50 == 0 or i == total_terms - 1:
             progress(20 + int(((i + 1) / total_terms) * 60), f"{_('正在计算富集项')} {i + 1}/{total_terms}")
 
@@ -124,7 +122,8 @@ def _perform_hypergeometric_test(
                             'Genes': ";".join(sorted(list(k_genes_norm))), 'GeneNumber': k, 'RichFactor': rich_factor})
 
     if not results:
-        log(_("WARNING: 分析未产生任何结果。"))
+        # 修改: 直接使用 logger
+        logger.warning(_("分析未产生任何结果。"))
         progress(100, _("任务完成：无结果。"))
         return None
 
@@ -133,7 +132,8 @@ def _perform_hypergeometric_test(
     progress(85, _("正在进行多重检验校正..."))
     p_values = results_df['p_value'].dropna()
     if p_values.empty:
-        log(_("WARNING: 所有Term的p-value计算失败。"))
+        # 修改: 直接使用 logger
+        logger.warning(_("所有Term的p-value计算失败。"))
         progress(100, _("任务终止：p-value计算失败。"))
         return None
 
@@ -144,16 +144,20 @@ def _perform_hypergeometric_test(
     try:
         full_results_path = os.path.join(output_dir, "enrichment_results_all.csv")
         results_df.sort_values(by='p_value').to_csv(full_results_path, index=False, encoding='utf-8-sig')
-        log(_("INFO: 完整的富集结果清单已保存至: {}").format(os.path.basename(full_results_path)))
+        # 修改: 直接使用 logger
+        logger.info(_("完整的富集结果清单已保存至: {}").format(os.path.basename(full_results_path)))
     except Exception as e:
-        log(_("WARNING: 保存完整富集结果时出错: {}").format(e))
+        # 修改: 直接使用 logger
+        logger.warning(_("保存完整富集结果时出错: {}").format(e))
 
     if results_df.empty:
-        log(_("WARNING: 富集分析未发现任何结果。"))
+        # 修改: 直接使用 logger
+        logger.warning(_("富集分析未发现任何结果。"))
         progress(100, _("任务完成：无结果。"))
         return None
 
-    log(_("SUCCESS: 富集分析完成，共计算出 {} 个Term的结果。").format(len(results_df)))
+    # 修改: 直接使用 logger
+    logger.info(_("富集分析完成，共计算出 {} 个Term的结果。").format(len(results_df)))
     progress(100, _("富集分析完成。"))
     return results_df.sort_values(by='FDR')
 
@@ -161,7 +165,6 @@ def _perform_hypergeometric_test(
 def run_go_enrichment(
         study_gene_ids: List[str],
         go_annotation_path: str,
-        status_callback: Callable,
         output_dir: str,
         gene_id_regex: Optional[str] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
@@ -169,20 +172,22 @@ def run_go_enrichment(
     """
     执行GO富集分析，并传递进度回调。
     """
-    log = status_callback
     progress = progress_callback if progress_callback else lambda p, m: None
 
     progress(0, _("准备GO富集分析..."))
     cache_dir = os.path.join(output_dir, '.cache')
-    prepared_go_path = prepare_input_file(go_annotation_path, status_callback, cache_dir)
+    # 修改: prepare_input_file 内部已使用统一logger，无需传递status_callback
+    prepared_go_path = prepare_input_file(go_annotation_path, cache_dir=cache_dir)
 
     if not prepared_go_path:
-        log(_("GO注释文件准备失败，富集分析终止。"), "ERROR")
+        # 修改: 直接使用 logger
+        logger.error(_("GO注释文件准备失败，富集分析终止。"))
         progress(100, _("任务终止：GO文件准备失败。"))
         return None
 
     progress(10, _("加载GO背景数据..."))
-    log(_("正在加载处理后的GO注释背景数据..."), "INFO")
+    # 修改: 直接使用 logger
+    logger.info(_("正在加载处理后的GO注释背景数据..."))
     try:
         background_df = pd.read_csv(prepared_go_path)
         if not background_df.empty:
@@ -193,7 +198,6 @@ def run_go_enrichment(
             if len(background_df.columns) > 3: rename_map[background_df.columns[3]] = 'Namespace'
             background_df.rename(columns=rename_map, inplace=True)
 
-            # 利用 Description 列中的信息来推断 Namespace，而不是使用硬编码的 'GO'
             if 'Namespace' not in background_df.columns and 'Description' in background_df.columns:
                 background_df['Namespace'] = background_df['Description'].apply(
                     lambda x: x.split(':')[0] if isinstance(x, str) and ':' in x else 'GO'
@@ -202,14 +206,14 @@ def run_go_enrichment(
                 background_df['Namespace'] = 'GO'
 
     except Exception as e:
-        log(_("读取或重命名GO背景文件失败: {}").format(e), "ERROR")
+        # 修改: 直接使用 logger
+        logger.error(_("读取或重命名GO背景文件失败: {}").format(e))
         progress(100, _("任务终止：读取GO背景失败。"))
         return None
 
     return _perform_hypergeometric_test(
         study_gene_ids,
         background_df,
-        status_callback,
         output_dir,
         gene_id_regex=gene_id_regex,
         progress_callback=progress
@@ -220,7 +224,6 @@ def run_kegg_enrichment(
         study_gene_ids: List[str],
         kegg_pathways_path: str,
         output_dir: str,
-        status_callback: Optional[Callable] = print,
         gene_id_regex: Optional[str] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         **kwargs
@@ -228,20 +231,24 @@ def run_kegg_enrichment(
     """
     执行KEGG富集分析, 与GO分析流程统一，并传递进度回调。
     """
-    log = status_callback
     progress = progress_callback if progress_callback else lambda p, m: None
 
     try:
         progress(0, _("准备KEGG富集分析..."))
         cache_dir = os.path.join(output_dir, '.cache')
-        prepared_kegg_path = prepare_input_file(kegg_pathways_path, log, cache_dir)
+        # 修改: prepare_input_file 内部已使用统一logger，无需传递 status_callback
+        prepared_kegg_path = prepare_input_file(kegg_pathways_path, cache_dir=cache_dir)
 
         if not prepared_kegg_path:
+            # 修改: 直接使用 logger
+            logger.error(_("KEGG注释文件准备失败。"))
             raise ValueError(_("KEGG注释文件准备失败。"))
 
         progress(10, _("加载KEGG背景数据..."))
         background_df = pd.read_csv(prepared_kegg_path)
         if background_df is None or background_df.empty:
+            # 修改: 直接使用 logger
+            logger.error(_("加载的KEGG注释文件为空或格式不正确。"))
             raise ValueError(_("加载的KEGG注释文件为空或格式不正确。"))
 
         rename_map = {}
@@ -254,17 +261,15 @@ def run_kegg_enrichment(
             background_df['Namespace'] = 'KEGG'
 
     except Exception as e:
-        log(_("ERROR: 准备KEGG背景文件时出错: {}").format(e))
+        # 修改: 直接使用 logger
+        logger.error(_("准备KEGG背景文件时出错: {}").format(e))
         progress(100, _("任务终止：准备KEGG背景失败。"))
         return None
 
     return _perform_hypergeometric_test(
         study_gene_ids,
         background_df,
-        log,
         output_dir,
         gene_id_regex=gene_id_regex,
-        progress_callback=progress  # 将回调函数传递下去
+        progress_callback=progress
     )
-
-

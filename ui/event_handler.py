@@ -27,7 +27,8 @@ try:
 except ImportError:
     _ = lambda s: str(s)
 
-logger = logging.getLogger(__name__)
+# 修改: 使用新的日志命名规范
+logger = logging.getLogger("ui.event_handler")
 
 
 class EventHandler:
@@ -44,7 +45,6 @@ class EventHandler:
         【修改】增加对新消息类型的处理。
         """
         handlers = {
-            # ... 您已有的所有消息处理器 ...
             "startup_complete": self._handle_startup_complete,
             "startup_failed": self._handle_startup_failed,
             "config_load_task_done": self._handle_config_load_task_done,
@@ -66,42 +66,34 @@ class EventHandler:
     def on_language_change(self, language_name: str):
         """当用户从下拉菜单中选择一个新语言时触发。"""
         app = self.app
-        _ = app._  # 使用当前实例的翻译函数
+        _ = app._
 
         selected_lang_code = app.LANG_NAME_TO_CODE.get(language_name)
         if not selected_lang_code:
-            app.logger.warning(_("Invalid language name selected: {}").format(language_name))
+            logger.warning(_("Invalid language name selected: {}").format(language_name))
             return
 
-        app.logger.info(_("Language change requested to: {} ({})").format(language_name, selected_lang_code))
+        logger.info(_("Language change requested to: {} ({})").format(language_name, selected_lang_code))
 
-        # 步骤 1: 更新并保存 UI 配置文件 (ui_settings.json)，这会影响下次启动时的默认语言
         app.ui_settings['language'] = selected_lang_code
         self.ui_manager.save_ui_settings()
 
-        # 步骤 2: 如果当前加载了主配置文件(config.yml)，则更新并保存它
         app._ = setup_localization(language_code=selected_lang_code)
         _ = app._
         if app.current_config and app.config_path:
             app.current_config.i18n_language = selected_lang_code
             if save_config(app.current_config, app.config_path):
-                app.logger.info(
+                logger.info(
                     _("Main config file '{}' updated with language '{}'.").format(os.path.basename(app.config_path),
                                                                                   selected_lang_code))
-                # 更新状态栏提示
                 app.message_queue.put(('show_info', {'title': _("配置已保存"),
                                                      'message': _("语言设置已同步到 {}。").format(
                                                          os.path.basename(app.config_path))}))
             else:
-                app.logger.error(f"Failed to save language setting to '{app.config_path}'.")
+                logger.error(f"Failed to save language setting to '{app.config_path}'.")
                 app.message_queue.put(
                     ('show_error', {'title': _("保存失败"), 'message': _("无法将语言设置写入配置文件。")}))
 
-        # 步骤 3: 实时更新当前界面的所有文本 反正都要重启
-        # self.ui_manager.update_language_ui(selected_lang_code)
-
-        # 步骤 4: 弹出重启提示对话框
-        # 使用更新后的翻译函数来创建对话框
         dialog = ConfirmationDialog(
             parent=app,
             title=_("需要重启"),
@@ -110,7 +102,6 @@ class EventHandler:
             button2_text=_("稍后重启")
         )
 
-        # 步骤 5: 根据用户选择决定是否重启
         if dialog.result is True:
             app.restart_app()
 
@@ -120,7 +111,6 @@ class EventHandler:
         """
         _ = self.app._
         if self.app.active_task_name:
-            # 如果有任务在运行，弹出特定警告
             dialog = ConfirmationDialog(
                 parent=self.app,
                 title=_("确认退出"),
@@ -132,7 +122,6 @@ class EventHandler:
                 self.app.cancel_current_task_event.set()
                 self.app.destroy()
         else:
-            # 如果程序空闲，弹出通用退出确认
             dialog = ConfirmationDialog(
                 parent=self.app,
                 title=_("确认退出"),
@@ -163,7 +152,8 @@ class EventHandler:
                 loaded_config = load_config(config_path_to_send)
             if loaded_config:
                 app.message_queue.put(("progress", (30, _("正在加载基因组源数据..."))))
-                genome_sources = get_genome_data_sources(loaded_config, logger_func=logger.info)
+                # 修改: get_genome_data_sources 不再接受 logger_func
+                genome_sources = get_genome_data_sources(loaded_config)
             app.message_queue.put(("progress", (80, _("启动完成准备..."))))
             startup_data = {"config": loaded_config, "genome_sources": genome_sources,
                             "config_path": config_path_to_send}
@@ -188,7 +178,6 @@ class EventHandler:
                                                     app.active_task_name))
             return
 
-        # 如果没有提供 task_key，则默认使用 task_name
         if task_key is None:
             task_key = task_name
 
@@ -198,17 +187,15 @@ class EventHandler:
         self.app.message_queue.put(("show_progress_dialog", {"title": task_name, "message": _("正在处理..."),
                                                              "on_cancel": app.cancel_current_task_event.set}))
 
-        kwargs.update({'cancel_event': app.cancel_current_task_event, 'status_callback': self.gui_status_callback,
-                       'progress_callback': self.gui_progress_callback})
+        # 修改: 移除 status_callback，因为统一日志系统会处理它
+        kwargs.update({'cancel_event': app.cancel_current_task_event, 'progress_callback': self.gui_progress_callback})
 
-        # 将 task_key 传递给线程包装器
         threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name, task_key, on_success),
                          daemon=True).start()
 
     def _task_wrapper(self, target_func, kwargs, task_name, task_key, on_success: Optional[Callable] = None):
         """
         在后台线程中执行任务的包装器。
-        【已扩展】: 传递 task_key。
         """
         _ = self.app._
         result = None
@@ -219,6 +206,7 @@ class EventHandler:
                 self.app.after(0, on_success, result)
         except Exception as exc:
             e = exc
+            logger.error(_("任务 '{}' 发生错误: {}").format(task_name, exc))
         finally:
             final_data = None
             if self.app.cancel_current_task_event.is_set():
@@ -235,11 +223,12 @@ class EventHandler:
     def _handle_startup_complete(self, data: dict):
         app = self.app
         _ = self.app._
-        self.app._log_to_viewer(_("应用程序启动完成。"), "INFO")
+        # 修改: 使用标准 logger
+        logger.info(_("应用程序启动完成。"))
         if self.app.ui_manager and hasattr(self.app, 'config_path_display_var'):
             self.app.ui_manager.update_ui_from_config()
         else:
-            self.app.logger.warning(_("无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"))
+            logger.warning(_("无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"))
         app.genome_sources_data = data.get("genome_sources")
         config_data = data.get("config")
         config_path_from_load = data.get("config_path")
@@ -272,7 +261,8 @@ class EventHandler:
             app.config_path = root_config_path
             app.ui_manager.show_info_message(_("加载并覆盖成功"), _("已将 '{}' 的内容加载并保存至 '{}'。").format(
                 os.path.basename(original_filepath), os.path.basename(root_config_path)))
-            app.genome_sources_data = get_genome_data_sources(app.current_config, logger_func=logger.info)
+            # 修改: get_genome_data_sources 不再接受 logger_func
+            app.genome_sources_data = get_genome_data_sources(app.current_config)
             app.ui_manager.update_ui_from_config()
         except Exception as e:
             error_msg = _("无法将加载的配置保存到根目录 'config.yml'。\n错误: {}").format(e)
@@ -289,14 +279,13 @@ class EventHandler:
 
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
 
-        # --- 使用 task_key 进行判断 ---
         refresh_trigger_keys = ["download", "preprocess_anno", "preprocess_blast"]
         if success and task_key in refresh_trigger_keys:
             if download_tab := app.tool_tab_instances.get('download'):
                 if hasattr(download_tab, '_update_dynamic_widgets'):
                     selected_genome = download_tab.selected_genome_var.get()
                     app.after(50, lambda: download_tab._update_dynamic_widgets(selected_genome))
-                    app.logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
+                    logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
 
         elif "富集分析" in task_display_name and success and result_data:
             if hasattr(self.app.ui_manager, '_show_plot_results'):
@@ -319,19 +308,15 @@ class EventHandler:
         _ = self.app._
         provider_key, models_or_error = data
         if isinstance(models_or_error, list) and models_or_error:
-            # 更新编辑器UI中的下拉选项 (这部分逻辑不变)
             self.app.ui_manager.update_ai_model_dropdown(provider_key, models_or_error)
 
-            # --- 【核心修正】---
-            # 将获取到的完整模型列表（用逗号连接成字符串）
-            # 更新到内存中配置对象的 available_models 字段
             if self.app.current_config:
                 provider_cfg = self.app.current_config.ai_services.providers.get(provider_key)
                 if provider_cfg:
                     provider_cfg.available_models = ",".join(models_or_error)
-                    self.app.logger.info(
+                    # 修改: 使用标准 logger
+                    logger.info(
                         f"In-memory config for '{provider_key}' updated with a list of {len(models_or_error)} available models.")
-            # --- 修正结束 ---
 
             self.app.ui_manager.show_info_message(_("刷新成功"),
                                                   _("已成功获取并更新 {} 的模型列表。").format(provider_key))
@@ -353,12 +338,10 @@ class EventHandler:
 
         assembly_id, warning_message, _d = result_tuple
 
-        # 步骤 1: 更新UI下拉菜单 (逻辑不变)
         if self.app.genome_sources_data and assembly_id in self.app.genome_sources_data and isinstance(target_var,
                                                                                                        tk.StringVar):
             target_var.set(assembly_id)
 
-        # 步骤 2: 如果有警告信息，则进行状态检查 (逻辑不变)
         if warning_message:
             if current_text != self.last_ambiguity_text:
                 MessageDialog(
@@ -404,7 +387,8 @@ class EventHandler:
             else:
                 return 'missing'
         except Exception as e:
-            self.app.logger.error(f"检查文件状态时出错 ('{file_type_key}'): {e}")
+            # 修改: 使用标准 logger
+            logger.error(f"检查文件状态时出错 ('{file_type_key}'): {e}")
             return 'missing'
 
     def toggle_log_viewer(self):
@@ -423,7 +407,13 @@ class EventHandler:
             self.app.log_textbox.configure(state="normal")
             self.app.log_textbox.delete("1.0", "end")
             self.app.log_textbox.configure(state="disabled")
-            self.app._log_to_viewer(_("操作日志已清除。"), "INFO")
+            # 修改: 使用标准 logger
+            logger.info(_("操作日志已清除。"))
+
+        if hasattr(self.app, 'latest_log_message_var'):
+            self.app.latest_log_message_var.set("")
+            self.app.status_label.configure(foreground=self.app.default_text_color)
+
 
     def load_config_file(self, filepath: Optional[str] = None):
         _ = self.app._
@@ -464,7 +454,8 @@ class EventHandler:
                                             files_str),
                                         button1_text=_("是，覆盖"), button2_text=_("否，取消"))
             if dialog.result is not True:
-                self.app._log_to_viewer(_("用户取消了生成默认配置文件的操作。"), "INFO")
+                # 修改: 使用标准 logger
+                logger.info(_("用户取消了生成默认配置文件的操作。"))
                 return
         self.app.message_queue.put(("show_progress_dialog", {"title": _("生成配置文件中..."),
                                                              "message": _("正在根目录生成默认配置文件，请稍候..."),
@@ -502,9 +493,6 @@ class EventHandler:
             pass
 
     def _show_about_window(self):
-        """
-        【已修正】显示一个尺寸动态、内容丰富的“关于”窗口。
-        """
         _ = self.app._
 
         about_win = ttkb.Toplevel(self.app)
@@ -602,7 +590,7 @@ class EventHandler:
                 "• ZJU-improved_v2.1_a1: Hu et al. Gossypium barbadense and Gossypium hirsutum genomes provide insights into the origin and evolution of allotetraploid cotton. Nature genetics. 2019 Jan;51(1):164.",
                 "• CRI_v1: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.",
                 "• WHU_v1: Huang, G. et al., Genome sequence of Gossypium herbaceum and genome updates of Gossypium arboreum and Gossypium hirsutum provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4",
-                "• UTX_v2.1: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.",
+                "• UTX_v2.1: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.",
                 "• HAU_v2.0: Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. \"High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres.\" Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722"
             ]
             for cit in citations: add_label(cit, content_font)
@@ -648,7 +636,6 @@ class EventHandler:
         y = parent_y + (parent_h - final_h) // 2
         about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
 
-        # 【核心修正】函数在此处等待窗口关闭，之后不再执行任何操作
         about_win.wait_window()
 
         def resize_content(event):
@@ -666,24 +653,14 @@ class EventHandler:
         ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
         ok_button.pack()
 
-        # --- 最终版动态尺寸与居中 ---
-        # 1. 先设置一个固定的宽度
         final_w = 1000
-        about_win.geometry(f'{final_w}x1')  # 用最小高度强制设定宽度
-        about_win.update_idletasks()  # 强制UI刷新，使文字根据新宽度换行
-
-        # 2. 现在基于换行后的内容计算实际需要的高度
-        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45  # 内容+按钮+所有边距
-
-        # 3. 设定一个最大高度（不超过主窗口的85%），防止窗口过大
+        about_win.geometry(f'{final_w}x1')
+        about_win.update_idletasks()
+        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45
         max_h = int(self.app.winfo_height() * 0.85)
         final_h = min(req_h, max_h)
-
-        # 4. 获取主窗口位置，并将“关于”窗口居中
-        parent_x = self.app.winfo_x()
-        parent_y = self.app.winfo_y()
-        parent_w = self.app.winfo_width()
-        parent_h = self.app.winfo_height()
+        parent_x, parent_y = self.app.winfo_x(), self.app.winfo_y()
+        parent_w, parent_h = self.app.winfo_width(), self.app.winfo_height()
         x = parent_x + (parent_w - final_w) // 2
         y = parent_y + (parent_h - final_h) // 2
         about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
@@ -722,14 +699,12 @@ class EventHandler:
         """
         current_text = gene_input_textbox.get("1.0", "end").strip()
         if not current_text or current_text in self.app.placeholders.values():
-            # 如果文本框为空或为占位符，重置状态
             self.last_ambiguity_text = ""
             return
 
         gene_ids = [g.strip() for g in current_text.replace(",", "\n").splitlines() if g.strip()]
         if not gene_ids or not self.app.genome_sources_data: return
 
-        # 将当前文本内容 (current_text) 作为参数传递给线程
         threading.Thread(target=self._identify_genome_thread, args=(gene_ids, target_assembly_var, current_text),
                          daemon=True).start()
 
@@ -738,15 +713,15 @@ class EventHandler:
         【已修改】将当前文本内容连同识别结果一起放入消息队列。
         """
         try:
+            # 修改: identify_genome_from_gene_ids 不再接受 status_callback
             result_tuple = identify_genome_from_gene_ids(
                 gene_ids,
-                self.app.genome_sources_data,
-                status_callback=self.gui_status_callback
+                self.app.genome_sources_data
             )
             if result_tuple:
-                # 将 target_var, result_tuple, 和 current_text 一起发送
                 self.app.message_queue.put(("auto_identify_success", (target_assembly_var, result_tuple, current_text)))
         except Exception as e:
+            # 修改: 使用标准 logger
             logger.error(f"自动识别基因组时发生错误: {e}")
 
     def test_proxy_connection(self):
@@ -783,7 +758,8 @@ class EventHandler:
     def _gui_fetch_ai_models(self, provider_key: str, use_proxy: bool):
         app = self.app
         _ = self.app._
-        app.logger.info(f"正在获取 '{provider_key}' 的模型列表... (使用代理: {use_proxy})")
+        # 修改: 使用标准 logger
+        logger.info(f"正在获取 '{provider_key}' 的模型列表... (使用代理: {use_proxy})")
         if app.active_task_name:
             app.ui_manager.show_warning_message(_("任务进行中"),
                                                 _("任务 '{}' 正在运行中，请等待其完成后再开始新任务。").format(
@@ -840,10 +816,8 @@ class EventHandler:
             self.app.active_task_name = None
 
     def gui_status_callback(self, message: str, level: str = "INFO"):
-        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        log_level = level.upper() if level.upper() in valid_levels else "INFO"
-        logger.log(logging.getLevelName(log_level), message)
-        self.app.message_queue.put(("status", message))
+        # 修改: 删除此方法，因为日志已由统一handler处理
+        pass
 
     def gui_progress_callback(self, percentage: float, message: str):
         self.app.message_queue.put(("progress", (percentage, message)))
@@ -853,4 +827,5 @@ class EventHandler:
         if ai_tab := self.app.tool_tab_instances.get('ai_assistant'):
             ai_tab.update_column_dropdown_ui(columns, error_msg)
         else:
+            # 修改: 使用标准 logger
             logger.warning("无法找到AI助手选项卡实例来更新列名。")

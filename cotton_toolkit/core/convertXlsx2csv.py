@@ -1,12 +1,13 @@
 ﻿# cotton_toolkit/core/convertXlsx2csv.py
 import traceback
+import logging
 
 import pandas as pd
 import gzip
 import io
 import os
 import threading
-from typing import Callable, Optional, List
+from typing import Optional, List
 
 # 国际化函数占位符
 try:
@@ -16,6 +17,10 @@ try:
 except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
+
+# --- 使用统一的日志系统 ---
+logger = logging.getLogger("cotton_toolkit.core.convertXlsx2csv")
+
 
 def _find_header_row(sheet_df: pd.DataFrame, keywords: List[str]) -> Optional[int]:
     """在一个工作表中寻找包含指定关键字的表头行，检查前3行。"""
@@ -29,7 +34,6 @@ def _find_header_row(sheet_df: pd.DataFrame, keywords: List[str]) -> Optional[in
 def convert_excel_to_standard_csv(
         excel_path: str,
         output_csv_path: str,
-        status_callback: Optional[Callable] = None,
         cancel_event: Optional[threading.Event] = None,
         **kwargs
 ) -> bool:
@@ -40,14 +44,14 @@ def convert_excel_to_standard_csv(
     - 清理空行：自动移除所有完全为空的行。
     - 支持取消：在处理过程中可被中断。
     """
-    log = status_callback if status_callback else print
-    header_keywords = ['Query', 'Match', 'Score', 'Exp', 'PID', 'evalue', 'identity']  # 用于识别表头的关键字
+    header_keywords = ['Query', 'Match', 'Score', 'Exp', 'PID', 'evalue', 'identity']
 
     try:
-        log(_("INFO: Starting intelligent conversion for: {}").format(os.path.basename(excel_path)), "INFO")
+        logger.info(_("Starting intelligent conversion for: {}").format(os.path.basename(excel_path)))
 
         if cancel_event and cancel_event.is_set():
-            log(_("INFO: Conversion cancelled before starting."), "INFO")
+            logger.info(_("Conversion cancelled before starting."))
+            return False
 
         open_func = gzip.open if excel_path.lower().endswith('.gz') else open
         with open_func(excel_path, 'rb') as f:
@@ -56,47 +60,39 @@ def convert_excel_to_standard_csv(
         all_data_frames = []
         for sheet_name in xls.sheet_names:
             if cancel_event and cancel_event.is_set():
-                log("INFO: Conversion cancelled while processing sheets.", "INFO");
+                logger.info(_("Conversion cancelled while processing sheets."))
                 return False
 
-            log(f"DEBUG: Processing sheet: '{sheet_name}'...", "DEBUG")
+            logger.debug(f"Processing sheet: '{sheet_name}'...")
             try:
-                # 先读取一个预览版来找表头，避免加载整个大文件
                 preview_df = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=5)
                 header_row_index = _find_header_row(preview_df, header_keywords)
 
                 if header_row_index is not None:
-                    log(_("DEBUG: Header found in sheet '{}' at row {}.").format(sheet_name, header_row_index + 1),
-                        "DEBUG")
-                    # 找到表头后，从表头行开始重新读取整个sheet
+                    logger.debug(_("Header found in sheet '{}' at row {}.").format(sheet_name, header_row_index + 1))
                     sheet_df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index)
-                    # 清理完全是空值的行
                     sheet_df.dropna(how='all', inplace=True)
                     all_data_frames.append(sheet_df)
                 else:
-                    log(_("WARNING: No valid header found in sheet '{}'. Skipping this sheet.").format(sheet_name),
-                        "WARNING")
+                    logger.warning(_("No valid header found in sheet '{}'. Skipping this sheet.").format(sheet_name))
             except Exception as e:
-                log(_("ERROR: Failed to process sheet '{}'. Reason: {}").format(sheet_name, e), "ERROR")
+                logger.error(_("Failed to process sheet '{}'. Reason: {}").format(sheet_name, e))
 
         if not all_data_frames:
-            log(_("ERROR: No data could be extracted from any sheet in the Excel file."), "ERROR")
+            logger.error(_("No data could be extracted from any sheet in the Excel file."))
             return False
 
-        # 合并所有找到的数据
         combined_df = pd.concat(all_data_frames, ignore_index=True)
-        # 再次清理，确保合并后没有空行
         combined_df.dropna(how='all', inplace=True)
 
         if cancel_event and cancel_event.is_set():
-            log(_("INFO: Conversion cancelled before writing file."), "INFO")
+            logger.info(_("Conversion cancelled before writing file."))
             return False
 
         combined_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
-        log(_("SUCCESS: Successfully converted and saved to: {}").format(os.path.basename(output_csv_path)), "INFO")
+        logger.info(_("Successfully converted and saved to: {}").format(os.path.basename(output_csv_path)))
         return True
 
     except Exception as e:
-        log(_("ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}").format(e), "ERROR")
-        traceback.print_exc()
+        logger.exception(_("A critical error occurred during Excel to CSV conversion. Reason: {}").format(e))
         return False
