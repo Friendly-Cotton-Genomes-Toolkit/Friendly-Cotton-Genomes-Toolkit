@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, List, Set
 import ttkbootstrap as ttkb
 
 from ..dialogs import MessageDialog
-from ..utils.gui_helpers import identify_genome_from_gene_ids
+from cotton_toolkit.utils.gene_utils import identify_genome_from_gene_ids
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:

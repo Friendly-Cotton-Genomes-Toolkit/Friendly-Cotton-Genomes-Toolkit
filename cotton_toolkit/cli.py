@@ -21,11 +21,9 @@ from .pipelines import (
 from .config.loader import load_config, generate_default_config_files, MainConfig, get_genome_data_sources, \
     check_annotation_file_status
 from .core.ai_wrapper import AIWrapper
-from .utils.gene_utils import parse_region_string
+from .utils.gene_utils import parse_region_string, identify_genome_from_gene_ids
 from .utils.localization import setup_localization
 from .utils.logger import setup_global_logger
-from ui.utils.gui_helpers import identify_genome_from_gene_ids
-
 
 cancel_event = threading.Event()
 logger = logging.getLogger("cotton_toolkit.gui")

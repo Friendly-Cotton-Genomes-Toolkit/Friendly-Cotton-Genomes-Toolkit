@@ -17,7 +17,7 @@ from cotton_toolkit.config.loader import load_config, save_config, generate_defa
 from cotton_toolkit.core.ai_wrapper import AIWrapper
 from cotton_toolkit.utils.localization import setup_localization
 from .dialogs import MessageDialog, ConfirmationDialog
-from .utils.gui_helpers import identify_genome_from_gene_ids
+from cotton_toolkit.utils.gene_utils import identify_genome_from_gene_ids
 
 if TYPE_CHECKING:
     from .gui_app import CottonToolkitApp

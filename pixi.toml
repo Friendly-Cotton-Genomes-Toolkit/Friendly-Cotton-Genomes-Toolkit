@@ -7,7 +7,21 @@ version = "0.1.0"
 
 [tasks]
 start = "python main.py"
-build = "python -m nuitka --standalone --mingw64 --windows-disable-console --windows-icon-from-ico=ui/assets/logo.ico --plugin-enable=tk-inter --plugin-enable=anti-bloat --lto=yes --include-data-dir=ui/assets=ui/assets --include-package-data=ttkbootstrap --output-dir=dist main.py"
+build = """
+python -m nuitka \
+    --standalone \
+    --mingw64 \
+    --windows-disable-console \
+    --windows-icon-from-ico=ui/assets/logo.ico \
+    --plugin-enable=tk-inter \
+    --plugin-enable=anti-bloat \
+    --lto=yes \
+    --include-data-dir=ui/assets=ui/assets \
+    --include-data-dir=cotton_toolkit/locales=cotton_toolkit/locales \
+    --include-package-data=ttkbootstrap \
+    --output-dir=dist \
+    main.py
+"""
 
 [dependencies]
 python = "3.12.*"
