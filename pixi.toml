@@ -17,7 +17,11 @@ python -m nuitka \
     --plugin-enable=anti-bloat \
     --lto=yes \
     --include-data-dir=ui/assets=ui/assets \
-    --include-data-dir=cotton_toolkit/locales=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/translator.py=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/*.po=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/*.mo=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/pixi.toml=cotton_toolkit/locales \
+        --include-data-files=cotton_toolkit/locales/pixi.lock=cotton_toolkit/locales \
     --include-package-data=ttkbootstrap \
     --output-dir=dist \
     main.py

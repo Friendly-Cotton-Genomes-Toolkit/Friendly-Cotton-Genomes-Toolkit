@@ -6,8 +6,6 @@ import logging
 import pandas as pd
 from typing import List, Union, Optional, Tuple, Any, Callable
 
-from ui.utils.gui_helpers import _
-
 try:
     import builtins
     _ = builtins._

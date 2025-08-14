@@ -52,43 +52,49 @@ class Annotator:
     # --- 以下函数是本次修改的核心 ---
     def _load_annotation_db(self, db_key: str) -> Optional[pd.DataFrame]:
         """
-        【最终稳定版】只加载预处理后的 .csv 注释文件，并强制重命名表头。
+        只加载预处理后的 .csv 注释文件，并强制重命名表头。
         """
         if db_key in self.db_cache:
             return self.db_cache[db_key]
 
         original_path = get_local_downloaded_file_path(self.config, self.genome_info, db_key)
         if not original_path:
-            self.log(_("警告: 在配置中未找到 {} 的下载信息。").format(db_key), "WARNING")
+            logger.warning(_("警告: 在配置中未找到 {} 的下载信息。").format(db_key))
             return None
 
         # 准确地推断出预处理后的CSV文件路径
-        base_path = original_path.replace('.xlsx.gz', '').replace('.xlsx', '')
+        if original_path.endswith('.xlsx.gz'):
+            base_path = original_path.replace('.xlsx.gz', '')
+        elif original_path.endswith('.txt.gz'):
+            base_path = original_path.replace('.txt.gz', '')
+        else:
+            logger.error(_('未知的文件类型: {}').format(original_path))
+            return None
+
         processed_csv_path = base_path + '.csv'
 
         # 只检查 .csv 文件是否存在
         if not os.path.exists(processed_csv_path):
-            self.log(_("错误: 未找到预处理好的注释文件 '{}'。").format(os.path.basename(processed_csv_path)), "ERROR")
-            self.log(_("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"), "ERROR")
+            logger.error(_("未找到预处理好的注释文件 '{}'。").format(os.path.basename(processed_csv_path)))
+            logger.error(_("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"))
             return None
 
-        self.log(_("INFO: 正在加载预处理的注释文件: {}").format(os.path.basename(processed_csv_path)), "INFO")
+        logger.info(_("正在加载预处理的注释文件: {}").format(os.path.basename(processed_csv_path)))
         df = smart_load_file(processed_csv_path, logger_func=self.log)
 
         if df is not None and not df.empty:
-            # --- 最终解决方案：无论CSV表头是什么，都强制在内存中重命名 ---
-            self.log(_("DEBUG: 从CSV加载的原始列名: {}").format(df.columns.tolist()), "DEBUG")
+            logger.debug(_("从CSV加载的原始列名: {}").format(df.columns.tolist()))
             rename_map = {}
             if len(df.columns) > 0: rename_map[df.columns[0]] = 'Query'
             if len(df.columns) > 1: rename_map[df.columns[1]] = 'Match'
             if len(df.columns) > 2: rename_map[df.columns[2]] = 'Description'
             df.rename(columns=rename_map, inplace=True)
-            self.log(_("DEBUG: 强制重命名后的列名: {}").format(df.columns.tolist()), "DEBUG")
+            logger.debug(_("强制重命名后的列名: {}").format(df.columns.tolist()))
 
             self.db_cache[db_key] = df
             return df
         else:
-            self.log(_("ERROR: 无法加载文件或文件为空: {}。").format(processed_csv_path), "ERROR")
+            logger.error(_("无法加载文件或文件为空: {}。").format(processed_csv_path))
             return None
 
     # annotate_genes 方法保持不变，因为它已经是最终形态
@@ -102,10 +108,10 @@ class Annotator:
 
         regex = self.genome_info.gene_id_regex
         if not regex:
-            self.log(_("错误: 基因组 {} 未在配置中定义 'gene_id_regex'。").format(self.genome_id), "ERROR")
+            logger.error(_("基因组 {} 未在配置中定义 'gene_id_regex'。").format(self.genome_id))
             return pd.DataFrame([{'Gene_ID': gid, 'Error': _('No regex defined for genome')} for gid in gene_ids])
 
-        self.log(_("INFO: 使用正则表达式进行匹配: {}").format(regex), "INFO")
+        logger.info(_("使用正则表达式进行匹配: {}").format(regex))
 
         input_id_map = {}
         for original_id in gene_ids:
@@ -115,9 +121,8 @@ class Annotator:
                 if core_id not in input_id_map:
                     input_id_map[core_id] = original_id
             else:
-                self.log(
-                    _("警告: 输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。").format(original_id, self.genome_id),
-                    "WARNING")
+                logger.warning(
+                    _("输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。").format(original_id, self.genome_id))
 
 
         final_results = {original_id: {'Gene_ID': original_id} for original_id in gene_ids}

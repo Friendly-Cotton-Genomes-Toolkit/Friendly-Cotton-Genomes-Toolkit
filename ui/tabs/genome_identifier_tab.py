@@ -106,23 +106,6 @@ class GenomeIdentifierTab(BaseTab):
         self.output_textbox.yview_scroll(delta, "units")
         return "break"
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        self._ = translator
-        self.title_label.configure(text=translator("基因组类别鉴定工具"))
-        self.description_label.configure(
-            text=translator("在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的归属。"))
-
-        for child in self.scrollable_frame.winfo_children():
-            if isinstance(child, ttkb.LabelFrame):
-                if child.grid_info().get('column') == 0:
-                    child.configure(text=translator("输入基因列表"))
-                elif child.grid_info().get('column') == 1:
-                    child.configure(text=translator("鉴定结果"))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始鉴定"))
-        self._reset_result_display()
-
     def _reset_result_display(self):
         if not hasattr(self, 'output_textbox') or not self.output_textbox.winfo_exists():
             return

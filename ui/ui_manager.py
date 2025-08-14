@@ -168,17 +168,17 @@ class UIManager:
         app.status_bar_frame.pack(side="bottom", fill="x", padx=0, pady=0)
         app.log_viewer_frame = ttkb.Frame(app);
         app.log_viewer_frame.pack(side="bottom", fill="x", padx=10, pady=5)
-        app.log_separator = ttkb.Separator(app, orient='horizontal', bootstyle="secondary");
+        app.log_separator = ttkb.Separator(app, orient='horizontal', bootstyle="secondary")
         app.log_separator.pack(side="bottom", fill="x", padx=10, pady=(5, 5))
         self._create_log_viewer_widgets()
         top_frame = ttkb.Frame(app);
         top_frame.pack(side="top", fill="both", expand=True)
-        top_frame.grid_columnconfigure(1, weight=1);
+        top_frame.grid_columnconfigure(1, weight=1)
         top_frame.grid_rowconfigure(0, weight=1)
         self._create_navigation_frame(parent=top_frame)
-        app.main_content_frame = ttkb.Frame(top_frame);
+        app.main_content_frame = ttkb.Frame(top_frame)
         app.main_content_frame.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
-        app.main_content_frame.grid_rowconfigure(0, weight=1);
+        app.main_content_frame.grid_rowconfigure(0, weight=1)
         app.main_content_frame.grid_columnconfigure(0, weight=1)
 
     def init_pages(self):
@@ -520,8 +520,6 @@ class UIManager:
         for tab_key, tab_instance in app.tool_tab_instances.items():
             if hasattr(tab_instance, 'update_from_config'):
                 tab_instance.update_from_config()
-            if hasattr(tab_instance, 'retranslate_ui'):
-                tab_instance.retranslate_ui(translator=self.translator_func)
         if app.current_config: app.reconfigure_logging(app.current_config.log_level)
         self.update_button_states()
         app._log_to_viewer(_("UI已根据当前配置刷新。"))

@@ -145,42 +145,6 @@ class HomologyTab(BaseTab):
 
         self._toggle_single_gene_mode()
 
-    # --- 新增 retranslate_ui 方法 ---
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        self._ = translator  # 更新翻译函数
-        self.title_label.configure(text=translator("快速基因同源转换"))
-
-        # 翻译新加的描述标签
-        self.description_label.configure(text=translator(
-            "该工具通过拟南芥作为桥梁将两种棉花基因组连接起来。\n如需获取更加准确的结果，请使用BLAST"))
-
-        self.input_card.configure(text=translator("输入"))
-        self.source_genome_label.configure(text=translator("源基因组:"))
-        self.target_genome_label.configure(text=translator("目标基因组:"))
-        self.gene_list_label.configure(text=translator("基因ID列表:"))
-        self.params_card.configure(text=translator("参数设置"))
-        self.single_gene_switch.configure(text=translator("单基因模式"))
-        self.strict_switch.configure(text=translator("严格匹配模式 (同源亚组内优先)"))
-        self.top_n_label.configure(text=translator("Top N:"))
-        self.pid_label.configure(text=translator("PID (%):"))
-        self.evalue_label.configure(text=translator("E-value:"))
-        self.score_label.configure(text=translator("Score:"))
-        self.output_card.configure(text=translator("输出文件 (可选)"))
-        self.output_path_label.configure(text=translator("输出路径:"))
-        self.browse_button.configure(text=translator("浏览..."))
-        self.copy_button.configure(text=translator("复制"))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始转换"))
-
-        # 更新占位符和下拉菜单
-        self.app.ui_manager.refresh_single_placeholder(self.homology_map_genes_textbox, "homology_genes")
-        if self.app.genome_sources_data:
-            self.update_assembly_dropdowns(list(self.app.genome_sources_data.keys()))
-
-        # 重新应用单基因模式的文本（以防万一）
-        self._toggle_single_gene_mode()
-
     def _copy_output_to_clipboard(self):
         text_to_copy = self.homology_output_file_entry.get()
         if not text_to_copy or text_to_copy == self._("正在查找..."):

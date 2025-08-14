@@ -58,8 +58,6 @@ class EventHandler:
             "csv_columns_fetched": self._handle_csv_columns_fetched,
             "show_progress_dialog": self.ui_manager._show_progress_dialog,
             "hide_progress_dialog": self.ui_manager._hide_progress_dialog,
-
-            # 【修改】将原有的处理器重命名，并新增一个处理器
             "auto_identify_success": self._handle_auto_identify_result,
         }
         return handlers

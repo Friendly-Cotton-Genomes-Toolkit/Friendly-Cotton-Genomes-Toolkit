@@ -95,29 +95,6 @@ class AnnotationTab(BaseTab):
                                              [("CSV files", "*.csv"), ("All files", "*.*")]), bootstyle="info-outline")
         self.browse_button.grid(row=1, column=2, padx=(0, 10), pady=5)
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        self.title_label.configure(text=translator("功能注释"))
-        self.input_card.configure(text=translator("输入数据"))
-        self.genome_version_label.configure(text=translator("基因组版本:"))
-        self.gene_id_label.configure(text=translator("基因ID列表:"))
-        self.anno_card.configure(text=translator("注释类型"))
-        self.output_label.configure(text=translator("输出文件 (可选):"))
-        self.browse_button.configure(text=translator("浏览..."))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始功能注释"))
-
-        # 【修正】调用独立的刷新方法
-        self.refresh_placeholders()
-
-        self.app.ui_manager.refresh_single_placeholder(self.annotation_genes_textbox, "genes_input")
-
-    def refresh_placeholders(self):
-        """【新增】此方法由 UIManager 统一调用，以确保占位符被刷新。"""
-        if hasattr(self, 'annotation_genes_textbox') and self.annotation_genes_textbox:
-            # 【修正】从中央字典获取翻译好的文本，再传递
-            placeholder_text = self.app.placeholders.get("genes_input", "")
-            self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, placeholder_text)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.selected_annotation_assembly, assembly_ids)
@@ -125,9 +102,7 @@ class AnnotationTab(BaseTab):
     def update_from_config(self):
         self.update_assembly_dropdowns(
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-        default_anno_dir = os.path.join(os.getcwd(), "annotation_results.csv")
         self.annotation_output_csv_entry.delete(0, tk.END)
-        self.annotation_output_csv_entry.insert(0, default_anno_dir)
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def _on_gene_input_change(self, event=None):
@@ -136,7 +111,7 @@ class AnnotationTab(BaseTab):
 
     def start_annotation_task(self):
         if not self.app.current_config:
-            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         gene_ids_text = ""
@@ -157,13 +132,13 @@ class AnnotationTab(BaseTab):
             output_path = os.path.join(os.getcwd(), "annotation_results", f"annotation_result_{assembly_id}.csv")
 
         if not gene_ids:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。"))
             return
         if not assembly_id or assembly_id in [_("加载中..."), _("无可用基因组")]:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
             return
         if not anno_types:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。"))
             return
 
         task_kwargs = {
