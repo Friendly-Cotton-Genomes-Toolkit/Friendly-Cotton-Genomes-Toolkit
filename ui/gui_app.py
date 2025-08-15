@@ -220,10 +220,9 @@ class CottonToolkitApp(ttkb.Window):
             self.logger.error(f"应用主题并刷新时出错: {e}")
 
     def refresh_window_visuals(self):
-        self.logger.debug("正在强制刷新窗口视觉效果...")
+        self.logger.debug("正在刷新窗口视觉效果...")
         self.configure_title_bar_color(self)
-        self.withdraw()
-        self.deiconify()
+        self.update()
         self.logger.debug(self._("刷新完成。"))
 
     def _create_editor_widgets(self, parent):
@@ -675,27 +674,7 @@ class CottonToolkitApp(ttkb.Window):
             else:
                 page.grid_remove()
 
-    def set_app_icon(self):
-        """
-        设置应用程序主窗口的图标。
-        """
-        try:
-            if hasattr(sys, '_MEIPASS'):
-                base_path = sys._MEIPASS
-            else:
-                base_path = os.path.dirname(os.path.abspath(__file__))
 
-            icon_path = os.path.join(base_path, "assets", "logo.ico")
-
-            if os.path.exists(icon_path):
-                self.app_icon_path = icon_path
-                self.iconbitmap(self.app_icon_path)
-                self.logger.info(f"成功加载并设置应用图标: {icon_path}")
-            else:
-                self.logger.warning(f"应用图标文件未找到，请检查路径: {icon_path}")
-
-        except Exception as e:
-            self.logger.warning(f"加载主窗口图标失败: {e}")
 
     def _update_wraplength(self, event):
         wraplength = event.width - 20

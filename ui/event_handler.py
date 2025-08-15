@@ -12,6 +12,7 @@ import requests
 import ttkbootstrap as ttkb
 
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
+from cotton_toolkit.config.compatibility_check import check_config_compatibility
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
@@ -248,22 +249,57 @@ class EventHandler:
         self.app.ui_manager.update_button_states()
 
     def _handle_config_load_task_done(self, data: tuple):
+        """
+        在加载外部配置文件后，先进行版本兼容性检查。
+        - 如果不兼容，则弹窗报错并保留旧配置。
+        - 如果兼容，则将新配置设为当前配置并刷新UI。
+        """
         app = self.app
         _ = self.app._
         success, loaded_config, original_filepath = data
+
         if not success:
             app.ui_manager.show_error_message(_("加载失败"), str(loaded_config))
             return
+
+        # --- 新增兼容性检查 ---
+        # 获取当前语言用于显示本地化的提示信息
+        lang = app.current_config.i18n_language if app.current_config else 'zh-hans'
+        level, text = check_config_compatibility(loaded_config, language=lang)
+
+        if level == 'error':
+            app.ui_manager.show_error_message(_("配置文件不兼容"), text)
+            logger.error(
+                f"加载配置文件 '{os.path.basename(original_filepath)}' 失败，因为它不兼容: {text.replace(r'\n', ' ')}")
+            # 终止执行，从而保留了旧的配置内容
+            return
+
+        if level == 'warning':
+            app.ui_manager.show_warning_message(_("兼容性警告"), text)
+            logger.warning(f"加载 '{os.path.basename(original_filepath)}' 时发现兼容性警告: {text.replace(r'\n', ' ')}")
+        # --- 兼容性检查结束 ---
+
+        # 成功路径 (level 为 'info' 或 'warning' 时会执行这里)
         root_config_path = os.path.abspath("config.yml")
         try:
+            # 1. 将加载的文件内容保存到项目根目录
             save_config(loaded_config, root_config_path)
+
+            # 2. 将其设为当前正在使用的配置
             app.current_config = loaded_config
             app.config_path = root_config_path
             app.ui_manager.show_info_message(_("加载并覆盖成功"), _("已将 '{}' 的内容加载并保存至 '{}'。").format(
                 os.path.basename(original_filepath), os.path.basename(root_config_path)))
-            # 修改: get_genome_data_sources 不再接受 logger_func
+
             app.genome_sources_data = get_genome_data_sources(app.current_config)
+
+            # 3. 全面刷新UI以应用新配置
             app.ui_manager.update_ui_from_config()
+
+            if app.editor_ui_built:
+                logger.info(_("配置文件已加载，正在刷新编辑器UI..."))
+                app._apply_config_values_to_editor()
+
         except Exception as e:
             error_msg = _("无法将加载的配置保存到根目录 'config.yml'。\n错误: {}").format(e)
             app.ui_manager.show_error_message(_("保存失败"), error_msg)
@@ -279,6 +315,16 @@ class EventHandler:
 
         app.ui_manager._finalize_task_ui(task_display_name, success, result_data)
 
+        if success and isinstance(result_data, dict) and result_data.get('action') == 'load_new_config':
+            new_cfg_path = result_data.get('path')
+            if new_cfg_path:
+                logger.info(_("默认配置已生成，将自动加载: {}").format(new_cfg_path))
+                # 直接调用加载方法，不再弹窗询问
+                self.load_config_file(filepath=new_cfg_path)
+                # （可选）向用户发送一个简短的成功通知
+                app.message_queue.put(('status', _("默认配置生成成功并已自动加载。")))
+            return  # 提前结束，不执行下面的通用逻辑
+
         refresh_trigger_keys = ["download", "preprocess_anno", "preprocess_blast"]
         if success and task_key in refresh_trigger_keys:
             if download_tab := app.tool_tab_instances.get('download'):
@@ -287,9 +333,6 @@ class EventHandler:
                     app.after(50, lambda: download_tab._update_dynamic_widgets(selected_genome))
                     logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
 
-        elif "富集分析" in task_display_name and success and result_data:
-            if hasattr(self.app.ui_manager, '_show_plot_results'):
-                self.app.ui_manager._show_plot_results(result_data)
 
     def _handle_error(self, data: str):
         _ = self.app._
@@ -471,7 +514,7 @@ class EventHandler:
             if success:
                 self.app.message_queue.put(("progress", (100, _("配置文件生成完成。"))))
                 self.app.message_queue.put(
-                    ("task_done", (True, _("生成默认配置"), {'action': 'load_new_config', 'path': new_cfg_path})))
+                    ("task_done", (True, _("生成默认配置"), {'action': 'load_new_config', 'path': new_cfg_path}, "generate_config")))
             else:
                 self.app.message_queue.put(("error", _("生成默认配置文件失败。")))
         except Exception as e:

@@ -124,7 +124,7 @@ class HomologySelectionCriteria(BaseModel):
 
 
 class MainConfig(BaseModel):
-    config_version: int = 2 # 2： 基因组列表添加BLAST所需的内容
+    config_version: int = 2
     log_level: str = "INFO"
     i18n_language: str = "en"
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
@@ -146,7 +146,7 @@ class GenomeSourceItem(BaseModel):
     genome_type: str = "cotton"
     gff3_url: Optional[str] = None
     predicted_cds_url: Optional[str] = None
-    predicted_protein_url: Optional[str] = None # <-- 【新增】字段已添加
+    predicted_protein_url: Optional[str] = None
     GO_url: Optional[str] = None
     IPR_url: Optional[str] = None
     KEGG_pathways_url: Optional[str] = None
@@ -164,8 +164,6 @@ class GenomeSourcesConfig(BaseModel):
     list_version: int = 2
     genome_sources: Dict[str, GenomeSourceItem] = Field(default_factory=lambda: GenomeSourcesConfig._default_genome_sources())
 
-    # --- 【核心修改区域】 ---
-    # 下面的方法已根据您提供的 genome_sources_list.yml 文件内容进行更新
     @staticmethod
     def _default_genome_sources() -> Dict[str, GenomeSourceItem]:
         return {
@@ -277,6 +275,34 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz",
                 gene_id_regex=r"(Ghir_[AD]\d{2}G\d{5})",
+                bridge_version="Araport11"
+            ),
+            "AD1_T2T_JZU": GenomeSourceItem(
+                species_name="AD1_T2T_JZU",
+                genome_type="cotton",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/genes/GhChr.cds.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/genes/GhChr.pep.gz",
+                gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/genes/GhChr.gff3.gz",
+                GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/functional/AD1_TM1_T2T_ZJU_v1_genes2Go.xlsx.gz",
+                IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/functional/AD1_TM1_T2T_ZJU_v1_genes2IPR.xlsx.gz",
+                KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/functional/AD1_TM1_T2T_ZJU_v1_KEGG-pathways.xlsx.gz",
+                KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/functional/AD1_TM1_T2T_ZJU_v1_KEGG-orthologs.xlsx.gz",
+                homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU-TM1_T2T/homology/blastp_AD1_TM1_T2T_ZJU_v1.0_vs_arabidopsis.xlsx",
+                gene_id_regex=r"(GhChr[AD]\d{2}G\d{4})",
+                bridge_version="Araport11"
+            ),
+            "UTX_v3.1": GenomeSourceItem(
+                species_name="Gossypium hirsutum (AD1) 'TM-1' genome UTX_v3.1",
+                genome_type="cotton",
+                predicted_cds_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/genes/Ghirsutum_578_v3.1.cds.fa.gz",
+                predicted_protein_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/genes/Ghirsutum_578_v3.1.protein.fa.gz",
+                gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/genes/Ghirsutum_578_v3.1.gene_exons.gff3.gz",
+                GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/functional/AD1_UTX_v3.1_genes2Go.xlsx.gz",
+                IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/functional/AD1_UTX_v3.1_genes2IPR.xlsx.gz",
+                KEGG_pathways_url=None,
+                KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/functional/AD1_UTX_v3.1_KEGG-orthologs.xlsx.gz",
+                homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/homology/blastp_AD1_UTX_v3.1.0_vs_arabidopsis.xlsx.gz",
+                gene_id_regex=r"(Gohir\.[AD]\d{2}G\d{6})",
                 bridge_version="Araport11"
             ),
             "Arabidopsis_thaliana": GenomeSourceItem(

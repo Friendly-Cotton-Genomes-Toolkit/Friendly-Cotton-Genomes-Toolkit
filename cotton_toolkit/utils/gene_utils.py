@@ -134,7 +134,7 @@ def identify_genome_from_gene_ids(
     utx_genome_id = 'UTX_v2.1'
 
     if best_match_id == jgi_genome_id:
-        logger.debug(_(f"初步识别结果为 '{jgi_genome_id}'，正在二次校验是否也匹配 '{utx_genome_id}'..."))
+        logger.debug(_(f"初步识别结果为 '{jgi_genome_id}'，正在二次校验是否也匹配 '{utx_genome_id}(_v3.1)'..."))
         utx_genome_info = genome_sources.get(utx_genome_id)
         utx_regex_pattern = None
         if utx_genome_info:
@@ -146,15 +146,15 @@ def identify_genome_from_gene_ids(
             try:
                 utx_regex = re.compile(utx_regex_pattern)
                 if any(utx_regex.match(gid) for gid in gene_ids_to_check):
-                    logger.warning(_(f"二次校验成功：基因同样匹配 '{utx_genome_id}'。将优先选择 UTX。"))
+                    logger.warning(_(f"二次校验成功：基因同样匹配 '{utx_genome_id}(_v3.1)'。将优先选择 UTX_v2.1。"))
                     best_match_id = utx_genome_id
                     ambiguity_warning = _(
-                        "检测到基因ID同时匹配 'UTX_v2.1' 和 'JGI_v1.1'。\n\n"
+                        "检测到基因ID同时匹配 'UTX_v2.1(v3.1)' 和 'JGI_v1.1'。\n\n"
                         "程序已自动优先选择 'UTX_v2.1'。\n\n"
-                        "请您注意甄别，如果需要使用 JGI 版本，请手动从下拉菜单中选择。"
+                        "请您注意甄别，如果需要使用 JGI 或 UTX_v3.1 版本，请手动判断或选择。"
                     )
             except re.error as e:
-                logger.warning(_(f"用于二次校验的 '{utx_genome_id}' 正则表达式无效: {e}"))
+                logger.warning(_(f"用于二次校验的 '{utx_genome_id}(_v3.1)' 正则表达式无效: {e}"))
 
     if highest_score > 50:
         logger.info(_("最终自动识别基因为 '{}'，置信度: {:.2f}%.").format(best_match_id, highest_score))

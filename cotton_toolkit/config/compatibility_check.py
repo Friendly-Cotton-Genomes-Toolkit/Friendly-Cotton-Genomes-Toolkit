@@ -27,22 +27,7 @@ MESSAGES: Dict[str, Dict[str, str]] = {
             'using the matching configuration version is recommended.'
         )
     },
-    'ja': {  # Japanese (日本語)
-        'compatible': '設定ファイルのバージョン ({version}) は互換性があります。',
-        'incompatible_old': (
-            '設定ファイルに互換性がありません！\n\n'
-            '旧バージョンの ({file_version}) を使用しています。\n'
-            'アプリケーションにはバージョン ({latest_version}) が必要です。\n\n'
-            '設定ファイルを更新または再生成してください。'
-        ),
-        'incompatible_new': (
-            '設定ファイルのバージョンが想定より新しいです。\n\n'
-            'ファイルバージョン: {file_version}\n'
-            'アプリケーションバージョン: {latest_version}\n\n'
-            '下位互換性がある可能性が高いですが、最高の安定性のために、\n'
-            '一致するバージョンの設定ファイルを使用することをお勧めします。'
-        )
-    },
+
     'zh-hans': {  # Simplified Chinese (简体中文)
         'compatible': '配置文件版本 ({version}) 兼容，检查通过。',
         'incompatible_old': (
@@ -59,22 +44,6 @@ MESSAGES: Dict[str, Dict[str, str]] = {
             '建议使用与应用程序匹配的配置文件。'
         )
     },
-    'zh-hant': {  # Traditional Chinese (繁體中文)
-        'compatible': '設定檔案版本 ({version}) 相容，檢查通過。',
-        'incompatible_old': (
-            '設定檔案不相容！\n\n'
-            '您使用的是過時的版本 ({file_version})，\n'
-            '而應用程式需要版本 ({latest_version})。\n\n'
-            '請更新或重新產生您的設定檔案。'
-        ),
-        'incompatible_new': (
-            '設定檔案版本高於預期。\n\n'
-            '檔案版本: {file_version}\n'
-            '應用程式版本: {latest_version}\n\n'
-            '這通常可以向後相容，但為確保最佳穩定性，\n'
-            '建議使用與應用程式相符的設定檔案。'
-        )
-    }
 }
 
 logger = logging.getLogger("cotton_toolkit.config.compatibility_check")
@@ -130,3 +99,10 @@ def check_config_compatibility(current_config: MainConfig, language: str = 'en')
         logger.error(log_text)
 
     return level, text
+
+
+def old_file_updater():
+    # 用于将旧版本的配置文件更新到最新版本。反正现在也没人用，就先不写了
+    # Used to update configuration files from older versions to the latest. Since no one is using it anyway,
+    # I'll just leave it unwritten for now.
+    pass
