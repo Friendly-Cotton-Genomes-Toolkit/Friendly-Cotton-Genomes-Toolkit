@@ -2,10 +2,14 @@
 authors = ["Yuzuki Asane <gkoishi0514@gmail.com>"]
 channels = ["conda-forge"]
 name = "locales"
-platforms = ["win-64"]
+platforms = ["win-64", "linux-64"] 
 version = "0.1.0"
 
 [tasks]
+# pixi run trans_chinese --model <您的模型名称> --api-key <您的API密钥> --base-url <v1结尾的endpoint>
+# pixi run trans_chinese --model <YourModelName> --api-key <YourAPIKey> --base-url <v1endingendpoint>
+trans_chinese = "python ./translator.py ./zh-hans/LC_MESSAGES/cotton_toolkit.po -t SimplifiedChinese --threads 5 --rate-limit 10"
+trans_english = "python ./translator.py ./en/LC_MESSAGES/cotton_toolkit.po -t English --threads 5 --rate-limit 10"
 
 
 [dependencies]

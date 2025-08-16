@@ -2,12 +2,12 @@
 authors = ["Yuzuki Asane <gkoishi0514@gmail.com>"]
 channels = ["conda-forge"]
 name = "cotton_tool"
-platforms = ["win-64"]
+platforms = ["win-64", "linux-64"]
 version = "0.1.0"
 
 [tasks]
 start = "python main.py"
-build = """
+build:win = """
 python -m nuitka \
     --standalone \
     --mingw64 \
@@ -21,7 +21,24 @@ python -m nuitka \
     --include-data-files=cotton_toolkit/locales/*.po=cotton_toolkit/locales \
     --include-data-files=cotton_toolkit/locales/*.mo=cotton_toolkit/locales \
     --include-data-files=cotton_toolkit/locales/pixi.toml=cotton_toolkit/locales \
-        --include-data-files=cotton_toolkit/locales/pixi.lock=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/pixi.lock=cotton_toolkit/locales \
+    --include-package-data=ttkbootstrap \
+    --output-dir=dist \
+    main.py
+"""
+
+build:linux = """
+python -m nuitka \
+    --standalone \
+    --plugin-enable=tk-inter \
+    --plugin-enable=anti-bloat \
+    --lto=yes \
+    --include-data-dir=ui/assets=ui/assets \
+    --include-data-files=cotton_toolkit/locales/translator.py=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/*.po=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/*.mo=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/pixi.toml=cotton_toolkit/locales \
+    --include-data-files=cotton_toolkit/locales/pixi.lock=cotton_toolkit/locales \
     --include-package-data=ttkbootstrap \
     --output-dir=dist \
     main.py
