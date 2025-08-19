@@ -4,29 +4,54 @@ import builtins
 import json
 import os
 import logging
-import time
 import tkinter as tk
 from typing import TYPE_CHECKING, Optional, Callable, Any, List, Dict
 
 import ttkbootstrap as ttkb
 from PIL import Image, ImageTk
 
-from cotton_toolkit.utils.localization import setup_localization
 from .dialogs import MessageDialog, ProgressDialog
 
 if TYPE_CHECKING:
     from .gui_app import CottonToolkitApp
 
 try:
-    import builtins
-
     _ = builtins._
 except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
-# 修改: 使用新的日志命名规范
 logger = logging.getLogger("ui.ui_manager")
+
+
+def _get_persistent_settings_path():
+    """获取用户主目录中持久化UI设置文件的路径。"""
+    home_dir = os.path.expanduser("~")
+    settings_dir = os.path.join(home_dir, ".fcgt")
+    # 此函数只解析路径，不创建目录
+    return os.path.join(settings_dir, "ui_settings.json")
+
+
+def determine_initial_theme():
+    """在主App完全初始化前，预先读取UI设置以确定初始主题。"""
+    try:
+        # 修正: 使用与应用程序其余部分一致的持久化设置路径
+        settings_path = _get_persistent_settings_path()
+        if os.path.exists(settings_path):
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+
+            mode = settings.get('appearance_mode', 'System')
+            if mode == 'Dark':
+                return 'darkly'
+            elif mode == 'Light':
+                return 'flatly'
+    except Exception as e:
+        # 在启动早期阶段，日志记录器可能尚未完全配置，因此打印错误可能很有用
+        print(f"Error reading initial theme: {e}")
+
+    # 对于 'System' 模式或任何错误，默认使用亮色主题
+    return 'flatly'
 
 
 class UIManager:
@@ -38,25 +63,26 @@ class UIManager:
         self.progress_dialog: Optional['ProgressDialog'] = None
         self.style = app.style
         self.icon_cache = {}
-        self.style.configure('Sidebar.TFrame', background=self.style.colors.secondary)
+        # 修正: 仅定义自定义样式，颜色将在主题应用后动态设置
+        self.style.configure('Sidebar.TFrame')
         self.placeholder_widgets: Dict[tk.Widget, str] = {}
-        self.style.configure('Sidebar.TFrame', background=self.style.colors.secondary)
-
 
     def load_settings(self):
-        """仅从文件加载UI设置，不应用任何主题。"""
+        """仅从文件加载UI设置，并专注于外观模式。"""
         app = self.app
         _ = self.translator_func
         try:
             with open(self._get_settings_path(), 'r', encoding='utf-8') as f:
                 settings = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            settings = {"appearance_mode": "System", "language": "zh-hans"}
+            settings = {"appearance_mode": "System"}
         app.ui_settings = settings
 
-        lang_code = app.ui_settings.get("language", "zh-hans")
-        app.selected_language_var.set(app.LANG_CODE_TO_NAME.get(lang_code, "简体中文"))
+        # 移除不应在此处的 language 键（如果存在）
+        if 'language' in app.ui_settings:
+            del app.ui_settings['language']
 
+        # 根据加载的模式，设置外观模式下拉菜单的显示值
         mode_key = app.ui_settings.get("appearance_mode", "System")
         display_map = {"Light": _("浅色"), "Dark": _("深色"), "System": _("跟随系统")}
         app.selected_appearance_var.set(display_map.get(mode_key, mode_key))
@@ -80,7 +106,6 @@ class UIManager:
         self.app.apply_theme_and_update_dependencies(theme_name)
 
         self.app.after(20, self.refresh_all_placeholder_styles)
-
 
     def _retranslate_managed_widgets(self, new_translator: Callable[[str], str]):
         app = self.app
@@ -106,7 +131,6 @@ class UIManager:
                 app.config_path_display_var.set(_("当前配置: {}").format(os.path.basename(app.config_path)))
             else:
                 app.config_path_display_var.set(_("未加载配置"))
-
 
     def refresh_single_placeholder(self, widget, key):
         if not widget or not widget.winfo_exists(): return
@@ -142,7 +166,6 @@ class UIManager:
             widget.configure(state="normal")
             widget.delete("1.0", tk.END)
             widget.insert("1.0", text, "placeholder")
-
 
     def setup_initial_ui(self):
         self.app.navigation_frame = ttkb.Frame(self.app, style='Sidebar.TFrame')
@@ -225,9 +248,7 @@ class UIManager:
             self.app.log_textbox.configure(state="normal")
             self.app.log_textbox.delete("1.0", tk.END)
             self.app.log_textbox.configure(state="disabled")
-            # 清空状态栏中的最新日志消息
             self.app.latest_log_message_var.set("")
-            # 添加一条日志来确认清除操作
             self.app.logger.info(self.translator_func(_("日志面板已清空。")))
 
     def display_log_message_in_ui(self, record: logging.LogRecord):
@@ -267,22 +288,24 @@ class UIManager:
         app = self.app
         _ = self.translator_func
 
-        app.navigation_frame = ttkb.Frame(parent)
+        app.navigation_frame = ttkb.Frame(parent, style='Sidebar.TFrame')
         app.navigation_frame.grid(row=0, column=0, sticky="nsew")
         app.navigation_frame.grid_rowconfigure(4, weight=1)
 
-        header_frame = ttkb.Frame(app.navigation_frame)
+        header_frame = ttkb.Frame(app.navigation_frame, style='Sidebar.TFrame')
         header_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
 
         if app.logo_image_path:
             try:
                 img = Image.open(app.logo_image_path).resize((60, 60), Image.LANCZOS)
                 self.icon_cache["logo"] = ImageTk.PhotoImage(img)
-                ttkb.Label(header_frame, image=self.icon_cache["logo"]).pack(pady=(0, 10))
+                logo_label = ttkb.Label(header_frame, image=self.icon_cache["logo"], style='Sidebar.TLabel')
+                logo_label.pack(pady=(0, 10))
             except Exception as e:
-                # 修改: 使用标准 logger
                 logger.error(f"加载Logo失败: {e}")
-        ttkb.Label(header_frame, text=" FCGT", font=app.app_font_bold).pack()
+
+        title_label = ttkb.Label(header_frame, text=" FCGT", font=app.app_font_bold, style='Sidebar.TLabel')
+        title_label.pack()
 
         def load_icon(name):
             try:
@@ -301,7 +324,7 @@ class UIManager:
             btn.grid(row=i + 1, column=0, sticky="ew", padx=15, pady=5)
             setattr(app, f"{name}_button", btn)
 
-        settings_frame = ttkb.Frame(app.navigation_frame)
+        settings_frame = ttkb.Frame(app.navigation_frame, style='Sidebar.TFrame')
         settings_frame.grid(row=5, column=0, padx=10, pady=10, sticky="s")
         settings_frame.grid_columnconfigure(0, weight=1)
 
@@ -311,27 +334,28 @@ class UIManager:
                   app.event_handler.on_language_change),
                  (_("外观模式"), app.selected_appearance_var, appearance_modes_display,
                   app.event_handler.change_appearance_mode_event)]):
-            lbl = ttkb.Label(settings_frame, text=label, font=app.app_font)
+            lbl = ttkb.Label(settings_frame, text=label, font=app.app_font, style='Sidebar.TLabel')
             lbl.grid(row=i * 2, column=0, padx=5, pady=(5, 0), sticky="w")
             setattr(app, f"{'language' if i == 0 else 'appearance_mode'}_label", lbl)
             menu = ttkb.OptionMenu(settings_frame, var, var.get(), *values, command=cmd, bootstyle="info-outline")
             menu.grid(row=i * 2 + 1, column=0, padx=5, pady=(0, 10), sticky="ew")
             setattr(app, f"{'language_optionmenu' if i == 0 else 'appearance_mode_optionmenu'}", menu)
 
-
     def _get_settings_path(self):
-        home_dir = os.path.expanduser("~")
-        settings_dir = os.path.join(home_dir, ".fcgt")
-        os.makedirs(settings_dir, exist_ok=True)
-        return os.path.join(settings_dir, "ui_settings.json")
-
+        # 修正: 使用辅助函数并确保目录存在
+        path = _get_persistent_settings_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
 
     def save_ui_settings(self):
+        """保存UI设置，确保不包含 language 键。"""
         try:
+            if 'language' in self.app.ui_settings:
+                del self.app.ui_settings['language']
+
             with open(self._get_settings_path(), 'w', encoding='utf-8') as f:
                 json.dump(self.app.ui_settings, f, indent=4)
         except IOError as e:
-            # 修改: 使用标准 logger
             logger.error(f"无法保存UI设置: {e}")
 
     def _update_log_tag_colors(self):
@@ -348,14 +372,8 @@ class UIManager:
             self.app.log_textbox.tag_config("info_log", foreground=self.app.default_text_color)
             self.app.log_textbox.tag_config("debug_log", foreground=self.app.secondary_text_color)
 
-
     def select_frame_by_name(self, name):
-        """
-        【最终修复版】根据名称选择并显示主内容区的框架。
-        此版本使用内置样式来切换按钮状态，确保主题切换时正常工作。
-        """
         app = self.app
-
         for btn_name in ["home", "editor", "tools"]:
             if btn := getattr(app, f"{btn_name}_button", None):
                 if btn_name == name:
@@ -363,29 +381,23 @@ class UIManager:
                 else:
                     btn.config(bootstyle="info-outline")
 
-            if btn_to_select := getattr(app, f"{name}_button", None):
-                btn_to_select.config(bootstyle="primary")
-
-            for frame_name in ["home_frame", "editor_frame", "tools_frame"]:
-                if frame := getattr(app, frame_name, None):
-                    frame.grid_remove()
-            if frame_to_show := getattr(app, f"{name}_frame", None):
-                frame_to_show.grid(row=0, column=0, sticky="nsew")
+        for frame_name in ["home_frame", "editor_frame", "tools_frame"]:
+            if frame := getattr(app, frame_name, None):
+                frame.grid_remove()
+        if frame_to_show := getattr(app, f"{name}_frame", None):
+            frame_to_show.grid(row=0, column=0, sticky="nsew")
 
     def show_info_message(self, title: str, message: str):
         MessageDialog(self.app, self.translator_func(title), self.translator_func(message),
                       icon_type="info").wait_window()
-        # 修改: 使用标准 logger
         logger.info(f"{title}: {message}")
 
     def show_error_message(self, title: str, message: str):
         MessageDialog(self.app, self.translator_func(title), message, icon_type="error").wait_window()
-        # 修改: 使用标准 logger
         logger.error(f"{title}: {message}")
 
     def show_warning_message(self, title: str, message: str):
         MessageDialog(self.app, self.translator_func(title), message, icon_type="warning").wait_window()
-        # 修改: 使用标准 logger
         logger.warning(f"{title}: {message}")
 
     def _show_progress_dialog(self, data: Dict[str, Any]):
@@ -459,7 +471,6 @@ class UIManager:
                 _("当前配置: {}").format(os.path.basename(app.config_path)) if app.config_path else _(
                     "未加载配置"))
         else:
-            # 修改: 使用标准 logger
             logger.warning(
                 _("无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"))
 
@@ -470,7 +481,6 @@ class UIManager:
                 tab_instance.update_from_config()
         if app.current_config: app.reconfigure_logging(app.current_config.log_level)
         self.update_button_states()
-        # 修改: 使用标准 logger
         logger.info(_("UI已根据当前配置刷新。"))
 
     def _clear_placeholder(self, widget, key):
@@ -499,7 +509,6 @@ class UIManager:
         for widget, key in self.placeholder_widgets.items():
             if widget.winfo_exists() and isinstance(widget, tk.Text) and getattr(widget, 'is_placeholder', False):
                 widget.tag_configure("placeholder", font=self.app.app_font_italic, foreground=ph_color)
-
 
     def _handle_focus_out(self, event, widget, key):
         _ = self.translator_func
@@ -564,23 +573,14 @@ class UIManager:
                 command(self.translator_func(default_text))
 
     def update_sidebar_style(self):
+        """根据当前主题更新侧边栏的自定义样式。"""
+        # 确定新主题下的正确背景颜色
         is_dark = self.app.style.theme.type == 'dark'
-        background_color = self.style.colors.dark if is_dark else self.style.colors.light
-        high_contrast_color = self.style.lookup('TLabel', 'foreground')
+        background_color = self.app.style.colors.dark if is_dark else self.app.style.colors.light
 
+        # 重新配置我们为侧边栏框架定义的自定义样式
         self.style.configure('Sidebar.TFrame', background=background_color)
 
-        for child in self.app.navigation_frame.winfo_children():
-            try:
-                child.configure(background=background_color)
-                for grandchild in child.winfo_children():
-                    grandchild.configure(background=background_color)
-            except tk.TclError:
-                pass
+        # 修正: 为侧边栏中的标签也应用正确的背景色，确保一致性
+        self.style.configure('Sidebar.TLabel', background=background_color)
 
-        self.style.configure('sidebar.TButton', foreground=high_contrast_color)
-        self.style.configure('sidebar.Selected.TButton', foreground=self.style.colors.primary)
-
-        self.style.configure('sidebar.TLabel', foreground=high_contrast_color, background=background_color)
-
-        self.style.configure('sidebar.Selected.TButton', foreground=self.style.colors.primary)

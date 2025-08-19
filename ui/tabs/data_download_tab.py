@@ -9,6 +9,7 @@ import ttkbootstrap as ttkb
 
 from cotton_toolkit.config.loader import get_local_downloaded_file_path
 from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files, run_build_blast_db_pipeline
+from cotton_toolkit.pipelines.preprocessing import check_preprocessing_status
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ class DataDownloadTab(BaseTab):
     # 【已修正】构造函数现在遵循正确的初始化顺序
     def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         # 步骤 1: 提前定义所有 _create_widgets() 需要用到的实例变量
+        self.task_status_widgets: Dict[str, Dict[str, tk.Widget]] = {}
         self.selected_genome_var = tk.StringVar()
         self.use_proxy_for_download_var = tk.BooleanVar(value=False)
         self.force_download_var = tk.BooleanVar(value=False)
@@ -69,6 +71,48 @@ class DataDownloadTab(BaseTab):
         # 步骤 4: 最后执行依赖于已创建组件的更新
         self.update_from_config()
 
+    def update_task_status(self, task_key: str, message: str):
+        """
+        线程安全地更新UI上特定任务的状态。
+        这个方法会被后台线程调用。
+        """
+        # 使用 self.app.after 将UI更新操作调度到主线程执行
+        self.app.after(0, self._update_ui_task_status, task_key, message)
+
+    def _update_ui_task_status(self, task_key: str, message: str):
+        """这个方法总是在主线程中执行。"""
+        # 尝试获取与 task_key 关联的UI组件
+        widgets = self.task_status_widgets.get(task_key)
+
+        # 如果组件还不存在，就创建它们
+        if not widgets:
+            # 使用翻译后的友好名称
+            display_name = self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.get(task_key, task_key)
+
+            # 在进度详情卡片中创建新的一行
+            row_index = len(self.task_status_widgets)
+
+            name_label = ttkb.Label(self.progress_details_card, text=f"{display_name}:", font=self.app.app_font_bold)
+            name_label.grid(row=row_index, column=0, sticky="w", padx=(10, 5), pady=2)
+
+            status_label = ttkb.Label(self.progress_details_card, text=message, width=20)  # 给一个宽度防止跳动
+            status_label.grid(row=row_index, column=1, sticky="ew", padx=5, pady=2)
+
+            self.task_status_widgets[task_key] = {'name': name_label, 'status': status_label}
+        else:
+            # 如果组件已存在，只更新状态标签的文本
+            status_label = widgets.get('status')
+            if status_label and status_label.winfo_exists():
+                status_label.configure(text=message)
+
+    def _clear_task_status_display(self):
+        """在开始新任务前清空旧的状态显示。"""
+        for widgets_dict in self.task_status_widgets.values():
+            for widget in widgets_dict.values():
+                widget.destroy()
+        self.task_status_widgets.clear()
+
+
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
@@ -99,6 +143,13 @@ class DataDownloadTab(BaseTab):
         self.options_card = ttkb.LabelFrame(parent_frame, text=self._("下载选项"), bootstyle="secondary")
         self.options_card.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.options_card.grid_columnconfigure(0, weight=1)
+
+        # --- 任务实时进度框架 ---
+        self.progress_details_card = ttkb.LabelFrame(parent_frame, text=self._("任务进度详情"), bootstyle="secondary")
+        self.progress_details_card.grid(row=4, column=0, sticky="nsew", padx=10, pady=10)
+        self.progress_details_card.grid_columnconfigure(1, weight=1)
+        parent_frame.grid_rowconfigure(4, weight=1)
+
 
         self.force_download_check = ttkb.Checkbutton(self.options_card,
                                                      text=self._("强制重新下载 (覆盖本地已存在文件)"),
@@ -155,12 +206,14 @@ class DataDownloadTab(BaseTab):
         if not genome_info:
             return
 
-        # 【核心修改 1】定义一套高对比度的颜色方案，确保在亮色和暗色模式下都清晰
+        # --- 核心修改 1: 调用后端函数，一次性获取所有文件的真实状态 ---
+        all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
+
         is_dark = self.app.style.theme.type == 'dark'
         status_colors = {
-            'not_downloaded': "#e57373" if is_dark else "#d9534f",  # 亮红 / 暗红
-            'downloaded': "#ffb74d" if is_dark else "#f0ad4e",  # 亮橙 / 暗橙
-            'processed': self.app.style.colors.success,  # 使用主题自带的成功色
+            'not_downloaded': "#e57373" if is_dark else "#d9534f",
+            'downloaded': "#ffb74d" if is_dark else "#f0ad4e",
+            'processed': self.app.style.colors.success,
         }
         status_texts = {
             'not_downloaded': self._("未下载"),
@@ -220,28 +273,16 @@ class DataDownloadTab(BaseTab):
                     checkbox_row_idx += 1
                 checkbox_count += 1
 
-                # 状态判断逻辑（使用新的颜色方案）
-                local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
-                status_key = 'not_downloaded'
-                if local_path and os.path.exists(local_path):
-                    if key in ['predicted_cds', 'predicted_protein']:
-                        db_fasta_path = local_path.removesuffix('.gz')
-                        db_type = 'prot' if key == 'predicted_protein' else 'nucl'
-                        db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
-                        status_key = 'processed' if os.path.exists(db_fasta_path + db_check_ext) else 'downloaded'
-                    elif key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']:
-                        csv_path = local_path.rsplit('.', 2)[0] + '.csv' if local_path.lower().endswith('.gz') else \
-                            local_path.rsplit('.', 1)[0] + '.csv'
-                        status_key = 'processed' if os.path.exists(csv_path) else 'downloaded'
-                    else:
-                        status_key = 'processed'
+                # --- 核心修改 2: 状态判断逻辑被极大简化 ---
+                # 直接从后端返回的字典中获取状态，提供一个默认值以防万一
+                status_key = all_statuses.get(key, 'not_downloaded')
 
-                # 状态标签渲染
+                # 状态标签渲染 (这部分代码无需修改)
                 file_type_label = ttkb.Label(status_frame, text=f"{display_name}:", font=self.app.app_font_bold)
                 file_type_label.grid(row=status_row_idx, column=0, sticky="w", padx=(0, 10), pady=2)
 
-                status_label = ttk.Label(status_frame, text=status_texts[status_key],
-                                         foreground=status_colors[status_key])
+                status_label = ttk.Label(status_frame, text=status_texts.get(status_key, ""),
+                                         foreground=status_colors.get(status_key))
                 status_label.grid(row=status_row_idx, column=1, sticky="w", padx=0, pady=2)
 
                 status_row_idx += 1
@@ -350,8 +391,10 @@ class DataDownloadTab(BaseTab):
             return
 
         # 4. 如果源文件存在且数据库未就绪，则启动任务
+        self._clear_task_status_display()  # 开始任务前清屏
         task_kwargs = {'config': self.app.current_config,
-                       'selected_assembly_id': selected_genome_id}
+                       'selected_assembly_id': selected_genome_id,
+                       'status_callback': self.update_task_status}
         self.app.event_handler._start_task(
             task_name=self._("预处理BLAST数据库"),
             target_func=run_build_blast_db_pipeline,
@@ -395,40 +438,34 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_error_message(self._("错误"), msg);
             return
 
-        # 检查是否有未下载的文件
-        excel_anno_keys = ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+        # --- 核心修改: 使用后端函数获取所有文件的真实状态 ---
+        all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
+
+        annotation_keys_to_check = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+
+        # 检查是否有文件尚未下载
         missing_files_display_names = []
-        for key in excel_anno_keys:
+        for key in annotation_keys_to_check :
             url_attr = f"{key}_url"
             if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
-                if not local_path or not os.path.exists(local_path):
+                # 如果状态是 'not_downloaded'，则说明文件缺失
+                if all_statuses.get(key) == 'not_downloaded':
                     missing_files_display_names.append(self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.get(key, key))
 
         if missing_files_display_names:
             file_list_formatted = "\n- ".join(missing_files_display_names)
-
             msg = self._("无法开始预处理，以下必需的注释文件尚未下载：\n\n- {file_list}\n\n请先下载它们。").format(
                 file_list=file_list_formatted)
-
             self.app.ui_manager.show_warning_message(self._("缺少文件"), msg)
             return
 
+        # 检查是否所有相关文件都已处理
         all_processed = True
-        for key in excel_anno_keys:
+        for key in annotation_keys_to_check :
             url_attr = f"{key}_url"
-            # 仅检查配置文件中存在的 URL
             if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                local_path = get_local_downloaded_file_path(self.app.current_config, genome_info, key)
-                if local_path and os.path.exists(local_path):
-                    # 使用和_update_dynamic_widgets相同的逻辑来判断是否已处理
-                    csv_path = local_path.rsplit('.', 2)[0] + '.csv' if local_path.lower().endswith('.gz') else \
-                        local_path.rsplit('.', 1)[0] + '.csv'
-                    if not os.path.exists(csv_path):
-                        all_processed = False
-                        break
-                else:
-                    # 如果文件不存在，也算作未处理
+                # 只要有一个文件的状态不是 'processed'，就认为没有全部处理完
+                if all_statuses.get(key) != 'processed':
                     all_processed = False
                     break
 
@@ -436,10 +473,18 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_info_message(self._("已就绪"), self._("注释文件已全部预处理完成，无需再次运行。"))
             return
 
+        # 如果检查通过，则启动预处理任务
+        self._clear_task_status_display()
         task_kwargs = {
             'config': self.app.current_config,
-            'selected_assembly_id': selected_genome_id
+            'selected_assembly_id': selected_genome_id,
+            'status_callback': self.update_task_status
         }
-        self.app.event_handler._start_task(task_name=self._("预处理注释文件"),
-                                           target_func=run_preprocess_annotation_files,
-                                           task_key="preprocess_blast", kwargs=task_kwargs)
+
+        self.app.event_handler._start_task(
+            task_name=self._("预处理注释文件"),
+            target_func=run_preprocess_annotation_files,
+            task_key="preprocess_blast",
+            kwargs=task_kwargs
+        )
+

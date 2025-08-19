@@ -21,6 +21,7 @@ class ConfirmationDialog(tk.Toplevel):
     """
     一个通用的确认对话框，可以自定义按钮文本和回调。
     """
+
     def __init__(self, parent, title: str, message: str,
                  button1_text: str = "OK", button2_text: Optional[str] = None):
         super().__init__(parent)
@@ -28,14 +29,16 @@ class ConfirmationDialog(tk.Toplevel):
         self.title(title)
         self.result = None
 
+        self.resizable(False, False)
+
         self.grab_set()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind("<Escape>", lambda event: self._on_close())
 
-        main_frame = ttkb.Frame(self, padding=20)
+        main_frame = ttkb.Frame(self, padding=(30, 25))
         main_frame.pack(expand=True, fill="both")
 
-        message_label = ttkb.Label(main_frame, text=message, wraplength=350, justify="left")
+        message_label = ttkb.Label(main_frame, text=message, wraplength=400, justify="left")
         message_label.pack(padx=10, pady=(0, 20))
 
         button_frame = ttkb.Frame(main_frame)
@@ -50,12 +53,12 @@ class ConfirmationDialog(tk.Toplevel):
             self.button2.pack(side="right", padx=5)
 
         self.update_idletasks()
-        parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
-        parent_width, parent_height = parent.winfo_width(), parent.winfo_height()
-        dialog_width, dialog_height = self.winfo_width(), self.winfo_height()
-
-        x = parent_x + (parent_width - dialog_width) // 2
-        y = parent_y + (parent_height - dialog_height) // 2
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        dialog_width = self.winfo_width()
+        dialog_height = self.winfo_height()
+        x = (screen_width - dialog_width) // 2
+        y = (screen_height - dialog_height) // 2
         self.geometry(f"+{x}+{y}")
 
         self.wait_window(self)
@@ -73,7 +76,7 @@ class ConfirmationDialog(tk.Toplevel):
         self.destroy()
 
 
-# 【核心修改】升级 MessageDialog 类以支持超链接
+# 升级 MessageDialog 类以支持超链接
 class MessageDialog(ttkb.Toplevel):
     """
     一个通用的、带主题的消息对话框。
@@ -98,7 +101,7 @@ class MessageDialog(ttkb.Toplevel):
         bootstyle_map = {"info": "info", "warning": "warning", "error": "danger", "question": "primary"}
         color_name = bootstyle_map.get(icon_type, "info")
 
-        main_frame = ttkb.Frame(self, padding=(30, 25))
+        main_frame = ttkb.Frame(self, padding=(40, 30))
         main_frame.pack(expand=True, fill=BOTH)
 
         icon_label = ttkb.Label(main_frame, text=icon_char, bootstyle=color_name, font=("-size", 28))
@@ -107,17 +110,13 @@ class MessageDialog(ttkb.Toplevel):
         content_frame = ttkb.Frame(main_frame)
         content_frame.pack(side="left", fill="both", expand=True)
 
-        # --- 【核心修改】根据消息内容决定使用 Label 还是 Text 控件 ---
         url_pattern = re.compile(r"https?://[^\s]+")
         match = url_pattern.search(message)
 
         if not match:
-            # --- 情况1: 无链接，使用 Label ---
-            # wraplength 确保长文本能换行，而短文本则会自动收缩
             message_widget = ttkb.Label(content_frame, text=message, wraplength=450, justify="left")
             message_widget.pack(fill="x", expand=True)
         else:
-            # --- 情况2: 有链接，使用 Text ---
             message_widget = tk.Text(content_frame, wrap="word", relief="flat", highlightthickness=0,
                                      background=main_frame.master.cget('background'),
                                      font=self.master.style.lookup('TLabel', 'font'))
@@ -139,7 +138,6 @@ class MessageDialog(ttkb.Toplevel):
             num_lines = int(message_widget.index('end-1c').split('.')[0])
             message_widget.config(height=num_lines, state="disabled")
 
-        # --- 按钮部分 ---
         button_frame = ttkb.Frame(content_frame)
         button_frame.pack(anchor="se", pady=(20, 0))
 
@@ -151,14 +149,13 @@ class MessageDialog(ttkb.Toplevel):
 
         self.bind("<Escape>", self._on_escape_close)
 
-        # --- 居中定位 ---
         self.update_idletasks()
         try:
-            parent.update_idletasks()
-            parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
-            parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
             w, h = self.winfo_width(), self.winfo_height()
-            x, y = parent_x + (parent_w - w) // 2, parent_y + (parent_h - h) // 2
+            x = (screen_width - w) // 2
+            y = (screen_height - h) // 2
             self.geometry(f"+{x}+{y}")
         except tk.TclError:
             pass
@@ -174,6 +171,7 @@ class MessageDialog(ttkb.Toplevel):
 
 class ProgressDialog(ttkb.Toplevel):
     """任务进度弹窗。"""
+
     def __init__(self, parent, title: str, on_cancel: Optional[Callable] = None, style=None):
         super().__init__(parent)
         self.title(title)
@@ -184,15 +182,15 @@ class ProgressDialog(ttkb.Toplevel):
         self.on_cancel_callback = on_cancel
         self.creation_time = time.time()
 
-        main_frame = ttkb.Frame(self, padding=20)
+        main_frame = ttkb.Frame(self, padding=(30, 25))
         main_frame.pack(expand=True, fill=BOTH)
         main_frame.grid_columnconfigure(0, weight=1)
 
         self.message_var = tk.StringVar(value=_("正在准备任务..."))
-        ttkb.Label(main_frame, textvariable=self.message_var, wraplength=350, justify="center").grid(row=0, column=0,
+        ttkb.Label(main_frame, textvariable=self.message_var, wraplength=400, justify="center").grid(row=0, column=0,
                                                                                                      pady=10, padx=10)
 
-        self.progress_bar = ttkb.Progressbar(main_frame, length=350, mode='determinate', bootstyle="info-striped")
+        self.progress_bar = ttkb.Progressbar(main_frame, length=400, mode='determinate', bootstyle="info-striped")
         self.progress_bar.grid(row=1, column=0, pady=10, padx=10, sticky="ew")
 
         if on_cancel:
@@ -205,9 +203,11 @@ class ProgressDialog(ttkb.Toplevel):
 
         self.update_idletasks()
         try:
-            parent_x, parent_y, parent_w, parent_h = parent.winfo_x(), parent.winfo_y(), parent.winfo_width(), parent.winfo_height()
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
             w, h = self.winfo_width(), self.winfo_height()
-            x, y = parent_x + (parent_w - w) // 2, parent_y + (parent_h - h) // 2
+            x = (screen_width - w) // 2
+            y = (screen_height - h) // 2
             self.geometry(f"+{x}+{y}")
         except tk.TclError:
             pass

@@ -70,6 +70,7 @@ def _gff_gene_filter(gff_filepath: str) -> Iterator[Union[gffutils.feature.Featu
                 except Exception as e:
                     logger.warning(_("Skipping malformed GFF line: {} | Error: {}").format(line.strip(), e))
 
+
 def create_gff_database(
         gff_filepath: str,
         db_path: str,
@@ -79,15 +80,29 @@ def create_gff_database(
     """
     从 GFF3 文件创建 gffutils 数据库，并使用正则表达式规范化ID。
     """
-    if os.path.exists(db_path) and os.path.getsize(db_path) > 0 and not force:
-        logger.debug(_("数据库 '{}' 已存在且有效，直接使用。").format(os.path.basename(db_path)))
-        return db_path
+    # --- 修改开始 ---
+    # 检查数据库是否已存在且有效
+    if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
+        # 如果不强制重建，并且源文件不比数据库新，则直接使用
+        if not force and os.path.getmtime(gff_filepath) <= os.path.getmtime(db_path):
+            logger.debug(f"数据库 '{os.path.basename(db_path)}' 已是最新，直接使用。")
+            return db_path
+        # 如果强制重建，则会在后续逻辑中覆盖
+
+    # 如果数据库不存在，并且我们不强制创建它，则这是一个错误
+    elif not force:
+        error_msg = _("错误: GFF数据库 '{}' 不存在。请先运行GFF预处理流程来创建数据库。").format(
+            os.path.basename(db_path))
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+    # --- 修改结束 ---
 
     db_dir = os.path.dirname(db_path)
     if not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
-    logger.info(_("正在创建GFF数据库(仅包含基因)：{} 从 {}").format(os.path.basename(db_path), os.path.basename(gff_filepath)))
+    logger.info(_("正在创建或更新GFF数据库(仅包含基因)：{} 从 {}").format(os.path.basename(db_path),
+                                                                         os.path.basename(gff_filepath)))
 
     try:
         def id_spec_func(feature):

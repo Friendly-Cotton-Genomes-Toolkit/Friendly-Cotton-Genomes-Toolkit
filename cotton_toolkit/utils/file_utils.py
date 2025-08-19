@@ -1,6 +1,8 @@
 ﻿# cotton_toolkit/utils/file_utils.py
 import io
 import os
+import re
+
 import pandas as pd
 import gzip
 import logging
@@ -163,3 +165,20 @@ def save_dataframe_as(df: pd.DataFrame, output_path: str) -> bool:
         # 修改: 使用 logger.error
         logger.error(_("保存DataFrame到 {} 时发生错误: {}").format(output_path, e))
         return False
+
+
+def _sanitize_table_name(filename: str, version_id: Optional[str] = None) -> str:
+    """
+    清理文件名，创建一个有效的SQL表名，并可选择性地添加版本ID前缀。
+    """
+    base_name = filename.replace('.gz', '').replace('.xlsx', '').replace('.txt', '').replace('.csv', '').replace('.xls',
+                                                                                                                 '')
+    sane_name = re.sub(r'[^a-zA-Z0-9_]', '_', base_name)
+    if sane_name and sane_name[0].isdigit():
+        sane_name = '_' + sane_name
+
+    if version_id:
+        sane_version = re.sub(r'[^a-zA-Z0-9_]', '_', version_id)
+        return f"{sane_version}_{sane_name}"
+
+    return sane_name

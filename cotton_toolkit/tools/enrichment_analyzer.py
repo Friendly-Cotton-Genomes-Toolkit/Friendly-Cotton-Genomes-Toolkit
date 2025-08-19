@@ -5,10 +5,11 @@ from scipy.stats import hypergeom
 from statsmodels.stats.multitest import multipletests
 from typing import List, Optional, Callable
 import logging
+import  sqlite3
 
-from .data_loader import load_annotation_data
-from ..core.convertXlsx2csv import convert_excel_to_standard_csv
-from ..utils.file_utils import prepare_input_file
+from .. import PREPROCESSED_DB_NAME
+from ..config.models import MainConfig, GenomeSourceItem
+from ..utils.file_utils import _sanitize_table_name
 from ..utils.gene_utils import normalize_gene_ids
 
 try:
@@ -16,7 +17,6 @@ try:
 except ImportError:
     _ = lambda text: str(text)
 
-# 修改: 创建 logger 实例
 logger = logging.getLogger("cotton_toolkit.tools.enrichment_analyzer")
 
 
@@ -163,54 +163,51 @@ def _perform_hypergeometric_test(
 
 
 def run_go_enrichment(
+        main_config: MainConfig,
+        genome_info: GenomeSourceItem,
         study_gene_ids: List[str],
-        go_annotation_path: str,
         output_dir: str,
         gene_id_regex: Optional[str] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Optional[pd.DataFrame]:
     """
-    执行GO富集分析，并传递进度回调。
+    【最终数据库版】执行GO富集分析，直接从SQLite数据库读取背景数据。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
+    progress(10, _("正在从数据库加载GO背景数据..."))
 
-    progress(0, _("准备GO富集分析..."))
-    cache_dir = os.path.join(output_dir, '.cache')
-    # 修改: prepare_input_file 内部已使用统一logger，无需传递status_callback
-    prepared_go_path = prepare_input_file(go_annotation_path, cache_dir=cache_dir)
-
-    if not prepared_go_path:
-        # 修改: 直接使用 logger
-        logger.error(_("GO注释文件准备失败，富集分析终止。"))
-        progress(100, _("任务终止：GO文件准备失败。"))
-        return None
-
-    progress(10, _("加载GO背景数据..."))
-    # 修改: 直接使用 logger
-    logger.info(_("正在加载处理后的GO注释背景数据..."))
     try:
-        background_df = pd.read_csv(prepared_go_path)
-        if not background_df.empty:
-            rename_map = {}
-            if len(background_df.columns) > 0: rename_map[background_df.columns[0]] = 'GeneID'
-            if len(background_df.columns) > 1: rename_map[background_df.columns[1]] = 'TermID'
-            if len(background_df.columns) > 2: rename_map[background_df.columns[2]] = 'Description'
-            if len(background_df.columns) > 3: rename_map[background_df.columns[3]] = 'Namespace'
-            background_df.rename(columns=rename_map, inplace=True)
+        project_root = os.path.dirname(main_config.config_file_abs_path_)
+        db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
 
-            if 'Namespace' not in background_df.columns and 'Description' in background_df.columns:
-                background_df['Namespace'] = background_df['Description'].apply(
-                    lambda x: x.split(':')[0] if isinstance(x, str) and ':' in x else 'GO'
-                )
-            elif 'Namespace' not in background_df.columns:
-                background_df['Namespace'] = 'GO'
+        # 1. 推断表名
+        go_url = getattr(genome_info, "GO_url", None)
+        if not go_url:
+            raise ValueError(_("基因组 '{}' 配置中缺少 GO_url").format(genome_info.version_id))
+        table_name = _sanitize_table_name(os.path.basename(go_url), version_id=genome_info.version_id)
 
-    except Exception as e:
-        # 修改: 直接使用 logger
-        logger.error(_("读取或重命名GO背景文件失败: {}").format(e))
-        progress(100, _("任务终止：读取GO背景失败。"))
+        # 2. 从数据库加载背景数据
+        logger.info(_("正在从数据库表 '{}' 加载GO背景注释...").format(table_name))
+        with sqlite3.connect(db_path) as conn:
+            background_df = pd.read_sql_query(f'SELECT * FROM "{table_name}"', conn)
+
+        # 3. 重命名列以匹配核心统计函数的要求
+        rename_map = {}
+        if len(background_df.columns) > 0: rename_map[background_df.columns[0]] = 'GeneID'
+        if len(background_df.columns) > 1: rename_map[background_df.columns[1]] = 'TermID'
+        if len(background_df.columns) > 2: rename_map[background_df.columns[2]] = 'Description'
+        if len(background_df.columns) > 3: rename_map[background_df.columns[3]] = 'Namespace'
+        background_df.rename(columns=rename_map, inplace=True)
+
+    except (ValueError, sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
+        logger.error(_("加载GO背景数据失败: {}").format(e))
+        logger.error(
+            _("请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。").format(locals().get('table_name', 'N/A'),
+                                                                                     PREPROCESSED_DB_NAME))
+        progress(100, _("任务终止：加载GO背景数据失败。"))
         return None
 
+    # 4. 调用核心统计函数
     return _perform_hypergeometric_test(
         study_gene_ids,
         background_df,
@@ -221,51 +218,56 @@ def run_go_enrichment(
 
 
 def run_kegg_enrichment(
+        main_config: MainConfig,
+        genome_info: GenomeSourceItem,
         study_gene_ids: List[str],
-        kegg_pathways_path: str,
         output_dir: str,
         gene_id_regex: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
-        **kwargs
+        progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Optional[pd.DataFrame]:
     """
-    执行KEGG富集分析, 与GO分析流程统一，并传递进度回调。
+    【最终数据库版】执行KEGG富集分析，直接从预处理的SQLite数据库高效加载背景数据。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
+    progress(10, _("正在从数据库加载KEGG背景数据..."))
 
     try:
-        progress(0, _("准备KEGG富集分析..."))
-        cache_dir = os.path.join(output_dir, '.cache')
-        # 修改: prepare_input_file 内部已使用统一logger，无需传递 status_callback
-        prepared_kegg_path = prepare_input_file(kegg_pathways_path, cache_dir=cache_dir)
+        project_root = os.path.dirname(main_config.config_file_abs_path_)
+        db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
 
-        if not prepared_kegg_path:
-            # 修改: 直接使用 logger
-            logger.error(_("KEGG注释文件准备失败。"))
-            raise ValueError(_("KEGG注释文件准备失败。"))
+        # 1. 根据配置信息推断出数据库中的表名
+        #    注意：这里使用的是 'KEGG_pathways_url'
+        kegg_url = getattr(genome_info, "KEGG_pathways_url", None)
+        if not kegg_url:
+            raise ValueError(_("基因组 '{}' 配置中缺少 'KEGG_pathways_url'。").format(genome_info.version_id))
 
-        progress(10, _("加载KEGG背景数据..."))
-        background_df = pd.read_csv(prepared_kegg_path)
-        if background_df is None or background_df.empty:
-            # 修改: 直接使用 logger
-            logger.error(_("加载的KEGG注释文件为空或格式不正确。"))
-            raise ValueError(_("加载的KEGG注释文件为空或格式不正确。"))
+        table_name = _sanitize_table_name(os.path.basename(kegg_url), version_id=genome_info.version_id)
 
+        # 2. 从数据库加载背景数据
+        logger.info(_("正在从数据库表 '{}' 加载KEGG背景注释...").format(table_name))
+        with sqlite3.connect(db_path) as conn:
+            background_df = pd.read_sql_query(f'SELECT * FROM "{table_name}"', conn)
+
+        # 3. 重命名列以匹配核心统计函数的要求
         rename_map = {}
         if len(background_df.columns) > 0: rename_map[background_df.columns[0]] = 'GeneID'
         if len(background_df.columns) > 1: rename_map[background_df.columns[1]] = 'TermID'
         if len(background_df.columns) > 2: rename_map[background_df.columns[2]] = 'Description'
         background_df.rename(columns=rename_map, inplace=True)
 
+        # 为KEGG数据添加默认的Namespace列
         if 'Namespace' not in background_df.columns:
             background_df['Namespace'] = 'KEGG'
 
-    except Exception as e:
-        # 修改: 直接使用 logger
-        logger.error(_("准备KEGG背景文件时出错: {}").format(e))
-        progress(100, _("任务终止：准备KEGG背景失败。"))
+    except (ValueError, sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
+        logger.error(_("加载KEGG背景数据失败: {}").format(e))
+        logger.error(
+            _("请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。").format(locals().get('table_name', 'N/A'),
+                                                                                     PREPROCESSED_DB_NAME))
+        progress(100, _("任务终止：加载KEGG背景数据失败。"))
         return None
 
+    # 4. 调用通用的核心统计函数
     return _perform_hypergeometric_test(
         study_gene_ids,
         background_df,

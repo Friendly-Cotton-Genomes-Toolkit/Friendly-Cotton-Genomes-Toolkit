@@ -22,7 +22,7 @@ from cotton_toolkit.config.loader import save_config, load_config
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
-from ui.ui_manager import UIManager
+from ui.ui_manager import UIManager, determine_initial_theme
 from ui.tabs import (
     AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab,
     GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, XlsxConverterTab, BlastTab
@@ -61,7 +61,9 @@ class CottonToolkitApp(ttkb.Window):
         }
 
     def __init__(self, translator: Callable[[str], str]):
-        super().__init__(themename='flatly')
+
+        initial_theme = determine_initial_theme()
+        super().__init__(themename=initial_theme)
 
         self._ = translator
         # 修改: 采用新的日志命名规范
@@ -75,7 +77,7 @@ class CottonToolkitApp(ttkb.Window):
 
         self._patch_all_toplevels()
 
-        self.title_text_key = "Friendly Cotton Genomes Toolkit - FCGT"
+        self.title_text_key = _("Friendly Cotton Genomes Toolkit - FCGT")
         self.title(self._(self.title_text_key))
         self.geometry("1500x900")
         self.minsize(1400, 800)
@@ -83,15 +85,16 @@ class CottonToolkitApp(ttkb.Window):
         try:
             if self.app_icon_path and os.path.exists(self.app_icon_path):
                 self.iconbitmap(self.app_icon_path)
-                self.logger.info(f"成功加载并设置应用图标: {self.app_icon_path}")
+                self.logger.info(_("成功加载并设置应用图标: {}").format(self.app_icon_path))
             else:
-                self.logger.warning(f"应用图标文件未找到，请检查路径: {self.app_icon_path}")
+                self.logger.warning(_("应用图标文件未找到，请检查路径: {}").format(self.app_icon_path))
         except Exception as e:
-            self.logger.warning(f"加载主窗口图标失败: {e}")
+            self.logger.warning(_("加载主窗口图标失败: {}").format(e))
 
-        self.bind("<FocusIn>", self._on_first_focus, add='+')
+        # 1. 立即设置所有字体。这会产生第二条日志。
         self._setup_fonts()
 
+            # 2. 初始化所有变量和管理器
         self.placeholder_color = (self.style.colors.secondary, self.style.colors.secondary)
         self.default_text_color = self.style.lookup('TLabel', 'foreground')
         self.secondary_text_color = self.style.lookup('TLabel', 'foreground')
@@ -140,6 +143,8 @@ class CottonToolkitApp(ttkb.Window):
             self.ui_manager._clear_log_viewer_ui()
 
         self.event_handler.clear_log_viewer = clear_log_viewer
+
+        self.apply_theme_and_update_dependencies(initial_theme)
 
         self.ui_manager.load_settings()
         self.ui_manager.setup_initial_ui()
@@ -192,37 +197,85 @@ class CottonToolkitApp(ttkb.Window):
         tk.Toplevel.__init__ = new_tk_init
 
     def configure_title_bar_color(self, window_obj):
-        if sys.platform != "win32" or windll is None: return
+        """
+        根据当前主题和操作系统，配置窗口的原生标题栏颜色。
+        - Windows: 使用 DWM API 强制设置深色/浅色模式。
+        - macOS: 使用 Tcl 命令请求系统更改应用外观。
+        - Linux: 无法直接控制，依赖用户系统主题，仅记录日志。
+        """
+        # 提前检查，如果窗口不存在则直接返回
+        if not window_obj.winfo_exists():
+            return
+
         try:
             is_dark = self.style.theme.type == 'dark'
-            hwnd = windll.user32.GetParent(window_obj.winfo_id())
-            if not hwnd: return
-            DWMWA_USE_IMMERSIVE_DARK_MODE = 20
-            value = c_int(1 if is_dark else 0)
-            windll.dwmapi.DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, byref(value), sizeof(value))
+
+            # --- Windows 平台逻辑 ---
+            if sys.platform == "win32" and windll is not None:
+                hwnd = windll.user32.GetParent(window_obj.winfo_id())
+                if not hwnd: return
+
+                # DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (适用于较新 Windows 10/11)
+                # DWMWA_CAPTION_COLOR = 35 (适用于较新 Windows 11, 但更复杂)
+                DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+                value = c_int(1 if is_dark else 0)
+                windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, byref(value), sizeof(value)
+                )
+
+            # --- macOS 平台逻辑 ---
+            elif sys.platform == "darwin":
+                mode = "dark" if is_dark else "light"
+                try:
+                    # 通过 Tcl 命令告知 macOS 系统切换应用的外观模式
+                    self.tk.call("tk::mac::setAppearance", mode)
+                except tk.TclError:
+                    # 在一些较旧的 Tcl/Tk 版本上可能不支持此命令
+                    self.logger.warning(_("无法设置macOS标题栏外观 (当前Tcl/Tk版本可能过旧)。"))
+
+            # --- Linux 平台逻辑 ---
+            elif "linux" in sys.platform:
+                # 在 Linux 上，没有统一的 API 来更改标题栏主题。
+                # 它由用户的桌面环境（GNOME, KDE 等）和其系统主题控制。
+                # 我们在此处仅记录一条信息以供参考。
+                self.logger.info(_("在Linux上，标题栏外观由您的桌面环境系统主题控制。"))
+
         except Exception as e:
-            self.logger.warning(f"为窗口 {window_obj} 配置标题栏颜色时出错: {e}")
-
-    def _on_first_focus(self, event):
-        self.unbind("<FocusIn>")
-        self.logger.info("Window has gained focus for the first time. Applying initial theme.")
-        self.ui_manager.apply_initial_theme()
-
+            # 捕获其他潜在错误，例如窗口句柄失效等
+            self.logger.warning(_("配置标题栏颜色时发生未知错误: {}").format(e))
     def apply_theme_and_update_dependencies(self, theme_name: str):
         try:
+            # 步骤1: 应用新的ttkbootstrap主题
             self.style.theme_use(theme_name)
+
+            # 步骤2: 立即请求Windows系统更改标题栏颜色
+            self.configure_title_bar_color(self)
+
+            # 新增: 强制处理所有待处理的UI事件
+            # 这一步是关键，它会促使Tkinter立即处理上述两个更改的渲染任务，
+            # 从而将窗口内部和外部标题栏的刷新同步起来，消除闪烁。
+            self.update()
+
+            # 更新其他UI依赖项
             self._setup_fonts()
             self.default_text_color = self.style.lookup('TLabel', 'foreground')
-            if hasattr(self, 'ui_manager'): self.ui_manager.update_sidebar_style()
-            if hasattr(self.ui_manager, '_update_log_tag_colors'): self.ui_manager._update_log_tag_colors()
+            if hasattr(self, 'ui_manager'):
+                self.ui_manager.update_sidebar_style()
+                self.ui_manager._update_log_tag_colors()
+
             self.after_idle(self.refresh_window_visuals)
         except Exception as e:
-            self.logger.error(f"应用主题并刷新时出错: {e}")
+            self.logger.error(_("应用主题并刷新时出错: {}").format(e))
 
     def refresh_window_visuals(self):
-        self.logger.debug("正在刷新窗口视觉效果...")
+        self.logger.debug(_("正在刷新窗口视觉效果..."))
+        # 强制处理所有待处理的UI事件，确保窗口处于稳定状态
+        self.update_idletasks()
+        # 应用标题栏颜色
         self.configure_title_bar_color(self)
-        self.update()
+
+        # 增加一个微小的延迟后再次应用，这是解决Windows渲染问题的可靠技巧
+        self.after(50, lambda: self.configure_title_bar_color(self))
         self.logger.debug(self._("刷新完成。"))
 
     def _create_editor_widgets(self, parent):
@@ -674,6 +727,20 @@ class CottonToolkitApp(ttkb.Window):
             else:
                 page.grid_remove()
 
+    def refresh_all_tool_tabs(self):
+        """
+        遍历所有已创建的工具选项卡实例，并调用它们的 update_from_config 方法。
+        这确保了在配置更改后，所有选项卡的数据都是最新的。
+        """
+        self.logger.info(self._("正在刷新所有工具选项卡以应用新配置..."))
+        for key, instance in self.tool_tab_instances.items():
+            if hasattr(instance, 'update_from_config'):
+                try:
+                    # 调用每个选项卡自己的刷新方法
+                    instance.update_from_config()
+                    self.logger.debug(f"Successfully refreshed tab: {key}")
+                except Exception as e:
+                    self.logger.error(_("刷新选项卡 {key} 时失败: {}").format(e))
 
 
     def _update_wraplength(self, event):
@@ -814,7 +881,7 @@ class CottonToolkitApp(ttkb.Window):
                         self.ui_manager.display_log_message_in_ui(log_record)
                     except Exception as e:
                         # 修改: 将print替换为logger.error
-                        self.logger.error(f"GUI日志处理时发生异常: {e}")
+                        self.logger.error(_("GUI日志处理时发生异常: {}").format(e))
                         self.logger.debug(traceback.format_exc())
 
                 except queue.Empty:

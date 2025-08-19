@@ -98,38 +98,70 @@ def load_config(path: str) -> MainConfig:
 
 
 def get_genome_data_sources(config: MainConfig) -> Dict[str, GenomeSourceItem]:
-    """从主配置中指定的基因组源文件加载数据。"""
-    if not config.downloader.genome_sources_file:
-        logger.warning(_("警告: 配置文件中未指定基因组源文件。"))
+    """
+    【已修正】
+    从主配置中获取基因组来源列表文件的路径，加载并解析该文件。
+    增加了缓存机制以提高性能。
+    """
+    global _GENOME_SOURCES_CACHE, _LAST_CACHED_GS_FILE_PATH
+
+    # 1. 检查传入的config对象是否有效，以及是否包含定位其他文件所需的绝对路径
+    if not config or not getattr(config, 'config_file_abs_path_', None):
+        logger.error(_("主配置对象无效或缺少必需的路径信息 'config_file_abs_path_'。"))
         return {}
 
-    config_dir = os.path.dirname(getattr(config, 'config_file_abs_path_', '.'))
-    sources_path = os.path.join(config_dir, config.downloader.genome_sources_file)
+    # 2. 从 downloader 配置中获取文件名，并构建其绝对路径
+    sources_filename = config.downloader.genome_sources_file
+    config_dir = os.path.dirname(config.config_file_abs_path_)
+    sources_filepath = os.path.join(config_dir, sources_filename)
 
-    if not os.path.exists(sources_path):
-        logger.warning(_("警告: 基因组源文件未找到: '{}'").format(sources_path))
+    # 3. 使用缓存（如果文件路径未变且缓存存在）
+    if _LAST_CACHED_GS_FILE_PATH == sources_filepath and _GENOME_SOURCES_CACHE is not None:
+        logger.debug(_("从缓存加载基因组源数据。"))
+        return _GENOME_SOURCES_CACHE
+
+    # 4. 检查文件是否存在
+    if not os.path.exists(sources_filepath):
+        logger.error(_("基因组来源文件未找到: {}").format(sources_filepath))
+        # 清空缓存
+        _GENOME_SOURCES_CACHE = None
+        _LAST_CACHED_GS_FILE_PATH = None
         return {}
 
+    # 5. 加载、解析和验证YAML文件
     try:
-        with open(sources_path, 'r', encoding='utf-8') as f:
+        logger.info(_("正在从 '{}' 加载基因组源...").format(sources_filepath))
+        with open(sources_filepath, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
 
+        # 使用正确的模型 GenomeSourcesConfig 来验证整个文件
         genome_sources_config = GenomeSourcesConfig.model_validate(data)
 
-        genome_sources_dict = {}
-        for version_id, item_data in genome_sources_config.genome_sources.items():
-            setattr(item_data, 'version_id', version_id)
+        # 提取核心的字典数据
+        genome_sources_map = genome_sources_config.genome_sources
 
-            genome_sources_dict[version_id] = item_data
+        # 关键步骤：用字典的key填充每个item中可能缺失的 version_id
+        for version_id, item in genome_sources_map.items():
+            if item.version_id is None:
+                item.version_id = version_id
 
-        logger.info(_("已成功加载 {} 个基因组源。").format(len(genome_sources_dict)))
-        return genome_sources_dict
-    except ValidationError as e:
-        logger.error(_("加载基因组源文件时验证出错 '{}':\n{}").format(sources_path, e))
-        return {}
+        logger.info(_("已成功加载 {} 个基因组源。").format(len(genome_sources_map)))
+
+        # 更新缓存
+        _GENOME_SOURCES_CACHE = genome_sources_map
+        _LAST_CACHED_GS_FILE_PATH = sources_filepath
+
+        return genome_sources_map
+
+    except (yaml.YAMLError, ValidationError) as e:
+        logger.error(_("解析或验证基因组来源文件 '{}' 失败: {}").format(sources_filepath, e))
     except Exception as e:
-        logger.error(_("加载基因组源文件时发生错误 '%s': %s"), sources_path, e)
-        return {}
+        logger.error(_("加载基因组来源文件 '{}' 时发生未知错误: {}").format(sources_filepath, e))
+
+    # 如果发生任何错误，清空缓存并返回空字典
+    _GENOME_SOURCES_CACHE = None
+    _LAST_CACHED_GS_FILE_PATH = None
+    return {}
 
 
 def generate_default_config_files(output_dir: str, overwrite: bool = False, main_config_filename="config.yml",

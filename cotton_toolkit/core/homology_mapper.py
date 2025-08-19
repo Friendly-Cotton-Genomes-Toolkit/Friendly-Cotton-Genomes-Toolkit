@@ -1,11 +1,7 @@
-﻿# 文件路径: core/homology_mapper.py
-
-import logging
-import os
+﻿import logging
 import pandas as pd
 from typing import List, Dict, Any, Tuple, Optional, Callable
 
-# 确保导入了正确的模块
 from ..config.models import GenomeSourceItem
 from ..utils.gene_utils import parse_gene_id
 
@@ -253,3 +249,84 @@ def map_genes_via_bridge(
             homology_columns=homology_columns,
             progress=progress
         )
+
+
+def save_mapping_results(
+        output_path: str,
+        mapped_df: Optional[pd.DataFrame],
+        failed_genes: List[str],
+        source_assembly_id: str,
+        target_assembly_id: str,
+        source_gene_ids_count: int,
+        region: Optional[Tuple[str, int, int]]
+) -> bool:
+    """
+    将同源映射结果以智能格式保存到CSV或XLSX文件。
+
+    Args:
+        output_path (str): 目标输出文件路径 (.csv 或 .xlsx).
+        mapped_df (Optional[pd.DataFrame]): 包含成功映射结果的数据框.
+        failed_genes (List[str]): 映射失败的基因ID列表.
+        source_assembly_id (str): 源基因组ID.
+        target_assembly_id (str): 目标基因组ID.
+        source_gene_ids_count (int): 输入的源基因总数.
+        region (Optional[Tuple[str, int, int]]): 源染色体区域 (可选).
+
+    Returns:
+        bool: 保存是否成功.
+    """
+    output_path_lower = output_path.lower()
+
+    if output_path_lower.endswith('.csv'):
+        try:
+            with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
+                source_locus_str = f"{source_assembly_id} | {region[0]}:{region[1]}-{region[2]}" if region else f"{source_assembly_id} | {source_gene_ids_count} genes"
+                f.write(f"# 源基因组的位点（即用户输入的位点）: {source_locus_str}\n")
+                f.write(f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id}\n")
+                f.write("#\n")
+
+                if mapped_df is not None and not mapped_df.empty:
+                    mapped_df.to_csv(f, index=False, lineterminator='\n')
+                else:
+                    f.write(_("# 未找到任何成功的同源匹配。\n"))
+
+                if failed_genes:
+                    f.write("\n\n")
+                    f.write(_("# --- 匹配失败的源基因 ---\n"))
+                    reason = _("未能在目标基因组中找到满足所有筛选条件的同源基因。")
+                    failed_df = pd.DataFrame({'Failed_Source_Gene_ID': failed_genes, 'Reason': reason})
+                    failed_df.to_csv(f, index=False, lineterminator='\n')
+            # 修改: 使用 logger
+            logger.info(_(f"结果已成功保存到 CSV 文件: {output_path}"))
+            return True
+        except Exception as e:
+            # 修改: 使用 logger
+            logger.error(_(f"保存到 CSV 文件时出错: {e}"))
+            return False
+
+    elif output_path_lower.endswith('.xlsx'):
+        try:
+            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                if mapped_df is not None and not mapped_df.empty:
+                    mapped_df.to_excel(writer, sheet_name='Homology_Results', index=False)
+                else:
+                    pd.DataFrame([{'Status': _("未找到任何成功的同源匹配。")}]).to_excel(writer,
+                                                                                        sheet_name='Homology_Results',
+                                                                                        index=False)
+
+                if failed_genes:
+                    reason = _("未能在目标基因组中找到满足所有筛选条件的同源基因。")
+                    failed_df = pd.DataFrame({'Failed_Source_Gene_ID': failed_genes, 'Reason': reason})
+                    failed_df.to_excel(writer, sheet_name='Failed_Genes', index=False)
+            # 修改: 使用 logger
+            logger.info(_(f"结果已成功保存到 XLSX 文件: {output_path}"))
+            return True
+        except Exception as e:
+            # 修改: 使用 logger
+            logger.error(_(f"保存到 XLSX 文件时出错: {e}"))
+            return False
+
+    else:
+        # 修改: 使用 logger
+        logger.error(_(f"错误: 不支持的输出文件格式: {output_path}。请使用 .csv 或 .xlsx。"))
+        return False

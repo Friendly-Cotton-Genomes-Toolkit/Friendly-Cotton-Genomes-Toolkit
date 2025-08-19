@@ -60,6 +60,7 @@ class EventHandler:
             "show_progress_dialog": self.ui_manager._show_progress_dialog,
             "hide_progress_dialog": self.ui_manager._hide_progress_dialog,
             "auto_identify_success": self._handle_auto_identify_result,
+
         }
         return handlers
 
@@ -144,32 +145,52 @@ class EventHandler:
 
     def _initial_load_thread(self):
         app = self.app
+        # _ 使用的是程序启动时的初始翻译器
         _ = self.app._
         try:
             loaded_config, genome_sources, config_path_to_send = None, None, None
+
+            # 步骤 1: 加载 config.yml
             app.message_queue.put(("progress", (10, _("正在加载配置文件..."))))
             if os.path.exists(default_config_path := "config.yml"):
                 config_path_to_send = os.path.abspath(default_config_path)
                 loaded_config = load_config(config_path_to_send)
+
             if loaded_config:
-                app.message_queue.put(("progress", (30, _("正在加载基因组源数据..."))))
-                # 修改: get_genome_data_sources 不再接受 logger_func
+                # 步骤 2: 根据 config.yml 的语言，重新设置整个应用的翻译系统
+                config_lang = loaded_config.i18n_language
+                logger.info(f"配置文件中的语言为 '{config_lang}'，将以此为准设置应用语言。")
+
+                # 更新应用核心的翻译器
+                app._ = setup_localization(language_code=config_lang)
+
+                # 将更新后的翻译器同步给子模块
+                app.ui_manager.translator = app._
+                self._ = app._
+
+                # 步骤 3: 发送一个消息，通知主线程重新翻译整个UI
+                app.message_queue.put(("retranslate_ui", None))
+
+                # 加载后续数据
+                app.message_queue.put(("progress", (30, app._("正在加载基因组源数据..."))))
                 genome_sources = get_genome_data_sources(loaded_config)
-            app.message_queue.put(("progress", (80, _("启动完成准备..."))))
+            else:
+                logger.warning("未找到 config.yml，将使用默认语言启动。")
+
+            app.message_queue.put(("progress", (80, app._("启动完成准备..."))))
             startup_data = {"config": loaded_config, "genome_sources": genome_sources,
                             "config_path": config_path_to_send}
             app.message_queue.put(("startup_complete", startup_data))
         except Exception as e:
             app.message_queue.put(("startup_failed", f"{_('应用启动失败')}: {e}\n{traceback.format_exc()}"))
         finally:
-            app.message_queue.put(("progress", (100, _("初始化完成。"))))
+            app.message_queue.put(("progress", (100, app._("初始化完成。"))))
             app.message_queue.put(("hide_progress_dialog", None))
 
     def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
                     on_success: Optional[Callable] = None, task_key: Optional[str] = None):
         """
-        启动一个后台任务。
-        【已扩展】: 增加一个可选的、语言无关的 task_key。
+        启动一个后台任务，并确保所有必要的回调函数（包括自定义的 status_callback）都被正确传递。
         """
         app = self.app
         _ = self.app._
@@ -188,20 +209,34 @@ class EventHandler:
         self.app.message_queue.put(("show_progress_dialog", {"title": task_name, "message": _("正在处理..."),
                                                              "on_cancel": app.cancel_current_task_event.set}))
 
-        # 修改: 移除 status_callback，因为统一日志系统会处理它
-        kwargs.update({'cancel_event': app.cancel_current_task_event, 'progress_callback': self.gui_progress_callback})
+        # 1. 创建一个新的字典 thread_kwargs，用于传递给后台线程。
+        #    这样做可以避免直接修改原始的 kwargs 字典，是更安全的做法。
+        thread_kwargs = kwargs.copy()
 
-        threading.Thread(target=self._task_wrapper, args=(target_func, kwargs, task_name, task_key, on_success),
+        # 2. 将所有标准的回调和事件添加到这个新字典中。
+        #    我们在 data_download_tab.py 中传入的 'status_callback' 已经存在于 kwargs 中，
+        #    所以 thread_kwargs.copy() 会自动包含它。
+        thread_kwargs.update({
+            'cancel_event': app.cancel_current_task_event,
+            'progress_callback': self.gui_progress_callback
+        })
+
+        # 3. 启动线程，并将这个构建好的 thread_kwargs 字典传递给包装器。
+        threading.Thread(target=self._task_wrapper, args=(target_func, thread_kwargs, task_name, task_key, on_success),
                          daemon=True).start()
 
-    def _task_wrapper(self, target_func, kwargs, task_name, task_key, on_success: Optional[Callable] = None):
+
+    def _task_wrapper(self, target_func: Callable, kwargs: Dict[str, Any], task_name: str, task_key: str, on_success: Optional[Callable] = None):
         """
         在后台线程中执行任务的包装器。
+        (此方法无需修改，它会正确地将接收到的 kwargs 解包并传递给目标函数)
         """
         _ = self.app._
         result = None
         e = None
         try:
+            # kwargs 字典在这里被解包，所有回调函数 (progress_callback, status_callback, cancel_event)
+            # 都会被作为命名参数传递给 target_func (例如 run_preprocess_annotation_files)
             result = target_func(**kwargs)
             if on_success and not self.app.cancel_current_task_event.is_set():
                 self.app.after(0, on_success, result)
@@ -230,6 +265,8 @@ class EventHandler:
             self.app.ui_manager.update_ui_from_config()
         else:
             logger.warning(_("无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"))
+
+        # 步骤 1: 将后台加载的数据赋值给主应用实例
         app.genome_sources_data = data.get("genome_sources")
         config_data = data.get("config")
         config_path_from_load = data.get("config_path")
@@ -239,8 +276,35 @@ class EventHandler:
             logger.info(_("默认配置文件加载成功。"))
         else:
             logger.warning(_("未找到或无法加载默认配置文件。"))
+
+        if app.current_config:
+            # 步骤 2: 根据 config.yml 精确同步【语言下拉菜单】的显示值
+            current_lang_code = app.current_config.i18n_language
+            lang_display_name = app.LANG_CODE_TO_NAME.get(current_lang_code, "English")
+            app.selected_language_var.set(lang_display_name)
+            # 这条日志确认了下拉菜单的同步
+            logger.info(f"启动时，语言下拉菜单已根据配置文件同步为: {lang_display_name}")
+
+            # 步骤 3: 重新翻译【主窗口标题】
+            app.title(_(app.title_text_key))
+
+            # 步骤 4: 重新翻译【所有已注册的静态UI组件】（如主页的按钮和标签）
+            logger.info(_("正在刷新静态UI文本..."))
+            for widget, text_key in app.translatable_widgets.items():
+                if widget and widget.winfo_exists():
+                    try:
+                        # 检查组件是否支持 'text' 属性
+                        if 'text' in widget.keys():
+                            widget.configure(text=_(text_key))
+                    except Exception as e:
+                        # 忽略为不支持的组件设置文本时可能发生的错误
+                        logger.debug(f"为组件 {widget} 设置文本时出错 (可忽略): {e}, text_key: {text_key}")
+
+            # 步骤 5: 更新UI的其余部分（按钮状态、路径等）
         app.ui_manager.update_ui_from_config()
         app.ui_manager.update_button_states()
+
+
 
     def _handle_startup_failed(self, data: str):
         _ = self.app._
@@ -299,6 +363,8 @@ class EventHandler:
             if app.editor_ui_built:
                 logger.info(_("配置文件已加载，正在刷新编辑器UI..."))
                 app._apply_config_values_to_editor()
+
+            app.refresh_all_tool_tabs()
 
         except Exception as e:
             error_msg = _("无法将加载的配置保存到根目录 'config.yml'。\n错误: {}").format(e)
