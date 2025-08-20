@@ -1,6 +1,7 @@
 ﻿import logging
 import pandas as pd
 from typing import List, Dict, Any, Tuple, Optional, Callable
+import threading
 
 from ..config.models import GenomeSourceItem
 from ..utils.gene_utils import parse_gene_id
@@ -76,29 +77,68 @@ def _execute_full_mapping_logic(
         selection_criteria_s_to_b: Dict[str, Any],
         selection_criteria_b_to_t: Dict[str, Any],
         homology_columns: Dict[str, str],
-        progress: Callable
+        progress: Callable,
+        cancel_event: Optional[threading.Event] = None
 ) -> Tuple[Optional[pd.DataFrame], List[str]]:
-    # 这部分包含了您文件中原有的、能够成功运行的完整A->B->C逻辑
-    user_top_n = selection_criteria_s_to_b.get('top_n', 1)
-    temp_s2b_criteria = {**selection_criteria_s_to_b, 'top_n': 0}
-    temp_b2t_criteria = {**selection_criteria_b_to_t, 'top_n': 0}
+    """
+    执行完整的 源基因 -> 桥梁基因 -> 目标基因 的三步映射逻辑。
 
+    该函数现在支持通过 `cancel_event` 进行任务中断。
+    """
+
+    def check_cancel():
+        """辅助函数，用于检查是否收到了取消信号。"""
+        if cancel_event and cancel_event.is_set():
+            logger.info(_("映射任务已被用户取消。"))
+            return True
+        return False
+
+    # Top N 参数现在用于筛选最优的 N 个【桥梁基因】
+    user_top_n_s2b = selection_criteria_s_to_b.get('top_n', 1)
+
+    # 步骤1: 先应用除top_n外的所有筛选条件，找出所有可能的 源->桥梁 路径
+    temp_s2b_criteria = {**selection_criteria_s_to_b, 'top_n': 0}
     progress(50, _("正在映射: 源 -> 桥梁..."))
+    # 注意：假设 load_and_map_homology 内部也支持 cancel_event
     s2b_map = load_and_map_homology(source_to_bridge_homology_df, homology_columns, temp_s2b_criteria, source_gene_ids,
                                     source_genome_info.gene_id_regex, bridge_genome_info.gene_id_regex)
+
+    if check_cancel(): return pd.DataFrame(), source_gene_ids
     if not s2b_map: return pd.DataFrame(), source_gene_ids
 
-    s2b_hits_df = pd.DataFrame([match for matches in s2b_map.values() for match in matches])
-    bridge_gene_ids = s2b_hits_df[homology_columns.get('match')].unique().tolist()
+    all_s2b_hits_df = pd.DataFrame([match for matches in s2b_map.values() for match in matches])
+    if all_s2b_hits_df.empty: return pd.DataFrame(), source_gene_ids
 
+    # 步骤2: 对所有可能的桥梁基因按分数排序，并选出Top N个
+    score_col_name = homology_columns.get('score', 'Score')
+    if score_col_name in all_s2b_hits_df.columns:
+        all_s2b_hits_df = all_s2b_hits_df.sort_values(by=score_col_name, ascending=False)
+
+    if user_top_n_s2b is not None and user_top_n_s2b > 0:
+        s2b_hits_df = all_s2b_hits_df.groupby(homology_columns.get('query')).head(user_top_n_s2b)
+    else:
+        s2b_hits_df = all_s2b_hits_df
+
+    bridge_gene_ids = s2b_hits_df[homology_columns.get('match')].unique().tolist()
+    if not bridge_gene_ids:
+        return pd.DataFrame(), source_gene_ids
+
+    if check_cancel(): return pd.DataFrame(), source_gene_ids
+
+    # 步骤3: 从这Top N个桥梁基因出发，找出【所有】对应的目标基因（不再使用top_n限制）
     progress(65, _("正在映射: 桥梁 -> 目标..."))
+    temp_b2t_criteria = {**selection_criteria_b_to_t, 'top_n': 0}
     b2t_homology_cols = {'query': homology_columns.get('match'), 'match': homology_columns.get('query'),
                          **{k: v for k, v in homology_columns.items() if k not in ['query', 'match']}}
     b2t_map = load_and_map_homology(bridge_to_target_homology_df, b2t_homology_cols, temp_b2t_criteria, bridge_gene_ids,
                                     bridge_genome_info.gene_id_regex, target_genome_info.gene_id_regex)
+
+    if check_cancel(): return pd.DataFrame(), source_gene_ids
     if not b2t_map: return pd.DataFrame(), source_gene_ids
 
     b2t_hits_df = pd.DataFrame([match for matches in b2t_map.values() for match in matches])
+
+    if check_cancel(): return pd.DataFrame(), source_gene_ids
 
     progress(75, _("正在合并映射结果..."))
     df1 = s2b_hits_df.rename(
@@ -108,43 +148,51 @@ def _execute_full_mapping_logic(
     merged_df = pd.merge(df1, df2, on="Bridge_Gene_ID", how="inner", suffixes=('_s2b', '_b2t'))
     if merged_df.empty: return pd.DataFrame(), source_gene_ids
 
+    # 计算并添加一对多关系的指示列
+    merged_df['Num_Bridge_Homologs'] = merged_df.groupby('Source_Gene_ID')['Bridge_Gene_ID'].transform('nunique')
+    merged_df['Num_Target_Homologs_From_Bridge'] = merged_df.groupby('Bridge_Gene_ID')['Target_Gene_ID'].transform(
+        'nunique')
+
     progress(85, _("正在根据模式筛选和排序..."))
     is_cotton_to_cotton = source_genome_info.is_cotton() and target_genome_info.is_cotton()
     strict_mode = selection_criteria_s_to_b.get('strict_subgenome_priority', True)
-    score_col_name = homology_columns.get('score', 'Score')
     score_s2b_col, score_b2t_col = f"{score_col_name}_s2b", f"{score_col_name}_b2t"
     if score_s2b_col not in merged_df.columns: merged_df[score_s2b_col] = 0
     if score_b2t_col not in merged_df.columns: merged_df[score_b2t_col] = 0
     secondary_sort_cols, ascending_flags = [score_s2b_col, score_b2t_col], [False, False]
 
     if strict_mode and is_cotton_to_cotton:
-        # 修改：使用标准logger
         logger.info(_("已启用严格模式：仅保留同亚组、同染色体编号的匹配。"))
         merged_df['Source_Parsed'] = merged_df['Source_Gene_ID'].apply(parse_gene_id)
         merged_df['Target_Parsed'] = merged_df['Target_Gene_ID'].apply(parse_gene_id)
-        condition = ((merged_df['Source_Parsed'].notna()) & (merged_df['Target_Parsed'].notna()) & (
-                    merged_df['Source_Parsed'].str[0] == merged_df['Target_Parsed'].str[0]) & (
-                                 merged_df['Source_Parsed'].str[1] == merged_df['Target_Parsed'].str[1]))
+        condition = ((merged_df['Source_Parsed'].notna()) & (merged_df['Target_Parsed'].notna()) &
+                     (merged_df['Source_Parsed'].str[0] == merged_df['Target_Parsed'].str[0]) &
+                     (merged_df['Source_Parsed'].str[1] == merged_df['Target_Parsed'].str[1]))
         sorted_df = merged_df[condition].sort_values(by=secondary_sort_cols, ascending=ascending_flags)
     else:
-        # 修改：使用标准logger
         logger.info(_("严格模式已关闭，使用常规双分数排序规则。"))
         sorted_df = merged_df.sort_values(by=secondary_sort_cols, ascending=ascending_flags)
 
-    progress(90, _("正在筛选 Top N 结果..."))
-    final_df = sorted_df
-    if user_top_n is not None and user_top_n > 0: final_df = sorted_df.groupby('Source_Gene_ID', sort=False).head(
-        user_top_n)
+    if check_cancel(): return pd.DataFrame(), source_gene_ids
+
+    progress(90, _("正在整理最终结果..."))
+    final_df = sorted_df.drop_duplicates(subset=['Source_Gene_ID', 'Bridge_Gene_ID', 'Target_Gene_ID'])
 
     successfully_mapped_genes = set(final_df['Source_Gene_ID'].unique())
     failed_genes = [gid for gid in source_gene_ids if gid not in successfully_mapped_genes]
     if failed_genes:
-        # 修改：使用标准logger
         logger.info(_("信息: {} 个源基因未能找到符合条件的同源匹配。").format(len(failed_genes)))
 
     final_df = final_df.drop(columns=['Source_Parsed', 'Target_Parsed'], errors='ignore').reset_index(drop=True)
-    return final_df, failed_genes
 
+    if not final_df.empty:
+        core_cols = ['Source_Gene_ID', 'Bridge_Gene_ID', 'Target_Gene_ID', 'Num_Bridge_Homologs',
+                     'Num_Target_Homologs_From_Bridge']
+        existing_core_cols = [c for c in core_cols if c in final_df.columns]
+        other_cols = [c for c in final_df.columns if c not in existing_core_cols]
+        final_df = final_df[existing_core_cols + other_cols]
+
+    return final_df, failed_genes
 
 def map_genes_via_bridge(
         source_gene_ids: List[str],
@@ -281,8 +329,14 @@ def save_mapping_results(
         try:
             with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
                 source_locus_str = f"{source_assembly_id} | {region[0]}:{region[1]}-{region[2]}" if region else f"{source_assembly_id} | {source_gene_ids_count} genes"
-                f.write(f"# 源基因组的位点（即用户输入的位点）: {source_locus_str}\n")
-                f.write(f"# 目标基因组的位点（即转换后的大体的位点）: {target_assembly_id}\n")
+                f.write(_("# 源: {}\n").format(source_locus_str))
+                f.write(_("# 目标: {}\n").format(target_assembly_id))
+                # --- 新增代码块：在CSV文件头中添加新列的说明 ---
+                f.write("#\n")
+                f.write("# 列说明:\n")
+                f.write(f"#   {_("Num_Bridge_Homologs: 指示一个'源基因'对应到了多少个不同的'桥梁基因' (拟南芥)")}\n")
+                f.write(f"#   {_("Num_Target_Homologs_From_Bridge: 指示一个'桥梁基因'对应到了多少个不同的'目标基因'")}\n")
+                f.write(f"#   {_("注意: 当这些列的值 > 1 时，表示存在一对多的映射关系，需要您特别关注")}\n")
                 f.write("#\n")
 
                 if mapped_df is not None and not mapped_df.empty:

@@ -1,17 +1,24 @@
 ﻿import os
 import threading
 import time
+import tempfile
 import traceback
+from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from typing import Optional, List, Tuple, Dict, Any, Callable
+import re
 
 import pandas as pd
 import logging
+
+from cotton_toolkit import GFF3_DB_DIR
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig, HomologySelectionCriteria
 from cotton_toolkit.core.ai_wrapper import AIWrapper
 from cotton_toolkit.core.convertXlsx2csv import convert_excel_to_standard_csv
 from cotton_toolkit.core.gff_parser import get_genes_in_region, _apply_regex_to_id, get_gene_info_by_ids
 from cotton_toolkit.core.homology_mapper import map_genes_via_bridge, save_mapping_results
+from cotton_toolkit.pipelines.blast import run_blast_pipeline
 from cotton_toolkit.tools.annotator import Annotator
 from cotton_toolkit.tools.batch_ai_processor import process_single_csv_file
 from cotton_toolkit.tools.data_loader import create_homology_df
@@ -19,8 +26,8 @@ from cotton_toolkit.tools.enrichment_analyzer import run_go_enrichment, run_kegg
 from cotton_toolkit.tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, \
     plot_enrichment_cnet, _generate_r_script_and_data
 from cotton_toolkit.utils.config_overrides_utils import _update_config_from_overrides
-from cotton_toolkit.utils.gene_utils import map_transcripts_to_genes
-
+from cotton_toolkit.utils.gene_utils import map_transcripts_to_genes, parse_gene_id, _to_gene_id, resolve_gene_ids, \
+    get_sequences_for_gene_ids
 
 # 国际化函数占位符
 try:
@@ -34,6 +41,47 @@ except (AttributeError, ImportError):
 logger = logging.getLogger("cotton_toolkit.pipeline.analysis")
 
 
+def _homology_blast_worker(
+        gene_ids_chunk: List[str],
+        config: MainConfig,
+        source_assembly_id: str,
+        target_assembly_id: str,
+        criteria: HomologySelectionCriteria,
+        cancel_event: Optional[threading.Event]
+) -> Optional[pd.DataFrame]:
+    """
+    每个线程执行的工作单元：为一小批基因提取序列，然后执行BLAST。
+    此函数在开始和关键步骤检查中断信号。
+    """
+    # 检查1: 任务开始时
+    if cancel_event and cancel_event.is_set():
+        return None
+
+    # 步骤 A: 获取序列
+    query_fasta_str, _ = get_sequences_for_gene_ids(config, source_assembly_id, gene_ids_chunk)
+    if not query_fasta_str:
+        return pd.DataFrame()  # 如果这个区块没有序列，返回空DataFrame以示完成
+
+    # 检查2: 获取序列后，执行BLAST前
+    if cancel_event and cancel_event.is_set():
+        return None
+
+    # 步骤 B: 执行BLAST
+    # run_blast_pipeline 内部也包含了多步中断检查
+    return run_blast_pipeline(
+        config=config,
+        blast_type='blastn',
+        target_assembly_id=target_assembly_id,
+        query_file_path=None,
+        query_text=query_fasta_str,
+        output_path=None,  # 在工作线程中不保存文件，只返回DataFrame
+        evalue=criteria.evalue_threshold,
+        word_size=11,
+        max_target_seqs=criteria.top_n,
+        cancel_event=cancel_event
+    )
+
+
 def run_homology_mapping(
         config: MainConfig,
         source_assembly_id: str,
@@ -42,231 +90,146 @@ def run_homology_mapping(
         region: Optional[Tuple[str, int, int]],
         output_csv_path: Optional[str],
         criteria_overrides: Optional[Dict[str, Any]],
-        calculate_target_locus: bool = False,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
-) -> Any:
-    # 修改: 移除 status_callback 参数
+) -> Optional[pd.DataFrame]:
+    """
+    通过动态BLAST并行执行同源基因映射，并全程支持中断。
+    """
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            # 修改: 直接使用 logger
-            logger.info(_("任务被取消。"))
+            logger.info(_("任务已被用户取消。"))
             return True
         return False
 
     try:
-        progress(5, _("步骤 1: 加载配置..."))
-        if check_cancel(): return None
-        # 修改: get_genome_data_sources 不再需要 logger_func 参数
-        genome_sources = get_genome_data_sources(config)
-        source_genome_info = genome_sources.get(source_assembly_id)
-        target_genome_info = genome_sources.get(target_assembly_id)
-        bridge_species_name = "Arabidopsis_thaliana"
-        bridge_genome_info = genome_sources.get(bridge_species_name)
-
-        if not all([source_genome_info, target_genome_info, bridge_genome_info]):
-            # 修改: 直接使用 logger
-            logger.error(_("错误: 基因组名称无效。"))
-            return None if not output_csv_path else pd.DataFrame()
-
         source_gene_ids = gene_ids
-        if region:
-            progress(15, _("步骤 2: 从染色体区域提取基因ID..."))
+
+        if gene_ids:
+            try:
+                progress(5, _("正在智能解析输入基因ID..."))
+                source_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids)
+                progress(10, _("ID解析完成，准备执行BLAST。"))
+            except (ValueError, FileNotFoundError) as e:
+                logger.error(e)
+                progress(100, _("任务终止：基因ID解析失败。"))
+                return None
+
+        elif region:
+            progress(10, _("正在从GFF数据库提取区域基因..."))
             if check_cancel(): return None
 
+            genome_sources = get_genome_data_sources(config)
+            source_genome_info = genome_sources.get(source_assembly_id)
             gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
-            gff_db_cache_dir = os.path.join(os.path.dirname(config.config_file_abs_path_),
-                                            config.locus_conversion.gff_db_storage_dir)
-            # 修改: get_genes_in_region 不再需要 status_callback
+
+            gff_db_cache_dir = os.path.join(os.path.dirname(config.config_file_abs_path_), "genomes", "gff3")
+
             genes_in_region_list = get_genes_in_region(assembly_id=source_assembly_id, gff_filepath=gff_path,
-                                                       db_storage_dir=gff_db_cache_dir, region=region,
-                                                       force_db_creation=False)
+                                                       db_storage_dir=gff_db_cache_dir, region=region)
+
             if not genes_in_region_list:
-                # 修改: 直接使用 logger
                 logger.warning(_("在区域 {} 中未找到任何基因。").format(region))
-                return [] if not output_csv_path else pd.DataFrame()
-            source_gene_ids = [gene['gene_id'] for gene in genes_in_region_list]
+                return pd.DataFrame()
+
+            raw_gene_ids = [gene['id'] for gene in genes_in_region_list]
+            logger.debug(_("从GFF区域提取到 {} 个原始基因ID。前5个示例: {}").format(len(raw_gene_ids), raw_gene_ids[:5]))
+
+            logger.info(_("正在使用正则表达式规范化从GFF中提取的基因ID..."))
+            id_regex = source_genome_info.gene_id_regex
+
+            # 将规范化后的结果直接赋值给 source_gene_ids
+            normalized_ids = [_apply_regex_to_id(gid, id_regex) for gid in raw_gene_ids]
+            source_gene_ids = [gid for gid in normalized_ids if gid]
+
+            logger.debug(
+                _("规范化后得到 {} 个有效基因ID。前5个示例: {}").format(len(source_gene_ids), source_gene_ids[:5]))
 
         if not source_gene_ids:
-            # 修改: 直接使用 logger
             logger.error(_("错误: 基因列表为空。"))
-            return [] if not output_csv_path else pd.DataFrame()
+            return pd.DataFrame()
 
-        is_map_to_bridge = (target_assembly_id == bridge_species_name)
-        is_map_from_bridge = (source_assembly_id == bridge_species_name)
-        mapped_df, failed_genes = None, []
+        # 修正：移除原来在此处的重复和错误的代码块
 
-        if is_map_to_bridge and not is_map_from_bridge:
-            logger.info(_("[简易模式] 执行 源 -> 桥梁 直接查找..."))
-            progress(30, _("正在加载同源文件..."))
-            if check_cancel(): return None
-            homology_file_path = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
-            if not homology_file_path or not os.path.exists(homology_file_path):
-                logger.error(_(f"错误: 未找到 {source_assembly_id} 的同源文件。"))
-                return None
-
-            homology_df = create_homology_df(homology_file_path, lambda p, m: progress(30 + int(p * 0.4), m),
-                                             cancel_event)
-            if check_cancel() or homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return None
-
-            query_col_name = 'Query' if 'Query' in homology_df.columns else homology_df.columns[0]
-            match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()),
-                                  homology_df.columns[1])
-            logger.info(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"))
-
-            progress(70, _("正在标准化ID并查找匹配..."))
-            if check_cancel(): return None
-
-            search_col = query_col_name
-            search_regex = source_genome_info.gene_id_regex
-            homology_df[search_col] = homology_df[search_col].astype(str).apply(
-                lambda x: _apply_regex_to_id(x, search_regex))
-            processed_source_ids = {_apply_regex_to_id(gid, search_regex) for gid in source_gene_ids}
-
-            results_df = homology_df[homology_df[search_col].isin(processed_source_ids)].copy()
-
-            criteria = HomologySelectionCriteria()
+        criteria = HomologySelectionCriteria()
+        if criteria_overrides:
             _update_config_from_overrides(criteria, criteria_overrides)
-            if criteria.evalue_threshold is not None and 'Exp' in results_df.columns: results_df = results_df[
-                pd.to_numeric(results_df['Exp'], errors='coerce') <= criteria.evalue_threshold]
-            if criteria.pid_threshold is not None and 'PID' in results_df.columns: results_df = results_df[
-                pd.to_numeric(results_df['PID'], errors='coerce') >= criteria.pid_threshold]
-            if criteria.score_threshold is not None and 'Score' in results_df.columns: results_df = results_df[
-                pd.to_numeric(results_df['Score'], errors='coerce') >= criteria.score_threshold]
 
-            results_df = results_df.sort_values(by='Score', ascending=False)
-            if criteria.top_n and criteria.top_n > 0: results_df = results_df.groupby(search_col).head(criteria.top_n)
+        # --- 多线程执行 (后续代码保持不变) ---
+        max_workers = config.downloader.max_workers
+        chunk_size = max(1, (len(source_gene_ids) + max_workers - 1) // max_workers)
+        gene_chunks = [source_gene_ids[i:i + chunk_size] for i in range(0, len(source_gene_ids), chunk_size)]
 
-            mapped_df = results_df.rename(columns={query_col_name: 'Source_Gene_ID', match_col_name: 'Target_Gene_ID'})
-            found_genes = set(mapped_df['Source_Gene_ID'])
-            failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
+        all_results_df = []
+        progress(20, _("正在并行启动BLAST任务 (共 {} 个子任务)...").format(len(gene_chunks)))
 
-        elif is_map_from_bridge and not is_map_to_bridge:
-            logger.info(_("[简易模式] 执行 桥梁 -> 目标 直接查找..."))
-            progress(30, _("正在加载同源文件..."))
-            if check_cancel(): return None
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_chunk = {
+                executor.submit(_homology_blast_worker, chunk, config, source_assembly_id, target_assembly_id, criteria,
+                                cancel_event): i
+                for i, chunk in enumerate(gene_chunks)
+            }
 
-            homology_file_path = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
-            if not homology_file_path or not os.path.exists(homology_file_path):
-                logger.error(_(f"错误: 未找到 {target_assembly_id} 的同源文件。"))
-                return None
+            completed_chunks = 0
+            for future in as_completed(future_to_chunk):
+                if check_cancel():
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    return None
 
-            homology_df = create_homology_df(homology_file_path, lambda p, m: progress(30 + int(p * 0.4), m),
-                                             cancel_event)
-            if check_cancel() or homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return None
+                result_df = future.result()
+                if result_df is not None and not result_df.empty:
+                    all_results_df.append(result_df)
 
-            query_col_name = 'Query' if 'Query' in homology_df.columns else homology_df.columns[0]
-            match_col_name = next((col for col in homology_df.columns if 'match' in col.lower()),
-                                  homology_df.columns[1])
-            logger.info(_(f"已自动识别表头: 查询列='{query_col_name}', 匹配列='{match_col_name}'"))
+                completed_chunks += 1
+                progress(20 + int((completed_chunks / len(gene_chunks)) * 70),
+                         _("已完成 {}/{} 个BLAST子任务...").format(completed_chunks, len(gene_chunks)))
 
-            progress(70, _("正在标准化ID并查找匹配..."))
-            if check_cancel(): return None
+        if check_cancel(): return None
 
-            search_col = match_col_name
-            search_regex = bridge_genome_info.gene_id_regex
-            homology_df[search_col] = homology_df[search_col].astype(str).apply(
-                lambda x: _apply_regex_to_id(x, search_regex))
-            processed_source_ids = {_apply_regex_to_id(gid, search_regex) for gid in source_gene_ids}
+        if not all_results_df:
+            logger.warning(_("所有BLAST任务完成，但未找到任何匹配项。"))
+            return pd.DataFrame()
 
-            results_df = homology_df[homology_df[search_col].isin(processed_source_ids)].copy()
+        results_df = pd.concat(all_results_df, ignore_index=True)
+        logger.debug(_("所有线程共返回 {} 条原始匹配。").format(len(results_df)))
 
-            criteria = HomologySelectionCriteria();
-            _update_config_from_overrides(criteria, criteria_overrides)
-            if criteria.evalue_threshold is not None and 'Exp' in results_df.columns: results_df = results_df[
-                pd.to_numeric(results_df['Exp'], errors='coerce') <= criteria.evalue_threshold]
-            if criteria.pid_threshold is not None and 'PID' in results_df.columns: results_df = results_df[
-                pd.to_numeric(results_df['PID'], errors='coerce') >= criteria.pid_threshold]
-            if criteria.score_threshold is not None and 'Score' in results_df.columns: results_df = results_df[
-                pd.to_numeric(results_df['Score'], errors='coerce') >= criteria.score_threshold]
+        progress(90, _("正在应用筛选条件并整理结果..."))
 
-            results_df = results_df.sort_values(by='Score', ascending=False)
-            if criteria.top_n and criteria.top_n > 0: results_df = results_df.groupby(search_col).head(criteria.top_n)
+        if criteria.pid_threshold is not None and 'Identity (%)' in results_df.columns:
+            results_df = results_df[
+                pd.to_numeric(results_df['Identity (%)'], errors='coerce') >= criteria.pid_threshold]
 
-            mapped_df = results_df.rename(columns={match_col_name: 'Source_Gene_ID', query_col_name: 'Target_Gene_ID'})
-            found_genes = set(mapped_df['Source_Gene_ID'])
-            failed_genes = [gid for gid in source_gene_ids if gid not in found_genes]
+        if criteria.score_threshold is not None and 'Bit_Score' in results_df.columns:
+            results_df = results_df[results_df['Bit_Score'] >= criteria.score_threshold]
 
-        else:
-            logger.info(_("[标准模式] 调用核心函数执行三步映射..."))
-            if check_cancel(): return None
-            s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
-            b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
-
-            source_to_bridge_homology_df = create_homology_df(config=config,file_path=s_to_b_homology_file,
-                                                              progress_callback=lambda p, m: progress(30 + int(p * 0.3), m),  cancel_event=cancel_event)
-            if check_cancel() or source_to_bridge_homology_df.empty: logger.info(
-                _("任务被取消或文件读取失败。")); return None
-
-            bridge_to_target_homology_df = create_homology_df(config=config,file_path=b_to_t_homology_file,
-                                                              progress_callback=lambda p, m: progress(60 + int(p * 0.2), m),  cancel_event=cancel_event)
-            if check_cancel() or bridge_to_target_homology_df.empty: logger.info(
-                _("任务被取消或文件读取失败。")); return None
-
-            s2b_criteria = HomologySelectionCriteria()
-            _update_config_from_overrides(s2b_criteria, criteria_overrides)
-            b2t_criteria = HomologySelectionCriteria()
-            _update_config_from_overrides(b2t_criteria, criteria_overrides)
-
-            if check_cancel(): logger.info(_("任务被取消。")); return None
-
-            # 修改: map_genes_via_bridge 不再需要 status_callback
-            mapped_df, failed_genes = map_genes_via_bridge(
-                source_gene_ids=source_gene_ids, source_assembly_name=source_assembly_id,
-                target_assembly_name=target_assembly_id,
-                bridge_species_name=bridge_species_name, source_to_bridge_homology_df=source_to_bridge_homology_df,
-                bridge_to_target_homology_df=bridge_to_target_homology_df,
-                selection_criteria_s_to_b=s2b_criteria.model_dump(),
-                selection_criteria_b_to_t=b2t_criteria.model_dump(),
-                homology_columns={"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"},
-                source_genome_info=source_genome_info, target_genome_info=target_genome_info,
-                bridge_genome_info=bridge_genome_info,
-                progress_callback=lambda p, m: progress(80 + int(p * 0.1), m),
-                cancel_event=cancel_event
-            )
-
-        if check_cancel(): logger.info(_("任务被取消。")); return None
+        if criteria.strict_subgenome_priority:
+            genome_sources = get_genome_data_sources(config)
+            source_info = genome_sources.get(source_assembly_id)
+            target_info = genome_sources.get(target_assembly_id)
+            if source_info and target_info and source_info.is_cotton() and target_info.is_cotton():
+                logger.info(_("已启用严格模式：筛选同亚组、同染色体编号的匹配。"))
+                results_df['Source_Parsed'] = results_df['Query_ID'].apply(parse_gene_id)
+                results_df['Target_Parsed'] = results_df['Hit_ID'].apply(parse_gene_id)
+                condition = ((results_df['Source_Parsed'].notna()) & (results_df['Target_Parsed'].notna()) &
+                             (results_df['Source_Parsed'].str[0] == results_df['Target_Parsed'].str[0]) &
+                             (results_df['Source_Parsed'].str[1] == results_df['Target_Parsed'].str[1]))
+                results_df = results_df[condition].drop(columns=['Source_Parsed', 'Target_Parsed'])
 
         if output_csv_path:
-            logger.info(_("步骤 5: 保存映射结果..."))
-            if check_cancel(): return None
-            progress(95, _("正在保存映射结果..."))
-            # 修改: save_mapping_results 不再需要 status_callback
-            save_mapping_results(
-                output_path=output_csv_path,
-                mapped_df=mapped_df,
-                failed_genes=failed_genes,
-                source_assembly_id=source_assembly_id,
-                target_assembly_id=target_assembly_id,
-                source_gene_ids_count=len(source_gene_ids),
-                region=region
-            )
-            return mapped_df
-        else:
-            logger.info(_("步骤 5: 提取目标基因ID..."))
-            if check_cancel(): return None
-            progress(95, _("正在提取目标基因ID..."))
-
-            if mapped_df is not None and not mapped_df.empty and 'Target_Gene_ID' in mapped_df.columns:
-                target_ids = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
-                target_regex = target_genome_info.gene_id_regex
-                if target_regex:
-                    logger.debug(_("正在使用目标基因组的正则表达式 '{}' 清理ID...").format(target_regex))
-                    cleaned_ids = [_apply_regex_to_id(gid, target_regex) for gid in target_ids]
-                    final_ids = sorted(list(set(cleaned_ids)))
-                else:
-                    final_ids = sorted(target_ids)
-
-                logger.info(_("成功提取到 {} 个唯一的同源目标基因。").format(len(final_ids)))
-                return final_ids
+            progress(95, _("正在保存最终结果..."))
+            logger.info(_("正在将最终BLAST结果保存到: {}").format(output_csv_path))
+            if output_csv_path.lower().endswith('.csv'):
+                results_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
             else:
-                logger.info(_("未找到任何同源目标基因。"))
-                return []
+                results_df.to_excel(output_csv_path, index=False, engine='openpyxl')
+
+        progress(100, _("同源映射完成。"))
+        return results_df
 
     except Exception as e:
-        logger.exception(_("流水线执行过程中发生意外错误: {}").format(e))
+        logger.exception(_("同源映射流水线发生意外错误: {}").format(e))
         return None
 
 
@@ -282,12 +245,7 @@ def run_locus_conversion(
         **kwargs
 ) -> Optional[str]:
     """
-    执行物种间的基因组位点转换。
-
-    该流程首先从源基因组的指定区域查找基因，然后通过桥梁物种（如拟南芥）
-    的同源基因信息，将这些基因映射到目标基因组上，并最终输出映射结果。
-
-    此函数依赖于预处理好的GFF数据库和同源数据库以保证最佳性能。
+    通过动态BLAST进行位点转换。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
 
@@ -298,150 +256,81 @@ def run_locus_conversion(
         return False
 
     try:
-        progress(5, _("流程开始，正在加载基因组配置..."))
+        # 步骤 1: 调用新的同源映射流程来找到最佳匹配基因
+        # 注意：我们将 output_csv_path 设为 None，以便直接获取DataFrame结果
+        progress(0, _("正在通过BLAST进行同源基因映射..."))
         if check_cancel(): return None
 
-        # --- 步骤 1: 加载所有必需的基因组配置 ---
-        logger.info(_("步骤1: 加载配置..."))
-        genome_sources = get_genome_data_sources(config)
-        source_genome_info = genome_sources.get(source_assembly_id)
-        target_genome_info = genome_sources.get(target_assembly_id)
-        bridge_species_name = "Arabidopsis thaliana"  # 假设桥梁物种固定
-        bridge_genome_info = genome_sources.get(bridge_species_name)
-        if not bridge_genome_info:
-            bridge_genome_info = genome_sources.get(bridge_species_name.replace(' ', '_'))
-
-        if not all([source_genome_info, target_genome_info, bridge_genome_info]):
-            error_msg = _("错误: 无法为 {}, {} 或 {} 找到配置。").format(source_assembly_id, target_assembly_id,
-                                                                        bridge_species_name)
-            logger.error(error_msg)
-            progress(100, _("任务终止：基因组配置错误。"))
-            return None
-
-        # --- 步骤 2: 从GFF数据库中提取源基因 ---
-        progress(15, _("正在从GFF数据库中提取基因..."))
-        if check_cancel(): return None
-
-        gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
-        gff_db_cache_dir = config.locus_conversion.gff_db_storage_dir
-
-        # 直接调用 get_genes_in_region，不再手动检查DB文件是否存在
-        # gff_parser 会在找不到预处理DB时抛出 FileNotFoundError
-        source_gene_list = get_genes_in_region(
-            assembly_id=source_assembly_id,
-            gff_filepath=gff_path,
-            db_storage_dir=gff_db_cache_dir,
+        homology_results_df = run_homology_mapping(
+            config=config,
+            source_assembly_id=source_assembly_id,
+            target_assembly_id=target_assembly_id,
+            gene_ids=None,  # 明确告知函数从region提取基因
             region=region,
-            gene_id_regex=source_genome_info.gene_id_regex,
-            force_db_creation=False,  # 关键：设置为False，强制使用预处理数据库
-            progress_callback=lambda p, m: progress(15 + int(p * 0.1), _("提取基因: {}").format(m))
-        )
-
-        if not source_gene_list:
-            message = _("在指定区域 {} 未找到任何基因。").format(region)
-            logger.warning(message)
-            progress(100, _("任务终止：区域内无基因。"))
-            return message
-        source_gene_ids = [gene['gene_id'] for gene in source_gene_list]
-
-        logger.debug(f"从GFF区域提取到 {len(source_gene_ids)} 个基因。")
-        logger.debug(f"GFF提取并标准化后的前5个基因ID: {source_gene_ids[:5]}")
-
-        # --- 步骤 3: 加载同源数据 (已优化为优先使用SQLite) ---
-        progress(30, _("正在加载同源文件..."))
-        if check_cancel(): return None
-
-        s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
-        b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
-
-        source_to_bridge_homology_df = create_homology_df(config,s_to_b_homology_file,
-                                                          progress_callback=lambda p, m: progress(40 + int(p * 0.2),
-                                                                                                  _("解析同源文件 (S->B): {}").format(
-                                                                                                      m)),
-                                                          cancel_event=cancel_event)
-
-        bridge_to_target_homology_df = create_homology_df(config,b_to_t_homology_file,
-                                                          progress_callback=lambda p, m: progress(60 + int(p * 0.1),
-                                                                                                  _("解析同源文件 (B->T): {}").format(
-                                                                                                      m)),
-                                                          cancel_event=cancel_event)
-
-        if source_to_bridge_homology_df.empty or bridge_to_target_homology_df.empty:
-            logger.error(_("错误: 必要的同源数据未能加载。"))
-            return None
-
-        logger.debug(f"加载了 '源->桥梁' 同源数据，共 {len(source_to_bridge_homology_df)} 行。")
-        logger.debug(f"S2B同源文件'Query'列的前5个原始ID: {source_to_bridge_homology_df['Query'].head().tolist()}")
-        logger.debug(f"加载了 '桥梁->目标' 同源数据，共 {len(bridge_to_target_homology_df)} 行。")
-
-        # --- 步骤 4: 执行核心同源映射 ---
-        progress(75, _("正在执行核心同源映射..."))
-        if check_cancel(): return None
-
-        # 这里的参数可以根据需要从config或criteria_overrides中获取
-        s2b_criteria = HomologySelectionCriteria()
-        b2t_criteria = HomologySelectionCriteria()
-        if criteria_overrides:
-            _update_config_from_overrides(s2b_criteria, criteria_overrides)
-            _update_config_from_overrides(b2t_criteria, criteria_overrides)
-
-        logger.debug(f"将使用以下筛选标准 (S->B): {s2b_criteria.model_dump()}")
-        logger.debug(f"将使用以下筛选标准 (B->T): {b2t_criteria.model_dump()}")
-
-        homology_columns = {"query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"}
-
-
-        progress(75, _("正在执行核心同源映射..."))
-        if check_cancel(): logger.info(_("任务已取消。")); return None
-
-        mapped_df, failed_genes = map_genes_via_bridge(
-            source_gene_ids=source_gene_ids,
-            source_assembly_name=source_assembly_id,
-            target_assembly_name=target_assembly_id,
-            bridge_species_name=bridge_species_name,
-            homology_columns=homology_columns,
-            source_to_bridge_homology_df=source_to_bridge_homology_df,
-            bridge_to_target_homology_df=bridge_to_target_homology_df,
-            selection_criteria_s_to_b=s2b_criteria.model_dump(),  # 使用修复后的标准
-            selection_criteria_b_to_t=b2t_criteria.model_dump(),  # 使用修复后的标准
-            source_genome_info=source_genome_info,
-            target_genome_info=target_genome_info,
-            bridge_genome_info=bridge_genome_info,
-            progress_callback=lambda p, m: progress(75 + int(p * 0.15), _("基因映射: {}").format(m)),
+            output_csv_path=None,  # 直接返回DataFrame
+            criteria_overrides=criteria_overrides,
+            progress_callback=lambda p, m: progress(int(p * 0.8), m),  # 映射进度占80%
             cancel_event=cancel_event
         )
 
-        if kwargs.get('cancel_event') and kwargs['cancel_event'].is_set():
-            logger.info(_("任务在同源映射阶段被用户取消。"))
-            progress(100, _("任务已取消。"))
-            return None
+        if check_cancel(): return None
+        if homology_results_df is None or homology_results_df.empty:
+            logger.warning(_("未能找到任何同源基因，无法进行位点转换。"))
+            progress(100, _("任务完成：无同源基因。"))
+            # 创建一个空文件以表示任务已执行但无结果
+            with open(output_path, 'w', encoding='utf-8-sig') as f:
+                f.write(
+                    _("# Source Locus: {} | {}:{}-{}\n").format(source_assembly_id, region[0], region[1], region[2]))
+                f.write(_("# Target Assembly: {}\n").format(target_assembly_id))
+                f.write(_("# No successful homologous matches found to convert locus.\n"))
+            return _("在指定区域未找到可转换的同源基因。")
 
-        progress(95, _("映射完成，正在整理并保存结果..."))
+        # 步骤 2: 获取目标基因的坐标信息
+        progress(85, _("正在查询目标基因的坐标..."))
         if check_cancel(): return None
 
-        output_dir = os.path.dirname(output_path)
-        if output_dir: os.makedirs(output_dir, exist_ok=True)
+        homology_results_df['base_gene_id_for_lookup'] = homology_results_df['Hit_ID'].apply(
+            lambda x: re.sub(r'\.\d+$', '', str(x))
+        )
+        base_gene_ids_to_query = homology_results_df['base_gene_id_for_lookup'].dropna().unique().tolist()
+        logger.info(
+            _("将 {} 个同源Hit_ID规范化为 {} 个唯一的基础基因ID进行GFF查询。").format(
+                len(homology_results_df['Hit_ID'].unique()),
+                len(base_gene_ids_to_query)))
 
-        with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
-            f.write(_("# Source Locus: {} | {}:{}-{}\n").format(source_assembly_id, region[0], region[1], region[2]))
-            f.write(_("# Target Assembly: {}\n").format(target_assembly_id))
-            f.write(_("# Failed to map {} genes: {}\n").format(len(failed_genes),
-                                                               ','.join(failed_genes) if failed_genes else 'None'))
-            f.write(_("#\n# --- Detailed Mapping Results ---\n"))
-            if mapped_df is not None and not mapped_df.empty:
-                mapped_df.to_csv(f, index=False, lineterminator='\n')
-            else:
-                f.write(_("# No successful homologous matches found.\n"))
+        genome_sources = get_genome_data_sources(config)
+        target_genome_info = genome_sources.get(target_assembly_id)
+        gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
+        gff_db_dir = os.path.join(os.path.dirname(config.config_file_abs_path_), GFF3_DB_DIR)
 
-        progress(100, _("全部完成！"))
+        target_gene_info_df = get_gene_info_by_ids(
+            assembly_id=target_assembly_id,
+            gff_filepath=gff_path,
+            db_storage_dir=gff_db_dir,
+            gene_ids=base_gene_ids_to_query
+        )
+
+        if target_gene_info_df.empty:
+            logger.warning(_("找到了同源基因ID，但无法在目标GFF中查询到它们的坐标信息。"))
+            final_df = homology_results_df
+        else:
+            # 步骤 3: 合并BLAST结果和目标坐标信息
+            progress(95, _("正在合并BLAST结果与坐标信息..."))
+            # 1. 重命名GFF查询结果的 'id' 列以匹配我们的临时列名
+            target_gene_info_df = target_gene_info_df.rename(columns={'id': 'base_gene_id_for_lookup'})
+            # 2. 使用这个共有的基础ID列进行合并
+            final_df = pd.merge(homology_results_df, target_gene_info_df, on='base_gene_id_for_lookup', how='left')
+            # 3. 移除临时的辅助列，保持输出整洁
+            final_df = final_df.drop(columns=['base_gene_id_for_lookup'])
+
+        # 步骤 4: 保存最终结果
+        logger.info(_("正在将位点转换结果保存到: {}").format(output_path))
+        final_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+
+        progress(100, _("位点转换完成！"))
         success_message = _("位点转换结果已成功保存到:\n{}").format(os.path.abspath(output_path))
         logger.info(success_message)
         return success_message
-
-    except FileNotFoundError as e:
-        logger.error(str(e))
-        progress(100, _("任务终止：缺少必要的预处理数据库。"))
-        return None
 
     except Exception as e:
         logger.error(_("位点转换流程出错: {}").format(e))
@@ -467,7 +356,7 @@ def run_ai_task(
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            logger.info(_("任务已被用户取消。"));
+            logger.info(_("任务已被用户取消。"))
             return True
         return False
 
@@ -483,13 +372,13 @@ def run_ai_task(
     model_name = cli_overrides.get('ai_model') if cli_overrides else None
     provider_cfg_obj = ai_cfg.providers.get(provider_name)
     if not provider_cfg_obj:
-        logger.error(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name));
+        logger.error(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name))
         return
     if not model_name: model_name = provider_cfg_obj.model
     api_key = provider_cfg_obj.api_key
     base_url = provider_cfg_obj.base_url
     if not api_key or "YOUR_API_KEY" in api_key:
-        logger.error(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name));
+        logger.error(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name))
         return
 
     proxies_to_use = config.proxies.model_dump(
@@ -586,8 +475,8 @@ def run_gff_lookup(
             progress(100, "任务终止：GFF文件缺失。")
             return False
 
-        gff_db_dir = os.path.join(project_root, config.locus_conversion.gff_db_storage_dir)
-        expected_db_path = os.path.join(gff_db_dir, os.path.basename(gff_file_path) + ".db")
+        gff_db_dir = os.path.join(project_root, GFF3_DB_DIR)
+        expected_db_path = os.path.join(gff_db_dir, f"{assembly_id}_genes.db")
 
         # 2. 检查预处理的数据库是否存在，不存在则报错
         if not os.path.exists(expected_db_path):
@@ -607,18 +496,27 @@ def run_gff_lookup(
     progress(40, _("正在数据库中查询..."))
     if check_cancel(): return False
     if gene_ids:
-        logger.info(_("按基因ID查询 {} 个基因...").format(len(gene_ids)))
-        # 修改: get_gene_info_by_ids 不再需要 status_callback
-        results_df = get_gene_info_by_ids(
-            assembly_id=assembly_id, gff_filepath=gff_file_path,
-            db_storage_dir=gff_db_dir, gene_ids=gene_ids,
-            force_db_creation=force_creation,
-            progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询基因ID: {}").format(m))
-        )
+        try:
+            logger.info(_("正在对输入的基因ID进行智能解析..."))
+            resolved_ids = resolve_gene_ids(config, assembly_id, gene_ids)
+            # GFF查询通常使用基础基因ID，所以我们在这里统一为基础ID
+            final_ids_to_query = list(set(_to_gene_id(gid) for gid in resolved_ids))
+            logger.info(_("按基因ID查询 {} 个基因... (已完成智能解析)").format(len(final_ids_to_query)))
+
+            results_df = get_gene_info_by_ids(
+                assembly_id=assembly_id, gff_filepath=gff_file_path,
+                db_storage_dir=gff_db_dir, gene_ids=final_ids_to_query,
+                force_db_creation=force_creation,
+                progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询基因ID: {}").format(m))
+            )
+        except (ValueError, FileNotFoundError) as e:
+            logger.error(e)
+            progress(100, _("任务终止：基因ID解析失败。"))
+            return False
+
     elif region:
         chrom, start, end = region
         logger.info(_("按区域 {}:{}-{} 查询基因...").format(chrom, start, end))
-        # 修改: get_genes_in_region 不再需要 status_callback
         genes_in_region_list = get_genes_in_region(
             assembly_id=assembly_id, gff_filepath=gff_file_path,
             db_storage_dir=gff_db_dir, region=region,
@@ -638,7 +536,6 @@ def run_gff_lookup(
         progress(100, _("任务完成：未找到结果。"))
     else:
         logger.info(_("查询完成，找到 {} 个基因记录。").format(len(results_df)))
-
         final_output_path = output_csv_path
         if not final_output_path:
             output_dir = os.path.join(project_root, "gff_query_results")
@@ -687,8 +584,15 @@ def run_functional_annotation(
 
     source_gene_ids = []
     if gene_ids:
-        source_gene_ids = list(set(gene_ids))
-        logger.info(_("从参数直接获取了 {} 个唯一基因ID。").format(len(source_gene_ids)))
+        try:
+            progress(2, _("正在智能解析输入基因ID..."))
+            source_gene_ids = resolve_gene_ids(config, source_genome, gene_ids)
+            logger.info(_("从参数智能解析了 {} 个唯一基因ID。").format(len(source_gene_ids)))
+        except (ValueError, FileNotFoundError) as e:
+            logger.error(e)
+            progress(100, _("任务终止：基因ID解析失败。"))
+            return
+
     elif gene_list_path and os.path.exists(gene_list_path):
         try:
             progress(5, _("正在从文件读取基因列表..."))
@@ -712,7 +616,7 @@ def run_functional_annotation(
         return
 
     genes_to_annotate = source_gene_ids
-    original_to_target_map_df = pd.DataFrame({'Source_Gene_ID': source_gene_ids})
+    final_df_base = pd.DataFrame({'Source_Gene_ID': source_gene_ids})
 
     progress(10, _("检查是否需要同源映射..."))
     if check_cancel(): return
@@ -745,7 +649,7 @@ def run_functional_annotation(
         progress(25, _("正在解析源到桥梁的同源文件..."))
         if check_cancel(): return
 
-        source_to_bridge_homology_df = create_homology_df(config,s_to_b_homology_file,
+        source_to_bridge_homology_df = create_homology_df(config, s_to_b_homology_file,
                                                           progress_callback=lambda p, m: progress(25 + int(p * 0.1),
                                                                                                   _("加载同源数据: {}").format(
                                                                                                       m)),
@@ -755,7 +659,7 @@ def run_functional_annotation(
         progress(35, _("正在解析桥梁到目标的同源文件..."))
         if check_cancel(): return
 
-        bridge_to_target_homology_df = create_homology_df(config,b_to_t_homology_file,
+        bridge_to_target_homology_df = create_homology_df(config, b_to_t_homology_file,
                                                           progress_callback=lambda p, m: progress(35 + int(p * 0.1),
                                                                                                   _("加载同源数据: {}").format(
                                                                                                       m)),
@@ -797,8 +701,12 @@ def run_functional_annotation(
             progress(100, _("任务终止：同源映射失败。"))
             return
 
-        genes_to_annotate = mapped_df['Target_Gene_ID'].dropna().unique().tolist()
-        original_to_target_map_df = mapped_df[['Source_Gene_ID', 'Target_Gene_ID']]
+        # 1. 创建包含基础基因ID的临时列
+        mapped_df['base_gene_id'] = mapped_df['Target_Gene_ID'].apply(lambda x: re.sub(r'\.\d+$', '', str(x)))
+        # 2. 使用这个基础ID列表进行注释
+        genes_to_annotate = mapped_df['base_gene_id'].dropna().unique().tolist()
+        # 3. 更新用于最终合并的基础DataFrame
+        final_df_base = mapped_df
 
     progress(75, _("初始化注释器..."))
     if check_cancel(): return
@@ -810,7 +718,6 @@ def run_functional_annotation(
         progress(100, _("任务终止：目标基因组配置错误。"))
         return
 
-    # 修改: Annotator 不再需要 status_callback
     annotator = Annotator(
         main_config=config,
         genome_id=target_genome,
@@ -822,6 +729,7 @@ def run_functional_annotation(
     progress(90, _("正在执行功能注释..."))
     if check_cancel(): return
 
+    # annotator现在接收基础基因ID列表
     result_df = annotator.annotate_genes(genes_to_annotate, annotation_types)
 
     if cancel_event and cancel_event.is_set():
@@ -832,10 +740,17 @@ def run_functional_annotation(
     if check_cancel(): return
 
     if result_df is not None and not result_df.empty:
-        if 'Target_Gene_ID' in original_to_target_map_df.columns:
-            final_df = pd.merge(original_to_target_map_df, result_df, on='Target_Gene_ID', how='left')
-        else:
-            final_df = result_df
+        if 'base_gene_id' in final_df_base.columns:
+            # 1. 在注释结果中，将主键列重命名以匹配我们的临时列
+            result_df = result_df.rename(columns={'Gene_ID': 'base_gene_id'})
+            # 2. 使用共有的基础ID列进行安全合并
+            final_df = pd.merge(final_df_base, result_df, on='base_gene_id', how='left')
+            # 3. 移除辅助列
+            final_df = final_df.drop(columns=['base_gene_id'])
+        else:  # 如果没有进行同源映射，则直接使用注释结果
+            final_df = pd.merge(final_df_base, result_df, left_on='Source_Gene_ID', right_on='Gene_ID', how='left')
+            if 'Gene_ID' in final_df.columns:
+                final_df = final_df.drop(columns=['Gene_ID'])
 
         final_output_path = ""
         if output_path:
@@ -919,14 +834,18 @@ def run_enrichment_pipeline(
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            logger.info(_("任务已被用户取消。"));
-            progress(100, _("任务已取消."));
+            logger.info(_("任务已被用户取消。"))
+            progress(100, _("任务已取消."))
             return True
         return False
 
     progress(0, _("富集分析与可视化流程启动。"))
     if check_cancel(): return None
     logger.info(_("{} 富集与可视化流程启动。").format(analysis_type.upper()))
+
+    progress(2, _("正在智能解析研究基因ID..."))
+    resolved_study_ids = resolve_gene_ids(config, assembly_id, study_gene_ids)
+    logger.info(_("ID智能解析完成，得到 {} 个标准化的ID。").format(len(resolved_study_ids)))
 
     if collapse_transcripts:
         original_count = len(study_gene_ids)
@@ -941,7 +860,7 @@ def run_enrichment_pipeline(
         genome_info = genome_sources.get(assembly_id)
         if not genome_info:
             logger.error(_("无法在配置中找到基因组 '{}'。").format(assembly_id))
-            progress(100, _("任务终止：基因组配置错误。"));
+            progress(100, _("任务终止：基因组配置错误。"))
             return None
         gene_id_regex = genome_info.gene_id_regex if hasattr(genome_info, 'gene_id_regex') else None
     except Exception as e:
@@ -976,11 +895,10 @@ def run_enrichment_pipeline(
             progress_callback=lambda p, m: progress(20 + int(p * 0.4), f"KEGG富集: {m}")
         )
 
-
     if check_cancel(): return None
     if enrichment_df is None or enrichment_df.empty:
-        logger.warning(_("富集分析未发现任何显著结果，流程终止。"));
-        progress(100, _("任务完成：无显著结果。"));
+        logger.warning(_("富集分析未发现任何显著结果，流程终止。"))
+        progress(100, _("任务完成：无显著结果。"))
         return "Enrichment analysis completed with no significant results."
 
     progress(60, _("富集分析完成，正在生成图表..."))

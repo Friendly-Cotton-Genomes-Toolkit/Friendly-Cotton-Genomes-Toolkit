@@ -10,7 +10,7 @@ import  sqlite3
 from .. import PREPROCESSED_DB_NAME
 from ..config.models import MainConfig, GenomeSourceItem
 from ..utils.file_utils import _sanitize_table_name
-from ..utils.gene_utils import normalize_gene_ids
+from ..utils.gene_utils import normalize_gene_ids, resolve_gene_ids
 
 try:
     from builtins import _
@@ -173,7 +173,18 @@ def run_go_enrichment(
     """
     【最终数据库版】执行GO富集分析，直接从SQLite数据库读取背景数据。
     """
+
     progress = progress_callback if progress_callback else lambda p, m: None
+
+    try:
+        progress(5, _("正在智能解析输入基因ID..."))
+        resolved_gene_ids = resolve_gene_ids(main_config, genome_info.version_id, study_gene_ids)
+        logger.info(_("ID智能解析完成，得到 {} 个标准化的ID用于富集分析。").format(len(resolved_gene_ids)))
+    except (ValueError, FileNotFoundError) as e:
+        logger.error(e)
+        progress(100, _("任务终止：基因ID解析失败。"))
+        return None
+
     progress(10, _("正在从数据库加载GO背景数据..."))
 
     try:
@@ -199,6 +210,10 @@ def run_go_enrichment(
         if len(background_df.columns) > 3: rename_map[background_df.columns[3]] = 'Namespace'
         background_df.rename(columns=rename_map, inplace=True)
 
+        if 'Namespace' not in background_df.columns:
+            logger.warning(_("GO背景文件中未找到 'Namespace' 列，将使用默认值 'GO'。"))
+            background_df['Namespace'] = 'GO'
+
     except (ValueError, sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
         logger.error(_("加载GO背景数据失败: {}").format(e))
         logger.error(
@@ -209,7 +224,7 @@ def run_go_enrichment(
 
     # 4. 调用核心统计函数
     return _perform_hypergeometric_test(
-        study_gene_ids,
+        resolved_gene_ids,
         background_df,
         output_dir,
         gene_id_regex=gene_id_regex,
@@ -229,6 +244,16 @@ def run_kegg_enrichment(
     【最终数据库版】执行KEGG富集分析，直接从预处理的SQLite数据库高效加载背景数据。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
+
+    try:
+        progress(5, _("正在智能解析输入基因ID..."))
+        resolved_gene_ids = resolve_gene_ids(main_config, genome_info.version_id, study_gene_ids)
+        logger.info(_("ID智能解析完成，得到 {} 个标准化的ID用于富集分析。").format(len(resolved_gene_ids)))
+    except (ValueError, FileNotFoundError) as e:
+        logger.error(e)
+        progress(100, _("任务终止：基因ID解析失败。"))
+        return None
+
     progress(10, _("正在从数据库加载KEGG背景数据..."))
 
     try:
@@ -269,7 +294,7 @@ def run_kegg_enrichment(
 
     # 4. 调用通用的核心统计函数
     return _perform_hypergeometric_test(
-        study_gene_ids,
+        resolved_gene_ids,
         background_df,
         output_dir,
         gene_id_regex=gene_id_regex,

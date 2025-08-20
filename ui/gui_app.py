@@ -25,7 +25,7 @@ from ui.event_handler import EventHandler
 from ui.ui_manager import UIManager, determine_initial_theme
 from ui.tabs import (
     AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab,
-    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, XlsxConverterTab, BlastTab
+    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab
 )
 
 try:
@@ -47,7 +47,7 @@ class CottonToolkitApp(ttkb.Window):
                 "openai_compatible": {"name": self._("通用OpenAI兼容接口")}}
 
     TOOL_TAB_ORDER = [
-        "download", "annotation", "enrichment", "xlsx_to_csv", "genome_identifier",
+        "download", "annotation", "enrichment", "genome_identifier",
         "homology", "locus_conversion", "gff_query", "blast", "ai_assistant"
     ]
 
@@ -55,7 +55,7 @@ class CottonToolkitApp(ttkb.Window):
     def TAB_TITLE_KEYS(self):
         return {
             "download": _("数据下载"), "annotation": _("功能注释"), "enrichment": _("富集分析与绘图"),
-            "xlsx_to_csv": _("XLSX转CSV"), "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
+           "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
         }
@@ -296,10 +296,10 @@ class CottonToolkitApp(ttkb.Window):
         section_1_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
         self.translatable_widgets[section_1_title] = "通用设置"
 
-        c1 = ttkb.Frame(parent);
-        c1.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+        c1 = ttkb.Frame(parent)
+        c1.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
         c1.grid_columnconfigure(1, weight=1)
-        lbl1 = ttkb.Label(c1, text=self._("日志级别"));
+        lbl1 = ttkb.Label(c1, text=self._("日志级别"))
         lbl1.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl1] = "日志级别"
         self.general_log_level_var = tk.StringVar()
@@ -307,41 +307,41 @@ class CottonToolkitApp(ttkb.Window):
                                                       *["DEBUG", "INFO", "WARNING", "ERROR"], bootstyle='info-outline')
         self.general_log_level_menu.grid(row=0, column=1, sticky="ew", padx=5)
         tip1 = ttkb.Label(c1, text=self._("设置应用程序的日志详细程度。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip1.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip1] = "设置应用程序的日志详细程度。"
 
-        c2 = ttkb.Frame(parent);
-        c2.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+        c2 = ttkb.Frame(parent)
+        c2.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
         c2.grid_columnconfigure(1, weight=1)
-        lbl2 = ttkb.Label(c2, text=self._("HTTP代理"));
+        lbl2 = ttkb.Label(c2, text=self._("HTTP代理"))
         lbl2.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl2] = "HTTP代理"
-        self.proxy_http_entry = ttkb.Entry(c2);
+        self.proxy_http_entry = ttkb.Entry(c2)
         self.proxy_http_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         tip2 = ttkb.Label(c2, text=self._("例如: http://127.0.0.1:7890"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip2.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip2] = "例如: http://127.0.0.1:7890"
 
-        c3 = ttkb.Frame(parent);
-        c3.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+        c3 = ttkb.Frame(parent)
+        c3.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
         c3.grid_columnconfigure(1, weight=1)
-        lbl3 = ttkb.Label(c3, text=self._("HTTPS代理"));
+        lbl3 = ttkb.Label(c3, text=self._("HTTPS代理"))
         lbl3.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl3] = "HTTPS代理"
-        self.proxy_https_entry = ttkb.Entry(c3);
+        self.proxy_https_entry = ttkb.Entry(c3)
         self.proxy_https_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         tip3 = ttkb.Label(c3, text=self._("例如: https://127.0.0.1:7890"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip3.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip3] = "例如: https://127.0.0.1:7890"
 
-        proxy_button_frame = ttkb.Frame(parent);
+        proxy_button_frame = ttkb.Frame(parent)
         proxy_button_frame.grid(row=get_row(), column=0, sticky="e", padx=5, pady=5)
         self.test_proxy_button = ttkb.Button(proxy_button_frame, text=self._("测试代理连接"),
                                              command=self.event_handler.test_proxy_connection,
-                                             bootstyle="primary-outline");
+                                             bootstyle="primary-outline")
         self.test_proxy_button.pack()
         self.translatable_widgets[self.test_proxy_button] = "测试代理连接"
 
@@ -350,72 +350,72 @@ class CottonToolkitApp(ttkb.Window):
         section_2_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
         self.translatable_widgets[section_2_title] = "数据下载器配置"
 
-        c4 = ttkb.Frame(parent);
-        c4.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+        c4 = ttkb.Frame(parent)
+        c4.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
         c4.grid_columnconfigure(1, weight=1)
-        lbl4 = ttkb.Label(c4, text=self._("基因组源文件"));
+        lbl4 = ttkb.Label(c4, text=self._("基因组源文件"))
         lbl4.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl4] = "基因组源文件"
-        self.downloader_sources_file_entry = ttkb.Entry(c4);
+        self.downloader_sources_file_entry = ttkb.Entry(c4)
         self.downloader_sources_file_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         tip4 = ttkb.Label(c4, text=self._("定义基因组下载链接的YAML文件。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip4.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip4] = "定义基因组下载链接的YAML文件。"
 
-        c5 = ttkb.Frame(parent);
-        c5.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+        c5 = ttkb.Frame(parent)
+        c5.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
         c5.grid_columnconfigure(1, weight=1)
-        lbl5 = ttkb.Label(c5, text=self._("下载输出根目录"));
+        lbl5 = ttkb.Label(c5, text=self._("下载输出根目录"))
         lbl5.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl5] = "下载输出根目录"
-        self.downloader_output_dir_entry = ttkb.Entry(c5);
+        self.downloader_output_dir_entry = ttkb.Entry(c5)
         self.downloader_output_dir_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         tip5 = ttkb.Label(c5, text=self._("所有下载文件存放的基准目录。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip5.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip5] = "所有下载文件存放的基准目录。"
 
-        c6 = ttkb.Frame(parent);
-        c6.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+        c6 = ttkb.Frame(parent)
+        c6.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
         c6.grid_columnconfigure(1, weight=1)
-        lbl6 = ttkb.Label(c6, text=self._("强制重新下载"));
+        lbl6 = ttkb.Label(c6, text=self._("强制重新下载"))
         lbl6.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl6] = "强制重新下载"
         self.downloader_force_download_var = tk.BooleanVar()
         self.downloader_force_download_switch = ttkb.Checkbutton(c6, variable=self.downloader_force_download_var,
-                                                                 bootstyle="round-toggle");
+                                                                 bootstyle="round-toggle")
         self.downloader_force_download_switch.grid(row=0, column=1, sticky="w", padx=5)
         tip6 = ttkb.Label(c6, text=self._("如果文件已存在，是否覆盖。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip6.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip6] = "如果文件已存在，是否覆盖。"
 
-        c7 = ttkb.Frame(parent);
-        c7.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+        c7 = ttkb.Frame(parent)
+        c7.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
         c7.grid_columnconfigure(1, weight=1)
-        lbl7 = ttkb.Label(c7, text=self._("最大下载线程数"));
+        lbl7 = ttkb.Label(c7, text=self._("最大下载线程数"))
         lbl7.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl7] = "最大下载线程数"
-        self.downloader_max_workers_entry = ttkb.Entry(c7);
+        self.downloader_max_workers_entry = ttkb.Entry(c7)
         self.downloader_max_workers_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         tip7 = ttkb.Label(c7, text=self._("多线程下载时使用的最大线程数。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip7.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip7] = "多线程下载时使用的最大线程数。"
 
-        c8 = ttkb.Frame(parent);
-        c8.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+        c8 = ttkb.Frame(parent)
+        c8.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
         c8.grid_columnconfigure(1, weight=1)
-        lbl8 = ttkb.Label(c8, text=self._("为下载使用代理"));
+        lbl8 = ttkb.Label(c8, text=self._("为下载使用代理"))
         lbl8.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl8] = "为下载使用代理"
         self.downloader_use_proxy_var = tk.BooleanVar()
         self.downloader_use_proxy_switch = ttkb.Checkbutton(c8, variable=self.downloader_use_proxy_var,
-                                                            bootstyle="round-toggle");
+                                                            bootstyle="round-toggle")
         self.downloader_use_proxy_switch.grid(row=0, column=1, sticky="w", padx=5)
         tip8 = ttkb.Label(c8, text=self._("是否为数据下载启用代理。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip8.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip8] = "是否为数据下载启用代理。"
 
@@ -424,10 +424,10 @@ class CottonToolkitApp(ttkb.Window):
         section_3_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
         self.translatable_widgets[section_3_title] = "AI 服务配置"
 
-        c9 = ttkb.Frame(parent);
-        c9.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+        c9 = ttkb.Frame(parent)
+        c9.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
         c9.grid_columnconfigure(1, weight=1)
-        lbl9 = ttkb.Label(c9, text=self._("默认AI服务商"));
+        lbl9 = ttkb.Label(c9, text=self._("默认AI服务商"))
         lbl9.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl9] = "默认AI服务商"
         self.ai_default_provider_var = tk.StringVar()
@@ -436,34 +436,34 @@ class CottonToolkitApp(ttkb.Window):
                                                         *provider_names, bootstyle='info-outline')
         self.ai_default_provider_menu.grid(row=0, column=1, sticky="ew", padx=5)
         tip9 = ttkb.Label(c9, text=self._("选择默认使用的AI模型提供商。"), font=self.app_comment_font,
-                          foreground=comment_fg_color);
+                          foreground=comment_fg_color)
         tip9.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip9] = "选择默认使用的AI模型提供商。"
 
-        c10 = ttkb.Frame(parent);
-        c10.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5);
+        c10 = ttkb.Frame(parent)
+        c10.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
         c10.grid_columnconfigure(1, weight=1)
-        lbl10 = ttkb.Label(c10, text=self._("最大并行AI任务数"));
+        lbl10 = ttkb.Label(c10, text=self._("最大并行AI任务数"))
         lbl10.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl10] = "最大并行AI任务数"
-        self.batch_ai_max_workers_entry = ttkb.Entry(c10);
+        self.batch_ai_max_workers_entry = ttkb.Entry(c10)
         self.batch_ai_max_workers_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         tip10 = ttkb.Label(c10, text=self._("执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"),
-                           font=self.app_comment_font, foreground=comment_fg_color);
+                           font=self.app_comment_font, foreground=comment_fg_color)
         tip10.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip10] = "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 
-        c11 = ttkb.Frame(parent);
-        c11.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5);
+        c11 = ttkb.Frame(parent)
+        c11.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
         c11.grid_columnconfigure(1, weight=1)
-        lbl11 = ttkb.Label(c11, text=self._("为AI服务使用代理"));
+        lbl11 = ttkb.Label(c11, text=self._("为AI服务使用代理"))
         lbl11.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
         self.translatable_widgets[lbl11] = "为AI服务使用代理"
         self.ai_use_proxy_var = tk.BooleanVar()
-        self.ai_use_proxy_switch = ttkb.Checkbutton(c11, variable=self.ai_use_proxy_var, bootstyle="round-toggle");
+        self.ai_use_proxy_switch = ttkb.Checkbutton(c11, variable=self.ai_use_proxy_var, bootstyle="round-toggle")
         self.ai_use_proxy_switch.grid(row=0, column=1, sticky="w", padx=5)
         tip11 = ttkb.Label(c11, text=self._("是否为连接AI模型API启用代理。"), font=self.app_comment_font,
-                           foreground=comment_fg_color);
+                           foreground=comment_fg_color)
         tip11.grid(row=1, column=1, sticky="w", padx=5)
         self.translatable_widgets[tip11] = "是否为连接AI模型API启用代理。"
 
@@ -472,41 +472,41 @@ class CottonToolkitApp(ttkb.Window):
             card.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
             card.grid_columnconfigure(1, weight=1)
             safe_key = p_key.replace('-', '_')
-            lbl_apikey = ttkb.Label(card, text="API Key");
+            lbl_apikey = ttkb.Label(card, text="API Key")
             lbl_apikey.grid(row=0, column=0, sticky="w", padx=10, pady=5)
             self.translatable_widgets[lbl_apikey] = "API Key"
-            apikey_entry = ttkb.Entry(card);
+            apikey_entry = ttkb.Entry(card)
             apikey_entry.grid(row=0, column=1, sticky="ew", pady=5, padx=5)
             setattr(self, f"ai_{safe_key}_apikey_entry", apikey_entry)
-            lbl_model = ttkb.Label(card, text="Model");
+            lbl_model = ttkb.Label(card, text="Model")
             lbl_model.grid(row=1, column=0, sticky="w", padx=10, pady=5)
             self.translatable_widgets[lbl_model] = "Model"
-            model_frame = ttkb.Frame(card);
-            model_frame.grid(row=1, column=1, sticky="ew", pady=5, padx=5);
+            model_frame = ttkb.Frame(card)
+            model_frame.grid(row=1, column=1, sticky="ew", pady=5, padx=5)
             model_frame.grid_columnconfigure(0, weight=1)
             model_var = tk.StringVar(value=self._("点击刷新获取列表"))
-            model_dropdown = ttkb.OptionMenu(model_frame, model_var, self._("点击刷新..."), bootstyle="info");
-            model_dropdown.configure(state="disabled");
+            model_dropdown = ttkb.OptionMenu(model_frame, model_var, self._("点击刷新..."), bootstyle="info")
+            model_dropdown.configure(state="disabled")
             model_dropdown.grid(row=0, column=0, sticky="ew")
             setattr(self, f"ai_{safe_key}_model_selector", (model_dropdown, model_var))
-            button_frame = ttkb.Frame(model_frame);
+            button_frame = ttkb.Frame(model_frame)
             button_frame.grid(row=0, column=1, padx=(10, 0))
             btn_refresh = ttkb.Button(button_frame, text=self._("刷新"), width=8,
                                       command=lambda pk=p_key: self.event_handler._gui_fetch_ai_models(pk,
                                                                                                        use_proxy=False),
-                                      bootstyle='outline');
+                                      bootstyle='outline')
             btn_refresh.pack(side="left")
             self.translatable_widgets[btn_refresh] = "刷新"
             btn_proxy_refresh = ttkb.Button(button_frame, text=self._("代理刷新"), width=10,
                                             command=lambda pk=p_key: self.event_handler._gui_fetch_ai_models(pk,
                                                                                                              use_proxy=True),
-                                            bootstyle='info-outline');
+                                            bootstyle='info-outline')
             btn_proxy_refresh.pack(side="left", padx=(5, 0))
             self.translatable_widgets[btn_proxy_refresh] = "代理刷新"
-            lbl_baseurl = ttkb.Label(card, text="Base URL");
+            lbl_baseurl = ttkb.Label(card, text="Base URL")
             lbl_baseurl.grid(row=2, column=0, sticky="w", padx=10, pady=5)
             self.translatable_widgets[lbl_baseurl] = "Base URL"
-            baseurl_entry = ttkb.Entry(card);
+            baseurl_entry = ttkb.Entry(card)
             baseurl_entry.grid(row=2, column=1, sticky="ew", pady=5, padx=5)
             setattr(self, f"ai_{safe_key}_baseurl_entry", baseurl_entry)
 
@@ -515,10 +515,10 @@ class CottonToolkitApp(ttkb.Window):
         section_4_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
         self.translatable_widgets[section_4_title] = "AI 提示词模板"
 
-        f_trans = ttkb.Frame(parent);
-        f_trans.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5);
+        f_trans = ttkb.Frame(parent)
+        f_trans.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
         f_trans.grid_columnconfigure(1, weight=1)
-        lbl_trans = ttkb.Label(f_trans, text=self._("翻译提示词"));
+        lbl_trans = ttkb.Label(f_trans, text=self._("翻译提示词"))
         lbl_trans.grid(row=0, column=0, sticky="nw", padx=(5, 10))
         self.translatable_widgets[lbl_trans] = "翻译提示词"
         bg_t, fg_t = self.style.lookup('TFrame', 'background'), self.style.lookup('TLabel', 'foreground')
@@ -527,10 +527,10 @@ class CottonToolkitApp(ttkb.Window):
                                                      insertbackground=fg_t)
         self.ai_translation_prompt_textbox.grid(row=0, column=1, sticky="ew", padx=5)
 
-        f_ana = ttkb.Frame(parent);
-        f_ana.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5);
+        f_ana = ttkb.Frame(parent)
+        f_ana.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
         f_ana.grid_columnconfigure(1, weight=1)
-        lbl_ana = ttkb.Label(f_ana, text=self._("分析提示词"));
+        lbl_ana = ttkb.Label(f_ana, text=self._("分析提示词"))
         lbl_ana.grid(row=0, column=0, sticky="nw", padx=(5, 10))
         self.translatable_widgets[lbl_ana] = "分析提示词"
         self.ai_analysis_prompt_textbox = tk.Text(f_ana, height=7, font=self.app_font_mono, wrap="word", relief="flat",
@@ -544,10 +544,10 @@ class CottonToolkitApp(ttkb.Window):
         def set_val(widget, value):
             if not widget: return
             if isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END);
+                widget.delete("1.0", tk.END)
                 widget.insert("1.0", str(value or ""))
             elif isinstance(widget, ttkb.Entry):
-                widget.delete(0, tk.END);
+                widget.delete(0, tk.END)
                 widget.insert(0, str(value or ""))
 
         self.general_log_level_var.set(cfg.log_level)
@@ -623,31 +623,31 @@ class CottonToolkitApp(ttkb.Window):
         title_label.pack(pady=(40, 10))
         self.translatable_widgets[title_label] = self.title_text_key
         ttkb.Label(page, textvariable=self.config_path_display_var, font=self.app_font).pack(pady=(10, 20))
-        cards_frame = ttkb.Frame(page);
-        cards_frame.pack(pady=20, padx=20, fill="x", expand=False);
+        cards_frame = ttkb.Frame(page)
+        cards_frame.pack(pady=20, padx=20, fill="x", expand=False)
         cards_frame.grid_columnconfigure((0, 1), weight=1)
-        card1 = ttkb.LabelFrame(cards_frame, text=self._("配置文件"), bootstyle="primary");
-        card1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew");
+        card1 = ttkb.LabelFrame(cards_frame, text=self._("配置文件"), bootstyle="primary")
+        card1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         card1.grid_columnconfigure(0, weight=1)
         self.translatable_widgets[card1] = "配置文件"
         btn1 = ttkb.Button(card1, text=self._("加载配置文件..."), command=self.event_handler.load_config_file,
-                           bootstyle="primary");
+                           bootstyle="primary")
         btn1.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
         self.translatable_widgets[btn1] = "加载配置文件..."
         btn2 = ttkb.Button(card1, text=self._("生成默认配置..."),
-                           command=self.event_handler._generate_default_configs_gui, bootstyle="info");
+                           command=self.event_handler._generate_default_configs_gui, bootstyle="info")
         btn2.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
         self.translatable_widgets[btn2] = "生成默认配置..."
-        card2 = ttkb.LabelFrame(cards_frame, text=self._("帮助与支持"), bootstyle="primary");
-        card2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew");
+        card2 = ttkb.LabelFrame(cards_frame, text=self._("帮助与支持"), bootstyle="primary")
+        card2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         card2.grid_columnconfigure(0, weight=1)
         self.translatable_widgets[card2] = "帮助与支持"
         btn3 = ttkb.Button(card2, text=self._("在线帮助文档"), command=self.event_handler._open_online_help,
-                           bootstyle="primary");
+                           bootstyle="primary")
         btn3.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
         self.translatable_widgets[btn3] = "在线帮助文档"
         btn4 = ttkb.Button(card2, text=self._("关于本软件"), command=self.event_handler._show_about_window,
-                           bootstyle="info");
+                           bootstyle="info")
         btn4.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
         self.translatable_widgets[btn4] = "关于本软件"
         return page
@@ -678,7 +678,6 @@ class CottonToolkitApp(ttkb.Window):
             "download": DataDownloadTab,
             "annotation": AnnotationTab,
             "enrichment": EnrichmentTab,
-            "xlsx_to_csv": XlsxConverterTab,
             "genome_identifier": GenomeIdentifierTab,
             "homology": HomologyTab,
             "locus_conversion": LocusConversionTab,
@@ -835,13 +834,13 @@ class CottonToolkitApp(ttkb.Window):
             if slaves:
                 scrollbar = slaves[0]
                 if has_config:
-                    self.editor_canvas.grid();
-                    scrollbar.grid();
+                    self.editor_canvas.grid()
+                    scrollbar.grid()
                     self.editor_no_config_label.grid_remove()
                     self._apply_config_values_to_editor()
                 else:
-                    self.editor_canvas.grid_remove();
-                    scrollbar.grid_remove();
+                    self.editor_canvas.grid_remove()
+                    scrollbar.grid_remove()
                     self.editor_no_config_label.grid()
         if hasattr(self, 'save_editor_button'): self.save_editor_button.configure(
             state="normal" if has_config else "disabled")
@@ -904,13 +903,24 @@ class CottonToolkitApp(ttkb.Window):
 
     def reconfigure_logging(self, log_level_str: str):
         try:
-            if isinstance(new_level := logging.getLevelName(log_level_str.upper()), int):
-                if (root := logging.getLogger()).getEffectiveLevel() != new_level:
-                    root.setLevel(new_level)
-                    for handler in root.handlers: handler.setLevel(new_level)
-                    self.logger.info(self._("全局日志级别已更新为: {}").format(log_level_str))
+            # 将字符串级别转换为整数级别，如果无效则默认为 INFO
+            new_level = logging.getLevelName(log_level_str.upper())
+            if not isinstance(new_level, int):
+                new_level = logging.INFO
+                self.logger.warning(f"无效的日志级别 '{log_level_str}'，已重置为 INFO。")
+
+            # 移除错误的检查条件，总是更新所有处理器的级别
+            root = logging.getLogger()
+
+            for handler in root.handlers:
+                handler.setLevel(new_level)
+
+            # 使用 self.logger 记录级别变更，确保这条消息本身不会被即将生效的更高日志级别过滤掉
+            self.logger.info(self._("全局日志级别已更新为: {}").format(log_level_str))
+
         except Exception as e:
             self.logger.error(self._("配置日志级别时出错: {}").format(e))
+
 
     def restart_app(self):
         self.logger.info(_("Application restart requested by user."))

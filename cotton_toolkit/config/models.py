@@ -24,10 +24,6 @@ class DownloaderConfig(BaseModel):
     force_download :bool = False
     use_proxy_for_download :bool = False
 
-class LocusConversionConfig(BaseModel):
-    output_dir_name: str = "locus_conversion_results"
-    gff_db_storage_dir: str = "gff_databases_cache"
-
 
 class AIServicesConfig(BaseModel):
     default_provider: str = "google"
@@ -134,7 +130,6 @@ class MainConfig(BaseModel):
     annotation_tool: AnnotationToolConfig = Field(default_factory=AnnotationToolConfig)
     arabidopsis_analyzer: ArabidopsisAnalyzerConfig = Field(default_factory=ArabidopsisAnalyzerConfig)
     batch_ai_processor: BatchAIProcessorConfig = Field(default_factory=BatchAIProcessorConfig)
-    locus_conversion: LocusConversionConfig = Field(default_factory=LocusConversionConfig)
     config_file_abs_path_: Optional[str] = Field(default=None, exclude=True)
 
 
@@ -178,7 +173,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/functional/G.hirsutum_NBI_v1.1_KEGG.pathways.txt.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/functional/G.hirsutum_NBI_v1.1_KEGG.orthologs.txt.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/NAU-NBI_G.hirsutum_AD1genome/protein_homology_2019/blastx_G.hirsutum_NAU-NBI_v1.1_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Gh_[AD]\d{2}G\d{4})",
+                gene_id_regex=r".*?(Gh_[AD]\d{2}G\d{4}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
             "JGI_v1.1": GenomeSourceItem(
@@ -192,7 +187,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/functional/G.hirsutum_Tx-JGI_v1.1_KEGG-pathways.txt.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/functional/G.hirsutum_Tx-JGI_v1.1_KEGG-orthologs.txt.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/Tx-JGI_G.hirsutum_AD1genome/protein_homology_2019/blastx_G.hirsutum_Tx-JGI_v1.1_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Gohir\.[AD]\d{2}G\d{6})",
+                gene_id_regex=r".*?(Gohir\.[AD]\d{2}G\d{6}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
             "HAU_v1": GenomeSourceItem(
@@ -206,7 +201,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/functional/AD1_HAU_v1.0_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU_G.hirsutum_AD1genome/homology/blastp_AD1_HAU_v1.0_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Ghir_[AD]\d{2}G\d{6})",
+                gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{6}(?:\.\d+)?).*",
                 bridge_version="TAIR10"
             ),
             "ZJU_v2.1": GenomeSourceItem(
@@ -220,7 +215,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/functional/AD1_ZJU_v2.1_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/functional/AD1_ZJU_v2.1_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/ZJU_G.hirsutum_AD1genome_v2.1/homology/blastp_G.hirsutum_ZJU-AD1_v2.1_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(GH_[AD]\d{2}G\d{4})",
+                gene_id_regex=r".*?(GH_[AD]\d{2}G\d{4}(?:\.\d+)?).*",
                 bridge_version="TAIR10"
             ),
             "CRI_v1": GenomeSourceItem(
@@ -234,7 +229,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypi_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/functional/AD1_CRI_TM1-v1.0_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/CRI-TM1_G.hirsutum_AD1genome/homology/blastp_G.hirsutum_CRI_TM1-v1.0_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Gh_[AD]\d{2}G\d{6})",
+                gene_id_regex=r".*?(Gh_[AD]\d{2}G\d{6}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
             "WHU_v1": GenomeSourceItem(
@@ -248,7 +243,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/functional/Gh_TM1_WHU_v1_a1_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/functional/Gh_TM1_WHU_v1_a1_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/WHU-TM1_AD1_Updated/homology/blastp_G.hirsutum_WHU_v1_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Ghi_[AD]\d{2}G\d{5})",
+                gene_id_regex=r".*?(Ghi_[AD]\d{2}G\d{5}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
             "UTX_v2.1": GenomeSourceItem(
@@ -262,7 +257,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/functional/Gh_TM1_UTX_v2.1_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/functional/Gh_TM1_UTX_v2.1_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v2.1/homology/blastp_G.hirsutum_UTX_v2.1_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Gohir\.[AD]\d{2}G\d{6})",
+                gene_id_regex=r".*?(Gohir\.[AD]\d{2}G\d{6}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
             "HAU_v2.0": GenomeSourceItem(
@@ -274,7 +269,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Ghir_[AD]\d{2}G\d{5})",
+                gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{5}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
 
@@ -289,13 +284,13 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url=None,
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/functional/AD1_UTX_v3.1_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/UTX-TM1_v3.1/homology/blastp_AD1_UTX_v3.1.0_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r"(Gohir\.[AD]\d{2}G\d{6})",
+                gene_id_regex=r".*?(Gohir\.(?:[AD]\d{2}G\d{6}|\dZ\d{6})(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
             "Arabidopsis_thaliana": GenomeSourceItem(
                 species_name="Arabidopsis thaliana",
                 genome_type="arabidopsis",
-                gene_id_regex=r"(AT[1-5MC]G\d{5})",
+                gene_id_regex=r"(AT[1-5MC]G\d{5}(?:\.\d+)?)",
                 bridge_version=None
             )
         }

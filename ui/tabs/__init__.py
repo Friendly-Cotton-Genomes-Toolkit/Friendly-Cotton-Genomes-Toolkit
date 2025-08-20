@@ -9,7 +9,6 @@ from .genome_identifier_tab import GenomeIdentifierTab
 from .gff_query_tab import GFFQueryTab
 from .homology_tab import HomologyTab
 from .locus_conversion_tab import LocusConversionTab
-from .xlsx_converter_tab import XlsxConverterTab
 from .blast_tab import BlastTab
 
 

@@ -3,3 +3,4 @@ HELP_URL = 'https://github.com/Friendly-Cotton-Genomes-Toolkit/Friendly-Cotton-G
 VERSION = '1.1.1'
 
 PREPROCESSED_DB_NAME = "genomes/genomes.db"
+GFF3_DB_DIR = 'genomes/gff3'

@@ -6,11 +6,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict, Any, Callable
 import logging
 import sqlite3
-from cotton_toolkit import PREPROCESSED_DB_NAME
+from cotton_toolkit import PREPROCESSED_DB_NAME, GFF3_DB_DIR
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig, GenomeSourceItem
 from cotton_toolkit.core.convertFiles2sqlite import _read_excel_to_dataframe, _read_text_to_dataframe, \
-    _read_annotation_text_file
+    _read_annotation_text_file, _read_fasta_to_dataframe
 from cotton_toolkit.core.downloader import download_genome_data
 from cotton_toolkit.core.file_normalizer import normalize_to_csv
 from cotton_toolkit.core.gff_parser import create_gff_database
@@ -28,72 +28,136 @@ except (AttributeError, ImportError):
 logger = logging.getLogger("cotton_toolkit.pipeline.preprocessing")
 
 
+def _create_sub_progress_updater(
+        main_progress_callback: Callable[[int, str], None],
+        task_name: str,
+        start_percentage: float,
+        end_percentage: float
+) -> Callable[[int, str], None]:
+    """
+    创建一个用于子任务的进度更新器。
+    它会将子任务的0-100%进度映射到主进度条的 [start, end] 区间。
+    """
+
+    def sub_progress_updater(sub_percentage: int, sub_message: str):
+        # 将子进度的百分比 (0-100) 转换为在主进度条上的绝对值
+        main_percentage = start_percentage + (sub_percentage / 100.0) * (end_percentage - start_percentage)
+        # 格式化消息，包含主任务名和子任务状态
+        message = f"{task_name}: {sub_message}"
+        main_progress_callback(int(main_percentage), message)
+
+    return sub_progress_updater
+
+
 def _process_single_file_to_sqlite(
+        file_key: str,
         source_path: str,
         db_path: str,
         version_id: str,
-        cancel_event: Optional[threading.Event] = None  # <-- 1. 添加 cancel_event 参数
+        id_regex: Optional[str] = None,
+        cancel_event: Optional[threading.Event] = None,
+        db_lock: Optional[threading.Lock] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> bool:
+    """
+    Worker function to process a single annotation file and write it to a SQLite table.
+    Now supports detailed progress reporting.
+    """
+    progress = progress_callback if progress_callback else lambda p, m: None
+
     def check_cancel():
         if cancel_event and cancel_event.is_set():
-            raise InterruptedError("Task cancelled during file processing.")
+            raise InterruptedError(_("文件处理过程被取消。"))
 
     table_name = _sanitize_table_name(os.path.basename(source_path), version_id=version_id)
-    conn = None  # 在 try 块外初始化
+    conn = None
 
     try:
+        progress(0, _("开始处理..."))
+        # Step 1: File reading and parsing
         check_cancel()
-        # ... (读取和解析文件的逻辑保持不变) ...
+        progress(10, _("正在读取文件..."))
+
         dataframe = None
         filename_lower = source_path.lower()
 
-        if filename_lower.endswith(('.xlsx', '.xlsx.gz')):
+        if file_key == 'predicted_cds':
+            dataframe = _read_fasta_to_dataframe(source_path, id_regex=id_regex)
+        elif filename_lower.endswith(('.xlsx', '.xlsx.gz')):
             dataframe = _read_excel_to_dataframe(source_path)
-        elif any(keyword in filename_lower for keyword in ['go', 'kegg', 'ipr', 'homology_ath']):  # 增加了 homology_ath
+        elif file_key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']:
             dataframe = _read_annotation_text_file(source_path)
-        elif filename_lower.endswith(('.txt', '.txt.gz', '.csv', '.csv.gz')):
+        else:
             dataframe = _read_text_to_dataframe(source_path)
 
         check_cancel()
 
         if dataframe is None or dataframe.empty:
-            logger.warning(f"Skipping file '{os.path.basename(source_path)}' as no data was read.")
+            logger.warning(_("跳过文件 '{}'，因为未能读取到有效数据。").format(os.path.basename(source_path)))
             return False
 
-        # --- 核心修改：在写入数据库时处理取消 ---
-        conn = sqlite3.connect(db_path)
-        dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
-        check_cancel()  # 在写入后再次检查，虽然 to_sql 通常是原子性的
+        progress(50, _("文件读取完毕, 正在清洗ID..."))
 
-        logger.info(f"Successfully converted '{os.path.basename(source_path)}' to table '{table_name}'.")
+        if id_regex and file_key != 'predicted_cds':
+            target_column = 'Query'
+            if target_column in dataframe.columns:
+                logger.debug(
+                    _("正在对 {} 的 '{}' 列应用正则表达式...").format(os.path.basename(source_path), target_column))
+                cleaned_ids = dataframe[target_column].astype(str).str.extract(id_regex).iloc[:, 0]
+                dataframe[target_column] = cleaned_ids.fillna(dataframe[target_column])
+                logger.info(_("成功清洗了 '{}' 列。").format(target_column))
+            else:
+                logger.warning(
+                    f"文件 {os.path.basename(source_path)} 中未找到预期的 '{target_column}' 列，跳过清洗。")
+
+        # Step 2: Database writing
+        progress(75, _("正在写入数据库..."))
+        try:
+            if db_lock:
+                db_lock.acquire()
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
+            conn.close()
+            conn = None
+        finally:
+            if db_lock and db_lock.locked():
+                db_lock.release()
+            if conn:
+                conn.close()
+
+        check_cancel()
+        logger.info(_("成功将 '{}' 转换到表 '{}'。").format(os.path.basename(source_path), table_name))
+        progress(100, _("处理完成"))
         return True
 
     except InterruptedError:
-        logger.warning(f"Processing of '{os.path.basename(source_path)}' was cancelled.")
-        # --- 2. 清理逻辑 ---
-        # 如果任务被中断，尝试删除可能已创建的表
+        logger.warning(_("文件 '{}' 的处理过程被取消。").format(os.path.basename(source_path)))
+        progress(100, _("任务已取消"))
+        # Cleanup logic for cancelled tasks
         try:
-            if conn:  # 如果连接已建立
-                logger.info(f"Attempting to clean up and drop partially created table '{table_name}'...")
-                cursor = conn.cursor()
-                cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-                conn.commit()
-                logger.info(f"Cleanup successful for table '{table_name}'.")
+            if db_lock: db_lock.acquire()
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+            conn.commit()
+            conn.close()
+            logger.info(_("成功清理表 '{}'。").format(table_name))
         except Exception as cleanup_e:
-            logger.error(f"Error during table cleanup for '{table_name}': {cleanup_e}")
-        return False  # 返回失败
+            logger.error(_("清理表 '{}' 时发生错误: {}").format(table_name, cleanup_e))
+        finally:
+            if db_lock and db_lock.locked():
+                db_lock.release()
+        return False
 
     except Exception as e:
-        logger.error(f"Error processing file '{os.path.basename(source_path)}' to table '{table_name}'. Reason: {e}")
+        progress(100, _("处理失败"))
+        logger.error(
+            _("处理文件 '{}' 到表 '{}' 时发生错误。原因: {}").format(os.path.basename(source_path), table_name, e))
         return False
-    finally:
-        if conn:
-            conn.close()
 
 
 def check_preprocessing_status(config: MainConfig, genome_info: GenomeSourceItem) -> Dict[str, str]:
     """
-    【最终健壮版】
     检查预处理状态。使用基于配置文件位置的绝对路径来定位数据库。
     """
     status_dict = {}
@@ -104,7 +168,7 @@ def check_preprocessing_status(config: MainConfig, genome_info: GenomeSourceItem
         return {}
 
     project_root = os.path.dirname(config_file_path)
-    db_path = os.path.join(project_root, 'genomes', 'genomes.db')
+    db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
     db_exists = os.path.exists(db_path)
     logger.debug(f"[CHECKER] Attempting to check database at absolute path: {db_path}")
 
@@ -129,15 +193,38 @@ def check_preprocessing_status(config: MainConfig, genome_info: GenomeSourceItem
                 status = 'downloaded'
 
                 # --- 核心状态判断逻辑 ---
-                if key in ['predicted_cds', 'predicted_protein']:
+                if key == 'predicted_cds':
+                    # 检查1: BLAST数据库是否存在
                     db_fasta_path = local_path.removesuffix('.gz')
                     db_type = 'prot' if key == 'predicted_protein' else 'nucl'
                     db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
-                    if os.path.exists(db_fasta_path + db_check_ext):
+                    blast_exists = os.path.exists(db_fasta_path + db_check_ext)
+
+                    # 检查2: SQLite中的数据表是否存在
+                    table_exists = False
+                    if cursor:
+                        table_name = _sanitize_table_name(os.path.basename(local_path),
+                                                          version_id=genome_info.version_id)
+                        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+                        if cursor.fetchone():
+                            table_exists = True
+
+                    # 根据两个检查结果判断最终状态
+                    if blast_exists and table_exists:
+                        status = 'processed'  # 已就绪
+                    elif blast_exists and not table_exists:
+                        status = 'db_only'  # 仅建库
+                    elif not blast_exists and table_exists:
+                        status = 'organized_only'  # 仅整理
+
+                elif key == 'predicted_protein':
+                    # 蛋白质文件简化为双状态：只要BLAST库建好，即为“已就绪”
+                    db_fasta_path = local_path.removesuffix('.gz')
+                    if os.path.exists(db_fasta_path + '.phr'):
                         status = 'processed'
 
                 elif key == 'gff3':
-                    gff_db_dir = os.path.join(project_root, config.locus_conversion.gff_db_storage_dir)
+                    gff_db_dir = os.path.join(project_root, GFF3_DB_DIR)
                     db_filename = f"{genome_info.version_id}_genes.db"
                     if os.path.exists(os.path.join(gff_db_dir, db_filename)):
                         status = 'processed'
@@ -290,14 +377,14 @@ def run_preprocess_annotation_files(
         selected_assembly_id: Optional[str] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
-        cancel_event: Optional[threading.Event] = None
+        cancel_event: Optional[threading.Event] = None,
+        db_lock: Optional[threading.Lock] = None
 ) -> bool:
     """
-    并行预处理所有注释和同源文件。
-    - 将GO, KEGG, IPR等文件存入 genomes.db。
-    - 将GFF3文件为其单独创建 gffutils 数据库。
+    并行预处理所有注释和同源文件，并将GFF处理也纳入线程池。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
+    status_update = status_callback if status_callback else lambda key, msg: None
 
     def check_cancel():
         if cancel_event and cancel_event.is_set():
@@ -309,122 +396,108 @@ def run_preprocess_annotation_files(
     progress(0, _("开始预处理所有注释文件..."))
     logger.info(_("开始预处理所有注释文件 (包括GFF)..."))
 
-    # --- (加载基因组数据的逻辑保持不变) ---
     progress(5, _("正在加载基因组源数据..."))
     if check_cancel(): return False
-    genome_sources = get_genome_data_sources(config)
-    if not genome_sources:
-        logger.error(_("未能加载基因组源数据。"))
-        progress(100, _("任务终止：未能加载基因组源。"))
-        return False
 
+    genome_sources = get_genome_data_sources(config)
     if not selected_assembly_id or selected_assembly_id not in genome_sources:
-        logger.error(_("智能预处理需要从UI明确选择一个基因组版本。"))
+        logger.error(_("预处理需要从UI明确选择一个基因组版本。"))
         progress(100, _("错误：未选择有效基因组。"))
         return False
 
     genome_info = genome_sources[selected_assembly_id]
-
     progress(10, _("正在检查所有文件状态..."))
     all_statuses = check_preprocessing_status(config, genome_info)
 
-    # 定义所有可能需要处理的注释文件类型
-    ALL_ANNOTATION_KEYS = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+    # 1. 将所有任务（包括GFF）统一收集
+    tasks_to_run = []
+    project_root = os.path.dirname(config.config_file_abs_path_)
 
-    # 筛选出真正需要处理的文件（状态为 'downloaded'）
+    ALL_ANNOTATION_KEYS = ['predicted_cds', 'gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
     files_to_process_keys = [
         key for key in ALL_ANNOTATION_KEYS
-        if all_statuses.get(key) == 'downloaded'
+        if all_statuses.get(key, 'not_downloaded') not in ['processed', 'not_downloaded']
     ]
-
-    if check_cancel(): return False
 
     if not files_to_process_keys:
         logger.info(_("所有注释文件均已处理完毕，无需再次运行。"))
         progress(100, _("所有文件均已是最新状态。"))
         return True
 
-    logger.info(_("检测到以下待处理文件: {}").format(", ".join(files_to_process_keys)))
-    progress(20, _("找到 {} 个待处理文件...").format(len(files_to_process_keys)))
+    for key in files_to_process_keys:
+        source_path = get_local_downloaded_file_path(config, genome_info, key)
+        if not source_path or not os.path.exists(source_path):
+            logger.warning(f"Skipping {key} as its source file is not found at {source_path}")
+            continue
 
-    project_root = os.path.dirname(config.config_file_abs_path_)
+        task_info = {"key": key, "source_path": source_path}
+        if key == 'gff3':
+            gff_db_dir = os.path.join(project_root, GFF3_DB_DIR)
+            db_filename = f"{genome_info.version_id}_genes.db"
+            final_db_path = os.path.join(gff_db_dir, db_filename)
+            task_info["target_func"] = create_gff_database
+            task_info["args"] = {
+                "gff_filepath": source_path, "db_path": final_db_path,
+                "force": True, "id_regex": genome_info.gene_id_regex
+            }
+        else:
+            db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
+            KEYS_NEEDING_REGEX = ['predicted_cds', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+            regex_to_use = genome_info.gene_id_regex if key in KEYS_NEEDING_REGEX else None
+            task_info["target_func"] = _process_single_file_to_sqlite
+            task_info["args"] = {
+                "file_key": key, "source_path": source_path, "db_path": db_path,
+                "version_id": genome_info.version_id, "id_regex": regex_to_use,
+                "cancel_event": cancel_event, "db_lock": db_lock
+            }
+        tasks_to_run.append(task_info)
+
+    if not tasks_to_run:
+        logger.info("No valid files to process after checking paths.")
+        progress(100, "未找到有效文件进行处理。")
+        return True
+
+    logger.info(_("检测到以下待处理文件: {}").format(", ".join(t['key'] for t in tasks_to_run)))
+    progress(20, _("找到 {} 个待处理文件...").format(len(tasks_to_run)))
+
+    # 2. 使用线程池并行执行所有任务
     overall_success = True
+    max_workers = config.downloader.max_workers
+    total_tasks = len(tasks_to_run)
+    task_weight = 80 / total_tasks if total_tasks > 0 else 0
 
-    # a. 处理 GFF 文件 (如果它在待办列表里)
-    if 'gff3' in files_to_process_keys:
-        gff_path = get_local_downloaded_file_path(config, genome_info, 'gff3')
-        if gff_path and os.path.exists(gff_path):
-            progress(30, _("正在处理GFF文件..."))
-            logger.info(_("正在处理待办文件: gff3"))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_task = {}
+        for i, task in enumerate(tasks_to_run):
+            if check_cancel(): break
+
+            status_update(task['key'], _("排队中..."))
+
+            start_p = 20 + i * task_weight
+            end_p = 20 + (i + 1) * task_weight
+            sub_progress = _create_sub_progress_updater(progress, os.path.basename(task['source_path']), start_p, end_p)
+
+            task['args']['progress_callback'] = sub_progress
+
+            future = executor.submit(task['target_func'], **task['args'])
+            future_to_task[future] = task
+
+        for future in as_completed(future_to_task):
+            task = future_to_task[future]
+            key = task['key']
             try:
-                gff_db_dir = os.path.join(project_root, config.locus_conversion.gff_db_storage_dir)
-                db_filename = f"{genome_info.version_id}_genes.db"
-                final_db_path = os.path.join(gff_db_dir, db_filename)
-
-                create_gff_database(
-                    gff_filepath=gff_path, db_path=final_db_path, force=True,
-                    id_regex=genome_info.gene_id_regex
-                )
-            except Exception as e:
-                logger.error(_("处理 GFF 文件失败: {}").format(e))
-                overall_success = False
-
-    if check_cancel(): return False
-
-    # b. 并行处理其他表格类注释文件
-    sqlite_keys_to_process = [key for key in files_to_process_keys if key != 'gff3']
-    if sqlite_keys_to_process:
-        db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
-        max_workers = config.downloader.max_workers  # 可以复用下载器的线程数配置
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # 创建future到文件key的映射
-            future_to_key = {}
-            for key in sqlite_keys_to_process:
-                if check_cancel(): break
-                source_path = get_local_downloaded_file_path(config, genome_info, key)
-                # 提交任务前，立即更新UI状态为“处理中”
-                status_update(key, _("处理中..."))
-
-                future = executor.submit(_process_single_file_to_sqlite,
-                                         source_path,
-                                         db_path,
-                                         genome_info.version_id,
-                                         cancel_event)
-                future_to_key[future] = key
-
-            completed_count = 0
-            total_tasks = len(future_to_key)
-
-            for future in as_completed(future_to_key):
-                key = future_to_key[future]
-                try:
-                    # 获取任务结果
-                    result = future.result()
-                    if result:
-                        status_update(key, _("✅ 完成"))
-                        logger.info(f"Successfully processed file for key: {key}")
-                    else:
-                        overall_success = False
-                        # 检查是否是用户取消的
-                        if not (cancel_event and cancel_event.is_set()):
-                            status_update(key, _("❌ 失败"))
-                            logger.warning(f"Processing failed for file key: {key}")
-                        else:
-                            status_update(key, _("🚫 已取消"))
-
-                except Exception as e:
+                result = future.result()
+                if result:
+                    status_update(key, _("✅ 完成"))
+                else:
                     overall_success = False
-                    status_update(key, _("❌ 错误"))
-                    logger.error(f"An exception occurred while processing {key}: {e}")
+                    status_update(key, _("🚫 已取消" if cancel_event and cancel_event.is_set() else "❌ 失败"))
+            except Exception as e:
+                overall_success = False
+                status_update(key, _("❌ 错误"))
+                logger.error(f"An exception occurred while processing {key}: {e}", exc_info=True)
 
-                finally:
-                    completed_count += 1
-                    # 更新总体进度条
-                    progress(50 + int((completed_count / total_tasks) * 50),
-                             _("正在处理: {} ({}/{})").format(key, completed_count, total_tasks))
-
-    # --- 3. 最终总结 ---
+    # 3. 最终总结
     if overall_success:
         logger.info(_("所有待处理的注释文件均已成功预处理。"))
         progress(100, _("预处理完成。"))
@@ -488,8 +561,7 @@ def run_build_blast_db_pipeline(
         status_callback: Optional[Callable[[str, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-
-    status_update = status_callback if status_callback else lambda key, msg: None # <-- 新增
+    status_update = status_callback if status_callback else lambda key, msg: None  # <-- 新增
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
@@ -554,6 +626,7 @@ def run_build_blast_db_pipeline(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # file_key 在这里是 (compressed_file, db_fasta_path, db_type) 元组
         future_to_task = {}
+
         for task_tuple in tasks_to_run:
             if check_cancel(): break
             # 使用文件名作为UI的唯一标识符
@@ -573,13 +646,13 @@ def run_build_blast_db_pipeline(
                     success_count += 1
                     status_update(file_key, _("✅ 完成"))
                 else:
-                    status_update(file_key, _("⚠️ 警告")) # 或 "❌ 失败"
-            except FileNotFoundError as e: # 特殊处理makeblastdb找不到的情况
-                 logger.error(e)
-                 # 这种严重错误应该终止所有任务
-                 if cancel_event: cancel_event.set()
-                 progress(100, _("错误: makeblastdb 未找到!"))
-                 return False
+                    status_update(file_key, _("⚠️ 警告"))  # 或 "❌ 失败"
+            except FileNotFoundError as e:  # 特殊处理makeblastdb找不到的情况
+                logger.error(e)
+                # 这种严重错误应该终止所有任务
+                if cancel_event: cancel_event.set()
+                progress(100, _("错误: makeblastdb 未找到!"))
+                return False
             except Exception as e:
                 logger.error(f"An exception occurred while processing {file_key}: {e}")
                 status_update(file_key, _("❌ 错误"))
@@ -592,7 +665,6 @@ def run_build_blast_db_pipeline(
     logger.info(_("BLAST数据库预处理完成。成功创建 {}/{} 个数据库。").format(success_count, total_tasks))
     progress(100, _("预处理完成。"))
     return success_count == total_tasks
-
 
 
 def run_gff_preprocessing(
@@ -616,7 +688,7 @@ def run_gff_preprocessing(
 
     try:
         project_root = os.path.dirname(config.config_file_abs_path_)
-        db_storage_dir = os.path.join(project_root, config.locus_conversion.gff_db_storage_dir)
+        db_storage_dir = os.path.join(project_root, GFF3_DB_DIR)
         os.makedirs(db_storage_dir, exist_ok=True)
 
         genome_sources = get_genome_data_sources(config)

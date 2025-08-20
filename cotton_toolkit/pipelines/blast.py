@@ -33,13 +33,13 @@ def run_blast_pipeline(
         target_assembly_id: str,
         query_file_path: Optional[str],
         query_text: Optional[str],
-        output_path: str,
+        output_path: Optional[str],
         evalue: float,
         word_size: int,
         max_target_seqs: int,
         progress_callback: Optional[Callable[[int, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
-) -> Optional[str]:
+) -> Optional[pd.DataFrame]:
     # 修改: 移除 status_callback 参数
     progress = progress_callback if progress_callback else lambda p, m: None
 
@@ -75,6 +75,8 @@ def run_blast_pipeline(
             return None
 
         db_fasta_path = compressed_seq_file
+        logger.debug(_("BLAST 数据库序列源文件: {}").format(db_fasta_path))
+
         if compressed_seq_file.endswith('.gz'):
             decompressed_path = compressed_seq_file.removesuffix('.gz')
             db_fasta_path = decompressed_path
@@ -99,6 +101,7 @@ def run_blast_pipeline(
         if check_cancel(): return _("任务已取消。")
 
         db_check_ext = '.phr' if db_type == 'prot' else '.nhr'
+        logger.debug(_("检查是否存在BLAST索引文件，例如: {}").format(db_fasta_path + db_check_ext))
         if not os.path.exists(db_fasta_path + db_check_ext):
             progress(10, _("正在创建BLAST数据库... (可能需要一些时间)"))
             logger.info(
@@ -109,8 +112,21 @@ def run_blast_pipeline(
                                f"{target_assembly_id} {db_type} DB"]
             try:
                 if check_cancel(_("数据库创建过程在开始前被取消。")): return None
-                result = subprocess.run(makeblastdb_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
+                result = subprocess.run(makeblastdb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                if result.returncode != 0:
+                    # 如果返回码非0，我们检查索引文件是否实际已创建
+                    if not os.path.exists(db_fasta_path + db_check_ext):
+                        # 如果索引文件不存在，说明真的失败了
+                        logger.error(_("创建BLAST数据库失败: {} \nStderror: {}").format(result.stdout, result.stderr))
+                        return None
+                    else:
+                        # 如果索引文件存在，说明只是退出码有问题，可以继续
+                        logger.warning(_("makeblastdb命令返回了非零退出码，但数据库索引文件已成功创建。将继续执行..."))
+                        logger.debug(f"makeblastdb stdout:\n{result.stdout}")
+                        logger.debug(f"makeblastdb stderr:\n{result.stderr}")
+
                 logger.info(_("BLAST数据库创建成功。"))
+
             except FileNotFoundError:
                 logger.error(_(
                     "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"))
@@ -145,8 +161,10 @@ def run_blast_pipeline(
             elif query_text:
                 if check_cancel(): return _("任务已取消。")
                 logger.info(_("正在处理文本输入..."))
+                logger.debug(_("--- Received query_text in pipeline (first 1000 chars) ---\n{}\n-------------------------------------------------").format(query_text[:1000]))
                 tmp_query_file.write(query_text)
 
+        logger.debug(_("查询序列已写入临时文件: {}").format(query_fasta_path))
         if check_cancel(): return _("任务已取消。")
 
         progress(40, _("正在执行 {} ...").format(blast_type))
@@ -164,8 +182,12 @@ def run_blast_pipeline(
         if check_cancel(_("BLAST在执行前被取消。")): return None
         stdout, stderr = blast_cline()
         if stderr:
-            logger.error(_("BLAST运行时发生错误: {}").format(stderr))
-            return None
+            stderr_lower = stderr.lower()
+            if "error:" in stderr_lower or "fatal:" in stderr_lower or "command not found" in stderr_lower:
+                logger.error(_("BLAST运行时发生致命错误: {}").format(stderr))
+                return None  # 中止流程
+            else:
+                logger.warning(_("BLAST运行时产生警告或提示信息: {}").format(stderr.strip()))
 
         if check_cancel(): return _("任务已取消。")
 
@@ -201,25 +223,30 @@ def run_blast_pipeline(
         if not all_hits:
             logger.info(_("未找到任何显著的BLAST匹配项。"))
         else:
-            results_df = pd.DataFrame(all_hits)
-            results_df['Identity (%)'] = results_df['Identity (%)'].map('{:.2f}'.format)
-            results_df['Positives (%)'] = results_df['Positives (%)'].map('{:.2f}'.format)
+            results_df = pd.DataFrame()  # 默认返回一个空的DataFrame
+            if not all_hits:
+                logger.info(_("未找到任何显著的BLAST匹配项。"))
+            else:
+                results_df = pd.DataFrame(all_hits)
+                results_df['Identity (%)'] = results_df['Identity (%)'].map('{:.2f}'.format)
+                results_df['Positives (%)'] = results_df['Positives (%)'].map('{:.2f}'.format)
+                logger.info(_("成功找到 {} 条匹配记录。").format(len(results_df)))
 
-            progress(95, _("正在保存到文件..."))
-            if output_path.lower().endswith('.csv'):
-                results_df.to_csv(output_path, index=False, encoding='utf-8-sig')
-            elif output_path.lower().endswith('.xlsx'):
-                results_df.to_excel(output_path, index=False, engine='openpyxl')
+            if output_path:
+                progress(95, _("正在保存到文件..."))
+                if output_path.lower().endswith('.csv'):
+                    results_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+                elif output_path.lower().endswith('.xlsx'):
+                    results_df.to_excel(output_path, index=False, engine='openpyxl')
+                logger.info(_("BLAST 任务完成！结果已保存到 {}").format(output_path))
 
-            logger.info(_("成功找到 {} 条匹配记录。").format(len(results_df)))
-
-        progress(100, _("BLAST流程完成。"))
-        return _("BLAST 任务完成！结果已保存到 {}").format(output_path)
+            progress(100, _("BLAST流程完成。"))
+            return results_df  # 总是返回DataFrame对象
 
     except Exception as e:
         logger.error(_("BLAST流水线执行过程中发生意外错误: {}").format(e))
         logger.debug(traceback.format_exc())
-        return None
+        return None  # 失败时返回 None
     finally:
         if tmp_query_file_to_clean and os.path.exists(tmp_query_file_to_clean):
             os.remove(tmp_query_file_to_clean)

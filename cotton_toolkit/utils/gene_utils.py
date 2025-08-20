@@ -1,10 +1,19 @@
 ﻿# cotton_toolkit/utils/gene_utils.py
-
+import os
 import re
+import sqlite3
 import threading
 import logging
+from random import sample
+
 import pandas as pd
 from typing import List, Union, Optional, Tuple, Any
+
+from cotton_toolkit import GFF3_DB_DIR
+from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
+from cotton_toolkit.config.models import MainConfig
+from cotton_toolkit.pipelines.blast import _, logger
+from cotton_toolkit.utils.file_utils import _sanitize_table_name
 
 try:
     import builtins
@@ -162,3 +171,161 @@ def identify_genome_from_gene_ids(
     else:
         logger.info(_("无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。"))
         return None
+
+
+def _to_gene_id(an_id: str) -> str:
+    """移除转录本后缀 (如 .1, .2) 返回基础基因ID"""
+    return re.sub(r'\.\d+$', '', str(an_id))
+
+
+def _to_transcript_id(an_id: str, suffix: str = ".1") -> str:
+    """确保ID以转录本后缀结尾，默认为 .1"""
+    if re.search(r'\.\d+$', str(an_id)):
+        return str(an_id)  # 如果已经是转录本格式，直接返回
+    return f"{an_id}{suffix}"
+
+
+def _check_id_exists(cursor: sqlite3.Cursor, table_name: str, gene_id: str) -> bool:
+    """在数据库表中快速检查单个ID是否存在"""
+    query = f'SELECT 1 FROM "{table_name}" WHERE Gene = ? LIMIT 1'
+    cursor.execute(query, (gene_id,))
+    return cursor.fetchone() is not None
+
+
+def resolve_gene_ids(
+        config: MainConfig,
+        assembly_id: str,
+        gene_ids: List[str]
+) -> List[str]:
+    """
+    智能解析基因ID列表。
+    自动检测用户提供的是基因还是转录本ID，并根据数据库进行校正。
+    """
+    if not gene_ids:
+        return []
+
+    # --- 数据库和表名准备 (与 get_sequences_for_gene_ids 类似) ---
+    project_root = os.path.dirname(config.config_file_abs_path_)
+    db_path = os.path.join(project_root, "genomes", "genomes.db")
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(_("错误: 预处理数据库 'genomes.db' 未找到。"))
+
+    genome_sources = get_genome_data_sources(config)
+    genome_info = genome_sources.get(assembly_id)
+    if not genome_info:
+        raise ValueError(_("错误: 找不到基因组 '{}' 的配置。").format(assembly_id))
+
+    cds_file_path = get_local_downloaded_file_path(config, genome_info, 'predicted_cds')
+    table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=genome_info.version_id)
+
+    processing_mode = None  # 'gene' 或 'transcript'
+
+    with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+        if cursor.fetchone() is None:
+            raise ValueError(_("错误: 在数据库中找不到表 '{}'。请先对CDS文件进行预处理。").format(table_name))
+
+        # --- 根据ID数量选择不同逻辑 ---
+        if len(gene_ids) >= 2:
+            # 随机取两个样本进行探测
+            samples = sample(gene_ids, 2)
+            logger.debug(_("智能解析：抽取了两个样本进行探测: {}").format(samples))
+            for sample_id in samples:
+                # 优先尝试转录本格式
+                if _check_id_exists(cursor, table_name, _to_transcript_id(sample_id)):
+                    processing_mode = 'transcript'
+                    logger.info(_("智能解析：探测到数据库匹配转录本ID (例如: {})。").format(_to_transcript_id(sample_id)))
+                    break
+                # 如果转录本失败，尝试基础基因格式
+                elif _check_id_exists(cursor, table_name, _to_gene_id(sample_id)):
+                    processing_mode = 'gene'
+                    logger.info(_("智能解析：探测到数据库匹配基础基因ID (例如: {})。").format(_to_gene_id(sample_id)))
+                    break
+
+            if processing_mode is None:
+                raise ValueError(_("错误：无法在数据库中匹配提供的基因ID样本。请检查基因组版本和ID格式是否正确。"))
+
+        elif len(gene_ids) == 1:
+            sample_id = gene_ids[0]
+            logger.debug(_("智能解析：正在探测单个ID: {}").format(sample_id))
+            if _check_id_exists(cursor, table_name, _to_transcript_id(sample_id)):
+                processing_mode = 'transcript'
+            elif _check_id_exists(cursor, table_name, _to_gene_id(sample_id)):
+                processing_mode = 'gene'
+            else:
+                raise ValueError(_("错误：无法在数据库中匹配提供的基因ID '{}'。").format(sample_id))
+
+    # --- 根据探测到的模式，统一处理整个列表 ---
+    if processing_mode == 'transcript':
+        logger.debug(_("应用 '转录本' 模式处理整个列表。"))
+        return list(dict.fromkeys([_to_transcript_id(gid) for gid in gene_ids]))  # dict.fromkeys去重并保持顺序
+    elif processing_mode == 'gene':
+        logger.debug(_("应用 '基因' 模式处理整个列表。"))
+        return list(dict.fromkeys([_to_gene_id(gid) for gid in gene_ids]))
+
+    return gene_ids  # 如果只有一个ID且模式未定，返回原始ID
+
+
+def get_sequences_for_gene_ids(
+        config: MainConfig,
+        source_assembly_id: str,
+        gene_ids: List[str]
+) -> Tuple[Optional[str], List[str]]:
+    """
+    根据基因ID列表，从预处理好的SQLite数据库中获取FASTA格式的CDS序列。
+    【已更新】现在会先调用智能ID解析器来统一ID格式。
+    """
+    try:
+        # --- 核心修改：在最开始调用ID解析器 ---
+        logger.info(_("正在智能解析 {} 个输入基因ID...").format(len(gene_ids)))
+        resolved_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids)
+        logger.info(_("ID解析完成，得到 {} 个标准化的ID用于查询。").format(len(resolved_gene_ids)))
+    except (ValueError, FileNotFoundError) as e:
+        logger.error(e)
+        return None, gene_ids
+
+    # --- 数据库和表名准备 (这部分代码在 resolve_gene_ids 中也存在，但在这里仍然需要) ---
+    project_root = os.path.dirname(config.config_file_abs_path_)
+    db_path = os.path.join(project_root, "genomes", "genomes.db")
+    genome_sources = get_genome_data_sources(config)
+    source_genome_info = genome_sources.get(source_assembly_id)
+    cds_file_path = get_local_downloaded_file_path(config, source_genome_info, 'predicted_cds')
+    table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=source_genome_info.version_id)
+
+    fasta_parts = []
+    found_genes_map = {}
+
+    try:
+        logging.debug(db_path)
+        with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
+            cursor = conn.cursor()
+            # --- 逻辑简化：现在只需进行一次批量查询 ---
+            placeholders = ','.join('?' for _V in resolved_gene_ids)
+            query = f'SELECT Gene, Seq FROM "{table_name}" WHERE Gene IN ({placeholders})'
+            cursor.execute(query, resolved_gene_ids)
+
+            for gene, seq in cursor.fetchall():
+                # 因为ID已经标准化，我们只需将原始ID（未标准化的）映射到找到的序列上
+                original_id = _to_gene_id(gene)  # 以基础ID为准进行反向映射
+                if original_id in gene_ids or gene in gene_ids:
+                    found_genes_map[original_id] = seq
+
+    except sqlite3.Error as e:
+        logger.error(_("查询序列时发生数据库错误: {}").format(e))
+        return None, gene_ids
+
+    # 构建FASTA字符串时，使用原始ID以保持用户输入的一致性
+    for original_gid in gene_ids:
+        base_gid = _to_gene_id(original_gid)
+        if base_gid in found_genes_map:
+            fasta_parts.append(f">{original_gid}\n{found_genes_map[base_gid]}")
+
+    all_input_base_ids = set(_to_gene_id(gid) for gid in gene_ids)
+    not_found_genes = [gid for gid in all_input_base_ids if gid not in found_genes_map]
+
+    if not_found_genes:
+        logger.warning(_("警告: 在数据库中未能找到 {} 个基因的序列。").format(len(not_found_genes)))
+
+    fasta_string = "\n".join(fasta_parts)
+    return fasta_string, not_found_genes

@@ -10,6 +10,8 @@ import io
 import re
 from typing import Optional, List, Union
 
+from cotton_toolkit.config.loader import get_genome_data_sources
+from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.utils.file_utils import _sanitize_table_name
 
 # 国际化函数占位符
@@ -77,6 +79,53 @@ def _read_annotation_text_file(file_path: str) -> Optional[pd.DataFrame]:
     except Exception as e:
         logger.error(f"Failed to process annotation file '{os.path.basename(file_path)}'. Reason: {e}")
         logger.debug(traceback.format_exc())
+        return None
+
+
+def _read_fasta_to_dataframe(file_path: str, id_regex: Optional[str] = None) -> Optional[pd.DataFrame]:
+    """
+    【已修改】将FASTA文件解析为DataFrame，并强制使用传入的正则表达式清理ID。
+    """
+    logger.debug(f"正在为文件: {os.path.basename(file_path)} 使用专用的FASTA解析器 (Regex: {id_regex})")
+    fasta_data = []
+    try:
+        open_func = gzip.open if file_path.lower().endswith('.gz') else open
+        with open_func(file_path, 'rt', encoding='utf-8', errors='ignore') as f:
+            current_id = None
+            current_sequence = []
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith('>'):
+                    if current_id:
+                        fasta_data.append([current_id, "".join(current_sequence)])
+
+                    header_line = line[1:]  # 移除 '>'
+                    # 强制使用传入的正则表达式进行清理和提取
+                    if id_regex:
+                        match = re.search(id_regex, header_line)
+                        if match:
+                            current_id = match.group(1) if match.groups() else match.group(0)
+                        else:
+                            # 如果正则不匹配，作为后备，取第一个空白前的内容
+                            current_id = header_line.split()[0]
+                            logger.debug(
+                                f"Regex failed for header: '{header_line}'. Using fallback ID: '{current_id}'")
+                    else:
+                        current_id = header_line.split()[0]
+                    current_sequence = []
+                elif current_id:
+                    current_sequence.append(line)
+            if current_id:
+                fasta_data.append([current_id, "".join(current_sequence)])
+        if not fasta_data:
+            return None
+        df = pd.DataFrame(fasta_data, columns=['Gene', 'Seq'])
+        logger.info(f"成功解析FASTA文件 '{os.path.basename(file_path)}'，共找到 {len(df)} 个条目。")
+        return df
+    except Exception as e:
+        logger.error(f"处理FASTA文件 '{os.path.basename(file_path)}' 失败。原因: {e}")
         return None
 
 
@@ -249,6 +298,7 @@ def _read_text_to_dataframe(file_path: str) -> Optional[pd.DataFrame]:
 
 
 def convert_files_to_sqlite(
+        config: MainConfig,
         input_folder_path: str,
         output_db_path: str,
         cancel_event: Optional[threading.Event] = None
@@ -260,7 +310,7 @@ def convert_files_to_sqlite(
     - 遍历子目录: 自动扫描所有子文件夹。
     - 版本化表名: 每个子目录名被视为一个 'version_id'，并作为其下所有文件
                   在数据库中对应表名的前缀 (例如 'HAU_v1_annotations')。
-    - 多格式支持: 支持 .xlsx, .txt, .csv 等以及它们的 .gz 压缩版本。
+    - 多格式支持: 支持 .xlsx, .txt, .csv, .fasta, .fa, .fna, .cds 等以及它们的 .gz 压缩版本。
     - 幂等性: 使用 'replace' 模式，重复运行会覆盖旧表，确保数据最新。
 
     Args:
@@ -271,80 +321,72 @@ def convert_files_to_sqlite(
     Returns:
         bool: 如果所有操作成功完成，返回 True，否则返回 False。
     """
-    logger.info(f"Starting recursive conversion from '{input_folder_path}' to SQLite DB '{output_db_path}'")
+    logger.info(f"开始从 '{input_folder_path}' 到 SQLite数据库 '{output_db_path}' 的递归转换")
+    if cancel_event and cancel_event.is_set(): return False
+    if not os.path.isdir(input_folder_path): return False
 
-    if cancel_event and cancel_event.is_set():
-        logger.info("Conversion cancelled before starting.")
-        return False
+    # 新增：提前获取基因组源信息
+    genome_sources = get_genome_data_sources(config)
 
-    if not os.path.isdir(input_folder_path):
-        logger.error(f"Input path is not a valid directory: {input_folder_path}")
-        return False
-
-    conn = None  # 在try块外初始化连接变量
+    conn = None
     try:
-        # 确保输出目录存在
         output_dir = os.path.dirname(output_db_path)
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-
+        if output_dir: os.makedirs(output_dir, exist_ok=True)
         conn = sqlite3.connect(output_db_path)
-        supported_extensions = ('.xlsx', '.xlsx.gz', '.txt', '.txt.gz', '.csv', '.csv.gz')
 
+        supported_extensions = ('.xlsx', '.xlsx.gz', '.txt', '.txt.gz', '.csv', '.csv.gz',
+                                '.fasta', '.fasta.gz', '.fa', '.fa.gz', '.fna', '.fna.gz', '.cds', '.cds.gz')
+        fasta_extensions = ('.fasta', '.fa', '.fna', '.cds')
         files_processed_count = 0
 
-        # 使用 os.walk 递归地遍历所有子目录和文件
         for root, dirs, files in os.walk(input_folder_path):
-            if cancel_event and cancel_event.is_set():
-                logger.info("Conversion cancelled during directory traversal.")
-                break
-
+            if cancel_event and cancel_event.is_set(): break
             for filename in files:
-                if not filename.lower().endswith(supported_extensions):
-                    continue
+                file_lower = filename.lower()
+                if not any(file_lower.endswith(ext) for ext in supported_extensions): continue
 
-                # 从文件路径中提取 version_id (即相对于根输入目录的子目录名)
                 relative_path = os.path.relpath(root, input_folder_path)
                 version_id = relative_path if relative_path != '.' else None
-
-                # 根据文件名和version_id生成带有版本前缀的表名
                 table_name = _sanitize_table_name(filename, version_id=version_id)
                 full_path = os.path.join(root, filename)
-
                 dataframe = None
-                logger.debug(f"Processing file '{full_path}' for table '{table_name}'...")
 
-                # 根据文件类型选择合适的读取函数
-                if filename.lower().endswith(('.xlsx', '.xlsx.gz')):
+                is_fasta = any(file_lower.endswith(ext) or file_lower.endswith(ext + '.gz') for ext in fasta_extensions)
+
+                # 新增：为FASTA文件查找并应用特定的正则表达式
+                id_regex_to_use = None
+                if is_fasta and version_id:
+                    current_genome_info = genome_sources.get(version_id)
+                    if current_genome_info and current_genome_info.gene_id_regex:
+                        id_regex_to_use = current_genome_info.gene_id_regex
+                        logger.debug(f"为版本 '{version_id}' 找到基因ID正则表达式: {id_regex_to_use}")
+                    else:
+                        logger.warning(f"在配置中未找到版本 '{version_id}' 的基因ID正则表达式。")
+
+                if is_fasta:
+                    dataframe = _read_fasta_to_dataframe(full_path, id_regex=id_regex_to_use)
+                elif file_lower.endswith(('.xlsx', '.xlsx.gz')):
                     dataframe = _read_excel_to_dataframe(full_path)
-                else:  # .txt, .csv, and their .gz versions
+                else:
                     dataframe = _read_text_to_dataframe(full_path)
 
-                # 如果成功读取到数据，则写入数据库
                 if dataframe is not None and not dataframe.empty:
                     try:
-                        # 使用 'replace' 模式，如果表已存在，则替换它
                         dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
                         logger.info(
-                            f"Successfully converted '{filename}' (version: {version_id or 'root'}) to table '{table_name}'.")
+                            f"成功将 '{filename}' (版本: {version_id or 'root'}) 转换到表 '{table_name}'。")
                         files_processed_count += 1
                     except Exception as e:
-                        logger.error(
-                            f"Error writing DataFrame from '{filename}' to SQLite table '{table_name}'. Reason: {e}")
+                        logger.error(f"从 '{filename}' 写入SQLite表 '{table_name}' 时出错。原因: {e}")
                 else:
-                    logger.warning(f"Skipping file '{filename}' as no valid data could be read.")
+                    logger.warning(f"跳过文件 '{filename}'，因为未能读取到有效数据。")
 
-        logger.info(f"Successfully processed {files_processed_count} files.")
-        logger.info(f"Successfully completed conversion to SQLite database: {output_db_path}")
+        logger.info(f"成功处理了 {files_processed_count} 个文件。")
         return True
-
     except Exception as e:
-        logger.exception(f"A critical error occurred during the conversion process. Reason: {e}")
+        logger.exception(f"在转换过程中发生严重错误。原因: {e}")
         return False
     finally:
-        # 确保数据库连接在任何情况下都会被关闭
-        if conn:
-            conn.close()
-            logger.debug("Database connection closed.")
+        if conn: conn.close()
 
 

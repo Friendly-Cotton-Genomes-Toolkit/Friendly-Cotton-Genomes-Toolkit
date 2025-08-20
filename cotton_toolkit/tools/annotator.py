@@ -2,14 +2,14 @@
 
 import logging
 import os
-import re
+import sqlite3
 import pandas as pd
 from typing import List, Dict, Optional, Callable
 
 from .. import PREPROCESSED_DB_NAME
 from ..config.models import MainConfig, GenomeSourceItem
 from ..config.loader import get_local_downloaded_file_path
-from ..utils.file_utils import smart_load_file
+from ..utils.file_utils import smart_load_file, _sanitize_table_name
 
 logger = logging.getLogger("cotton_toolkit.tools.annotator")
 
@@ -128,7 +128,7 @@ class Annotator:
 
                 try:
                     # 2. 从数据库查询
-                    placeholders = ','.join('?' for _ in unique_gene_ids)
+                    placeholders = ','.join('?' for _u in unique_gene_ids)
                     # 假设基因ID列被统一命名为 'Query'
                     query = f'SELECT * FROM "{table_name}" WHERE Query IN ({placeholders})'
 

@@ -206,18 +206,21 @@ class DataDownloadTab(BaseTab):
         if not genome_info:
             return
 
-        # --- 核心修改 1: 调用后端函数，一次性获取所有文件的真实状态 ---
         all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
 
         is_dark = self.app.style.theme.type == 'dark'
         status_colors = {
-            'not_downloaded': "#e57373" if is_dark else "#d9534f",
-            'downloaded': "#ffb74d" if is_dark else "#f0ad4e",
-            'processed': self.app.style.colors.success,
+            'not_downloaded': "#e57373" if is_dark else "#d9534f",  # 未下载 (红色)
+            'downloaded': "#ffb74d" if is_dark else "#f0ad4e",  # 待处理 (橙色)
+            'organized_only': "#64b5f6" if is_dark else "#428bca",  # 仅整理 (蓝色)
+            'db_only': "#81c784" if is_dark else "#428bca",  # 仅建库 (蓝色)
+            'processed': self.app.style.colors.success,  # 已就绪 (深绿)
         }
         status_texts = {
             'not_downloaded': self._("未下载"),
             'downloaded': self._("已下载 (待处理)"),
+            'organized_only': self._("仅整理 (待建库)"),
+            'db_only': self._("仅建库 (待整理)"),
             'processed': self._("已就绪")
         }
 
@@ -336,9 +339,11 @@ class DataDownloadTab(BaseTab):
             self.dynamic_widgets['refresh_button'].configure(
                 state="disabled" if is_running or not has_config else "normal")
 
+
     def start_build_blast_db_task(self):
         """
-        启动构建BLAST数据库的任务，并在开始前进行文件存在性检查。
+        启动构建BLAST数据库的任务。
+        此版本使用新的状态检查系统来确定是否需要运行。
         """
         # 1. 基本检查：确保配置已加载且基因组已选择
         if not self.app.current_config:
@@ -356,41 +361,36 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_error_message(self._("错误"), msg)
             return
 
-        # 2. 获取源文件和已处理文件的路径
-        cds_path = get_local_downloaded_file_path(self.app.current_config, genome_info, 'predicted_cds')
-        protein_path = get_local_downloaded_file_path(self.app.current_config, genome_info, 'predicted_protein')
+        # 2. 使用后端的四状态系统进行前置检查
+        all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
+        blast_keys_to_check = ['predicted_cds', 'predicted_protein']
 
-        cds_source_exists = cds_path and os.path.exists(cds_path)
-        protein_source_exists = protein_path and os.path.exists(protein_path)
+        needs_processing = False
+        applicable_files_exist = False
 
-        # 检查BLAST数据库文件是否已存在
-        db_ready = False
-        if cds_source_exists:
-            # 移除 .gz 后缀
-            db_fasta_path = cds_path.removesuffix('.gz')
-            # 检查blast数据库文件
-            if os.path.exists(db_fasta_path + '.nhr'):
-                db_ready = True
-        if not db_ready and protein_source_exists:
-            # 移除 .gz 后缀
-            db_fasta_path = protein_path.removesuffix('.gz')
-            # 检查blast数据库文件
-            if os.path.exists(db_fasta_path + '.phr'):
-                db_ready = True
+        for key in blast_keys_to_check:
+            url_attr = f"{key}_url"
+            # 检查此基因组是否配置了CDS或蛋白质的URL
+            if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
+                applicable_files_exist = True
+                status = all_statuses.get(key, 'not_downloaded')
+                # 如果文件状态为“已下载”或“仅整理”，则说明需要进行BLAST建库
+                if status in ['downloaded', 'organized_only']:
+                    needs_processing = True
+                    break  # 只要有一个需要处理，就可以启动任务
 
-        # 3. 执行条件逻辑
-        if db_ready:
+        # 3. 根据检查结果执行逻辑
+        if not applicable_files_exist:
+            msg = self._("无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。")
+            self.app.ui_manager.show_warning_message(self._("缺少配置"), msg)
+            return
+
+        if not needs_processing:
             self.app.ui_manager.show_info_message(
-                self._("已就绪"), self._("BLAST数据库已全部预处理完成，无需再次运行。"))
+                self._("已就绪"), self._("所有适用的BLAST数据库均已预处理完成，无需再次运行。"))
             return
 
-        if not cds_source_exists and not protein_source_exists:
-            msg = self._(
-                "无法开始预处理BLAST数据库，因为没有找到可用的预测CDS或蛋白质文件。\n请先在下载选项中选择并下载这些文件。")
-            self.app.ui_manager.show_warning_message(self._("缺少文件"), msg)
-            return
-
-        # 4. 如果源文件存在且数据库未就绪，则启动任务
+        # 4. 如果检查通过，则启动任务
         self._clear_task_status_display()  # 开始任务前清屏
         task_kwargs = {'config': self.app.current_config,
                        'selected_assembly_id': selected_genome_id,
@@ -401,6 +401,7 @@ class DataDownloadTab(BaseTab):
             task_key="download",
             kwargs=task_kwargs
         )
+
 
     def start_download_task(self):
         # 【修改】所有 _() 调用都改为 self._()
@@ -441,7 +442,10 @@ class DataDownloadTab(BaseTab):
         # --- 核心修改: 使用后端函数获取所有文件的真实状态 ---
         all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
 
-        annotation_keys_to_check = ['gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+        annotation_keys_to_check = [
+            'predicted_cds', 'predicted_protein', 'gff3', 'GO', 'IPR',
+            'KEGG_pathways', 'KEGG_orthologs', 'homology_ath'
+        ]
 
         # 检查是否有文件尚未下载
         missing_files_display_names = []
@@ -482,7 +486,7 @@ class DataDownloadTab(BaseTab):
         }
 
         self.app.event_handler._start_task(
-            task_name=self._("预处理注释文件"),
+            task_name=self._("预处理文件"),
             target_func=run_preprocess_annotation_files,
             task_key="preprocess_blast",
             kwargs=task_kwargs

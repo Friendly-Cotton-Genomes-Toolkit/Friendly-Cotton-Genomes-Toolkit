@@ -3,6 +3,7 @@
 import tkinter as tk
 from typing import TYPE_CHECKING, List, Callable, Any
 
+import pandas as pd
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_homology_mapping
@@ -48,7 +49,8 @@ class HomologyTab(BaseTab):
         self.title_label.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="n")
 
         self.description_label = ttkb.Label(parent, text=_(
-            "该工具通过拟南芥作为桥梁将两种棉花基因组连接起来。\n如需获取更加准确的结果，请使用BLAST"),
+            "该工具通过动态BLASTN搜索，快速查找一个或多个源基因在目标基因组中的同源基因。\n"
+            "此工具旨在快速批量获取，如需要更高的精准度，请使用 “本地BLAST” 工具"),
                                             wraplength=700, justify="center")
         self.description_label.grid(row=1, column=0, padx=10, pady=(0, 15))
 
@@ -196,13 +198,29 @@ class HomologyTab(BaseTab):
                                                  [(_("Excel 文件"), "*.xlsx"), (_("CSV 文件"), "*.csv"),
                                                   (_("所有文件"), "*.*")])
 
-    def _update_single_gene_output(self, result: List[str]):
+    def _update_single_gene_output(self, result_df: pd.DataFrame):
+        """
+        解析BLAST结果DataFrame，并以优雅的格式显示最佳匹配项。
+        """
         output_entry = self.homology_output_file_entry
         output_entry.configure(state="normal")
         output_entry.delete(0, tk.END)
 
-        if result:
-            output_text = ", ".join(result)
+        if result_df is not None and not result_df.empty:
+            # 始终只选择第一个结果，即最佳匹配项
+            best_hit = result_df.iloc[0]
+
+            hit_gene = best_hit.get('Hit_ID', 'N/A')
+            # 修正：先将可能为字符串的百分比转换为浮点数，再进行格式化
+            try:
+                identity = float(best_hit.get('Identity (%)', 0))
+            except (ValueError, TypeError):
+                identity = 0.0
+            e_value = best_hit.get('E-value', 0)
+
+            # 使用更简洁、更清晰的格式
+            output_text = f"{hit_gene} (PID: {identity:.2f}%, E-value: {e_value:.2e})"
+
             output_entry.insert(0, output_text)
             self.copy_success_label.configure(text=self._("查找成功!"))
             self.copy_success_label.after(2000, lambda: self.copy_success_label.configure(text=""))
@@ -282,15 +300,8 @@ class HomologyTab(BaseTab):
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        # 在这里过滤掉非棉花基因组，只保留包含 'cotton' 的
-        cotton_assembly_ids = assembly_ids
-
-        # 总是包含拟南芥作为一个选项
-        if "Arabidopsis_thaliana" in assembly_ids and "Arabidopsis_thaliana" not in cotton_assembly_ids:
-            # 把它加在列表末尾
-            cotton_assembly_ids.append("Arabidopsis_thaliana")
-
-        valid_ids = cotton_assembly_ids or [_("无可用基因组")]
+        # 新逻辑：不再特殊处理拟南芥，直接显示所有可用的基因组
+        valid_ids = assembly_ids or [_("无可用基因组")]
 
         def update_menu(dropdown, string_var):
             if not (dropdown and dropdown.winfo_exists()): return
@@ -298,17 +309,14 @@ class HomologyTab(BaseTab):
             menu.delete(0, 'end')
 
             for value in valid_ids:
-                label = value
-                if value == "Arabidopsis_thaliana":
-                    label = f"{value} ({_('桥梁物种')})"
-
-                menu.add_command(label=label, command=lambda v=value, sv=string_var: sv.set(v))
+                menu.add_command(label=value, command=lambda v=value, sv=string_var: sv.set(v))
 
             if string_var.get() not in valid_ids and valid_ids:
                 string_var.set(valid_ids[0])
 
         update_menu(self.source_assembly_dropdown, self.selected_homology_source_assembly)
         update_menu(self.target_assembly_dropdown, self.selected_homology_target_assembly)
+
 
     def _on_homology_gene_input_change(self, event=None):
         self.app.event_handler._auto_identify_genome_version(self.homology_map_genes_textbox,

@@ -31,7 +31,6 @@ class EnrichmentTab(BaseTab):
         self.has_header_var = tk.BooleanVar(value=False)
         self.has_log2fc_var = tk.BooleanVar(value=False)
         self.analysis_type_var = tk.StringVar(value="go")
-        self.collapse_transcripts_var = tk.BooleanVar(value=False)
         self.bubble_plot_var = tk.BooleanVar(value=True)
         self.bar_plot_var = tk.BooleanVar(value=True)
         self.upset_plot_var = tk.BooleanVar(value=False)
@@ -114,14 +113,6 @@ class EnrichmentTab(BaseTab):
         self.kegg_radio = ttkb.Radiobutton(radio_frame, text="KEGG", variable=self.analysis_type_var, value="kegg",
                                            bootstyle="toolbutton-success")
         self.kegg_radio.pack(side="left", padx=5)
-
-        self.collapse_check = ttkb.Checkbutton(self.format_card, text=_("合并转录本到基因"),
-                                               variable=self.collapse_transcripts_var, bootstyle="round-toggle")
-        self.collapse_check.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=5)
-        self.collapse_note_label = ttkb.Label(self.format_card, text=_(
-            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"),
-                                              font=self.app.app_comment_font, bootstyle="info")
-        self.collapse_note_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 5))
 
         self.plot_config_card = ttkb.LabelFrame(parent_frame, text=_("绘图设置"), bootstyle="secondary")
         self.plot_config_card.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
@@ -275,7 +266,7 @@ class EnrichmentTab(BaseTab):
             'sort_by': self.sort_by_var.get(),
             'show_title': self.show_title_var.get(),
             'width': self.width_var.get(), 'height': self.height_var.get(),
-            'file_format': self.file_format_var.get(), 'collapse_transcripts': self.collapse_transcripts_var.get()
+            'file_format': self.file_format_var.get(),
         }
 
         self.app.event_handler._start_task(
