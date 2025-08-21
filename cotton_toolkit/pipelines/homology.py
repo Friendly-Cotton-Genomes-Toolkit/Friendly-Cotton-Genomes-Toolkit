@@ -79,9 +79,8 @@ def run_homology_conversion(
         **kwargs
 ) -> Optional[str]:
     """
-    【最终版】采用非对称逻辑：
-    - 棉花->拟南芥: 使用“基础ID”进行智能匹配，确保结果与输入行一一对应。
-    - 拟南芥->棉花: 直接输出数据库中找到的所有原始匹配项。
+    智能解析输入ID，并直接输出数据库中所有匹配的原始同源关系，
+    确保输出结果的格式与数据库中的记录完全一致。
     """
     progress = kwargs.get('progress_callback', lambda p, m: None)
     check_cancel = kwargs.get('check_cancel', lambda: False)
@@ -89,7 +88,7 @@ def run_homology_conversion(
     progress(0, _("正在准备同源转换..."))
     if check_cancel(): return None
 
-    # 步骤 1: 智能解析输入ID，得到用于查询的ID列表
+    # 步骤 1: 智能解析输入ID，得到用于查询的、唯一的、标准化的ID列表
     query_ids = []
     if conversion_direction == 'cotton_to_ath':
         try:
@@ -102,7 +101,7 @@ def run_homology_conversion(
     else:  # ath_to_cotton
         try:
             progress(5, _("正在智能解析拟南芥基因ID..."))
-            query_ids, _e = resolve_arabidopsis_ids_from_homology_db(config, assembly_id, gene_ids)
+            query_ids, _c = resolve_arabidopsis_ids_from_homology_db(config, assembly_id, gene_ids)
         except (ValueError, FileNotFoundError) as e:
             logger.error(e);
             return None
@@ -114,8 +113,8 @@ def run_homology_conversion(
     progress(20, _("正在从数据库获取同源关系..."))
     if check_cancel(): return None
 
-    # 步骤 2: 调用数据访问函数获取同源数据
-    homology_df = get_homology_by_gene_ids(
+    # 步骤 2: 调用数据访问函数，获取所有匹配的原始数据
+    result_df = get_homology_by_gene_ids(
         config=config,
         assembly_id=assembly_id,
         gene_ids=query_ids,
@@ -124,36 +123,31 @@ def run_homology_conversion(
 
     if check_cancel(): return None
 
-    # 步骤 3: 根据转换方向，执行不同的结果处理逻辑
+    # 步骤 3: 直接整理查询结果
     progress(80, _("正在整理转换结果..."))
 
-    if conversion_direction == 'cotton_to_ath':
-        # --- 棉花 -> 拟南芥：执行智能合并，确保结果与输入一一对应 ---
-        result_df = pd.DataFrame({'Input_ID': gene_ids})
-        if homology_df.empty:
-            result_df['Homolog_ID'] = 'N/A'
-            result_df['Description'] = 'N/A'
+    if result_df.empty:
+        logger.warning(_("在数据库中未找到任何同源基因匹配。"))
+        # 根据方向创建带正确表头的空文件
+        if conversion_direction == 'cotton_to_ath':
+            result_df = pd.DataFrame(columns=['Cotton_ID', 'Arabidopsis_ID', 'Description'])
         else:
-            homology_df.rename(columns={'Query': 'Cotton_ID', 'Match': 'Arabidopsis_ID'}, inplace=True)
-            result_df['base_id'] = result_df['Input_ID'].astype(str).apply(_to_gene_id)
-            homology_df['base_id'] = homology_df['Cotton_ID'].astype(str).apply(_to_gene_id)
-            homology_df.drop_duplicates(subset=['base_id'], keep='first', inplace=True)
-            result_df = pd.merge(result_df, homology_df, on='base_id', how='left')
-            result_df = result_df[['Input_ID', 'Arabidopsis_ID', 'Description']]
-            result_df.rename(columns={'Input_ID': 'Cotton_ID', 'Arabidopsis_ID': 'Homolog_ID'}, inplace=True)
+            result_df = pd.DataFrame(columns=['Arabidopsis_ID', 'Cotton_ID', 'Description'])
     else:
-        # --- 拟南芥 -> 棉花：直接输出数据库查询结果 ---
-        logger.info(_("直接输出从数据库中找到的 {} 条同源匹配。").format(len(homology_df)))
-        if homology_df.empty:
-            result_df = pd.DataFrame(columns=['Homolog_ID(Cotton)', 'Input_ID(Arabidopsis)', 'Description'])
-        else:
-            result_df = homology_df.rename(columns={
-                'Query': 'Homolog_ID(Cotton)',
-                'Match': 'Input_ID(Arabidopsis)',
+        logger.info(_("成功从数据库中查询到 {} 条同源匹配项。").format(len(result_df)))
+        # 仅重命名列，完全保留数据库的原始数据
+        if conversion_direction == 'cotton_to_ath':
+            result_df.rename(columns={
+                'Query': 'Cotton_ID',
+                'Match': 'Arabidopsis_ID',
                 'Description': 'Description'
-            })
-
-    result_df.fillna('N/A', inplace=True)
+            }, inplace=True)
+        else:  # ath_to_cotton
+            result_df.rename(columns={
+                'Match': 'Arabidopsis_ID',
+                'Query': 'Cotton_ID',
+                'Description': 'Description'
+            }, inplace=True)
 
     # 步骤 4: 保存到文件
     progress(95, _("正在保存结果文件..."))
