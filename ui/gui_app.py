@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any, Callable
 import tkinter as tk
 import ttkbootstrap as ttkb
 
+
 try:
     from ctypes import windll, byref, sizeof, c_int
 except ImportError:
@@ -24,7 +25,7 @@ from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
 from ui.ui_manager import UIManager, determine_initial_theme
 from ui.tabs import (
-    AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab,
+    AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab,SequenceExtractionTab,
     GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab
 )
 
@@ -47,14 +48,15 @@ class CottonToolkitApp(ttkb.Window):
                 "openai_compatible": {"name": self._("通用OpenAI兼容接口")}}
 
     TOOL_TAB_ORDER = [
-        "download", "annotation", "enrichment", "genome_identifier",
-        "homology", "locus_conversion", "gff_query", "blast", "ai_assistant"
+        "download", "annotation", "enrichment", "sequence_extraction",
+        "genome_identifier", "homology", "locus_conversion", "gff_query",
+        "blast", "ai_assistant"
     ]
 
     @property
     def TAB_TITLE_KEYS(self):
         return {
-            "download": _("数据下载"), "annotation": _("功能注释"), "enrichment": _("富集分析与绘图"),
+            "download": _("数据下载"), "annotation": _("功能注释"),  "sequence_extraction": _("CDS序列提取"),"enrichment": _("富集分析与绘图"),
            "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
@@ -66,7 +68,6 @@ class CottonToolkitApp(ttkb.Window):
         super().__init__(themename=initial_theme)
 
         self._ = translator
-        # 修改: 采用新的日志命名规范
         self.logger = logging.getLogger("ui.gui_app")
 
         self.app_icon_path: Optional[str] = self.resource_path("logo.ico")
@@ -103,6 +104,8 @@ class CottonToolkitApp(ttkb.Window):
             "gff_genes": self._("粘贴基因ID，每行一个..."),
             "gff_region": self._("例如: A01:1-100000"),
             "genes_input": self._("在此处粘贴要注释的基因ID，每行一个"),
+            "extract_seq_single": self._("输入单个基因ID, 例如: Ghir_D09G022830"),
+            "extract_seq_multi": self._("每行输入一个基因ID...\nGhir_D09G022830\nGhir_D11G011140"),
             "enrichment_genes_input": self._(
                 "在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"),
             "custom_prompt": self._("在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
@@ -677,6 +680,7 @@ class CottonToolkitApp(ttkb.Window):
         tab_map = {
             "download": DataDownloadTab,
             "annotation": AnnotationTab,
+            "sequence_extraction": SequenceExtractionTab,
             "enrichment": EnrichmentTab,
             "genome_identifier": GenomeIdentifierTab,
             "homology": HomologyTab,

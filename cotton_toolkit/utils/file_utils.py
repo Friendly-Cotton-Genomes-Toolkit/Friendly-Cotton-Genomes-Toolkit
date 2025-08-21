@@ -136,36 +136,6 @@ def smart_load_file(file_path: str) -> Optional[pd.DataFrame]:
         return None
 
 
-def save_dataframe_as(df: pd.DataFrame, output_path: str) -> bool:
-    """
-    根据输出路径的扩展名，将DataFrame保存为CSV或Excel文件。
-    """
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-
-    file_ext = os.path.splitext(output_path)[1].lower()
-
-    try:
-        if file_ext == '.csv':
-            df.to_csv(output_path, index=False, encoding='utf-8-sig')
-            # 修改: 使用 logger.info
-            logger.info(_("DataFrame 已成功保存为CSV文件: {}").format(output_path))
-        elif file_ext == '.xlsx':
-            df.to_excel(output_path, index=False, engine='openpyxl')
-            # 修改: 使用 logger.info
-            logger.info(_("DataFrame 已成功保存为Excel文件: {}").format(output_path))
-        else:
-            # 修改: 使用 logger.error
-            logger.error(_("错误: 不支持的文件格式 '{}'。请使用 '.csv' 或 '.xlsx'。").format(file_ext))
-            return False
-
-        return True
-    except Exception as e:
-        # 修改: 使用 logger.error
-        logger.error(_("保存DataFrame到 {} 时发生错误: {}").format(output_path, e))
-        return False
-
 
 def _sanitize_table_name(filename: str, version_id: Optional[str] = None) -> str:
     """

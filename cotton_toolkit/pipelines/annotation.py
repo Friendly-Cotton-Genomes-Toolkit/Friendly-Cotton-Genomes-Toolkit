@@ -8,7 +8,6 @@ import pandas as pd
 
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig, HomologySelectionCriteria
-from cotton_toolkit.core.homology_mapper import map_genes_via_bridge
 from cotton_toolkit.pipelines.decorators import pipeline_task
 from cotton_toolkit.tools.annotator import Annotator
 from cotton_toolkit.core.data_access import create_homology_df
@@ -29,221 +28,97 @@ logger = logging.getLogger("cotton_toolkit.pipeline.annotation")
 @pipeline_task(_("功能注释"))
 def run_functional_annotation(
         config: MainConfig,
-        source_genome: str,
-        target_genome: str,
-        bridge_species: str,
+        assembly_id: str,
         annotation_types: List[str],
-        output_dir: Optional[str] = None,
-        output_path: Optional[str] = None,
-        gene_list_path: Optional[str] = None,
+        output_path: str,
         gene_ids: Optional[List[str]] = None,
+        gene_list_path: Optional[str] = None,
         custom_db_dir: Optional[str] = None,
         cancel_event: Optional[threading.Event] = None,
         **kwargs
 ) -> None:
+
     progress = kwargs['progress_callback']
     check_cancel = kwargs['check_cancel']
 
     progress(0, _("准备输入基因列表..."))
     if check_cancel(): return
 
-    source_gene_ids = []
+    # 步骤 1: 准备和解析输入的基因ID列表
+    resolved_gene_ids = []
     if gene_ids:
         try:
-            progress(2, _("正在智能解析输入基因ID..."))
-            source_gene_ids = resolve_gene_ids(config, source_genome, gene_ids)
-            logger.info(_("从参数智能解析了 {} 个唯一基因ID。").format(len(source_gene_ids)))
+            progress(5, _("正在智能解析输入基因ID..."))
+            resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids)
+            logger.info(_("从参数智能解析了 {} 个唯一基因ID。").format(len(resolved_gene_ids)))
         except (ValueError, FileNotFoundError) as e:
             logger.error(e)
-            progress(100, _("任务终止：基因ID解析失败。"))
             return
-
     elif gene_list_path and os.path.exists(gene_list_path):
         try:
             progress(5, _("正在从文件读取基因列表..."))
-            if check_cancel(): return
-            logger.info(_("正在从文件 '{}' 中读取基因列表...").format(os.path.basename(gene_list_path)))
             study_genes_df = pd.read_csv(gene_list_path)
-            source_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
-            logger.info(_("从文件中读取了 {} 个唯一基因ID。").format(len(source_gene_ids)))
+            raw_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
+            resolved_gene_ids = resolve_gene_ids(config, assembly_id, raw_gene_ids)
+            logger.info(_("从文件中读取并解析了 {} 个唯一基因ID。").format(len(resolved_gene_ids)))
         except Exception as e:
-            logger.error(_("读取基因列表文件时出错: {}").format(e))
-            progress(100, _("任务终止：读取基因列表失败。"))
+            logger.error(_("读取或解析基因列表文件时出错: {}").format(e))
             return
     else:
         logger.error(_("错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"))
-        progress(100, _("任务终止：缺少基因输入。"))
         return
 
-    if not source_gene_ids:
-        logger.error(_("输入的基因列表为空，流程终止。"))
-        progress(100, _("任务终止：基因列表为空。"))
+    if not resolved_gene_ids:
+        logger.error(_("输入的基因列表为空或无法解析，流程终止。"))
         return
 
-    genes_to_annotate = source_gene_ids
-    final_df_base = pd.DataFrame({'Source_Gene_ID': source_gene_ids})
+    # 创建一个基础DataFrame，用于最后合并结果
+    final_df_base = pd.DataFrame({'Gene_ID': resolved_gene_ids})
 
-    progress(10, _("检查是否需要同源映射..."))
+    progress(20, _("初始化注释器..."))
     if check_cancel(): return
 
-    if source_genome != target_genome:
-        logger.info(_("源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。").format(source_genome, target_genome))
-
-        genome_sources = get_genome_data_sources(config)
-        source_genome_info = genome_sources.get(source_genome)
-        target_genome_info = genome_sources.get(target_genome)
-        bridge_genome_info = genome_sources.get(bridge_species)
-
-        if not all([source_genome_info, target_genome_info, bridge_genome_info]):
-            logger.error(_("一个或多个基因组名称无效，无法找到配置信息。"))
-            progress(100, _("任务终止：基因组配置错误。"))
-            return
-
-        progress(20, _("加载同源数据文件..."))
-        if check_cancel(): return
-
-        s_to_b_homology_file = get_local_downloaded_file_path(config, source_genome_info, 'homology_ath')
-        b_to_t_homology_file = get_local_downloaded_file_path(config, target_genome_info, 'homology_ath')
-
-        if not all([s_to_b_homology_file, b_to_t_homology_file, os.path.exists(s_to_b_homology_file),
-                    os.path.exists(b_to_t_homology_file)]):
-            logger.error(_("缺少必要的同源文件，无法进行转换。请先下载数据。"))
-            progress(100, _("任务终止：缺少同源文件。"))
-            return
-
-        progress(25, _("正在解析源到桥梁的同源文件..."))
-        if check_cancel(): return
-
-        source_to_bridge_homology_df = create_homology_df(config, s_to_b_homology_file,
-                                                          progress_callback=lambda p, m: progress(25 + int(p * 0.1),
-                                                                                                  _("加载同源数据: {}").format(
-                                                                                                      m)),
-                                                          cancel_event=cancel_event)
-        if check_cancel() or source_to_bridge_homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return
-
-        progress(35, _("正在解析桥梁到目标的同源文件..."))
-        if check_cancel(): return
-
-        bridge_to_target_homology_df = create_homology_df(config, b_to_t_homology_file,
-                                                          progress_callback=lambda p, m: progress(35 + int(p * 0.1),
-                                                                                                  _("加载同源数据: {}").format(
-                                                                                                      m)),
-                                                          cancel_event=cancel_event)
-        if check_cancel() or bridge_to_target_homology_df.empty: logger.info(_("任务被取消或文件读取失败。")); return
-
-        selection_criteria_s_to_b = HomologySelectionCriteria().model_dump()
-        selection_criteria_b_to_t = HomologySelectionCriteria().model_dump()
-        homology_columns = {
-            "query": "Query", "match": "Match", "evalue": "Exp", "score": "Score", "pid": "PID"
-        }
-
-        progress(50, _("正在通过桥梁物种进行基因映射..."))
-        if check_cancel(): return
-
-        mapped_df, _c = map_genes_via_bridge(
-            source_gene_ids=source_gene_ids,
-            source_assembly_name=source_genome,
-            target_assembly_name=target_genome,
-            bridge_species_name=bridge_species,
-            source_to_bridge_homology_df=source_to_bridge_homology_df,
-            bridge_to_target_homology_df=bridge_to_target_homology_df,
-            selection_criteria_s_to_b=selection_criteria_s_to_b,
-            selection_criteria_b_to_t=selection_criteria_b_to_t,
-            homology_columns=homology_columns,
-            source_genome_info=source_genome_info,
-            target_genome_info=target_genome_info,
-            bridge_genome_info=bridge_genome_info,
-            progress_callback=lambda p, m: progress(50 + int(p * 0.2), _("基因映射: {}").format(m)),
-            cancel_event=cancel_event
-        )
-
-        if cancel_event and cancel_event.is_set():
-            progress(100, _("任务已取消。"))
-            return
-
-        if mapped_df is None or mapped_df.empty:
-            logger.warning(_("同源转换未能映射到任何基因，流程终止。"))
-            progress(100, _("任务终止：同源映射失败。"))
-            return
-
-        # 1. 创建包含基础基因ID的临时列
-        mapped_df['base_gene_id'] = mapped_df['Target_Gene_ID'].apply(lambda x: re.sub(r'\.\d+$', '', str(x)))
-        # 2. 使用这个基础ID列表进行注释
-        genes_to_annotate = mapped_df['base_gene_id'].dropna().unique().tolist()
-        # 3. 更新用于最终合并的基础DataFrame
-        final_df_base = mapped_df
-
-    progress(75, _("初始化注释器..."))
-    if check_cancel(): return
-
+    # 步骤 2: 初始化注释器 (Annotator)
     genome_sources = get_genome_data_sources(config)
-    target_genome_info = genome_sources.get(target_genome)
-    if not target_genome_info:
-        logger.error(_("错误：无法为目标基因组 {} 找到配置信息。").format(target_genome))
-        progress(100, _("任务终止：目标基因组配置错误。"))
+    genome_info = genome_sources.get(assembly_id)
+    if not genome_info:
+        logger.error(_("错误：无法为目标基因组 {} 找到配置信息。").format(assembly_id))
         return
 
     annotator = Annotator(
         main_config=config,
-        genome_id=target_genome,
-        genome_info=target_genome_info,
-        progress_callback=lambda p, m: progress(75 + int(p * 0.15), _("执行注释: {}").format(m)),
+        genome_id=assembly_id,
+        genome_info=genome_info,
+        progress_callback=lambda p, m: progress(30 + int(p * 0.6), _("执行注释: {}").format(m)),
         custom_db_dir=custom_db_dir
     )
 
     progress(90, _("正在执行功能注释..."))
     if check_cancel(): return
 
-    # annotator现在接收基础基因ID列表
-    result_df = annotator.annotate_genes(genes_to_annotate, annotation_types)
+    # 步骤 3: 直接使用解析后的基因ID列表进行注释
+    result_df = annotator.annotate_genes(resolved_gene_ids, annotation_types)
 
     if cancel_event and cancel_event.is_set():
-        progress(100, _("任务已取消。"))
         return
 
     progress(95, _("整理并保存结果..."))
     if check_cancel(): return
 
+    # 步骤 4: 整理并保存结果
     if result_df is not None and not result_df.empty:
-        if 'base_gene_id' in final_df_base.columns:
-            # 1. 在注释结果中，将主键列重命名以匹配我们的临时列
-            result_df = result_df.rename(columns={'Gene_ID': 'base_gene_id'})
-            # 2. 使用共有的基础ID列进行安全合并
-            final_df = pd.merge(final_df_base, result_df, on='base_gene_id', how='left')
-            # 3. 移除辅助列
-            final_df = final_df.drop(columns=['base_gene_id'])
-        else:  # 如果没有进行同源映射，则直接使用注释结果
-            final_df = pd.merge(final_df_base, result_df, left_on='Source_Gene_ID', right_on='Gene_ID', how='left')
-            if 'Gene_ID' in final_df.columns:
-                final_df = final_df.drop(columns=['Gene_ID'])
-
-        final_output_path = ""
-        if output_path:
-            final_output_path = output_path
-            os.makedirs(os.path.dirname(final_output_path), exist_ok=True)
-        elif output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-            base_name = "annotation_result"
-            if gene_list_path:
-                base_name = os.path.splitext(os.path.basename(gene_list_path))[0]
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            final_output_path = os.path.join(output_dir, f"{base_name}_{timestamp}.csv")
-        else:
-            logger.error(_("错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"))
-            progress(100, _("任务终止：未提供输出路径。"))
-            return
+        # 直接将注释结果与原始基因列表进行合并
+        final_df = pd.merge(final_df_base, result_df, on='Gene_ID', how='left')
 
         try:
-            final_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-            logger.info(_("注释成功！结果已保存至: {}").format(final_output_path))
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            final_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            logger.info(_("注释成功！结果已保存至: {}").format(output_path))
         except Exception as e:
-            logger.error(_("保存结果到 {} 时发生错误: {}").format(final_output_path, e))
-            progress(100, _("任务终止：保存结果失败。"))
+            logger.error(_("保存结果到 {} 时发生错误: {}").format(output_path, e))
             return
-
     else:
         logger.warning(_("注释完成，但没有生成任何结果。"))
-        progress(100, _("任务完成：无结果。"))
 
     progress(100, _("功能注释流程结束。"))
 

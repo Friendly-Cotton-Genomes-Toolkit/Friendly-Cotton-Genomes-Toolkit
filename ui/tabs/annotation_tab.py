@@ -129,7 +129,12 @@ class AnnotationTab(BaseTab):
                                              (self.kegg_path_anno_var, 'kegg_pathways')] if var.get()]
         output_path = self.annotation_output_csv_entry.get().strip()
         if not output_path:
-            output_path = os.path.join(os.getcwd(), "annotation_results", f"annotation_result_{assembly_id}.csv")
+            output_dir = os.path.join(os.getcwd(), "annotation_results")
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"annotation_result_{assembly_id}.csv")
+            # 将自动生成的路径更新回UI输入框
+            self.annotation_output_csv_entry.delete(0, tk.END)
+            self.annotation_output_csv_entry.insert(0, output_path)
 
         if not gene_ids:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。"))
@@ -143,13 +148,14 @@ class AnnotationTab(BaseTab):
 
         task_kwargs = {
             'config': self.app.current_config,
+            'assembly_id': assembly_id,
             'gene_ids': gene_ids,
-            'source_genome': assembly_id,
-            'target_genome': assembly_id,
-            'bridge_species': assembly_id,
             'annotation_types': anno_types,
             'output_path': output_path,
-            'output_dir': os.path.dirname(output_path)
         }
-        self.app.event_handler._start_task(task_name=_("功能注释"), target_func=run_functional_annotation,
-                                           kwargs=task_kwargs)
+
+        self.app.event_handler._start_task(
+            task_name=_("功能注释"),
+            target_func=run_functional_annotation,
+            kwargs=task_kwargs
+        )

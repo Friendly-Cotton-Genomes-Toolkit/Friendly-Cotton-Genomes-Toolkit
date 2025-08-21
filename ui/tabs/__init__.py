@@ -10,6 +10,7 @@ from .gff_query_tab import GFFQueryTab
 from .homology_tab import HomologyTab
 from .locus_conversion_tab import LocusConversionTab
 from .blast_tab import BlastTab
+from .sequence_extraction_tab import SequenceExtractionTab
 
 
 # 定义此包的公共API，当使用 from ui.tabs import * 时会导入这些
@@ -24,4 +25,5 @@ __all__ = [
     "HomologyTab",
     "LocusConversionTab",
     "BlastTab",
+    "SequenceExtractionTab",
 ]

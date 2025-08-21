@@ -35,80 +35,65 @@ class Annotator:
             genome_id: str,
             genome_info: GenomeSourceItem,
             progress_callback: Optional[Callable[[int, str], None]] = None,
-            **kwargs # 接受额外参数以保持接口兼容
+            **kwargs  # 接受额外参数以保持接口兼容
     ):
+        """
+        初始化Annotator。
+
+        Args:
+            main_config: 主配置对象。
+            genome_id: 目标基因组的唯一ID (例如 'HAU_v1')。
+            genome_info: 目标基因组的详细配置信息对象。
+            progress_callback: 用于报告进度的回调函数。
+
+        Raises:
+            FileNotFoundError: 如果预处理数据库 (genomes.db) 不存在。
+        """
         self.config = main_config
         self.genome_id = genome_id
         self.genome_info = genome_info
         self.progress = progress_callback if progress_callback else lambda p, m: logger.info(f"[{p}%] {m}")
 
+        # 直接定位到预处理数据库的路径
         project_root = os.path.dirname(self.config.config_file_abs_path_)
         self.db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
 
+        # 在初始化时就检查数据库是否存在，提前失败
         if not os.path.exists(self.db_path):
-            raise FileNotFoundError(_("预处理数据库未找到: {}。请先运行统一预处理脚本。").format(self.db_path))
-    def _load_annotation_db(self, db_key: str) -> Optional[pd.DataFrame]:
-        """
-        只加载预处理后的 .csv 注释文件，并强制重命名表头。
-        """
-        if db_key in self.db_cache:
-            return self.db_cache[db_key]
+            raise FileNotFoundError(_("预处理数据库未找到: {}。请先运行数据预处理流程。").format(self.db_path))
 
-        original_path = get_local_downloaded_file_path(self.config, self.genome_info, db_key)
-        if not original_path:
-            logger.warning(_("警告: 在配置中未找到 {} 的下载信息。").format(db_key))
-            return None
-
-        if original_path.endswith('.xlsx.gz'):
-            base_path = original_path.replace('.xlsx.gz', '')
-        elif original_path.endswith('.txt.gz'):
-            base_path = original_path.replace('.txt.gz', '')
-        else:
-            logger.error(_('未知的文件类型: {}').format(original_path))
-            return None
-
-        processed_csv_path = base_path + '.csv'
-
-        if not os.path.exists(processed_csv_path):
-            logger.error(_("未找到预处理好的注释文件 '{}'。").format(os.path.basename(processed_csv_path)))
-            logger.error(_("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"))
-            return None
-
-        logger.info(_("正在加载预处理的注释文件: {}").format(os.path.basename(processed_csv_path)))
-        # 修改: smart_load_file 内部使用统一logger，因此无需传递 logger_func
-        df = smart_load_file(processed_csv_path)
-
-        if df is not None and not df.empty:
-            logger.debug(_("从CSV加载的原始列名: {}").format(df.columns.tolist()))
-            rename_map = {}
-            if len(df.columns) > 0: rename_map[df.columns[0]] = 'Query'
-            if len(df.columns) > 1: rename_map[df.columns[1]] = 'Match'
-            if len(df.columns) > 2: rename_map[df.columns[2]] = 'Description'
-            df.rename(columns=rename_map, inplace=True)
-            logger.debug(_("强制重命名后的列名: {}").format(df.columns.tolist()))
-
-            self.db_cache[db_key] = df
-            return df
-        else:
-            logger.error(_("无法加载文件或文件为空: {}。").format(processed_csv_path))
-            return None
 
     def annotate_genes(self, gene_ids: List[str], annotation_types: List[str]) -> pd.DataFrame:
         """
-        为基因列表批量添加功能注释。
+        为给定的基因ID列表批量添加功能注释。
+
+        此方法直接从SQLite数据库中查询所有请求的注释类型，然后将结果
+        聚合到每个基因ID上，并返回一个包含所有注释信息的DataFrame。
+
+        Args:
+            gene_ids: 需要查询注释的基因ID列表。
+            annotation_types: 一个包含所需注释类型的列表 (例如 ['go', 'ipr', 'kegg_orthologs'])。
+
+        Returns:
+            一个Pandas DataFrame，索引为基因ID，列为所请求的各类注释信息。
         """
         if not gene_ids:
             return pd.DataFrame()
 
-        # 准备一个基础的DataFrame用于合并所有结果
-        # 使用 set 去重以提高效率
+        # 使用 set 去重以提高查询效率
         unique_gene_ids = sorted(list(set(gene_ids)))
         final_df = pd.DataFrame({'Gene_ID': unique_gene_ids})
 
-        # 定义注释类型到文件关键字的映射
-        key_map = {'go': 'GO', 'ipr': 'IPR', 'kegg_orthologs': 'KEGG_orthologs', 'kegg_pathways': 'KEGG_pathways'}
+        # 定义注释类型到文件关键字的映射，用于推断数据库中的表名
+        key_map = {
+            'go': 'GO',
+            'ipr': 'IPR',
+            'kegg_orthologs': 'KEGG_orthologs',
+            'kegg_pathways': 'KEGG_pathways'
+        }
 
-        with sqlite3.connect(self.db_path) as conn:
+        # 使用只读模式连接数据库，更安全
+        with sqlite3.connect(f'file:{self.db_path}?mode=ro', uri=True) as conn:
             for i, anno_type in enumerate(annotation_types):
                 self.progress(int((i / len(annotation_types)) * 100) if annotation_types else 0,
                               _("正在处理 {} 注释...").format(anno_type))
@@ -127,36 +112,39 @@ class Annotator:
                 table_name = _sanitize_table_name(os.path.basename(url), version_id=self.genome_id)
 
                 try:
-                    # 2. 从数据库查询
-                    placeholders = ','.join('?' for _u in unique_gene_ids)
-                    # 假设基因ID列被统一命名为 'Query'
+                    # 2. 从数据库批量查询基因的注释信息
+                    placeholders = ','.join('?' for _V in unique_gene_ids)
+                    # 假设预处理后的表中，基因ID列统一为 'Query'
                     query = f'SELECT * FROM "{table_name}" WHERE Query IN ({placeholders})'
 
                     logger.info(f"正在从表 '{table_name}' 中查询 {len(unique_gene_ids)} 个基因的 '{db_key}' 注释...")
                     anno_df = pd.read_sql_query(query, conn, params=unique_gene_ids)
 
                     if anno_df.empty:
+                        logger.warning(_("在表 '{}' 中未找到任何匹配的注释信息。").format(table_name))
                         continue
 
-                    # 3. 数据聚合
-                    # 将结果按基因ID分组，并将同一基因的多个注释条目合并为一行
+                    # 3. 数据聚合：将同一基因的多个注释条目合并为一行
                     anno_df = anno_df.rename(columns={'Query': 'Gene_ID'})
 
                     agg_dict = {}
                     if 'Match' in anno_df.columns:
-                        agg_dict[f'{anno_type}_ID'] = pd.NamedAgg(column='Match', aggfunc=lambda s: "; ".join(
-                            s.dropna().astype(str).unique()))
+                        agg_dict[f'{anno_type}_ID'] = pd.NamedAgg(
+                            column='Match',
+                            aggfunc=lambda s: "; ".join(s.dropna().astype(str).unique())
+                        )
                     if 'Description' in anno_df.columns:
-                        agg_dict[f'{anno_type}_Description'] = pd.NamedAgg(column='Description',
-                                                                           aggfunc=lambda s: "; ".join(
-                                                                               s.dropna().astype(str).unique()))
+                        agg_dict[f'{anno_type}_Description'] = pd.NamedAgg(
+                            column='Description',
+                            aggfunc=lambda s: "; ".join(s.dropna().astype(str).unique())
+                        )
 
                     if not agg_dict:
                         continue
 
                     aggregated_annos = anno_df.groupby('Gene_ID').agg(**agg_dict).reset_index()
 
-                    # 4. 合并到最终结果
+                    # 4. 将当前注释类型的结果合并到最终的DataFrame中
                     final_df = pd.merge(final_df, aggregated_annos, on='Gene_ID', how='left')
 
                 except (sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
@@ -167,6 +155,7 @@ class Annotator:
                     else:
                         logger.error(_("查询表 '{}' 时发生数据库错误: {}").format(table_name, e))
 
+        # 使用 'N/A' 填充所有未找到注释的单元格
         final_df.fillna("N/A", inplace=True)
         self.progress(100, _("所有注释处理完成。"))
         return final_df
