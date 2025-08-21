@@ -7,7 +7,7 @@ import tempfile
 
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.pipelines.blast import run_blast_pipeline
-from cotton_toolkit.utils.gene_utils import get_sequences_for_gene_ids
+from cotton_toolkit.core.data_access import get_sequences_for_gene_ids
 
 try:
     from builtins import _

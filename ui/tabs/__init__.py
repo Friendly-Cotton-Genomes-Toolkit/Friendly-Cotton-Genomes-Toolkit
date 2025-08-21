@@ -23,6 +23,5 @@ __all__ = [
     "GFFQueryTab",
     "HomologyTab",
     "LocusConversionTab",
-    "XlsxConverterTab",
     "BlastTab",
 ]

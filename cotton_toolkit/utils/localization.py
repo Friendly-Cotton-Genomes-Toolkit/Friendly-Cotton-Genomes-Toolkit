@@ -49,7 +49,6 @@ def setup_localization(language_code: str = 'zh-hans') -> Callable[[str], str]:
         return lang_translation.gettext
 
     except Exception as e:
-        # 修改: 使用logger.warning
         logger.warning(f"Could not set up language translation for '{language_code}'. Reason: {e}")
         builtins._ = lambda text: text
         return builtins._

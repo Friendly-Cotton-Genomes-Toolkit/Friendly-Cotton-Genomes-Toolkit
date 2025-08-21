@@ -56,7 +56,6 @@ def _process_single_file_to_sqlite(
         version_id: str,
         id_regex: Optional[str] = None,
         cancel_event: Optional[threading.Event] = None,
-        db_lock: Optional[threading.Lock] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> bool:
     """
@@ -113,15 +112,11 @@ def _process_single_file_to_sqlite(
         # Step 2: Database writing
         progress(75, _("正在写入数据库..."))
         try:
-            if db_lock:
-                db_lock.acquire()
             conn = sqlite3.connect(db_path, timeout=30.0)
             dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
             conn.close()
             conn = None
         finally:
-            if db_lock and db_lock.locked():
-                db_lock.release()
             if conn:
                 conn.close()
 
@@ -135,7 +130,6 @@ def _process_single_file_to_sqlite(
         progress(100, _("任务已取消"))
         # Cleanup logic for cancelled tasks
         try:
-            if db_lock: db_lock.acquire()
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
@@ -144,9 +138,6 @@ def _process_single_file_to_sqlite(
             logger.info(_("成功清理表 '{}'。").format(table_name))
         except Exception as cleanup_e:
             logger.error(_("清理表 '{}' 时发生错误: {}").format(table_name, cleanup_e))
-        finally:
-            if db_lock and db_lock.locked():
-                db_lock.release()
         return False
 
     except Exception as e:
@@ -378,10 +369,9 @@ def run_preprocess_annotation_files(
         progress_callback: Optional[Callable[[int, str], None]] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
         cancel_event: Optional[threading.Event] = None,
-        db_lock: Optional[threading.Lock] = None
 ) -> bool:
     """
-    并行预处理所有注释和同源文件，并将GFF处理也纳入线程池。
+    串行预处理所有注释和同源文件。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
     status_update = status_callback if status_callback else lambda key, msg: None
@@ -409,7 +399,7 @@ def run_preprocess_annotation_files(
     progress(10, _("正在检查所有文件状态..."))
     all_statuses = check_preprocessing_status(config, genome_info)
 
-    # 1. 将所有任务（包括GFF）统一收集
+    # 1. 将所有任务统一收集
     tasks_to_run = []
     project_root = os.path.dirname(config.config_file_abs_path_)
 
@@ -448,7 +438,7 @@ def run_preprocess_annotation_files(
             task_info["args"] = {
                 "file_key": key, "source_path": source_path, "db_path": db_path,
                 "version_id": genome_info.version_id, "id_regex": regex_to_use,
-                "cancel_event": cancel_event, "db_lock": db_lock
+                "cancel_event": cancel_event,
             }
         tasks_to_run.append(task_info)
 
@@ -460,42 +450,36 @@ def run_preprocess_annotation_files(
     logger.info(_("检测到以下待处理文件: {}").format(", ".join(t['key'] for t in tasks_to_run)))
     progress(20, _("找到 {} 个待处理文件...").format(len(tasks_to_run)))
 
-    # 2. 使用线程池并行执行所有任务
+    # 2. 串行执行所有任务
     overall_success = True
-    max_workers = config.downloader.max_workers
     total_tasks = len(tasks_to_run)
     task_weight = 80 / total_tasks if total_tasks > 0 else 0
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_task = {}
-        for i, task in enumerate(tasks_to_run):
-            if check_cancel(): break
+    for i, task in enumerate(tasks_to_run):
+        if check_cancel():
+            overall_success = False
+            break
 
-            status_update(task['key'], _("排队中..."))
+        key = task['key']
+        status_update(key, _("处理中..."))
 
-            start_p = 20 + i * task_weight
-            end_p = 20 + (i + 1) * task_weight
-            sub_progress = _create_sub_progress_updater(progress, os.path.basename(task['source_path']), start_p, end_p)
+        start_p = 20 + i * task_weight
+        end_p = 20 + (i + 1) * task_weight
+        sub_progress = _create_sub_progress_updater(progress, os.path.basename(task['source_path']), start_p, end_p)
+        task['args']['progress_callback'] = sub_progress
 
-            task['args']['progress_callback'] = sub_progress
-
-            future = executor.submit(task['target_func'], **task['args'])
-            future_to_task[future] = task
-
-        for future in as_completed(future_to_task):
-            task = future_to_task[future]
-            key = task['key']
-            try:
-                result = future.result()
-                if result:
-                    status_update(key, _("✅ 完成"))
-                else:
-                    overall_success = False
-                    status_update(key, _("🚫 已取消" if cancel_event and cancel_event.is_set() else "❌ 失败"))
-            except Exception as e:
+        try:
+            # 直接调用目标函数
+            result = task['target_func'](**task['args'])
+            if result:
+                status_update(key, _("✅ 完成"))
+            else:
                 overall_success = False
-                status_update(key, _("❌ 错误"))
-                logger.error(f"An exception occurred while processing {key}: {e}", exc_info=True)
+                status_update(key, _("🚫 已取消" if cancel_event and cancel_event.is_set() else "❌ 失败"))
+        except Exception as e:
+            overall_success = False
+            status_update(key, _("❌ 错误"))
+            logger.error(f"An exception occurred while processing {key}: {e}", exc_info=True)
 
     # 3. 最终总结
     if overall_success:
@@ -561,7 +545,7 @@ def run_build_blast_db_pipeline(
         status_callback: Optional[Callable[[str, str], None]] = None,
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
-    status_update = status_callback if status_callback else lambda key, msg: None  # <-- 新增
+    status_update = status_callback if status_callback else lambda key, msg: None
     progress = progress_callback if progress_callback else lambda p, m: None
 
     def check_cancel():
@@ -576,7 +560,6 @@ def run_build_blast_db_pipeline(
 
     progress(5, _("正在加载基因组源数据..."))
     if check_cancel(): logger.info(_("任务被取消。")); return False
-    # 修改: get_genome_data_sources 不再需要回调函数
     genome_sources = get_genome_data_sources(config)
     if not genome_sources:
         logger.error(_("未能加载基因组源数据。"))
@@ -620,47 +603,35 @@ def run_build_blast_db_pipeline(
     progress(20, _("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
     logger.info(_("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
     success_count = 0
+    completed_count = 0
 
-    max_workers = config.downloader.max_workers
+    for task_tuple in tasks_to_run:
+        if check_cancel():
+            break
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # file_key 在这里是 (compressed_file, db_fasta_path, db_type) 元组
-        future_to_task = {}
+        file_key = os.path.basename(task_tuple[0])
+        status_update(file_key, _("处理中..."))
 
-        for task_tuple in tasks_to_run:
-            if check_cancel(): break
-            # 使用文件名作为UI的唯一标识符
-            file_key = os.path.basename(task_tuple[0])
-            status_update(file_key, _("排队中..."))
-            future = executor.submit(_process_single_blast_db, *task_tuple, cancel_event)
-            future_to_task[future] = file_key
-
-        completed_count = 0
-        for future in as_completed(future_to_task):
-            file_key = future_to_task[future]
-            status_update(file_key, _("处理中..."))
-            try:
-                result_msg = future.result()
-                logger.info(f"Task {file_key}: {result_msg}")
-                if "成功" in result_msg:
-                    success_count += 1
-                    status_update(file_key, _("✅ 完成"))
-                else:
-                    status_update(file_key, _("⚠️ 警告"))  # 或 "❌ 失败"
-            except FileNotFoundError as e:  # 特殊处理makeblastdb找不到的情况
-                logger.error(e)
-                # 这种严重错误应该终止所有任务
-                if cancel_event: cancel_event.set()
-                progress(100, _("错误: makeblastdb 未找到!"))
-                return False
-            except Exception as e:
-                logger.error(f"An exception occurred while processing {file_key}: {e}")
-                status_update(file_key, _("❌ 错误"))
-
-            finally:
-                completed_count += 1
-                task_progress = 20 + int((completed_count / total_tasks) * 75)
-                progress(task_progress, _("进度 ({}/{}) - {}").format(completed_count, total_tasks, file_key))
+        try:
+            result_msg = _process_single_blast_db(*task_tuple, cancel_event)
+            logger.info(f"Task {file_key}: {result_msg}")
+            if "成功" in result_msg:
+                success_count += 1
+                status_update(file_key, _("✅ 完成"))
+            else:
+                status_update(file_key, _("⚠️ 警告"))
+        except FileNotFoundError as e:
+            logger.error(e)
+            if cancel_event: cancel_event.set()
+            progress(100, _("错误: makeblastdb 未找到!"))
+            return False
+        except Exception as e:
+            logger.error(f"An exception occurred while processing {file_key}: {e}")
+            status_update(file_key, _("❌ 错误"))
+        finally:
+            completed_count += 1
+            task_progress = 20 + int((completed_count / total_tasks) * 75)
+            progress(task_progress, _("进度 ({}/{}) - {}").format(completed_count, total_tasks, file_key))
 
     logger.info(_("BLAST数据库预处理完成。成功创建 {}/{} 个数据库。").format(success_count, total_tasks))
     progress(100, _("预处理完成。"))

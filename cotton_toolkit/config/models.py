@@ -268,7 +268,7 @@ class GenomeSourcesConfig(BaseModel):
                 IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_genes2IPR.xlsx.gz",
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-orthologs.xlsx.gz",
-                homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz",
+                homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz",
                 gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{5}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
@@ -287,10 +287,5 @@ class GenomeSourcesConfig(BaseModel):
                 gene_id_regex=r".*?(Gohir\.(?:[AD]\d{2}G\d{6}|\dZ\d{6})(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
-            "Arabidopsis_thaliana": GenomeSourceItem(
-                species_name="Arabidopsis thaliana",
-                genome_type="arabidopsis",
-                gene_id_regex=r"(AT[1-5MC]G\d{5}(?:\.\d+)?)",
-                bridge_version=None
-            )
+
         }

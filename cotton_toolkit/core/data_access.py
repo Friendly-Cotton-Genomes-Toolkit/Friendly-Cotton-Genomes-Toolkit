@@ -1,35 +1,98 @@
-﻿# cotton_toolkit/tools/data_loader.py
-import gzip
+﻿import gzip
 import io
+import logging
+import os
 import sqlite3
 import threading
-
-import pandas as pd
-import os
-from typing import Optional, Callable
+from typing import List, Tuple, Optional, Callable
 import logging
+import pandas as pd
 
-from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit import PREPROCESSED_DB_NAME
+from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
+from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.convertXlsx2csv import _find_header_row
 from cotton_toolkit.utils.file_utils import _sanitize_table_name
+from cotton_toolkit.utils.gene_utils import logger, _, resolve_gene_ids, _to_gene_id
+
 
 try:
-    import builtins
-    _ = builtins._
-except (AttributeError, ImportError):
-    def _(text: str) -> str:
-        return text
+    from builtins import _
+except ImportError:
+    _ = lambda s: str(s)
 
-# 修改: 创建 logger 实例
-logger = logging.getLogger("cotton_toolkit.tools.data_loader")
+logger = logging.getLogger("cotton_toolkit.pipeline.data_access")
+
+
+def get_sequences_for_gene_ids(
+        config: MainConfig,
+        source_assembly_id: str,
+        gene_ids: List[str]
+) -> Tuple[Optional[str], List[str]]:
+    """
+    根据基因ID列表，从预处理好的SQLite数据库中获取FASTA格式的CDS序列。
+    【已更新】现在会先调用智能ID解析器来统一ID格式。
+    """
+    try:
+        # --- 核心修改：在最开始调用ID解析器 ---
+        logger.info(_("正在智能解析 {} 个输入基因ID...").format(len(gene_ids)))
+        resolved_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids)
+        logger.info(_("ID解析完成，得到 {} 个标准化的ID用于查询。").format(len(resolved_gene_ids)))
+    except (ValueError, FileNotFoundError) as e:
+        logger.error(e)
+        return None, gene_ids
+
+    # --- 数据库和表名准备 (这部分代码在 resolve_gene_ids 中也存在，但在这里仍然需要) ---
+    project_root = os.path.dirname(config.config_file_abs_path_)
+    db_path = os.path.join(project_root, "genomes", "genomes.db")
+    genome_sources = get_genome_data_sources(config)
+    source_genome_info = genome_sources.get(source_assembly_id)
+    cds_file_path = get_local_downloaded_file_path(config, source_genome_info, 'predicted_cds')
+    table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=source_genome_info.version_id)
+
+    fasta_parts = []
+    found_genes_map = {}
+
+    try:
+        logging.debug(db_path)
+        with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
+            cursor = conn.cursor()
+            # --- 逻辑简化：现在只需进行一次批量查询 ---
+            placeholders = ','.join('?' for _V in resolved_gene_ids)
+            query = f'SELECT Gene, Seq FROM "{table_name}" WHERE Gene IN ({placeholders})'
+            cursor.execute(query, resolved_gene_ids)
+
+            for gene, seq in cursor.fetchall():
+                # 因为ID已经标准化，我们只需将原始ID（未标准化的）映射到找到的序列上
+                original_id = _to_gene_id(gene)  # 以基础ID为准进行反向映射
+                if original_id in gene_ids or gene in gene_ids:
+                    found_genes_map[original_id] = seq
+
+    except sqlite3.Error as e:
+        logger.error(_("查询序列时发生数据库错误: {}").format(e))
+        return None, gene_ids
+
+    # 构建FASTA字符串时，使用原始ID以保持用户输入的一致性
+    for original_gid in gene_ids:
+        base_gid = _to_gene_id(original_gid)
+        if base_gid in found_genes_map:
+            fasta_parts.append(f">{original_gid}\n{found_genes_map[base_gid]}")
+
+    all_input_base_ids = set(_to_gene_id(gid) for gid in gene_ids)
+    not_found_genes = [gid for gid in all_input_base_ids if gid not in found_genes_map]
+
+    if not_found_genes:
+        logger.warning(_("警告: 在数据库中未能找到 {} 个基因的序列。").format(len(not_found_genes)))
+
+    fasta_string = "\n".join(fasta_parts)
+    return fasta_string, not_found_genes
 
 
 def load_annotation_data(
         file_path: str
 ) -> Optional[pd.DataFrame]:
     """
-    【简化版】加载一个标准化的注释CSV文件。
+    加载一个标准化的注释CSV文件。
     此函数假定输入的CSV文件第一行是表头。
     """
     if not os.path.exists(file_path):

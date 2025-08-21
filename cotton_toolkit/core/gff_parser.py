@@ -305,7 +305,6 @@ def get_gene_info_by_ids(
         progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> pd.DataFrame:
     """
-    【已优化为多线程版】
     根据基因ID列表，从GFF数据库中批量并行查询基因信息，并报告进度。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
