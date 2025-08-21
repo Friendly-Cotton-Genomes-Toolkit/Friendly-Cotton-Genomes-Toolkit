@@ -10,7 +10,6 @@ from cotton_toolkit.config.loader import get_genome_data_sources, get_local_down
 from cotton_toolkit.config.models import MainConfig, HomologySelectionCriteria
 from cotton_toolkit.pipelines.decorators import pipeline_task
 from cotton_toolkit.tools.annotator import Annotator
-from cotton_toolkit.core.data_access import create_homology_df
 from cotton_toolkit.tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
 from cotton_toolkit.tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, \
     plot_enrichment_cnet, _generate_r_script_and_data

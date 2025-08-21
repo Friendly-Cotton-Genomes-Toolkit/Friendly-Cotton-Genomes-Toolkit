@@ -13,7 +13,6 @@ from typing import Optional, Dict, Any, Callable
 import tkinter as tk
 import ttkbootstrap as ttkb
 
-
 try:
     from ctypes import windll, byref, sizeof, c_int
 except ImportError:
@@ -25,8 +24,8 @@ from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
 from ui.ui_manager import UIManager, determine_initial_theme
 from ui.tabs import (
-    AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab,SequenceExtractionTab,
-    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab
+    AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab, SequenceExtractionTab,
+    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab, HomologyConversionTab
 )
 
 try:
@@ -49,15 +48,17 @@ class CottonToolkitApp(ttkb.Window):
 
     TOOL_TAB_ORDER = [
         "download", "annotation", "enrichment", "sequence_extraction",
-        "genome_identifier", "homology", "locus_conversion", "gff_query",
-        "blast", "ai_assistant"
+        "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion", "gff_query",
+        "blast", "ai_assistant",
     ]
 
     @property
     def TAB_TITLE_KEYS(self):
         return {
-            "download": _("数据下载"), "annotation": _("功能注释"),  "sequence_extraction": _("CDS序列提取"),"enrichment": _("富集分析与绘图"),
-           "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
+            "download": _("数据下载"), "annotation": _("功能注释"), "sequence_extraction": _("CDS序列提取"),
+            "enrichment": _("富集分析与绘图"),
+            "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
+            "arabidopsis_conversion":_("棉花-拟南芥互转"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
         }
@@ -95,7 +96,7 @@ class CottonToolkitApp(ttkb.Window):
         # 1. 立即设置所有字体。这会产生第二条日志。
         self._setup_fonts()
 
-            # 2. 初始化所有变量和管理器
+        # 2. 初始化所有变量和管理器
         self.placeholder_color = (self.style.colors.secondary, self.style.colors.secondary)
         self.default_text_color = self.style.lookup('TLabel', 'foreground')
         self.secondary_text_color = self.style.lookup('TLabel', 'foreground')
@@ -246,6 +247,7 @@ class CottonToolkitApp(ttkb.Window):
         except Exception as e:
             # 捕获其他潜在错误，例如窗口句柄失效等
             self.logger.warning(_("配置标题栏颜色时发生未知错误: {}").format(e))
+
     def apply_theme_and_update_dependencies(self, theme_name: str):
         try:
             # 步骤1: 应用新的ttkbootstrap主题
@@ -684,6 +686,7 @@ class CottonToolkitApp(ttkb.Window):
             "enrichment": EnrichmentTab,
             "genome_identifier": GenomeIdentifierTab,
             "homology": HomologyTab,
+            "arabidopsis_conversion":HomologyConversionTab,
             "locus_conversion": LocusConversionTab,
             "gff_query": GFFQueryTab,
             "blast": BlastTab,
@@ -744,7 +747,6 @@ class CottonToolkitApp(ttkb.Window):
                     self.logger.debug(f"Successfully refreshed tab: {key}")
                 except Exception as e:
                     self.logger.error(_("刷新选项卡 {key} 时失败: {}").format(e))
-
 
     def _update_wraplength(self, event):
         wraplength = event.width - 20
@@ -924,7 +926,6 @@ class CottonToolkitApp(ttkb.Window):
 
         except Exception as e:
             self.logger.error(self._("配置日志级别时出错: {}").format(e))
-
 
     def restart_app(self):
         self.logger.info(_("Application restart requested by user."))

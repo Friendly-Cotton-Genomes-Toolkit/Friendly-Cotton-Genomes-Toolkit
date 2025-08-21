@@ -15,8 +15,9 @@ from cotton_toolkit.core.gff_parser import get_genes_in_region, _apply_regex_to_
 from cotton_toolkit.pipelines.decorators import pipeline_task
 from cotton_toolkit.pipelines.blast import run_blast_pipeline
 from cotton_toolkit.utils.config_overrides_utils import _update_config_from_overrides
-from cotton_toolkit.utils.gene_utils import resolve_gene_ids, parse_gene_id
-from cotton_toolkit.core.data_access import get_sequences_for_gene_ids
+from cotton_toolkit.utils.gene_utils import resolve_gene_ids, parse_gene_id, _to_transcript_id, _to_gene_id
+from cotton_toolkit.core.data_access import get_sequences_for_gene_ids, get_homology_by_gene_ids, \
+    resolve_arabidopsis_ids_from_homology_db
 
 try:
     from builtins import _
@@ -65,6 +66,107 @@ def _homology_blast_worker(
         max_target_seqs=criteria.top_n,
         cancel_event=cancel_event
     )
+
+
+@pipeline_task(_("拟南芥基因转换"))
+def run_homology_conversion(
+        config: MainConfig,
+        assembly_id: str,
+        gene_ids: List[str],
+        conversion_direction: str,
+        output_path: str,
+        cancel_event: Optional[threading.Event] = None,
+        **kwargs
+) -> Optional[str]:
+    """
+    【最终版】采用非对称逻辑：
+    - 棉花->拟南芥: 使用“基础ID”进行智能匹配，确保结果与输入行一一对应。
+    - 拟南芥->棉花: 直接输出数据库中找到的所有原始匹配项。
+    """
+    progress = kwargs.get('progress_callback', lambda p, m: None)
+    check_cancel = kwargs.get('check_cancel', lambda: False)
+
+    progress(0, _("正在准备同源转换..."))
+    if check_cancel(): return None
+
+    # 步骤 1: 智能解析输入ID，得到用于查询的ID列表
+    query_ids = []
+    if conversion_direction == 'cotton_to_ath':
+        try:
+            progress(5, _("正在智能解析棉花基因ID..."))
+            unique_gene_ids = sorted(list(set(gene_ids)))
+            query_ids = resolve_gene_ids(config, assembly_id, unique_gene_ids)
+        except (ValueError, FileNotFoundError) as e:
+            logger.error(e);
+            return None
+    else:  # ath_to_cotton
+        try:
+            progress(5, _("正在智能解析拟南芥基因ID..."))
+            query_ids, _e = resolve_arabidopsis_ids_from_homology_db(config, assembly_id, gene_ids)
+        except (ValueError, FileNotFoundError) as e:
+            logger.error(e);
+            return None
+
+    if not query_ids:
+        logger.error(_("解析后输入基因列表为空。"));
+        return None
+
+    progress(20, _("正在从数据库获取同源关系..."))
+    if check_cancel(): return None
+
+    # 步骤 2: 调用数据访问函数获取同源数据
+    homology_df = get_homology_by_gene_ids(
+        config=config,
+        assembly_id=assembly_id,
+        gene_ids=query_ids,
+        direction=conversion_direction
+    )
+
+    if check_cancel(): return None
+
+    # 步骤 3: 根据转换方向，执行不同的结果处理逻辑
+    progress(80, _("正在整理转换结果..."))
+
+    if conversion_direction == 'cotton_to_ath':
+        # --- 棉花 -> 拟南芥：执行智能合并，确保结果与输入一一对应 ---
+        result_df = pd.DataFrame({'Input_ID': gene_ids})
+        if homology_df.empty:
+            result_df['Homolog_ID'] = 'N/A'
+            result_df['Description'] = 'N/A'
+        else:
+            homology_df.rename(columns={'Query': 'Cotton_ID', 'Match': 'Arabidopsis_ID'}, inplace=True)
+            result_df['base_id'] = result_df['Input_ID'].astype(str).apply(_to_gene_id)
+            homology_df['base_id'] = homology_df['Cotton_ID'].astype(str).apply(_to_gene_id)
+            homology_df.drop_duplicates(subset=['base_id'], keep='first', inplace=True)
+            result_df = pd.merge(result_df, homology_df, on='base_id', how='left')
+            result_df = result_df[['Input_ID', 'Arabidopsis_ID', 'Description']]
+            result_df.rename(columns={'Input_ID': 'Cotton_ID', 'Arabidopsis_ID': 'Homolog_ID'}, inplace=True)
+    else:
+        # --- 拟南芥 -> 棉花：直接输出数据库查询结果 ---
+        logger.info(_("直接输出从数据库中找到的 {} 条同源匹配。").format(len(homology_df)))
+        if homology_df.empty:
+            result_df = pd.DataFrame(columns=['Homolog_ID(Cotton)', 'Input_ID(Arabidopsis)', 'Description'])
+        else:
+            result_df = homology_df.rename(columns={
+                'Query': 'Homolog_ID(Cotton)',
+                'Match': 'Input_ID(Arabidopsis)',
+                'Description': 'Description'
+            })
+
+    result_df.fillna('N/A', inplace=True)
+
+    # 步骤 4: 保存到文件
+    progress(95, _("正在保存结果文件..."))
+    try:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        result_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+        final_message = _("同源基因转换成功！结果已保存至: {}").format(output_path)
+        logger.info(final_message)
+        progress(100, _("转换完成。"))
+        return final_message
+    except Exception as e:
+        logger.error(_("保存结果文件时出错: {}").format(e));
+        return None
 
 
 @pipeline_task(_("同源基因映射"))

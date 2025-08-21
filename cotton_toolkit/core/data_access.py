@@ -4,6 +4,7 @@ import logging
 import os
 import sqlite3
 import threading
+from random import sample
 from typing import List, Tuple, Optional, Callable
 import logging
 import pandas as pd
@@ -13,8 +14,7 @@ from cotton_toolkit.config.loader import get_genome_data_sources, get_local_down
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.core.convertXlsx2csv import _find_header_row
 from cotton_toolkit.utils.file_utils import _sanitize_table_name
-from cotton_toolkit.utils.gene_utils import logger, _, resolve_gene_ids, _to_gene_id
-
+from cotton_toolkit.utils.gene_utils import logger, _, resolve_gene_ids, _to_gene_id, _to_transcript_id
 
 try:
     from builtins import _
@@ -125,122 +125,127 @@ def load_annotation_data(
         return None
 
 
-def create_homology_df(
+def get_homology_by_gene_ids(
         config: MainConfig,
-        file_path: str,
-        progress_callback: Optional[Callable] = None,
-        cancel_event: Optional[threading.Event] = None
+        assembly_id: str,
+        gene_ids: List[str],
+        direction: str
 ) -> pd.DataFrame:
     """
-    智能加载同源数据到Pandas DataFrame。
-
-    该函数实现了两级加载策略以提高性能和鲁棒性：
-    1.  **快速路径 (首选)**: 尝试从一个预处理好的、集中的SQLite数据库中加载数据。
-        这个数据库路径被硬编码为 `genomes/genomes.db`。
-    2.  **回退路径 (兼容)**: 如果从数据库加载失败（例如，数据库不存在、表不存在或发生任何错误），
-        它会自动切换回原始的、较慢的文件解析模式，直接读取并解析 .xlsx, .txt, .gz 等原始文件。
-
-    Args:
-        config (MainConfig): 主配置对象，用于定位项目的根目录。
-        file_path (str): 原始同源数据文件的路径 (例如 '.../data/Garb_homology_ath.txt.gz')。
-        progress_callback (Optional[Callable]): 用于更新进度的回调函数。
-        cancel_event (Optional[threading.Event]): 用于中途取消操作的线程事件。
-
-    Returns:
-        pd.DataFrame: 加载了同源数据的DataFrame，如果取消或失败则返回空的DataFrame。
+    从数据库的同源表中查询棉花与拟南芥的对应关系。
     """
-    progress = progress_callback if progress_callback else lambda p, m: None
+    if not gene_ids:
+        return pd.DataFrame()
 
-    # --- 快速路径：优先尝试从SQLite数据库读取 ---
+    project_root = os.path.dirname(config.config_file_abs_path_)
+    db_path = os.path.join(project_root, "genomes", "genomes.db")
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(_("错误: 预处理数据库 'genomes.db' 未找到。"))
+
+    genome_sources = get_genome_data_sources(config)
+    genome_info = genome_sources.get(assembly_id)
+    homology_url = getattr(genome_info, 'homology_ath_url', None)
+    if not homology_url:
+        raise ValueError(_("错误: 基因组 '{}' 的配置中未定义 'homology_ath_url'。").format(assembly_id))
+
+    table_name = _sanitize_table_name(os.path.basename(homology_url), version_id=assembly_id)
+    logger.debug(f"[DataAccess] Determined table name: {table_name}")  # DEBUG
+
     try:
-        # 1. 根据config文件的位置动态确定项目根目录，并构建数据库的绝对路径
-        project_root = os.path.dirname(config.config_file_abs_path_)
-        db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
-
-        # 2. 根据输入的文件名，生成对应的数据库表名
-        version_id = os.path.basename(os.path.dirname(file_path))
-        table_name = _sanitize_table_name(os.path.basename(file_path), version_id=version_id)
-
-        # 3. 检查数据库文件是否存在，不存在则直接触发回退
-        if not os.path.exists(db_path):
-            raise FileNotFoundError(f"SQLite database not found at {db_path}")
-
-        logger.info(f"正在尝试从SQLite数据库 '{PREPROCESSED_DB_NAME}' 的表 '{table_name}' 中快速加载...")
-        progress(10, "正在连接到预处理数据库...")
-        if cancel_event and cancel_event.is_set(): return pd.DataFrame()
-
-        # 4. 连接数据库并执行查询
-        with sqlite3.connect(db_path) as conn:
-            # 检查表是否存在，避免因表不存在而报错
+        with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
             if cursor.fetchone() is None:
-                raise ValueError(f"Table '{table_name}' not found in the database.")
+                raise ValueError(_("错误: 在数据库中找不到表 '{}'。").format(table_name))
 
-            # 使用pandas直接从SQL查询结果创建DataFrame
-            progress(50, f"正在从表 '{table_name}' 读取数据...")
-            df = pd.read_sql_query(f'SELECT * FROM "{table_name}"', conn)
-            progress(100, "从数据库加载成功。")
-            logger.info("成功从SQLite数据库加载数据。")
+            if direction == 'cotton_to_ath':
+                placeholders = ','.join('?' for _f in gene_ids)
+                query = f'SELECT Query, Match, Description FROM "{table_name}" WHERE Query IN ({placeholders})'
+                params = gene_ids
+            else:  # ath_to_cotton
+                base_gene_ids = sorted(list(set(_to_gene_id(gid) for gid in gene_ids)))
+                if not base_gene_ids: return pd.DataFrame()
+
+                where_clauses = " OR ".join(['Match LIKE ?' for d_ in base_gene_ids])
+                query = f'SELECT Query, Match, Description FROM "{table_name}" WHERE {where_clauses}'
+                params = [f'{base_id}%' for base_id in base_gene_ids]
+
+            logger.debug(f"[DataAccess] Executing SQL query: {query}")  # DEBUG
+            logger.debug(f"[DataAccess] With {len(params)} parameters: {params[:20]}...")  # DEBUG (只显示前20个)
+
+            df = pd.read_sql_query(query, conn, params=params)
+
+            logger.debug(f"[DataAccess] Query returned {len(df)} rows.")  # DEBUG
+            if not df.empty:
+                logger.debug(f"[DataAccess] First 5 rows from DB:\n{df.head().to_string()}")  # DEBUG
+
             return df
 
     except Exception as e:
-        # 如果在上述任何步骤中出现异常，记录警告并准备执行回退逻辑
-        logger.warning(f"无法从SQLite数据库加载 ({e})。将回退到直接解析原始文件: {os.path.basename(file_path)}")
+        logger.error(_("查询同源数据库时出错: {}").format(e))
+        return pd.DataFrame()
 
-    # --- 回退路径：直接解析原始文件 (兼容旧模式) ---
-    progress(0, f"回退模式：正在打开文件: {os.path.basename(file_path)}...")
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"同源文件未找到: {file_path}")
 
-    lowered_path = file_path.lower()
-    header_keywords = ['Query', 'Match', 'Score', 'Exp', 'PID', 'evalue', 'identity']
 
-    with open(file_path, 'rb') as f_raw:
-        is_gz = lowered_path.endswith('.gz')
-        # 根据是否为 .gz 文件选择不同的打开方式
-        file_obj = gzip.open(f_raw, 'rb') if is_gz else f_raw
-        try:
-            if cancel_event and cancel_event.is_set(): return pd.DataFrame()
 
-            # 判断是Excel文件还是文本文件
-            progress(20, "正在解析文件结构...")
-            if lowered_path.endswith(('.xlsx', '.xlsx.gz', '.xls', '.xls.gz')):
-                # --- Excel文件处理逻辑 ---
-                xls = pd.ExcelFile(file_obj)
-                all_sheets_data = []
-                num_sheets = len(xls.sheet_names)
-                for i, sheet_name in enumerate(xls.sheet_names):
-                    if cancel_event and cancel_event.is_set():
-                        logger.info("在处理Excel工作表时请求取消。")
-                        return pd.DataFrame()
+def resolve_arabidopsis_ids_from_homology_db(
+        config: MainConfig,
+        assembly_id: str,
+        gene_ids: List[str]
+) -> Tuple[List[str], Optional[str]]:
+    """
+    【新增】模仿 resolve_gene_ids 的逻辑，但专门用于从同源表中智能解析拟南芥ID。
 
-                    progress(20 + int(60 * (i / num_sheets)), f"正在处理工作表: {sheet_name}...")
-                    preview_df = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=5)
-                    header_row_index = _find_header_row(preview_df, header_keywords)
+    返回一个元组: (用于查询的ID列表, 探测到的处理模式)
+    """
+    if not gene_ids:
+        return [], None
 
-                    if header_row_index is not None:
-                        sheet_df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index)
-                        sheet_df.dropna(how='all', inplace=True)
-                        all_sheets_data.append(sheet_df)
+    project_root = os.path.dirname(config.config_file_abs_path_)
+    db_path = os.path.join(project_root, "genomes", "genomes.db")
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(_("错误: 预处理数据库 'genomes.db' 未找到。"))
 
-                if not all_sheets_data:
-                    raise ValueError("在Excel文件的任何工作表中都未能找到有效的表头或数据。")
+    genome_sources = get_genome_data_sources(config)
+    genome_info = genome_sources.get(assembly_id)
+    homology_url = getattr(genome_info, 'homology_ath_url', None)
+    if not homology_url:
+        raise ValueError(_("错误: 基因组 '{}' 的配置中未定义 'homology_ath_url'。").format(assembly_id))
+    table_name = _sanitize_table_name(os.path.basename(homology_url), version_id=assembly_id)
 
-                if cancel_event and cancel_event.is_set(): return pd.DataFrame()
-                progress(80, "正在合并所有工作表...")
-                return pd.concat(all_sheets_data, ignore_index=True)
-            else:
-                # --- 文本文件 (txt, tsv等) 处理逻辑 ---
-                if cancel_event and cancel_event.is_set(): return pd.DataFrame()
-                progress(50, "正在读取文本数据...")
-                # 使用io.TextIOWrapper确保正确处理编码，sep=r'\s+'可以匹配一个或多个空白字符（包括空格和制表符）
-                return pd.read_csv(io.TextIOWrapper(file_obj, encoding='utf-8', errors='ignore'), sep=r'\s+',
-                                   engine='python', comment='#')
-        except Exception as e:
-            logger.error(f"读取同源文件 '{file_path}' 时出错: {e}")
-            raise
-        finally:
-            progress(100, "文件加载完成。")
-            if is_gz and hasattr(file_obj, 'close'):
-                file_obj.close()
+    processing_mode = None
+    query_ids = []
+
+    with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+        if cursor.fetchone() is None:
+            raise ValueError(_("错误: 在数据库中找不到表 '{}'。").format(table_name))
+
+        def _check_ath_id_exists(gid):
+            query = f'SELECT 1 FROM "{table_name}" WHERE Match = ? LIMIT 1'
+            cursor.execute(query, (gid,))
+            return cursor.fetchone() is not None
+
+        # 探测逻辑：随机取样，判断输入是基因还是转录本格式
+        samples = sample(gene_ids, min(len(gene_ids), 2))
+        for sample_id in samples:
+            if _check_ath_id_exists(_to_transcript_id(sample_id)):
+                processing_mode = 'transcript';
+                break
+            elif _check_ath_id_exists(_to_gene_id(sample_id)):
+                processing_mode = 'gene';
+                break
+
+        # 根据探测到的模式，格式化整个ID列表用于查询
+        if not processing_mode:
+            logger.warning(_("无法在数据库中匹配提供的拟南芥ID样本，将使用原始ID进行查询。"))
+            query_ids = sorted(list(set(gene_ids)))
+        elif processing_mode == 'transcript':
+            logger.info(_("智能解析：探测到数据库匹配拟南芥转录本ID。"))
+            query_ids = sorted(list(set([_to_transcript_id(gid) for gid in gene_ids])))
+        elif processing_mode == 'gene':
+            logger.info(_("智能解析：探测到数据库匹配拟南芥基础基因ID。"))
+            query_ids = sorted(list(set([_to_gene_id(gid) for gid in gene_ids])))
+
+    return query_ids, processing_mode

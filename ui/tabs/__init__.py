@@ -11,7 +11,7 @@ from .homology_tab import HomologyTab
 from .locus_conversion_tab import LocusConversionTab
 from .blast_tab import BlastTab
 from .sequence_extraction_tab import SequenceExtractionTab
-
+from .arabidopsis_homology_tab import HomologyConversionTab
 
 # 定义此包的公共API，当使用 from ui.tabs import * 时会导入这些
 __all__ = [
@@ -26,4 +26,5 @@ __all__ = [
     "LocusConversionTab",
     "BlastTab",
     "SequenceExtractionTab",
+    "HomologyConversionTab"
 ]
