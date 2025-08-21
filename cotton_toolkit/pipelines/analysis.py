@@ -286,6 +286,36 @@ def run_locus_conversion(
             return _("在指定区域未找到可转换的同源基因。")
 
         # 步骤 2: 获取目标基因的坐标信息
+
+        progress(82, _("正在查询源基因的坐标..."))
+        if check_cancel(): return None
+
+        source_ids_to_query = homology_results_df['Query_ID'].dropna().unique().tolist()
+        logger.info(_("正在为 {} 个唯一的源基因ID查询GFF信息。").format(len(source_ids_to_query)))
+
+        genome_sources = get_genome_data_sources(config)
+        source_genome_info = genome_sources.get(source_assembly_id)
+        source_gff_path = get_local_downloaded_file_path(config, source_genome_info, 'gff3')
+        gff_db_dir = os.path.join(os.path.dirname(config.config_file_abs_path_), GFF3_DB_DIR)
+
+        source_gene_info_df = get_gene_info_by_ids(
+            assembly_id=source_assembly_id,
+            gff_filepath=source_gff_path,
+            gene_ids=source_ids_to_query
+        )
+
+        if not source_gene_info_df.empty:
+            source_gene_info_df['Query_Loci'] = source_gene_info_df.apply(
+                lambda row: f"{row['seqid']}:{row['start']}-{row['end']}", axis=1
+            )
+            homology_results_df = pd.merge(
+                homology_results_df,
+                source_gene_info_df[['id', 'Query_Loci']],
+                left_on='Query_ID',
+                right_on='id',
+                how='left'
+            ).drop(columns=['id'])
+
         progress(85, _("正在查询目标基因的坐标..."))
         if check_cancel(): return None
 
@@ -298,15 +328,12 @@ def run_locus_conversion(
                 len(homology_results_df['Hit_ID'].unique()),
                 len(base_gene_ids_to_query)))
 
-        genome_sources = get_genome_data_sources(config)
         target_genome_info = genome_sources.get(target_assembly_id)
         gff_path = get_local_downloaded_file_path(config, target_genome_info, 'gff3')
-        gff_db_dir = os.path.join(os.path.dirname(config.config_file_abs_path_), GFF3_DB_DIR)
 
         target_gene_info_df = get_gene_info_by_ids(
             assembly_id=target_assembly_id,
             gff_filepath=gff_path,
-            db_storage_dir=gff_db_dir,
             gene_ids=base_gene_ids_to_query
         )
 
@@ -314,19 +341,36 @@ def run_locus_conversion(
             logger.warning(_("找到了同源基因ID，但无法在目标GFF中查询到它们的坐标信息。"))
             final_df = homology_results_df
         else:
+
+            target_gene_info_df['Hit_Loci'] = target_gene_info_df.apply(
+                lambda row: f"{row['seqid']}:{row['start']}-{row['end']}", axis=1
+            )
+
             # 步骤 3: 合并BLAST结果和目标坐标信息
             progress(95, _("正在合并BLAST结果与坐标信息..."))
-            # 1. 重命名GFF查询结果的 'id' 列以匹配我们的临时列名
             target_gene_info_df = target_gene_info_df.rename(columns={'id': 'base_gene_id_for_lookup'})
-            # 2. 使用这个共有的基础ID列进行合并
             final_df = pd.merge(homology_results_df, target_gene_info_df, on='base_gene_id_for_lookup', how='left')
-            # 3. 移除临时的辅助列，保持输出整洁
             final_df = final_df.drop(columns=['base_gene_id_for_lookup'])
 
         # 步骤 4: 保存最终结果
+        cols = final_df.columns.tolist()
+        if 'Query_Loci' in cols:
+            cols.remove('Query_Loci')
+            if 'Query_ID' in cols:
+                query_id_index = cols.index('Query_ID')
+                cols.insert(query_id_index + 1, 'Query_Loci')
+
+        if 'Hit_Loci' in cols:
+            cols.remove('Hit_Loci')
+            if 'Hit_ID' in cols:
+                hit_id_index = cols.index('Hit_ID')
+                cols.insert(hit_id_index + 1, 'Hit_Loci')
+
+        final_df = final_df[cols]
+
+        # 步骤 5: 保存最终结果
         logger.info(_("正在将位点转换结果保存到: {}").format(output_path))
         final_df.to_csv(output_path, index=False, encoding='utf-8-sig')
-
         progress(100, _("位点转换完成！"))
         success_message = _("位点转换结果已成功保存到:\n{}").format(os.path.abspath(output_path))
         logger.info(success_message)
@@ -505,7 +549,7 @@ def run_gff_lookup(
 
             results_df = get_gene_info_by_ids(
                 assembly_id=assembly_id, gff_filepath=gff_file_path,
-                db_storage_dir=gff_db_dir, gene_ids=final_ids_to_query,
+                gene_ids=final_ids_to_query,
                 force_db_creation=force_creation,
                 progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询基因ID: {}").format(m))
             )
