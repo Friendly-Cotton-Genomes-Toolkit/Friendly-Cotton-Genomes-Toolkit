@@ -109,7 +109,7 @@ class EventHandler:
 
     def on_closing(self):
         """
-        【已修改】处理主窗口关闭事件，增加退出确认。
+        处理主窗口关闭事件，增加退出确认。
         """
         _ = self.app._
         if self.app.active_task_name:
@@ -168,14 +168,11 @@ class EventHandler:
                 app.ui_manager.translator = app._
                 self._ = app._
 
-                # 步骤 3: 发送一个消息，通知主线程重新翻译整个UI
-                app.message_queue.put(("retranslate_ui", None))
-
                 # 加载后续数据
                 app.message_queue.put(("progress", (30, app._("正在加载基因组源数据..."))))
                 genome_sources = get_genome_data_sources(loaded_config)
             else:
-                logger.warning("未找到 config.yml，将使用默认语言启动。")
+                logger.warning(_("未找到 config.yml，将使用默认语言启动。"))
 
             app.message_queue.put(("progress", (80, app._("启动完成准备..."))))
             startup_data = {"config": loaded_config, "genome_sources": genome_sources,

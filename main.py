@@ -9,6 +9,8 @@ import traceback
 import tkinter as tk
 from tkinter import messagebox
 
+import yaml
+
 from cotton_toolkit.config.compatibility_check import check_config_compatibility, MainConfig
 
 
@@ -42,11 +44,10 @@ def show_uncaught_exception(exc_type, exc_value, exc_tb):
     sys.exit(1)
 
 
-# 2. --- 设置全局钩子 (保持不变) ---
+# 2. --- 设置全局钩子 ---
 sys.excepthook = show_uncaught_exception
 
 
-# 3. --- 【核心修正】修改 main 函数 ---
 def main():
     """
     主函数，用于设置环境、创建并运行应用实例。
@@ -57,7 +58,7 @@ def main():
     from cotton_toolkit.utils.logger import setup_global_logger
 
     # --- 步骤 1: 在创建UI前，加载配置并确定语言 ---
-    DEFAULT_LANGUAGE = 'zh-hans'
+    DEFAULT_LANGUAGE = 'en'
     DEFAULT_CONFIG_PATH = 'config.yml'
     lang_code = DEFAULT_LANGUAGE
 
@@ -88,8 +89,8 @@ def main():
         else:
              # 在加载UI设置前尝试读取
             try:
-                with open("ui_settings.json", "r") as f:
-                    ui_settings = json.load(f)
+                with open("config.yml", "r") as f:
+                    ui_settings = yaml.load(f, Loader=yaml.FullLoader)
                     lang_code = ui_settings.get("language", DEFAULT_LANGUAGE)
                     logging.info(f"UI settings file loaded. Startup language set to '{lang_code}'.")
             except (FileNotFoundError, json.JSONDecodeError):

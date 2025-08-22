@@ -61,7 +61,7 @@ class GFFQueryTab(BaseTab):
         self.gene_id_label.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 0))
 
         text_bg = self.app.style.lookup('TFrame', 'background')
-        # 【修复】移除了 text_fg 的获取和使用
+
         self.gff_query_genes_textbox = tk.Text(self.input_frame, wrap="word", height=10, font=self.app.app_font_mono,
                                                relief="flat", background=text_bg,
                                                insertbackground=self.app.style.lookup('TLabel', 'foreground'))
@@ -80,9 +80,12 @@ class GFFQueryTab(BaseTab):
 
         self.region_label = ttkb.Label(self.input_frame, text=_("或 输入染色体区域:"), font=self.app.app_font_bold)
         self.region_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
-        # 【修复】移除了 foreground=text_fg
-        self.gff_query_region_entry = ttkb.Entry(self.input_frame, font=self.app.app_font_mono)
+
+        self.gff_query_region_entry = tk.Text(self.input_frame, height=1, wrap="none", font=self.app.app_font_mono,
+                                              relief="flat", background=text_bg,
+                                              insertbackground=self.app.style.lookup('TLabel', 'foreground'))
         self.gff_query_region_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 10))
+
         self.gff_query_region_entry.after(10, lambda: self.app.ui_manager.add_placeholder(
             self.gff_query_region_entry,
             self.app.placeholders.get("gff_region", "...")
@@ -93,6 +96,9 @@ class GFFQueryTab(BaseTab):
         self.gff_query_region_entry.bind("<FocusOut>",
                                          lambda e: self.app.ui_manager._handle_focus_out(e, self.gff_query_region_entry,
                                                                                          "gff_region"))
+
+        # 阻止在单行模式的 Text 控件中按回车键换行
+        self.gff_query_region_entry.bind("<Return>", lambda e: "break")
 
         self.config_frame = ttkb.LabelFrame(main_frame, text=_("配置与输出"), bootstyle="secondary")
         self.config_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=10)
