@@ -51,10 +51,10 @@ class AnnotationTab(BaseTab):
         self.gene_id_label = ttk.Label(self.input_card, text=_("基因ID列表:"), font=self.app.app_font_bold)
         self.gene_id_label.grid(row=1, column=0, sticky="nw", padx=(10, 5), pady=10)
         text_bg = self.app.style.lookup('TFrame', 'background')
-        text_fg = self.app.style.lookup('TLabel', 'foreground')
         self.annotation_genes_textbox = tk.Text(self.input_card, height=10, font=self.app.app_font_mono, wrap="word",
-                                                relief="flat", background=text_bg, foreground=text_fg,
-                                                insertbackground=text_fg)
+                                                relief="flat", background=text_bg,
+                                                insertbackground=self.app.style.lookup('TLabel', 'foreground'))
+
         self.annotation_genes_textbox.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
 
         initial_placeholder_text = self.app.placeholders.get("genes_input", "...")

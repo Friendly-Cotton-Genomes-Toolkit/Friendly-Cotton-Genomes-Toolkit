@@ -504,10 +504,11 @@ class EventHandler:
         app = self.app
         _ = self.app._
         app.log_viewer_visible = not app.log_viewer_visible
-        if app.log_viewer_visible:
-            app.log_textbox.grid()
-        else:
-            app.log_textbox.grid_remove()
+        if hasattr(app, 'log_text_container'):
+            if app.log_viewer_visible:
+                app.log_text_container.grid()
+            else:
+                app.log_text_container.grid_remove()
         app.toggle_log_button.configure(text=_("隐藏日志") if app.log_viewer_visible else _("显示日志"))
 
     def clear_log_viewer(self):

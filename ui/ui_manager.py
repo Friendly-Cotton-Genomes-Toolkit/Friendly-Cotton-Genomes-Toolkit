@@ -230,12 +230,29 @@ class UIManager:
                                            command=app.event_handler.clear_log_viewer, bootstyle='danger');
         app.clear_log_button.pack(side="left")
 
-        log_bg = self.style.lookup('TFrame', 'background');
+        log_bg = self.style.lookup('TFrame', 'background')
         log_fg = self.style.lookup('TLabel', 'foreground')
-        app.log_textbox = tk.Text(app.log_viewer_frame, height=15, state="disabled", wrap="word", font=app.app_font,
+
+        log_text_container = ttkb.Frame(app.log_viewer_frame)
+        log_text_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        log_text_container.grid_rowconfigure(0, weight=1)
+        log_text_container.grid_columnconfigure(0, weight=1)
+
+        app.log_textbox = tk.Text(log_text_container, height=15, state="disabled", wrap="word", font=app.app_font,
                                   relief="flat", background=log_bg, foreground=log_fg)
-        app.log_textbox.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
-        if not app.log_viewer_visible: app.log_textbox.grid_remove()
+        app.log_textbox.grid(row=0, column=0, sticky="nsew")
+
+        # 创建并关联滚动条
+        app.log_scrollbar = ttkb.Scrollbar(log_text_container, orient="vertical", command=app.log_textbox.yview,
+                                           bootstyle="round")
+        app.log_scrollbar.grid(row=0, column=1, sticky="ns")
+        app.log_textbox['yscrollcommand'] = app.log_scrollbar.set
+
+        # 将容器而不是文本框本身设为初始隐藏
+        app.log_text_container = log_text_container
+        if not app.log_viewer_visible:
+            app.log_text_container.grid_remove()
+
         self._update_log_tag_colors()
         app.status_label = ttkb.Label(app.status_bar_frame, textvariable=app.latest_log_message_var, font=app.app_font,
                                       bootstyle="secondary")
@@ -260,15 +277,20 @@ class UIManager:
         app = self.app
         message = record.getMessage()
         level = record.levelname
+
         app.log_textbox.configure(state="normal")
-        if int(app.log_textbox.index('end-1c').split('.')[0]) > 500:
-            app.log_textbox.delete("1.0", "2.0")
+        try:
+            # 限制日志行数，防止内存占用过高
+            if int(app.log_textbox.index('end-1c').split('.')[0]) > 500:
+                app.log_textbox.delete("1.0", "2.0")
 
-        tag_name = level.lower() + "_log"
-        app.log_textbox.insert("end", f"[{record.levelname}] [{record.asctime}] <{record.name}> {message}\n", tag_name)
-        app.log_textbox.see("end")
-
-        app.log_textbox.configure(state="disabled")
+            tag_name = level.lower() + "_log"
+            app.log_textbox.insert("end", f"[{record.levelname}] [{record.asctime}] <{record.name}> {message}\n",
+                                   tag_name)
+            app.log_textbox.see("end")
+        finally:
+            # 确保无论是否发生错误，文本框最终都会被禁用，以防止用户编辑
+            app.log_textbox.configure(state="disabled")
 
         app.latest_log_message_var.set(message)
 
@@ -283,6 +305,7 @@ class UIManager:
 
         display_color = color_map.get(level.lower(), self.style.lookup('TLabel', 'foreground'))
         app.status_label.configure(foreground=display_color)
+
 
     def _create_navigation_frame(self, parent):
         app = self.app
@@ -370,7 +393,7 @@ class UIManager:
             self.app.log_textbox.tag_config("critical_log", foreground="#ff0000" if is_dark else "#8b0000")
 
             self.app.log_textbox.tag_config("info_log", foreground=self.app.default_text_color)
-            self.app.log_textbox.tag_config("debug_log", foreground=self.app.secondary_text_color)
+            self.app.log_textbox.tag_config("debug_log", foreground=self.app.default_text_color)
 
     def select_frame_by_name(self, name):
         app = self.app

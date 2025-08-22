@@ -97,7 +97,7 @@ class CottonToolkitApp(ttkb.Window):
         self._setup_fonts()
 
         # 2. 初始化所有变量和管理器
-        self.placeholder_color = (self.style.colors.secondary, self.style.colors.secondary)
+        self.placeholder_color = ("#6c757d", "#a0a0a0")
         self.default_text_color = self.style.lookup('TLabel', 'foreground')
         self.secondary_text_color = self.style.lookup('TLabel', 'foreground')
         self.placeholders = {
@@ -256,13 +256,12 @@ class CottonToolkitApp(ttkb.Window):
             # 步骤2: 立即请求Windows系统更改标题栏颜色
             self.configure_title_bar_color(self)
 
-            # 新增: 强制处理所有待处理的UI事件
-            # 这一步是关键，它会促使Tkinter立即处理上述两个更改的渲染任务，
-            # 从而将窗口内部和外部标题栏的刷新同步起来，消除闪烁。
             self.update()
 
+            self._force_apply_fonts()
+
+
             # 更新其他UI依赖项
-            self._setup_fonts()
             self.default_text_color = self.style.lookup('TLabel', 'foreground')
             if hasattr(self, 'ui_manager'):
                 self.ui_manager.update_sidebar_style()
@@ -851,6 +850,16 @@ class CottonToolkitApp(ttkb.Window):
         if hasattr(self, 'save_editor_button'): self.save_editor_button.configure(
             state="normal" if has_config else "disabled")
 
+    def _force_apply_fonts(self):
+        """强制将应用内定义的字体应用到所有相关样式，覆盖主题的默认设置。"""
+        self.logger.debug("Forcing custom font application to all styles.")
+        for style_name in ['TButton', 'TCheckbutton', 'TMenubutton', 'TLabel', 'TEntry', 'Toolbutton',
+                           'Labelframe.TLabel']:
+            self.style.configure(style_name, font=self.app_font)
+        self.style.configure('success.TButton', font=self.app_font_bold)
+        self.style.configure('outline.TButton', font=self.app_font)
+
+
     def _setup_fonts(self):
         font_stack = ["Microsoft YaHei UI", "Segoe UI", "Calibri", "Helvetica", "sans-serif"]
         mono_stack = ["Consolas", "Courier New", "monospace"]
@@ -873,7 +882,7 @@ class CottonToolkitApp(ttkb.Window):
         self.style.configure('success.TButton', font=self.app_font_bold)
         self.style.configure('outline.TButton', font=self.app_font)
 
-    # 修改: 移除 _log_to_viewer 方法
+        self._force_apply_fonts()
 
     def check_queue_periodic(self):
         try:
