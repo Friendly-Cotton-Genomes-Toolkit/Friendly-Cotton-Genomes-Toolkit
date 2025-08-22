@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, List, Callable
-
+import threading
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_gff_lookup
@@ -142,20 +142,21 @@ class GFFQueryTab(BaseTab):
                                                              self.selected_gff_query_assembly)
 
     def start_gff_query_task(self):
+        # --- 参数验证 ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         assembly_id = self.selected_gff_query_assembly.get()
         gene_ids_text = self.gff_query_genes_textbox.get("1.0", tk.END).strip()
-        region_str = self.gff_query_region_entry.get().strip()
+        region_str = self.gff_query_region_entry.get("1.0", "end-1c").strip()  # 使用 "1.0", "end-1c" 来获取单行Text内容
         output_path = self.output_path_var.get().strip()
         if not output_path:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定结果文件的保存路径。"))
             return
 
-        is_region_placeholder = (region_str == self.app.placeholders.get("gff_region", ""))
-        is_genes_placeholder = (gene_ids_text == self.app.placeholders.get("gff_genes", ""))
+        is_region_placeholder = getattr(self.gff_query_region_entry, 'is_placeholder', False)
+        is_genes_placeholder = getattr(self.gff_query_genes_textbox, 'is_placeholder', False)
         has_genes = bool(gene_ids_text and not is_genes_placeholder)
         has_region = bool(region_str and not is_region_placeholder)
 
@@ -165,17 +166,16 @@ class GFFQueryTab(BaseTab):
         if has_genes and has_region:
             self.app.ui_manager.show_warning_message(_("输入冲突"), _("将优先使用基因ID列表进行查询。"))
             region_str = ""
+            has_region = False
 
         gene_ids_list = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if
                          g.strip()] if has_genes else None
         region_tuple = None
 
-        if has_region and not has_genes:
-            try:
-                chrom, pos_range = region_str.split(':')
-                start, end = map(int, pos_range.split('-'))
-                region_tuple = (chrom.strip(), start, end)
-            except ValueError:
+        if has_region:
+            from cotton_toolkit.utils.gene_utils import parse_region_string  # 导入解析函数
+            region_tuple = parse_region_string(region_str)
+            if not region_tuple:
                 self.app.ui_manager.show_error_message(_("输入错误"), _("区域格式不正确。请使用 'Chr:Start-End' 格式。"))
                 return
 
@@ -183,11 +183,35 @@ class GFFQueryTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
             return
 
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("GFF 基因查询中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids_list,
             'region': region_tuple,
-            'output_csv_path': output_path
+            'output_csv_path': output_path,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
         }
-        self.app.event_handler._start_task(task_name=_("GFF基因查询"), target_func=run_gff_lookup, kwargs=task_kwargs)
+
+        self.app.event_handler._start_task(
+            task_name=_("GFF基因查询"),
+            target_func=run_gff_lookup,
+            kwargs=task_kwargs
+        )

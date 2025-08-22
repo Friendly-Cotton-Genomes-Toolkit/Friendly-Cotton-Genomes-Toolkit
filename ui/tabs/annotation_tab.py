@@ -4,6 +4,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Callable, List
+import threading
 
 import ttkbootstrap as ttkb
 
@@ -110,12 +111,12 @@ class AnnotationTab(BaseTab):
                                                              self.selected_annotation_assembly)
 
     def start_annotation_task(self):
+        # --- 参数验证  ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         gene_ids_text = ""
-        # 检查占位符状态
         if getattr(self.annotation_genes_textbox, 'is_placeholder', False):
             gene_ids_text = ""
         else:
@@ -132,7 +133,6 @@ class AnnotationTab(BaseTab):
             output_dir = os.path.join(os.getcwd(), "annotation_results")
             os.makedirs(output_dir, exist_ok=True)
             output_path = os.path.join(output_dir, f"annotation_result_{assembly_id}.csv")
-            # 将自动生成的路径更新回UI输入框
             self.annotation_output_csv_entry.delete(0, tk.END)
             self.annotation_output_csv_entry.insert(0, output_path)
 
@@ -146,12 +146,35 @@ class AnnotationTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。"))
             return
 
+
+        # 1. 创建取消事件
+        cancel_event = threading.Event()
+
+        # 2. 定义取消操作
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将在当前步骤完成后停止。"))
+            cancel_event.set()
+
+        # 3. 创建并显示进度对话框
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("功能注释中"),
+            on_cancel=on_cancel_action
+        )
+
+        # 4. 定义线程安全的UI更新函数
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数，并加入通信工具 ---
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids,
             'annotation_types': anno_types,
             'output_path': output_path,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater,
         }
 
         self.app.event_handler._start_task(
@@ -159,3 +182,4 @@ class AnnotationTab(BaseTab):
             target_func=run_functional_annotation,
             kwargs=task_kwargs
         )
+

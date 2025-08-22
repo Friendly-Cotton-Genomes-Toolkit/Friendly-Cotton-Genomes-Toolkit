@@ -23,26 +23,8 @@ class GenomeIdentifierTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         super().__init__(parent, app, translator=translator)
 
-        # --- 【最终修正】 ---
-        # 通过 self.action_button.master 安全地获取按钮的父容器
         if self.action_button:
             self.action_button.configure(text=self._("开始鉴定"), command=self.start_identification_task)
-
-            # 1. 安全地获取 action_frame
-            action_frame = self.action_button.master
-
-            # 2. 对获取到的 frame 进行重新布局
-            action_frame.grid_forget()  # 从BaseTab的默认位置移除
-            action_frame.grid(row=3, column=0, columnspan=2, sticky="s", pady=(10, 0))  # 放到新布局的底部
-
-            # 3. 配置按钮在 frame 内居中
-            if not action_frame.winfo_manager() == 'pack':
-                # 如果父容器不是pack布局，确保按钮在grid中正确配置
-                action_frame.grid_columnconfigure(0, weight=1)
-                self.action_button.grid(row=0, column=0, pady=5)
-            else:
-                self.action_button.pack(pady=5)  # 保持pack布局
-        # --- 修正结束 ---
 
         self.update_from_config()
 
@@ -127,6 +109,7 @@ class GenomeIdentifierTab(BaseTab):
             self._reset_result_display()
 
     def start_identification_task(self):
+        # --- 参数验证  ---
         if not self.app.current_config or not self.app.genome_sources_data:
             self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
             return
@@ -138,30 +121,61 @@ class GenomeIdentifierTab(BaseTab):
 
         gene_ids = [line.strip() for line in gene_ids_text.splitlines() if line.strip()]
 
-        self.output_textbox.configure(state="normal", font=self.app.app_font_mono)
-        self.output_textbox.delete("1.0", tk.END)
-        self.output_textbox.insert("1.0", self._("正在批量鉴定中，请稍候..."), "secondary")
-        self.output_textbox.configure(state="disabled")
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=self._("基因组鉴定中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 启动任务，并传入通信工具 ---
+        task_kwargs = {
+            'gene_ids': gene_ids,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
+        }
 
         self.app.event_handler._start_task(
             task_name=self._("基因组批量鉴定"),
             target_func=self._batch_identify_worker,
-            kwargs={'gene_ids': gene_ids},
+            kwargs=task_kwargs,
             on_success=self.handle_batch_result
         )
 
+
     def _batch_identify_worker(self, gene_ids: List[str], **kwargs) -> Tuple[List[str], Set[str]]:
-        genome_sources = self.app.genome_sources_data
+        progress_callback = kwargs.get('progress_callback', lambda p, m: None)
         cancel_event = kwargs.get('cancel_event')
+
+        genome_sources = self.app.genome_sources_data
         results = []
         unique_warnings = set()
+        total_genes = len(gene_ids)
+
         for i, gene_id in enumerate(gene_ids):
             if cancel_event and cancel_event.is_set():
+                progress_callback(100, self._("任务已取消。"))
                 break
+
+            # --- 在循环中报告进度 ---
+            progress_percent = int(((i + 1) / total_genes) * 100)
+            progress_callback(progress_percent, self._("正在鉴定 {}/{}...").format(i + 1, total_genes))
+
             result_tuple = identify_genome_from_gene_ids(
                 gene_ids=[gene_id],
-                genome_sources=genome_sources
+                genome_sources=genome_sources,
+                cancel_event=cancel_event
             )
+
             if result_tuple:
                 assembly_id, warning, score = result_tuple
                 result_line = f"{gene_id}\t→\t{assembly_id} ({score:.1f}%)"
@@ -171,7 +185,9 @@ class GenomeIdentifierTab(BaseTab):
             else:
                 result_line = f"{gene_id}\t→\t{self._('未能识别')}"
                 results.append(result_line)
+
         return results, unique_warnings
+
 
     def handle_batch_result(self, result_data: Tuple[List[str], Set[str]]):
         result_lines, warnings = result_data

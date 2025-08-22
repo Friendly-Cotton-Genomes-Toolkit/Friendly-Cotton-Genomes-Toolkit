@@ -5,7 +5,7 @@ import re
 import tkinter as tk
 from tkinter import ttk, filedialog
 from typing import TYPE_CHECKING, Callable, Optional, List
-
+import threading
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_enrichment_pipeline
@@ -197,13 +197,15 @@ class EnrichmentTab(BaseTab):
                                                _("无可用基因组"))
 
     def start_enrichment_task(self):
+        # --- 参数验证 ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
 
         gene_ids_text = self.gene_input_text.get("1.0", tk.END).strip()
-        is_placeholder = (gene_ids_text == self.app.placeholders.get("enrichment_genes_input", ""))
-        lines = [] if is_placeholder else gene_ids_text.splitlines()
+        if getattr(self.gene_input_text, 'is_placeholder', False):
+            gene_ids_text = ""
+        lines = [] if not gene_ids_text else gene_ids_text.splitlines()
 
         if not lines:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要分析的基因ID。"));
@@ -226,31 +228,27 @@ class EnrichmentTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种图表类型。"));
             return
 
-        study_gene_ids = []
-        gene_log2fc_map = {} if self.has_log2fc_var.get() else None
-
         try:
+            study_gene_ids = []
+            gene_log2fc_map = {} if self.has_log2fc_var.get() else None
             effective_lines = lines[1:] if self.has_header_var.get() and len(lines) > 1 else lines
+
             if self.has_log2fc_var.get():
                 for i, line in enumerate(effective_lines):
                     if not line.strip(): continue
                     parts = re.split(r'[\s\t,;]+', line.strip())
                     if len(parts) >= 2:
                         gene_id, log2fc_str = parts[0], parts[1]
-                        try:
-                            gene_log2fc_map[gene_id] = float(log2fc_str)
-                            study_gene_ids.append(gene_id)
-                        except ValueError:
-                            raise ValueError(_("第 {i + 1} 行Log2FC值无效:").format(i=i) + f" '{log2fc_str}'")
+                        gene_log2fc_map[gene_id] = float(log2fc_str)
+                        study_gene_ids.append(gene_id)
                     else:
-                        raise ValueError(_("第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):").format(i=i) + f" '{line}'")
+                        raise ValueError(f"第 {i + 1} 行格式错误")
             else:
                 for line in effective_lines:
                     if not line.strip(): continue
-                    parts = re.split(r'[\s\t,;]+', line.strip())
-                    study_gene_ids.extend([p for p in parts if p])
-        except ValueError as e:
-            self.app.ui_manager.show_error_message(_("输入格式错误"), str(e));
+                    study_gene_ids.extend([p for p in re.split(r'[\s\t,;]+', line.strip()) if p])
+        except (ValueError, TypeError) as e:
+            self.app.ui_manager.show_error_message(_("输入格式错误"), f"{_('解析基因列表时出错')}: {e}");
             return
 
         study_gene_ids = sorted(list(set(study_gene_ids)))
@@ -258,6 +256,23 @@ class EnrichmentTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("解析后未发现有效基因ID。"));
             return
 
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("富集分析运行中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数  ---
         task_kwargs = {
             'config': self.app.current_config, 'assembly_id': assembly_id,
             'study_gene_ids': study_gene_ids, 'analysis_type': self.analysis_type_var.get(),
@@ -267,9 +282,12 @@ class EnrichmentTab(BaseTab):
             'show_title': self.show_title_var.get(),
             'width': self.width_var.get(), 'height': self.height_var.get(),
             'file_format': self.file_format_var.get(),
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater,
         }
 
         self.app.event_handler._start_task(
             task_name=_("{} 富集分析").format(self.analysis_type_var.get().upper()),
             target_func=run_enrichment_pipeline, kwargs=task_kwargs
         )
+

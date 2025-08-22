@@ -2,7 +2,7 @@
 
 import tkinter as tk
 from typing import TYPE_CHECKING, List, Callable, Any
-
+import threading
 import pandas as pd
 import ttkbootstrap as ttkb
 
@@ -236,63 +236,99 @@ class HomologyTab(BaseTab):
         output_entry.configure(state="readonly")
 
     def _start_homology_task(self):
-        if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),
-                                                                               _("请先加载配置文件。")); return
+        # --- 参数验证 ---
+        if not self.app.current_config:
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+
         gene_ids_text = self.homology_map_genes_textbox.get("1.0", tk.END).strip()
         is_placeholder = getattr(self.homology_map_genes_textbox, 'is_placeholder', False)
-        if not gene_ids_text or is_placeholder: self.app.ui_manager.show_error_message(_("输入缺失"),
-                                                                                       _("请输入要映射的源基因ID。")); return
+        if not gene_ids_text or is_placeholder:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要映射的源基因ID。"))
+            return
 
         is_single_mode = self.single_gene_mode_var.get()
         if is_single_mode:
             gene_ids = [gene_ids_text.splitlines()[0].strip()]
-            if not gene_ids[0]: self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入有效的基因ID。")); return
+            if not gene_ids[0]:
+                self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入有效的基因ID。"))
+                return
         else:
             gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]
 
-        if not gene_ids: self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要映射的源基因ID。")); return
+        if not gene_ids:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要映射的源基因ID。"))
+            return
 
         source_assembly = self.selected_homology_source_assembly.get()
         target_assembly = self.selected_homology_target_assembly.get()
         if not all([source_assembly, target_assembly]) or _("加载中...") in [source_assembly, target_assembly] or _(
-                "无可用基因组") in [source_assembly, target_assembly]: self.app.ui_manager.show_error_message(
-            _("输入缺失"),
-            _("请选择有效的源和目标基因组。")); return
-        try:
-            criteria = {"top_n": int(self.homology_top_n_entry.get()),
-                        "evalue_threshold": float(self.homology_evalue_entry.get()),
-                        "pid_threshold": float(self.homology_pid_entry.get()),
-                        "score_threshold": float(self.homology_score_entry.get()),
-                        "strict_subgenome_priority": self.homology_strict_priority_var.get()}
-        except (ValueError, TypeError):
-            self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的阈值必须是有效的数字。"));
+                "无可用基因组") in [source_assembly, target_assembly]:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择有效的源和目标基因组。"))
             return
 
+        try:
+            criteria = {
+                "top_n": int(self.homology_top_n_entry.get()),
+                "evalue_threshold": float(self.homology_evalue_entry.get()),
+                "pid_threshold": float(self.homology_pid_entry.get()),
+                "score_threshold": float(self.homology_score_entry.get()),
+                "strict_subgenome_priority": self.homology_strict_priority_var.get()
+            }
+        except (ValueError, TypeError):
+            self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的阈值必须是有效的数字。"))
+            return
+
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        # 根据模式决定成功回调和对话框标题
         if is_single_mode:
-            output_path = None
             success_callback = self._update_single_gene_output
+            dialog_title = _("正在查找同源基因...")
+            output_path = None
             self.homology_output_file_entry.configure(state="normal")
             self.homology_output_file_entry.delete(0, tk.END)
             self.homology_output_file_entry.insert(0, _("正在查找..."))
             self.homology_output_file_entry.configure(state="readonly")
         else:
-            output_path = self.homology_output_file_entry.get().strip() or None
             success_callback = None
+            dialog_title = _("同源基因批量转换中")
+            output_path = self.homology_output_file_entry.get().strip() or None
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=dialog_title,
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数  ---
+        task_kwargs = {
+            'config': self.app.current_config,
+            'source_assembly_id': source_assembly,
+            'target_assembly_id': target_assembly,
+            'gene_ids': gene_ids,
+            'region': None,
+            'output_csv_path': output_path,
+            'criteria_overrides': criteria,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
+        }
 
         self.app.event_handler._start_task(
             task_name=_("快速基因同源转换"),
             target_func=run_homology_mapping,
-            kwargs={
-                'config': self.app.current_config,
-                'source_assembly_id': source_assembly,
-                'target_assembly_id': target_assembly,
-                'gene_ids': gene_ids,
-                'region': None,
-                'output_csv_path': output_path,
-                'criteria_overrides': criteria
-            },
+            kwargs=task_kwargs,
             on_success=success_callback
         )
+
 
     def update_from_config(self):
         if self.app.genome_sources_data:

@@ -25,7 +25,7 @@ from ui.event_handler import EventHandler
 from ui.ui_manager import UIManager, determine_initial_theme
 from ui.tabs import (
     AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab, SequenceExtractionTab,
-    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab, HomologyConversionTab
+    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab, ArabidopsisHomologyConversionTab
 )
 
 try:
@@ -685,7 +685,7 @@ class CottonToolkitApp(ttkb.Window):
             "enrichment": EnrichmentTab,
             "genome_identifier": GenomeIdentifierTab,
             "homology": HomologyTab,
-            "arabidopsis_conversion":HomologyConversionTab,
+            "arabidopsis_conversion":ArabidopsisHomologyConversionTab,
             "locus_conversion": LocusConversionTab,
             "gff_query": GFFQueryTab,
             "blast": BlastTab,

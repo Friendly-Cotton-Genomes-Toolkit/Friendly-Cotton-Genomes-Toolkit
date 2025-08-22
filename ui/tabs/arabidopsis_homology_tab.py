@@ -5,10 +5,10 @@ import tkinter as tk
 import re  # 导入正则表达式模块
 from tkinter import ttk
 from typing import TYPE_CHECKING, List, Callable, Any
-
+import  threading
 import ttkbootstrap as ttkb
 
-from cotton_toolkit.pipelines.homology import run_homology_conversion
+from cotton_toolkit.pipelines.homology import run_arabidopsis_homology_conversion
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ except ImportError:
     _ = lambda s: str(s)
 
 
-class HomologyConversionTab(BaseTab):
+class ArabidopsisHomologyConversionTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.app = app
         self.selected_cotton_assembly = tk.StringVar()
@@ -132,26 +132,70 @@ class HomologyConversionTab(BaseTab):
                                                  [(_("CSV 文件"), "*.csv"), (_("所有文件"), "*.*")])
 
     def start_conversion_task(self):
-        if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),
-                                                                               _("请先加载配置文件。")); return
+        # --- 参数验证 ---
+        if not self.app.current_config:
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
+
         gene_ids_text = self.gene_input_textbox.get("1.0", tk.END).strip()
-        if not gene_ids_text or getattr(self.gene_input_textbox, 'is_placeholder',
-                                        False): self.app.ui_manager.show_error_message(_("输入缺失"),
-                                                                                       _("请输入要转换的基因ID。")); return
+        if not gene_ids_text or getattr(self.gene_input_textbox, 'is_placeholder', False):
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要转换的基因ID。"))
+            return
+
         gene_ids = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if g.strip()]
         cotton_assembly_id = self.selected_cotton_assembly.get()
         if not cotton_assembly_id or _("加载中...") in cotton_assembly_id or _(
-            "无可用棉花基因组") in cotton_assembly_id: self.app.ui_manager.show_error_message(_("输入缺失"),
-                                                                                              _("请选择一个有效的棉花基因组版本。")); return
+                "无可用棉花基因组") in cotton_assembly_id:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个有效的棉花基因组版本。"))
+            return
+
         output_path = self.output_file_entry.get().strip()
-        if not output_path: self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出文件路径。")); return
+        if not output_path:
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出文件路径。"))
+            return
+
         direction_map = {_("棉花 -> 拟南芥"): "cotton_to_ath", _("拟南芥 -> 棉花"): "ath_to_cotton"}
         direction_key = direction_map.get(self.conversion_direction_var.get())
-        if not direction_key: self.app.ui_manager.show_error_message(_("错误"), _("无效的转换方向。")); return
-        task_kwargs = {'config': self.app.current_config, 'assembly_id': cotton_assembly_id, 'gene_ids': gene_ids,
-                       'conversion_direction': direction_key, 'output_path': output_path}
-        self.app.event_handler._start_task(task_name=_("同源基因转换"), target_func=run_homology_conversion,
-                                           kwargs=task_kwargs)
+        if not direction_key:
+            self.app.ui_manager.show_error_message(_("错误"), _("无效的转换方向。"))
+            return
+
+        # 1. 创建取消事件
+        cancel_event = threading.Event()
+
+        # 2. 定义取消操作
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        # 3. 创建并显示进度对话框
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("同源基因转换中"),
+            on_cancel=on_cancel_action
+        )
+
+        # 4. 定义线程安全的UI更新函数
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数，并加入通信工具 ---
+        task_kwargs = {
+            'config': self.app.current_config,
+            'assembly_id': cotton_assembly_id,
+            'gene_ids': gene_ids,
+            'conversion_direction': direction_key,
+            'output_path': output_path,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
+        }
+
+        self.app.event_handler._start_task(
+            task_name=_("同源基因转换"),
+            target_func=run_arabidopsis_homology_conversion,
+            kwargs=task_kwargs
+        )
+
 
     def update_from_config(self):
         if self.app.genome_sources_data:

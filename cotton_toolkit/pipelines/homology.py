@@ -69,7 +69,7 @@ def _homology_blast_worker(
 
 
 @pipeline_task(_("拟南芥基因转换"))
-def run_homology_conversion(
+def run_arabidopsis_homology_conversion(
         config: MainConfig,
         assembly_id: str,
         gene_ids: List[str],

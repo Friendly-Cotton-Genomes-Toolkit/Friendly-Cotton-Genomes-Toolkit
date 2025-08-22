@@ -1,6 +1,4 @@
-﻿# 文件路径: ui/tabs/sequence_extraction_tab.py
-# 版本：UI优化最终版
-
+﻿import threading
 import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING, Callable, List, Any
@@ -235,6 +233,8 @@ class SequenceExtractionTab(BaseTab):
 
     def start_extraction_task(self):
         """点击“开始提取序列”按钮后执行的主函数。"""
+
+        # --- 参数验证---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
@@ -243,7 +243,7 @@ class SequenceExtractionTab(BaseTab):
             gene_ids = []
         else:
             gene_ids_text = self.gene_input_text.get("1.0", tk.END).strip()
-            gene_ids = [line.strip() for line in gene_ids_text.splitlines() if line.strip()]
+            gene_ids = [line.strip() for line in gene_ids_text.replace(",", "\n").splitlines() if line.strip()]
 
         if not gene_ids:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入至少一个基因ID。"))
@@ -267,11 +267,30 @@ class SequenceExtractionTab(BaseTab):
                 self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出CSV文件的路径。"))
                 return
 
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("序列提取中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数 (加入通信工具) ---
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids,
             'output_path': output_path,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
         }
 
         def task_wrapper(**kwargs):
@@ -289,3 +308,4 @@ class SequenceExtractionTab(BaseTab):
             target_func=task_wrapper,
             kwargs=task_kwargs
         )
+

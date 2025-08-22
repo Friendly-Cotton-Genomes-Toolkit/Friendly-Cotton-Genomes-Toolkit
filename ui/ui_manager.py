@@ -607,3 +607,19 @@ class UIManager:
         # 修正: 为侧边栏中的标签也应用正确的背景色，确保一致性
         self.style.configure('Sidebar.TLabel', background=background_color)
 
+    def show_progress_dialog(self, title: str, on_cancel: Optional[Callable] = None) -> 'ProgressDialog':
+        """
+        一个供外部安全调用的公共方法，用于创建和显示进度对话框。
+        它接收独立的参数，然后打包成字典去调用内部的 _show_progress_dialog 方法。
+        """
+        _ = self.translator_func
+
+        # 将参数打包成字典
+        dialog_data = {
+            "title": title,
+            "message": _("正在准备任务..."),  # 提供一个默认的初始消息
+            "on_cancel": on_cancel
+        }
+
+        # 调用已有的内部方法，并返回创建的对话框实例
+        return self._show_progress_dialog(dialog_data)

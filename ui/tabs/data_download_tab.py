@@ -4,7 +4,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Dict, Callable, Any
-
+import threading
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.config.loader import get_local_downloaded_file_path
@@ -346,89 +346,133 @@ class DataDownloadTab(BaseTab):
         此版本使用新的状态检查系统来确定是否需要运行。
         """
         # 1. 基本检查：确保配置已加载且基因组已选择
-        if not self.app.current_config:
-            self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
-            return
-
-        selected_genome_id = self.selected_genome_var.get()
-        if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
-            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组。"))
-            return
-
-        genome_info = self.app.genome_sources_data.get(selected_genome_id)
-        if not genome_info:
-            msg = self._("找不到基因组 '{}' 的信息。").format(selected_genome_id)
-            self.app.ui_manager.show_error_message(self._("错误"), msg)
-            return
-
-        # 2. 使用后端的四状态系统进行前置检查
-        all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
-        blast_keys_to_check = ['predicted_cds', 'predicted_protein']
-
-        needs_processing = False
-        applicable_files_exist = False
-
-        for key in blast_keys_to_check:
-            url_attr = f"{key}_url"
-            # 检查此基因组是否配置了CDS或蛋白质的URL
-            if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                applicable_files_exist = True
-                status = all_statuses.get(key, 'not_downloaded')
-                # 如果文件状态为“已下载”或“仅整理”，则说明需要进行BLAST建库
-                if status in ['downloaded', 'organized_only']:
-                    needs_processing = True
-                    break  # 只要有一个需要处理，就可以启动任务
-
-        # 3. 根据检查结果执行逻辑
-        if not applicable_files_exist:
-            msg = self._("无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。")
-            self.app.ui_manager.show_warning_message(self._("缺少配置"), msg)
-            return
-
-        if not needs_processing:
-            self.app.ui_manager.show_info_message(
-                self._("已就绪"), self._("所有适用的BLAST数据库均已预处理完成，无需再次运行。"))
-            return
-
-        # 4. 如果检查通过，则启动任务
-        self._clear_task_status_display()  # 开始任务前清屏
-        task_kwargs = {'config': self.app.current_config,
-                       'selected_assembly_id': selected_genome_id,
-                       'status_callback': self.update_task_status}
-        self.app.event_handler._start_task(
-            task_name=self._("预处理BLAST数据库"),
-            target_func=run_build_blast_db_pipeline,
-            task_key="download",
-            kwargs=task_kwargs
-        )
-
-
-    def start_download_task(self):
-        # 【修改】所有 _() 调用都改为 self._()
         if not self.app.current_config: self.app.ui_manager.show_error_message(self._("错误"),
                                                                                self._("请先加载配置文件。")); return
         selected_genome_id = self.selected_genome_var.get()
         if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
-            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组进行下载。"));
+            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组。"));
             return
-        file_types_to_download = [key for key, var in self.file_type_vars.items() if var.get()]
-        if not file_types_to_download:
-            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请至少选择一种要下载的文件类型。"));
+        genome_info = self.app.genome_sources_data.get(selected_genome_id)
+        if not genome_info:
+            msg = self._("找不到基因组 '{}' 的信息。").format(selected_genome_id)
+            self.app.ui_manager.show_error_message(self._("错误"), msg);
             return
-        self.app.current_config.downloader.force_download = self.force_download_var.get()
-        self.app.current_config.downloader.use_proxy_for_download = self.use_proxy_for_download_var.get()
+
+        all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
+        blast_keys_to_check = ['predicted_cds', 'predicted_protein']
+        needs_processing = any(
+            all_statuses.get(key) in ['downloaded', 'organized_only'] for key in blast_keys_to_check if
+            hasattr(genome_info, f"{key}_url") and getattr(genome_info, f"{key}_url"))
+        applicable_files_exist = any(
+            hasattr(genome_info, f"{key}_url") and getattr(genome_info, f"{key}_url") for key in blast_keys_to_check)
+
+        if not applicable_files_exist:
+            msg = self._("无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。")
+            self.app.ui_manager.show_warning_message(self._("缺少配置"), msg)
+            return
+        if not needs_processing:
+            self.app.ui_manager.show_info_message(self._("已就绪"),
+                                                  self._("所有适用的BLAST数据库均已预处理完成，无需再次运行。"))
+            return
+
+        # --- 创建通信工具和对话框 ---
+        self._clear_task_status_display()
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=self._("预处理BLAST数据库"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
-            'cli_overrides': {'versions': [selected_genome_id], 'file_types': file_types_to_download,
-                              'force': self.force_download_var.get()}
+            'selected_assembly_id': selected_genome_id,
+            'status_callback': self.update_task_status,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
         }
-        self.app.event_handler._start_task(task_name=self._("数据下载"), target_func=run_download_pipeline,
-                                           task_key="preprocess_anno",kwargs=task_kwargs)
+
+        self.app.event_handler._start_task(
+            task_name=self._("预处理BLAST数据库"),
+            target_func=run_build_blast_db_pipeline,
+            kwargs=task_kwargs
+        )
+
+    def start_download_task(self):
+        try:
+            # --- 参数验证  ---
+            if not self.app.current_config:
+                self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
+                return
+
+            selected_genome_id = self.selected_genome_var.get()
+            if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
+                self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组进行下载。"))
+                return
+
+            file_types_to_download = [key for key, var in self.file_type_vars.items() if var.get()]
+            if not file_types_to_download:
+                self.app.ui_manager.show_error_message(self._("选择错误"), self._("请至少选择一种要下载的文件类型。"))
+                return
+
+            # --- 创建通信工具和对话框  ---
+            cancel_event = threading.Event()
+
+            def on_cancel_action():
+                self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，下载任务将尽快停止。"))
+                cancel_event.set()
+
+            progress_dialog = self.app.ui_manager.show_progress_dialog(
+                title=self._("数据下载中"),
+                on_cancel=on_cancel_action
+            )
+
+            def ui_progress_updater(percentage, message):
+                if progress_dialog and progress_dialog.winfo_exists():
+                    self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+            # --- 准备任务参数 ---
+            cli_overrides = {
+                'versions': [selected_genome_id],
+                'file_types': file_types_to_download,
+                'force': self.force_download_var.get(),
+                'use_proxy_for_download': self.use_proxy_for_download_var.get()
+            }
+
+            task_kwargs = {
+                'config': self.app.current_config,
+                'cli_overrides': cli_overrides,
+                'cancel_event': cancel_event,
+                'progress_callback': ui_progress_updater
+            }
+
+            self.app.event_handler._start_task(
+                task_name=self._("数据下载"),
+                target_func=run_download_pipeline,
+                kwargs=task_kwargs
+            )
+
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            error_message = f"{self._('启动下载任务时发生未知错误:')}\n\n{type(e).__name__}: {e}\n\n{error_details}"
+            self.app.ui_manager.show_error_message(self._("任务启动失败"), error_message)
+            raise RuntimeError(error_message)
+
 
     def start_preprocess_task(self):
-        if not self.app.current_config:
-            self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"));
-            return
+        # --- 参数验证 ---
+        if not self.app.current_config: self.app.ui_manager.show_error_message(self._("错误"),
+                                                                               self._("请先加载配置文件。")); return
         selected_genome_id = self.selected_genome_var.get()
         if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
             self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组进行预处理。"));
@@ -439,23 +483,15 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_error_message(self._("错误"), msg);
             return
 
-        # --- 核心修改: 使用后端函数获取所有文件的真实状态 ---
         all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
-
-        annotation_keys_to_check = [
-            'predicted_cds', 'predicted_protein', 'gff3', 'GO', 'IPR',
-            'KEGG_pathways', 'KEGG_orthologs', 'homology_ath'
-        ]
-
-        # 检查是否有文件尚未下载
+        annotation_keys_to_check = ['predicted_cds', 'gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs',
+                                    'homology_ath']
         missing_files_display_names = []
-        for key in annotation_keys_to_check :
+        for key in annotation_keys_to_check:
             url_attr = f"{key}_url"
             if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                # 如果状态是 'not_downloaded'，则说明文件缺失
                 if all_statuses.get(key) == 'not_downloaded':
                     missing_files_display_names.append(self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.get(key, key))
-
         if missing_files_display_names:
             file_list_formatted = "\n- ".join(missing_files_display_names)
             msg = self._("无法开始预处理，以下必需的注释文件尚未下载：\n\n- {file_list}\n\n请先下载它们。").format(
@@ -463,32 +499,41 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_warning_message(self._("缺少文件"), msg)
             return
 
-        # 检查是否所有相关文件都已处理
-        all_processed = True
-        for key in annotation_keys_to_check :
-            url_attr = f"{key}_url"
-            if hasattr(genome_info, url_attr) and getattr(genome_info, url_attr):
-                # 只要有一个文件的状态不是 'processed'，就认为没有全部处理完
-                if all_statuses.get(key) != 'processed':
-                    all_processed = False
-                    break
-
+        all_processed = all(all_statuses.get(key) == 'processed' for key in annotation_keys_to_check if
+                            hasattr(genome_info, f"{key}_url") and getattr(genome_info, f"{key}_url"))
         if all_processed:
             self.app.ui_manager.show_info_message(self._("已就绪"), self._("注释文件已全部预处理完成，无需再次运行。"))
             return
 
-        # 如果检查通过，则启动预处理任务
+        # --- 创建通信工具和对话框 ---
         self._clear_task_status_display()
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=self._("预处理注释文件"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数 (加入通信工具) ---
         task_kwargs = {
             'config': self.app.current_config,
             'selected_assembly_id': selected_genome_id,
-            'status_callback': self.update_task_status
+            'status_callback': self.update_task_status,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
         }
 
         self.app.event_handler._start_task(
             task_name=self._("预处理文件"),
             target_func=run_preprocess_annotation_files,
-            task_key="preprocess_blast",
             kwargs=task_kwargs
         )
 

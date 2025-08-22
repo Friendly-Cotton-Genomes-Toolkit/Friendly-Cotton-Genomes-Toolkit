@@ -4,7 +4,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog
 from typing import TYPE_CHECKING, List, Callable, Any
-
+import threading
 import ttkbootstrap as ttkb
 from ttkbootstrap.tooltip import ToolTip
 
@@ -177,7 +177,7 @@ class BlastTab(BaseTab):
                                                  [(_("Excel 文件"), "*.xlsx"), (_("CSV 文件"), "*.csv")])
 
     def _start_blast_task(self):
-        # --- 【修改】添加文件可用性检查 ---
+        # --- 参数验证 ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
@@ -190,27 +190,24 @@ class BlastTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个有效的目标棉花基因组。"))
             return
 
-        # 1. 确定需要哪种序列文件 (CDS 或 Protein)
         db_type = 'prot' if blast_type in ['blastp', 'blastx'] else 'nucl'
         required_key = 'predicted_protein' if db_type == 'prot' else 'predicted_cds'
-
-        # 2. 检查该基因组版本是否提供此文件
         genome_info = self.app.genome_sources_data.get(target_assembly)
         url_attr = f"{required_key}_url"
 
         if not genome_info or not hasattr(genome_info, url_attr) or not getattr(genome_info, url_attr):
-            msg = self._("基因组版本 '{}' 不支持 '{}'，因为它缺少必需的 '{}' 数据源。").format(
-                target_assembly, blast_type, required_key
-            )
+            msg = self._("基因组版本 '{}' 不支持 '{}'，因为它缺少必需的 '{}' 数据源。").format(target_assembly,
+                                                                                             blast_type, required_key)
             self.app.ui_manager.show_error_message(_("数据不支持"), msg)
             return
 
-        # 3. 检查文件是否已下载
         required_file_path = get_local_downloaded_file_path(self.app.current_config, genome_info, required_key)
         if not required_file_path or not os.path.exists(required_file_path):
-            msg = self._("执行 '{}' 所需的文件 '{}' 尚未下载。\n\n请前往“数据下载”选项卡下载该文件。").format(
-                blast_type, os.path.basename(getattr(genome_info, url_attr))
-            )
+            msg = self._("执行 '{}' 所需的文件 '{}' 尚未下载。\n\n请前往“数据下载”选项卡下载该文件。").format(blast_type,
+                                                                                                            os.path.basename(
+                                                                                                                getattr(
+                                                                                                                    genome_info,
+                                                                                                                    url_attr)))
             self.app.ui_manager.show_warning_message(_("缺少文件"), msg)
             return
 
@@ -220,11 +217,9 @@ class BlastTab(BaseTab):
         if self.input_mode_var.get() == 'file' and not query_file:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个查询文件。"))
             return
-        if self.input_mode_var.get() == 'text' and not query_text:
+        if self.input_mode_var.get() == 'text' and (
+                not query_text or getattr(self.query_textbox, 'is_placeholder', False)):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请粘贴查询序列。"))
-            return
-        if self.input_mode_var.get() == 'file' and query_text:  # 只在文件模式下检查双重输入
-            self.app.ui_manager.show_error_message(_("输入冲突"), _("检测到文件输入和文本输入同时存在，请清除其中一个。"))
             return
 
         output_path = self.output_entry.get().strip()
@@ -242,18 +237,43 @@ class BlastTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的值必须是有效的数字。"))
             return
 
+
+        # 1. 创建取消事件
+        cancel_event = threading.Event()
+
+        # 2. 定义取消操作
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，BLAST任务将在当前步骤完成后停止。"))
+            cancel_event.set()
+
+        # 3. 创建并显示进度对话框
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("本地 BLAST 运行中"),
+            on_cancel=on_cancel_action
+        )
+
+        # 4. 定义线程安全的UI更新函数
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数，并加入通信工具 ---
+        task_kwargs = {
+            'config': self.app.current_config,
+            'blast_type': self.selected_blast_type.get(),
+            'target_assembly_id': target_assembly,
+            'query_file_path': query_file if self.input_mode_var.get() == 'file' else None,
+            'query_text': query_text if self.input_mode_var.get() == 'text' else None,
+            'output_path': output_path,
+            **params,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
+        }
+
         self.app.event_handler._start_task(
             task_name=_("本地 BLAST"),
             target_func=run_blast_pipeline,
-            kwargs={
-                'config': self.app.current_config,
-                'blast_type': self.selected_blast_type.get(),
-                'target_assembly_id': target_assembly,
-                'query_file_path': query_file if self.input_mode_var.get() == 'file' else None,
-                'query_text': query_text if self.input_mode_var.get() == 'text' else None,
-                'output_path': output_path,
-                **params
-            }
+            kwargs=task_kwargs
         )
 
     def _on_blast_type_change(self, *args):

@@ -357,7 +357,6 @@ class AIAssistantTab(BaseTab):
         # 这会使用新的逻辑从 available_models 更新选项列表
         self.update_model_dropdown()
 
-        # --- 【核心修正】---
         # 从配置的 model 字段读取“当前选定”的模型并设置
         provider_key_for_model = next(
             (k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == self.ai_selected_provider_var.get()), None)
@@ -377,9 +376,11 @@ class AIAssistantTab(BaseTab):
 
 
     def start_ai_csv_processing_task(self):
-        if not self.app.current_config: self.app.ui_manager.show_error_message(_("错误"),
-                                                                               _("请先加载配置文件。")); return
+        if not self.app.current_config:
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
+            return
         try:
+            # --- 参数验证 ---
             self._save_prompt_to_config()
             provider_name = self.ai_selected_provider_var.get()
             model = self.ai_selected_model_var.get()
@@ -401,6 +402,28 @@ class AIAssistantTab(BaseTab):
                 self.app.ui_manager.show_error_message(_("模板错误"), _("提示词模板必须包含 {text} 占位符。"))
                 return
 
+            # --- 创建通信工具和对话框 ---
+
+            # 1. 创建一个取消事件，用于在UI和后台任务之间通信
+            cancel_event = threading.Event()
+
+            # 2. 定义当用户点击对话框取消按钮时要执行的操作
+            def on_cancel_action():
+                self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将在当前步骤完成后停止。"))
+                cancel_event.set()
+
+            # 3. 创建进度对话框实例
+            progress_dialog = self.app.ui_manager.show_progress_dialog(
+                title=_("AI 处理中"),
+                on_cancel=on_cancel_action
+            )
+
+            # 4. 定义一个线程安全的UI更新函数
+            def ui_progress_updater(percentage, message):
+                if progress_dialog and progress_dialog.winfo_exists():
+                    self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+            # --- 准备任务参数---
             config_for_task = copy.deepcopy(self.app.current_config)
             config_for_task.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
             provider_key = next((k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == provider_name), None)
@@ -410,16 +433,25 @@ class AIAssistantTab(BaseTab):
             if not self.save_as_new_var.get():
                 output_file = csv_path
 
+            # --- 启动任务，并传入通信工具 ---
+            task_kwargs = {
+                'config': config_for_task, 'input_file': csv_path,
+                'source_column': source_column, 'new_column': new_column_name,
+                'task_type': 'custom', 'custom_prompt_template': prompt_template,
+                'cli_overrides': cli_overrides, 'output_file': output_file,
+                # 5. 将 cancel_event 和 ui_progress_updater 传递给后台
+                'cancel_event': cancel_event,
+                'progress_callback': ui_progress_updater
+            }
+
             self.app.event_handler._start_task(
                 task_name=_("AI批量处理CSV"),
                 target_func=run_ai_task,
-                kwargs={
-                    'config': config_for_task, 'input_file': csv_path,
-                    'source_column': source_column, 'new_column': new_column_name,
-                    'task_type': 'custom', 'custom_prompt_template': prompt_template,
-                    'cli_overrides': cli_overrides, 'output_file': output_file
-                }
+                kwargs=task_kwargs
             )
+
         except Exception as e:
             self.app.ui_manager.show_error_message(_("任务启动失败"),
                                                    f"{_('准备AI处理任务时发生错误:')}\n{traceback.format_exc()}")
+
+

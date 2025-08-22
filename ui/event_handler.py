@@ -159,7 +159,7 @@ class EventHandler:
             if loaded_config:
                 # 步骤 2: 根据 config.yml 的语言，重新设置整个应用的翻译系统
                 config_lang = loaded_config.i18n_language
-                logger.info(f"配置文件中的语言为 '{config_lang}'，将以此为准设置应用语言。")
+                logger.info(_("配置文件中的语言为 '{}'，将以此为准设置应用语言。").format(config_lang))
 
                 # 更新应用核心的翻译器
                 app._ = setup_localization(language_code=config_lang)
@@ -280,7 +280,7 @@ class EventHandler:
             lang_display_name = app.LANG_CODE_TO_NAME.get(current_lang_code, "English")
             app.selected_language_var.set(lang_display_name)
             # 这条日志确认了下拉菜单的同步
-            logger.info(f"启动时，语言下拉菜单已根据配置文件同步为: {lang_display_name}")
+            logger.info(_("启动时，语言下拉菜单已根据配置文件同步为: {}").format(lang_display_name))
 
             # 步骤 3: 重新翻译【主窗口标题】
             app.title(_(app.title_text_key))

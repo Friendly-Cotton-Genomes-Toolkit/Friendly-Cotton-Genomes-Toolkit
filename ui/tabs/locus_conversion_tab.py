@@ -3,7 +3,7 @@
 import tkinter as tk
 import ttkbootstrap as ttkb
 from typing import TYPE_CHECKING, List, Callable
-
+import threading
 from .base_tab import BaseTab
 from cotton_toolkit.pipelines import run_locus_conversion
 
@@ -118,6 +118,7 @@ class LocusConversionTab(BaseTab):
         update_menu(self.target_assembly_dropdown, self.selected_target_assembly)
 
     def start_locus_conversion_task(self):
+        # --- 参数验证  ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
@@ -134,21 +135,45 @@ class LocusConversionTab(BaseTab):
             return
 
         try:
-            chrom, pos_range = region_str.split(':')
-            start, end = map(int, pos_range.split('-'))
-            region_tuple = (chrom.strip(), start, end)
-        except ValueError:
+            from cotton_toolkit.utils.gene_utils import parse_region_string  # 导入解析函数
+            region_tuple = parse_region_string(region_str)
+            if not region_tuple:
+                raise ValueError("Invalid region format")
+        except (ValueError, ImportError):
             self.app.ui_manager.show_error_message(_("输入错误"), _("区域格式不正确，请使用 'Chr:Start-End' 格式。"))
             return
+
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("位点转换中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数 ---
+        task_kwargs = {
+            'config': self.app.current_config,
+            'source_assembly_id': source_assembly,
+            'target_assembly_id': target_assembly,
+            'region': region_tuple,
+            'output_path': output_path,
+            'criteria_overrides': {},
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
+        }
 
         self.app.event_handler._start_task(
             task_name=_("位点转换"),
             target_func=run_locus_conversion,
-            kwargs={
-                'config': self.app.current_config,
-                'source_assembly_id': source_assembly,
-                'target_assembly_id': target_assembly,
-                'region': region_tuple,
-                'output_path': output_path
-            }
+            kwargs=task_kwargs
         )
+
