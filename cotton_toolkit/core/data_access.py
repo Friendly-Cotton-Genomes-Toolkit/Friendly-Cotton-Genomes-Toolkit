@@ -30,59 +30,104 @@ def get_sequences_for_gene_ids(
         gene_ids: List[str]
 ) -> Tuple[Optional[str], List[str]]:
     """
-    根据基因ID列表，从预处理好的SQLite数据库中获取FASTA格式的CDS序列。
-    【已更新】现在会先调用智能ID解析器来统一ID格式。
+    Based on a list of gene IDs, retrieves FASTA-formatted CDS sequences from the
+    pre-processed SQLite database. It intelligently resolves user IDs to the
+    canonical IDs found in the database (preferring transcript IDs) and uses these
+    database-correct IDs in the FASTA headers.
     """
-    try:
-        # --- 核心修改：在最开始调用ID解析器 ---
-        logger.info(_("正在智能解析 {} 个输入基因ID...").format(len(gene_ids)))
-        resolved_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids)
-        logger.info(_("ID解析完成，得到 {} 个标准化的ID用于查询。").format(len(resolved_gene_ids)))
-    except (ValueError, FileNotFoundError) as e:
-        logger.error(e)
-        return None, gene_ids
+    if not gene_ids:
+        return "", []
 
-    # --- 数据库和表名准备 (这部分代码在 resolve_gene_ids 中也存在，但在这里仍然需要) ---
+    # --- Database and table name preparation (logic is unchanged) ---
     project_root = os.path.dirname(config.config_file_abs_path_)
     db_path = os.path.join(project_root, "genomes", "genomes.db")
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(_("错误: 预处理数据库 'genomes.db' 未找到。"))
     genome_sources = get_genome_data_sources(config)
     source_genome_info = genome_sources.get(source_assembly_id)
     cds_file_path = get_local_downloaded_file_path(config, source_genome_info, 'predicted_cds')
     table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=source_genome_info.version_id)
 
-    fasta_parts = []
-    found_genes_map = {}
+    # 1. Generate all possible ID variations for all unique user IDs.
+    unique_user_ids = list(dict.fromkeys(gene_ids))
+    id_variations = {}  # { user_id: [potential_id1, potential_id2, ...] }
+    all_potential_ids = set()
+    for user_id in unique_user_ids:
+        variants = list(dict.fromkeys([_to_transcript_id(user_id), _to_gene_id(user_id), user_id]))
+        id_variations[user_id] = variants
+        all_potential_ids.update(variants)
 
+    # 2. Find which of these potential IDs actually exist in the DB in one batched query.
+    existing_db_ids = set()
     try:
-        logging.debug(db_path)
         with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
             cursor = conn.cursor()
-            # --- 逻辑简化：现在只需进行一次批量查询 ---
-            placeholders = ','.join('?' for _V in resolved_gene_ids)
-            query = f'SELECT Gene, Seq FROM "{table_name}" WHERE Gene IN ({placeholders})'
-            cursor.execute(query, resolved_gene_ids)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+            if cursor.fetchone() is None:
+                raise ValueError(_("错误: 在数据库中找不到表 '{}'。").format(table_name))
 
-            for gene, seq in cursor.fetchall():
-                # 因为ID已经标准化，我们只需将原始ID（未标准化的）映射到找到的序列上
-                original_id = _to_gene_id(gene)  # 以基础ID为准进行反向映射
-                if original_id in gene_ids or gene in gene_ids:
-                    found_genes_map[original_id] = seq
+            batch_size = 500
+            potential_list = list(all_potential_ids)
+            for i in range(0, len(potential_list), batch_size):
+                batch = potential_list[i:i + batch_size]
+                placeholders = ','.join('?' for _9 in batch)
+                query = f'SELECT Gene FROM "{table_name}" WHERE Gene IN ({placeholders})'
+                cursor.execute(query, batch)
+                for row in cursor.fetchall():
+                    existing_db_ids.add(row[0])
 
-    except sqlite3.Error as e:
+    except (sqlite3.Error, ValueError) as e:
         logger.error(_("查询序列时发生数据库错误: {}").format(e))
         return None, gene_ids
 
-    # 构建FASTA字符串时，使用原始ID以保持用户输入的一致性
-    for original_gid in gene_ids:
-        base_gid = _to_gene_id(original_gid)
-        if base_gid in found_genes_map:
-            fasta_parts.append(f">{original_gid}\n{found_genes_map[base_gid]}")
-
-    all_input_base_ids = set(_to_gene_id(gid) for gid in gene_ids)
-    not_found_genes = [gid for gid in all_input_base_ids if gid not in found_genes_map]
+    # 3. Resolve which user ID maps to which existing DB ID based on the preferred order.
+    resolved_map = {}  # { user_id: db_id }
+    not_found_genes = []
+    for user_id, variants in id_variations.items():
+        match_found = False
+        for pot_id in variants:
+            if pot_id in existing_db_ids:
+                resolved_map[user_id] = pot_id
+                match_found = True
+                break
+        if not match_found:
+            not_found_genes.append(user_id)
 
     if not_found_genes:
-        logger.warning(_("警告: 在数据库中未能找到 {} 个基因的序列。").format(len(not_found_genes)))
+        logger.warning(_("警告: 在数据库中未能找到 {} 个基因的序列: {}").format(len(not_found_genes),
+                                                                                ", ".join(not_found_genes[:5]) + (
+                                                                                    '...' if len(
+                                                                                        not_found_genes) > 5 else '')))
+
+    # 4. Fetch all required sequences in a single query.
+    db_ids_to_fetch = list(set(resolved_map.values()))
+    if not db_ids_to_fetch:
+        return "", not_found_genes
+
+    fasta_sequences = {}  # { db_id: sequence }
+    try:
+        with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
+            cursor = conn.cursor()
+            placeholders = ','.join('?' for _c in db_ids_to_fetch)
+            query = f'SELECT Gene, Seq FROM "{table_name}" WHERE Gene IN ({placeholders})'
+            cursor.execute(query, db_ids_to_fetch)
+            for gene, seq in cursor.fetchall():
+                fasta_sequences[gene] = seq
+    except sqlite3.Error as e:
+        logger.error(_("批量获取序列时发生数据库错误: {}").format(e))
+        return None, gene_ids
+
+    # 5. Build the FASTA string, using the database ID for the header.
+    # Iterate through the original gene_ids list to maintain user's order.
+    fasta_parts = []
+    emitted_db_ids = set()  # Ensure each sequence is only output once
+    for user_id in gene_ids:
+        db_id = resolved_map.get(user_id)
+        if db_id and db_id not in emitted_db_ids:
+            sequence = fasta_sequences.get(db_id)
+            if sequence:
+                fasta_parts.append(f">{db_id}\n{sequence}")
+                emitted_db_ids.add(db_id)
 
     fasta_string = "\n".join(fasta_parts)
     return fasta_string, not_found_genes
