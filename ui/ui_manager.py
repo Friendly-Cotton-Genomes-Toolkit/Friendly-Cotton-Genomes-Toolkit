@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Optional, Callable, Any, List, Dict
 import ttkbootstrap as ttkb
 from PIL import Image, ImageTk
 
+from . import get_persistent_settings_path
 from .dialogs import MessageDialog, ProgressDialog
 
 if TYPE_CHECKING:
@@ -24,19 +25,11 @@ except (AttributeError, ImportError):
 logger = logging.getLogger("ui.ui_manager")
 
 
-def _get_persistent_settings_path():
-    """获取用户主目录中持久化UI设置文件的路径。"""
-    home_dir = os.path.expanduser("~")
-    settings_dir = os.path.join(home_dir, ".fcgt")
-    # 此函数只解析路径，不创建目录
-    return os.path.join(settings_dir, "ui_settings.json")
-
-
 def determine_initial_theme():
     """在主App完全初始化前，预先读取UI设置以确定初始主题。"""
     try:
         # 修正: 使用与应用程序其余部分一致的持久化设置路径
-        settings_path = _get_persistent_settings_path()
+        settings_path = get_persistent_settings_path()
         if os.path.exists(settings_path):
             with open(settings_path, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
@@ -366,7 +359,7 @@ class UIManager:
 
     def _get_settings_path(self):
         # 修正: 使用辅助函数并确保目录存在
-        path = _get_persistent_settings_path()
+        path = get_persistent_settings_path()
         os.makedirs(os.path.dirname(path), exist_ok=True)
         return path
 

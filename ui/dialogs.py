@@ -226,3 +226,140 @@ class ProgressDialog(ttkb.Toplevel):
     def close(self):
         if self.winfo_exists():
             self.destroy()
+
+
+
+class FirstLaunchDialog(ttkb.Toplevel):
+    """
+    Welcome and information dialog shown on first launch. (Optimized with scrolling and wider layout, now with centered elements)
+    """
+
+    def __init__(self, parent: tk.Tk, title: str):
+        super().__init__(parent)
+        self.title(title)
+
+        self.transient(parent)
+        self.grab_set()
+
+        self.geometry("780x700")
+        self.resizable(False, False)
+
+        self._create_widgets()
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        self.update_idletasks()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        w, h = self.winfo_width(), self.winfo_height()
+        x = (screen_width - w) // 2
+        y = (screen_height - h) // 2
+        self.geometry(f"+{x}+{y}")
+
+        self.wait_window(self)
+
+    def _create_widgets(self):
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        canvas_frame = ttkb.Frame(self, padding=(0, 0, 10, 0))
+        canvas_frame.grid(row=0, column=0, sticky="nsew")
+        canvas_frame.grid_rowconfigure(0, weight=1)
+        canvas_frame.grid_columnconfigure(0, weight=1)
+
+        canvas = tk.Canvas(canvas_frame, highlightthickness=0)
+        scrollbar = ttkb.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview, bootstyle="round")
+        scrollable_frame = ttkb.Frame(canvas, padding=(20, 20, 30, 20))
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        def _on_mousewheel(event):
+            scroll_units = 0
+            if event.num == 5 or event.delta < 0:
+                scroll_units = 1
+            elif event.num == 4 or event.delta > 0:
+                scroll_units = -1
+            canvas.yview_scroll(scroll_units, "units")
+
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas.bind_all("<Button-4>", _on_mousewheel)
+        canvas.bind_all("<Button-5>", _on_mousewheel)
+
+        content_frame = scrollable_frame
+        content_frame.grid_columnconfigure(0, weight=1)
+
+        title_label = ttkb.Label(
+            content_frame,
+            text="Welcome to Friendly Cotton Genome Toolkit (FCGT)",
+            font=("", 16, "bold"),
+            bootstyle="primary"
+        )
+        # Center the title
+        title_label.pack(pady=(0, 15), fill="x", anchor="center")
+
+        license_frame = ttkb.LabelFrame(content_frame, text="License and Disclaimer", bootstyle="secondary", padding=10)
+        license_frame.pack(fill="x", pady=10)
+        license_text = (
+            "This program adheres to the Apache-2.0 license. You are free to use, modify, and distribute the code. "
+            "However, no contributors (including the original authors and their affiliations) provide any warranty "
+            "and are not liable for any issues arising from the use of this software."
+        )
+        ttkb.Label(license_frame, text=license_text, wraplength=650, justify="left").pack(fill="x")
+
+        config_frame = ttkb.LabelFrame(content_frame, text="Custom Configuration", bootstyle="info", padding=10)
+        config_frame.pack(fill="x", pady=10)
+        config_text = (
+            "You can configure custom download sources or modify the genome list in genome_sources_list.yml.\n"
+            "For information on the default data sources, please see the 'About' section."
+        )
+        ttkb.Label(config_frame, text=config_text, wraplength=650, justify="left").pack(fill="x")
+
+        notes_frame = ttkb.LabelFrame(content_frame, text="Special Notice", bootstyle="warning", padding=10)
+        notes_frame.pack(fill="x", expand=True, pady=10)
+
+        points = [
+            ("Typically, this program supports both gene (e.g., Gohir.A12G149800) and transcript "
+             "(e.g., Gohir.A12G149800.2) inputs. However, in some cases, one type of input may not work. "
+             "See the following points for details."),
+            ("If the input is a gene ID and the data is stored in transcript format, the gene will be converted to the "
+             "default first transcript (e.g., Gohir.A12G149800.1) for searching. If the data is stored in gene format, "
+             "the search proceeds normally."),
+            ("Conversely, if the input is a transcript ID but the data is stored in gene format, the transcript suffix "
+             "(e.g., .1, .2) will be removed, and the search will be performed using the gene ID "
+             "(e.g., Gohir.A12G149800). If the data is stored in transcript format, the search proceeds normally."),
+            ("In summary, for high-precision data requirements, it is recommended to use transcript IDs for input "
+             "and to try multiple transcripts, not just the first one.")
+        ]
+
+        for i, point in enumerate(points, 1):
+            point_frame = ttkb.Frame(notes_frame)
+            point_frame.pack(fill="x", pady=5)
+
+            num_label = ttkb.Label(point_frame, text=f"{i}.", font=("", 10, "bold"), bootstyle="warning")
+            num_label.pack(side="left", anchor="n", padx=(0, 5))
+
+            text_label = ttkb.Label(point_frame, text=point, wraplength=650, justify="left")
+            text_label.pack(side="left", fill="x", expand=True)
+
+        button_frame = ttkb.Frame(self, padding=(0, 15, 0, 20))
+        button_frame.grid(row=1, column=0, sticky="ew")
+
+        ok_button = ttkb.Button(
+            button_frame,
+            text="I have read and agree",
+            command=self._on_close,
+            bootstyle="success"
+        )
+        # Center the button within the button frame
+        ok_button.pack(anchor="center")
+
+    def _on_close(self):
+        self.destroy()

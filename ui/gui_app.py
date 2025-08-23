@@ -12,6 +12,10 @@ from tkinter import font as tkfont
 from typing import Optional, Dict, Any, Callable
 import tkinter as tk
 import ttkbootstrap as ttkb
+import json
+
+from ui import get_persistent_settings_path
+from ui.dialogs import FirstLaunchDialog
 
 try:
     from ctypes import windll, byref, sizeof, c_int
@@ -58,7 +62,7 @@ class CottonToolkitApp(ttkb.Window):
             "download": _("数据下载"), "annotation": _("功能注释"), "sequence_extraction": _("CDS序列提取"),
             "enrichment": _("富集分析与绘图"),
             "genome_identifier": _("基因组鉴定"), "homology": _("快速同源转换"),
-            "arabidopsis_conversion":_("棉花-拟南芥互转"),
+            "arabidopsis_conversion": _("棉花-拟南芥互转"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
         }
@@ -140,6 +144,8 @@ class CottonToolkitApp(ttkb.Window):
         self.selected_language_var = tk.StringVar()
         self.selected_appearance_var = tk.StringVar()
 
+        self._check_for_first_launch()
+
         self.ui_manager = UIManager(self, translator=self._)
         self.event_handler = EventHandler(self)
 
@@ -156,6 +162,44 @@ class CottonToolkitApp(ttkb.Window):
         self.event_handler.start_app_async_startup()
         self.check_queue_periodic()
         self.protocol("WM_DELETE_WINDOW", self.event_handler.on_closing)
+
+    def _check_for_first_launch(self):
+        """
+        检查是否是首次启动，如果是，则显示欢迎和说明对话框。
+        """
+        ui_settings_path = get_persistent_settings_path()
+        show_welcome = False
+
+        try:
+            with open(ui_settings_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                # 检查 "first_launch" 键是否存在且为 True
+                if not settings.get('first_launch', False):
+                    show_welcome = True
+        except (FileNotFoundError, json.JSONDecodeError):
+            # 如果文件不存在或格式错误，也视为首次启动
+            show_welcome = True
+
+        if show_welcome:
+            # 直接以主窗口 (self) 为父窗口显示对话框
+            FirstLaunchDialog(parent=self,title='Welcome!')
+
+            # 用户关闭对话框后，更新设置文件
+            try:
+                current_settings = {}
+                if os.path.exists(ui_settings_path):
+                    # 再次读取以防万一有其他设置
+                    with open(ui_settings_path, 'r', encoding='utf-8') as f:
+                        current_settings = json.load(f)
+
+                current_settings['first_launch'] = True
+
+                with open(ui_settings_path, 'w', encoding='utf-8') as f:
+                    json.dump(current_settings, f, indent=4)
+                logging.info("'first_launch' flag set to True in ui_settings.json.")
+
+            except Exception as e:
+                logging.error(f"Failed to update ui_settings.json after first launch dialog: {e}")
 
     def resource_path(self, relative_path: str):
         """
@@ -259,7 +303,6 @@ class CottonToolkitApp(ttkb.Window):
             self.update()
 
             self._force_apply_fonts()
-
 
             # 更新其他UI依赖项
             self.default_text_color = self.style.lookup('TLabel', 'foreground')
@@ -685,7 +728,7 @@ class CottonToolkitApp(ttkb.Window):
             "enrichment": EnrichmentTab,
             "genome_identifier": GenomeIdentifierTab,
             "homology": HomologyTab,
-            "arabidopsis_conversion":ArabidopsisHomologyConversionTab,
+            "arabidopsis_conversion": ArabidopsisHomologyConversionTab,
             "locus_conversion": LocusConversionTab,
             "gff_query": GFFQueryTab,
             "blast": BlastTab,
@@ -858,7 +901,6 @@ class CottonToolkitApp(ttkb.Window):
             self.style.configure(style_name, font=self.app_font)
         self.style.configure('success.TButton', font=self.app_font_bold)
         self.style.configure('outline.TButton', font=self.app_font)
-
 
     def _setup_fonts(self):
         font_stack = ["Microsoft YaHei UI", "Segoe UI", "Calibri", "Helvetica", "sans-serif"]
