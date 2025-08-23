@@ -40,7 +40,7 @@ def plot_enrichment_bubble(
     """
     if enrichment_df.empty:
         # 修改: 使用 logger.warning
-        logger.warning(_("Warning: Enrichment DataFrame is empty for bubble plot."))
+        logger.warning(_("Enrichment DataFrame is empty for bubble plot."))
         return None
 
     df = enrichment_df.copy()
@@ -149,7 +149,7 @@ def plot_enrichment_bar(
 ) -> Optional[str]:
     if enrichment_df is None or enrichment_df.empty:
         # 修改: 使用 logger.warning
-        logger.warning(_("Warning: Enrichment DataFrame is empty for bar plot."))
+        logger.warning(_("Enrichment DataFrame is empty for bar plot."))
         return None
     fig, ax = None, None
     try:
@@ -227,7 +227,7 @@ def plot_enrichment_upset(
 ) -> Optional[str]:
     if enrichment_df is None or enrichment_df.empty:
         # 修改: 使用 logger.warning
-        logger.warning(_("Warning: Enrichment DataFrame is empty for upset plot."))
+        logger.warning(_("Enrichment DataFrame is empty for upset plot."))
         return None
     fig = None
     try:
@@ -243,7 +243,7 @@ def plot_enrichment_upset(
 
         if df_plot.empty:
             # 修改: 使用 logger.warning
-            logger.warning(_("Warning: DataFrame is empty after sorting and head for upset plot."))
+            logger.warning(_("DataFrame is empty after sorting and head for upset plot."))
             return None
 
         gene_sets = {row['Description']: set(row['Genes'].split(';')) for index, row in df_plot.iterrows()}

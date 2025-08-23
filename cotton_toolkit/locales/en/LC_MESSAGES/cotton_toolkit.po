@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.1.1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-23 10:21+0800\n"
-"PO-Revision-Date: 2025-08-23 12:14+0800\n"
+"POT-Creation-Date: 2025-08-23 13:05+0800\n"
+"PO-Revision-Date: 2025-08-23 13:05+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Deepseek V3\n"
 "Language: en\n"
@@ -1309,128 +1309,128 @@ msgstr ""
 msgid "错误: 基因列表为空。"
 msgstr "Error: The gene list is empty."
 
-#: cotton_toolkit/pipelines/homology.py:244
+#: cotton_toolkit/pipelines/homology.py:243
 #, python-brace-format
 msgid "正在并行启动BLAST任务 (共 {} 个子任务)..."
 msgstr "Running BLAST tasks in parallel ({} subtasks in total)..."
 
-#: cotton_toolkit/pipelines/homology.py:265
+#: cotton_toolkit/pipelines/homology.py:264
 #, python-brace-format
 msgid "已完成 {}/{} 个BLAST子任务..."
 msgstr "Completed {}/{} BLAST subtasks..."
 
-#: cotton_toolkit/pipelines/homology.py:270
+#: cotton_toolkit/pipelines/homology.py:269
 msgid "所有BLAST任务完成，但未找到任何匹配项。"
 msgstr "All BLAST tasks completed, but no matches were found."
 
-#: cotton_toolkit/pipelines/homology.py:274
+#: cotton_toolkit/pipelines/homology.py:273
 #, python-brace-format
 msgid "所有线程共返回 {} 条原始匹配。"
 msgstr "All threads returned a total of {} raw matches."
 
-#: cotton_toolkit/pipelines/homology.py:276
+#: cotton_toolkit/pipelines/homology.py:275
 msgid "正在应用筛选条件并整理结果..."
 msgstr "Applying filters and organizing results..."
 
-#: cotton_toolkit/pipelines/homology.py:290
+#: cotton_toolkit/pipelines/homology.py:289
 msgid "已启用严格模式：筛选同亚组、同染色体编号的匹配。"
 msgstr ""
 "Strict mode enabled: Filtering matches from the same subgroup and chromosome."
 
-#: cotton_toolkit/pipelines/homology.py:299
+#: cotton_toolkit/pipelines/homology.py:298
 msgid "正在保存最终结果..."
 msgstr "Saving final results..."
 
-#: cotton_toolkit/pipelines/homology.py:300
+#: cotton_toolkit/pipelines/homology.py:299
 #, python-brace-format
 msgid "正在将最终BLAST结果保存到: {}"
 msgstr "Saving final BLAST results to: {}"
 
-#: cotton_toolkit/pipelines/homology.py:306
+#: cotton_toolkit/pipelines/homology.py:305
 msgid "同源映射完成。"
 msgstr "Homologous mapping completed."
 
-#: cotton_toolkit/pipelines/homology.py:310
+#: cotton_toolkit/pipelines/homology.py:309
 #, python-brace-format
 msgid "同源映射流水线发生意外错误: {}"
 msgstr "An unexpected error occurred in the homomorphic mapping pipeline: {}"
 
-#: cotton_toolkit/pipelines/homology.py:314 ui/gui_app.py:62
+#: cotton_toolkit/pipelines/homology.py:313 ui/gui_app.py:62
 #: ui/tabs/locus_conversion_tab.py:175
 msgid "位点转换"
 msgstr "Locus Conversion"
 
-#: cotton_toolkit/pipelines/homology.py:334
+#: cotton_toolkit/pipelines/homology.py:333
 msgid "正在通过BLAST进行同源基因映射..."
 msgstr "Mapping homologous genes via BLAST..."
 
-#: cotton_toolkit/pipelines/homology.py:351
+#: cotton_toolkit/pipelines/homology.py:350
 msgid "未能找到任何同源基因，无法进行位点转换。"
 msgstr "No homologous genes found, unable to perform locus conversion."
 
-#: cotton_toolkit/pipelines/homology.py:352
+#: cotton_toolkit/pipelines/homology.py:351
 msgid "任务完成：无同源基因。"
 msgstr "Task complete: No homologous genes."
 
-#: cotton_toolkit/pipelines/homology.py:356
+#: cotton_toolkit/pipelines/homology.py:355
 #, python-brace-format
 msgid "# Source Locus: {} | {}:{}-{}\n"
 msgstr "# Source Locus: {} | {}:{}-{}\n"
 
-#: cotton_toolkit/pipelines/homology.py:357
+#: cotton_toolkit/pipelines/homology.py:356
 #, python-brace-format
 msgid "# Target Assembly: {}\n"
 msgstr "# Target Assembly: {}\n"
 
-#: cotton_toolkit/pipelines/homology.py:358
+#: cotton_toolkit/pipelines/homology.py:357
 msgid "# No successful homologous matches found to convert locus.\n"
 msgstr "# No successful homologous matches found to convert locus.\n"
 
-#: cotton_toolkit/pipelines/homology.py:359
+#: cotton_toolkit/pipelines/homology.py:358
 msgid "在指定区域未找到可转换的同源基因。"
 msgstr ""
 "No homologous genes available for conversion were found in the specified "
 "region."
 
-#: cotton_toolkit/pipelines/homology.py:363
+#: cotton_toolkit/pipelines/homology.py:362
 msgid "正在查询源基因的坐标..."
 msgstr "Querying coordinates of the source gene..."
 
-#: cotton_toolkit/pipelines/homology.py:367
+#: cotton_toolkit/pipelines/homology.py:366
 #, python-brace-format
 msgid "正在为 {} 个唯一的源基因ID查询GFF信息。"
 msgstr "Querying GFF information for {} unique source gene IDs."
 
-#: cotton_toolkit/pipelines/homology.py:392
+#: cotton_toolkit/pipelines/homology.py:391
 msgid "正在查询目标基因的坐标..."
 msgstr "Querying the coordinates of the target gene..."
 
-#: cotton_toolkit/pipelines/homology.py:400
+#: cotton_toolkit/pipelines/homology.py:399
 #, python-brace-format
 msgid "将 {} 个同源Hit_ID规范化为 {} 个唯一的基础基因ID进行GFF查询。"
 msgstr ""
 "Normalizing {} homologous Hit_IDs into {} unique base gene IDs for GFF query."
 
-#: cotton_toolkit/pipelines/homology.py:414
+#: cotton_toolkit/pipelines/homology.py:413
 msgid "找到了同源基因ID，但无法在目标GFF中查询到它们的坐标信息。"
 msgstr ""
 "Found homologous gene IDs, but their coordinate information could not be "
 "queried in the target GFF."
 
-#: cotton_toolkit/pipelines/homology.py:423
+#: cotton_toolkit/pipelines/homology.py:422
 msgid "正在合并BLAST结果与坐标信息..."
 msgstr "Merging BLAST results with coordinate information..."
 
-#: cotton_toolkit/pipelines/homology.py:445
+#: cotton_toolkit/pipelines/homology.py:444
 #, python-brace-format
 msgid "正在将位点转换结果保存到: {}"
 msgstr "Saving site conversion results to: {}"
 
-#: cotton_toolkit/pipelines/homology.py:447
+#: cotton_toolkit/pipelines/homology.py:446
 msgid "位点转换完成！"
 msgstr "Site conversion complete!"
 
-#: cotton_toolkit/pipelines/homology.py:448
+#: cotton_toolkit/pipelines/homology.py:447
 #, python-brace-format
 msgid ""
 "位点转换结果已成功保存到:\n"
@@ -1439,12 +1439,12 @@ msgstr ""
 "Locus conversion results have been successfully saved to:\n"
 "{}"
 
-#: cotton_toolkit/pipelines/homology.py:453
+#: cotton_toolkit/pipelines/homology.py:452
 #, python-brace-format
 msgid "位点转换流程出错: {}"
 msgstr "Locus conversion process failed: {}"
 
-#: cotton_toolkit/pipelines/homology.py:455
+#: cotton_toolkit/pipelines/homology.py:454
 #: cotton_toolkit/pipelines/preprocessing.py:490
 msgid "任务因错误而终止。"
 msgstr "Task terminated due to an error."
@@ -1866,7 +1866,7 @@ msgstr ""
 #: cotton_toolkit/pipelines/seqence_query.py:24 ui/gui_app.py:58
 #: ui/tabs/sequence_extraction_tab.py:307
 msgid "CDS序列提取"
-msgstr "CDS sequence extraction"
+msgstr "CDS Sequence Extraction"
 
 #: cotton_toolkit/pipelines/seqence_query.py:44
 msgid "正在解析基因/转录本ID..."
@@ -2215,8 +2215,9 @@ msgid "任务终止：加载KEGG背景数据失败。"
 msgstr "Task terminated: Failed to load KEGG background data."
 
 #: cotton_toolkit/tools/visualizer.py:43
-msgid "Warning: Enrichment DataFrame is empty for bubble plot."
-msgstr "Warning: Enrichment DataFrame is empty for bubble plot."
+#| msgid "Warning: Enrichment DataFrame is empty for bubble plot."
+msgid "Enrichment DataFrame is empty for bubble plot."
+msgstr "Enrichment DataFrame is empty for bubble plot."
 
 #: cotton_toolkit/tools/visualizer.py:132
 #, python-brace-format
@@ -2224,8 +2225,9 @@ msgid "Error plotting bubble chart: {}"
 msgstr "Error plotting bubble chart: {}"
 
 #: cotton_toolkit/tools/visualizer.py:152
-msgid "Warning: Enrichment DataFrame is empty for bar plot."
-msgstr "Warning: Enrichment DataFrame is empty for bar plot."
+#| msgid "Warning: Enrichment DataFrame is empty for bar plot."
+msgid "Enrichment DataFrame is empty for bar plot."
+msgstr "Enrichment DataFrame is empty for bar plot."
 
 #: cotton_toolkit/tools/visualizer.py:216
 #, python-brace-format
@@ -2233,8 +2235,9 @@ msgid "Error plotting bar chart: {}"
 msgstr "Error plotting bar chart: {}"
 
 #: cotton_toolkit/tools/visualizer.py:230
-msgid "Warning: Enrichment DataFrame is empty for upset plot."
-msgstr "Warning: Enrichment DataFrame is empty for upset plot."
+#| msgid "Warning: Enrichment DataFrame is empty for upset plot."
+msgid "Enrichment DataFrame is empty for upset plot."
+msgstr "Enrichment DataFrame is empty for upset plot."
 
 #: cotton_toolkit/tools/visualizer.py:238
 #, python-brace-format
@@ -2244,8 +2247,9 @@ msgstr ""
 "Error: Missing required columns for upset plot: {}. Available columns: {}"
 
 #: cotton_toolkit/tools/visualizer.py:246
-msgid "Warning: DataFrame is empty after sorting and head for upset plot."
-msgstr "Warning: DataFrame is empty after sorting and head for upset plot."
+#| msgid "Warning: DataFrame is empty after sorting and head for upset plot."
+msgid "DataFrame is empty after sorting and head for upset plot."
+msgstr "DataFrame is empty after sorting and head for upset plot."
 
 #: cotton_toolkit/tools/visualizer.py:266
 #, python-brace-format
@@ -2727,8 +2731,8 @@ msgstr "Select Configuration File"
 #: ui/tabs/arabidopsis_homology_tab.py:147 ui/tabs/blast_tab.py:61
 #: ui/tabs/blast_tab.py:188 ui/tabs/enrichment_tab.py:67
 #: ui/tabs/enrichment_tab.py:215 ui/tabs/gff_query_tab.py:111
-#: ui/tabs/gff_query_tab.py:182 ui/tabs/homology_tab.py:65
-#: ui/tabs/homology_tab.py:71 ui/tabs/homology_tab.py:265
+#: ui/tabs/gff_query_tab.py:182 ui/tabs/homology_tab.py:64
+#: ui/tabs/homology_tab.py:70 ui/tabs/homology_tab.py:315
 #: ui/tabs/locus_conversion_tab.py:53 ui/tabs/locus_conversion_tab.py:59
 #: ui/tabs/locus_conversion_tab.py:131 ui/tabs/sequence_extraction_tab.py:66
 #: ui/tabs/sequence_extraction_tab.py:253
@@ -2879,11 +2883,11 @@ msgstr "OK"
 #: ui/event_handler.py:782 ui/gui_app.py:582 ui/tabs/ai_assistant_tab.py:380
 #: ui/tabs/annotation_tab.py:116 ui/tabs/arabidopsis_homology_tab.py:137
 #: ui/tabs/arabidopsis_homology_tab.py:160 ui/tabs/blast_tab.py:182
-#: ui/tabs/data_download_tab.py:349 ui/tabs/data_download_tab.py:358
-#: ui/tabs/data_download_tab.py:414 ui/tabs/data_download_tab.py:474
-#: ui/tabs/data_download_tab.py:483 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/data_download_tab.py:322 ui/tabs/data_download_tab.py:331
+#: ui/tabs/data_download_tab.py:388 ui/tabs/data_download_tab.py:448
+#: ui/tabs/data_download_tab.py:457 ui/tabs/enrichment_tab.py:202
 #: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
-#: ui/tabs/homology_tab.py:241 ui/tabs/locus_conversion_tab.py:123
+#: ui/tabs/homology_tab.py:291 ui/tabs/locus_conversion_tab.py:123
 #: ui/tabs/sequence_extraction_tab.py:222
 #: ui/tabs/sequence_extraction_tab.py:239
 msgid "错误"
@@ -2996,7 +3000,7 @@ msgstr "Refresh complete."
 msgid "通用OpenAI兼容接口"
 msgstr "Generic OpenAI-Compatible Interface"
 
-#: ui/gui_app.py:58 ui/tabs/data_download_tab.py:459
+#: ui/gui_app.py:58 ui/tabs/data_download_tab.py:433
 msgid "数据下载"
 msgstr "Data Download"
 
@@ -3009,16 +3013,16 @@ msgid "基因组鉴定"
 msgstr "Genomic identification"
 
 #: ui/gui_app.py:60
-msgid "同源转换"
-msgstr "Homologous conversion"
+msgid "快速同源转换"
+msgstr "Rapid Gene Homology Conversion"
 
 #: ui/gui_app.py:61
 msgid "棉花-拟南芥互转"
-msgstr "Cotton-Arabidopsis conversion"
+msgstr "Cotton-Arabidopsis Conversion"
 
 #: ui/gui_app.py:62
 msgid "GFF查询"
-msgstr "GFF query"
+msgstr "GFF Query"
 
 #: ui/gui_app.py:62
 msgid "本地BLAST"
@@ -3026,7 +3030,7 @@ msgstr "Local BLAST"
 
 #: ui/gui_app.py:63
 msgid "AI助手"
-msgstr "AI assistant"
+msgstr "AI Assistant"
 
 #: ui/gui_app.py:82
 msgid "Friendly Cotton Genomes Toolkit - FCGT"
@@ -3431,7 +3435,7 @@ msgstr "CSV File Path:"
 #: ui/tabs/annotation_tab.py:93 ui/tabs/arabidopsis_homology_tab.py:83
 #: ui/tabs/blast_tab.py:101 ui/tabs/blast_tab.py:153 ui/tabs/blast_tab.py:304
 #: ui/tabs/blast_tab.py:309 ui/tabs/enrichment_tab.py:182
-#: ui/tabs/gff_query_tab.py:121 ui/tabs/homology_tab.py:138
+#: ui/tabs/gff_query_tab.py:121 ui/tabs/homology_tab.py:142
 #: ui/tabs/locus_conversion_tab.py:77 ui/tabs/locus_conversion_tab.py:95
 msgid "浏览..."
 msgstr "Browse..."
@@ -3484,10 +3488,10 @@ msgstr "No models available"
 
 #: ui/tabs/ai_assistant_tab.py:380 ui/tabs/annotation_tab.py:116
 #: ui/tabs/arabidopsis_homology_tab.py:137 ui/tabs/blast_tab.py:182
-#: ui/tabs/data_download_tab.py:350 ui/tabs/data_download_tab.py:414
-#: ui/tabs/data_download_tab.py:475 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/data_download_tab.py:323 ui/tabs/data_download_tab.py:388
+#: ui/tabs/data_download_tab.py:449 ui/tabs/enrichment_tab.py:202
 #: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
-#: ui/tabs/homology_tab.py:241 ui/tabs/locus_conversion_tab.py:123
+#: ui/tabs/homology_tab.py:291 ui/tabs/locus_conversion_tab.py:123
 #: ui/tabs/sequence_extraction_tab.py:239
 msgid "请先加载配置文件。"
 msgstr "Please load a configuration file first."
@@ -3502,9 +3506,9 @@ msgstr "Please load a configuration file first."
 #: ui/tabs/enrichment_tab.py:221 ui/tabs/enrichment_tab.py:228
 #: ui/tabs/enrichment_tab.py:256 ui/tabs/genome_identifier_tab.py:119
 #: ui/tabs/gff_query_tab.py:155 ui/tabs/gff_query_tab.py:164
-#: ui/tabs/gff_query_tab.py:183 ui/tabs/homology_tab.py:247
-#: ui/tabs/homology_tab.py:254 ui/tabs/homology_tab.py:260
-#: ui/tabs/homology_tab.py:267 ui/tabs/locus_conversion_tab.py:134
+#: ui/tabs/gff_query_tab.py:183 ui/tabs/homology_tab.py:297
+#: ui/tabs/homology_tab.py:304 ui/tabs/homology_tab.py:310
+#: ui/tabs/homology_tab.py:317 ui/tabs/locus_conversion_tab.py:134
 #: ui/tabs/sequence_extraction_tab.py:249
 #: ui/tabs/sequence_extraction_tab.py:254
 #: ui/tabs/sequence_extraction_tab.py:267
@@ -3538,10 +3542,10 @@ msgstr "The prompt template must include the {text} placeholder."
 
 #: ui/tabs/ai_assistant_tab.py:412 ui/tabs/annotation_tab.py:155
 #: ui/tabs/arabidopsis_homology_tab.py:168 ui/tabs/blast_tab.py:246
-#: ui/tabs/data_download_tab.py:383 ui/tabs/data_download_tab.py:431
-#: ui/tabs/data_download_tab.py:513 ui/tabs/enrichment_tab.py:263
+#: ui/tabs/data_download_tab.py:356 ui/tabs/data_download_tab.py:405
+#: ui/tabs/data_download_tab.py:487 ui/tabs/enrichment_tab.py:263
 #: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
-#: ui/tabs/homology_tab.py:286 ui/tabs/locus_conversion_tab.py:150
+#: ui/tabs/homology_tab.py:336 ui/tabs/locus_conversion_tab.py:150
 #: ui/tabs/sequence_extraction_tab.py:274
 msgid "操作取消"
 msgstr "Operation canceled"
@@ -3560,7 +3564,7 @@ msgstr "AI processing"
 msgid "AI批量处理CSV"
 msgstr "AI Batch Process CSV"
 
-#: ui/tabs/ai_assistant_tab.py:454 ui/tabs/data_download_tab.py:468
+#: ui/tabs/ai_assistant_tab.py:454 ui/tabs/data_download_tab.py:443
 msgid "任务启动失败"
 msgstr "Task Start Failed"
 
@@ -3577,14 +3581,13 @@ msgstr "Start Functional Annotation"
 msgid "输入数据"
 msgstr "Input Data"
 
-#: ui/tabs/annotation_tab.py:47 ui/tabs/data_download_tab.py:129
-#: ui/tabs/data_download_tab.py:167 ui/tabs/enrichment_tab.py:65
-#: ui/tabs/sequence_extraction_tab.py:64
+#: ui/tabs/annotation_tab.py:47 ui/tabs/data_download_tab.py:128
+#: ui/tabs/enrichment_tab.py:65 ui/tabs/sequence_extraction_tab.py:64
 msgid "基因组版本:"
 msgstr "Genome Version:"
 
 #: ui/tabs/annotation_tab.py:52 ui/tabs/arabidopsis_homology_tab.py:65
-#: ui/tabs/homology_tab.py:74 ui/tabs/homology_tab.py:176
+#: ui/tabs/homology_tab.py:73 ui/tabs/homology_tab.py:199
 #: ui/tabs/sequence_extraction_tab.py:69
 msgid "基因ID列表:"
 msgstr "Gene ID List:"
@@ -3602,14 +3605,14 @@ msgid "请输入要注释的基因ID。"
 msgstr "Please enter the gene IDs to be annotated."
 
 #: ui/tabs/annotation_tab.py:142 ui/tabs/blast_tab.py:188
-#: ui/tabs/blast_tab.py:337 ui/tabs/data_download_tab.py:186
-#: ui/tabs/data_download_tab.py:305 ui/tabs/data_download_tab.py:313
-#: ui/tabs/data_download_tab.py:352 ui/tabs/data_download_tab.py:418
-#: ui/tabs/data_download_tab.py:477 ui/tabs/enrichment_tab.py:197
-#: ui/tabs/enrichment_tab.py:215 ui/tabs/gff_query_tab.py:129
-#: ui/tabs/gff_query_tab.py:182 ui/tabs/homology_tab.py:266
-#: ui/tabs/homology_tab.py:340 ui/tabs/locus_conversion_tab.py:106
-#: ui/tabs/locus_conversion_tab.py:133 ui/tabs/sequence_extraction_tab.py:183
+#: ui/tabs/blast_tab.py:337 ui/tabs/data_download_tab.py:278
+#: ui/tabs/data_download_tab.py:286 ui/tabs/data_download_tab.py:325
+#: ui/tabs/data_download_tab.py:392 ui/tabs/data_download_tab.py:451
+#: ui/tabs/enrichment_tab.py:197 ui/tabs/enrichment_tab.py:215
+#: ui/tabs/gff_query_tab.py:129 ui/tabs/gff_query_tab.py:182
+#: ui/tabs/homology_tab.py:316 ui/tabs/homology_tab.py:392
+#: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:133
+#: ui/tabs/sequence_extraction_tab.py:183
 #: ui/tabs/sequence_extraction_tab.py:253 ui/ui_manager.py:554
 msgid "无可用基因组"
 msgstr "No genomes available"
@@ -3634,9 +3637,7 @@ msgstr "Start Conversion"
 
 #: ui/tabs/arabidopsis_homology_tab.py:43
 msgid "棉花-拟南芥同源基因转换"
-msgstr ""
-"Cotton-Arabidopsis\n"
-"homologous gene conversion"
+msgstr "Cotton-Arabidopsis Conversion"
 
 #: ui/tabs/arabidopsis_homology_tab.py:45
 msgid "基于预处理数据库中的同源注释表，快速进行ID批量转换。"
@@ -3661,8 +3662,8 @@ msgstr "Cotton genome version:"
 msgid "输出文件"
 msgstr "output file"
 
-#: ui/tabs/arabidopsis_homology_tab.py:79 ui/tabs/homology_tab.py:132
-#: ui/tabs/homology_tab.py:179
+#: ui/tabs/arabidopsis_homology_tab.py:79 ui/tabs/homology_tab.py:129
+#: ui/tabs/homology_tab.py:202
 msgid "输出路径:"
 msgstr "Output Path:"
 
@@ -3679,12 +3680,12 @@ msgid "棉花 -> 拟南芥"
 msgstr "cotton -> Arabidopsis"
 
 #: ui/tabs/arabidopsis_homology_tab.py:132 ui/tabs/blast_tab.py:177
-#: ui/tabs/gff_query_tab.py:123 ui/tabs/homology_tab.py:198
+#: ui/tabs/gff_query_tab.py:123 ui/tabs/homology_tab.py:229
 msgid "CSV 文件"
 msgstr "CSV Files"
 
 #: ui/tabs/arabidopsis_homology_tab.py:132 ui/tabs/blast_tab.py:168
-#: ui/tabs/homology_tab.py:199 ui/tabs/sequence_extraction_tab.py:190
+#: ui/tabs/homology_tab.py:230 ui/tabs/sequence_extraction_tab.py:190
 msgid "所有文件"
 msgstr "All Files"
 
@@ -3710,10 +3711,10 @@ msgstr "Please specify the output file path."
 msgid "无效的转换方向。"
 msgstr "Invalid conversion direction."
 
-#: ui/tabs/arabidopsis_homology_tab.py:168 ui/tabs/data_download_tab.py:383
-#: ui/tabs/data_download_tab.py:513 ui/tabs/enrichment_tab.py:263
+#: ui/tabs/arabidopsis_homology_tab.py:168 ui/tabs/data_download_tab.py:356
+#: ui/tabs/data_download_tab.py:487 ui/tabs/enrichment_tab.py:263
 #: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
-#: ui/tabs/homology_tab.py:286 ui/tabs/locus_conversion_tab.py:150
+#: ui/tabs/homology_tab.py:336 ui/tabs/locus_conversion_tab.py:150
 #: ui/tabs/sequence_extraction_tab.py:274
 msgid "已发送取消请求，任务将尽快停止。"
 msgstr ""
@@ -3781,7 +3782,7 @@ msgid "文件输入"
 msgstr "File Input"
 
 #: ui/tabs/blast_tab.py:111 ui/tabs/blast_tab.py:305
-#: ui/tabs/homology_tab.py:112
+#: ui/tabs/homology_tab.py:110
 msgid "E-value:"
 msgstr "E-value:"
 
@@ -3836,7 +3837,7 @@ msgstr "Sequence File"
 msgid "选择查询序列文件"
 msgstr "Select query sequence file"
 
-#: ui/tabs/blast_tab.py:177 ui/tabs/homology_tab.py:198
+#: ui/tabs/blast_tab.py:177 ui/tabs/homology_tab.py:229
 msgid "Excel 文件"
 msgstr "Excel Files"
 
@@ -3866,7 +3867,7 @@ msgstr ""
 "\n"
 "Please go to the \"Data Download\" tab to download the file."
 
-#: ui/tabs/blast_tab.py:211 ui/tabs/data_download_tab.py:499
+#: ui/tabs/blast_tab.py:211 ui/tabs/data_download_tab.py:473
 msgid "缺少文件"
 msgstr "Missing Files"
 
@@ -3879,7 +3880,7 @@ msgid "请粘贴查询序列。"
 msgstr "Please paste the query sequence."
 
 #: ui/tabs/blast_tab.py:237 ui/tabs/gff_query_tab.py:179
-#: ui/tabs/homology_tab.py:279 ui/tabs/locus_conversion_tab.py:143
+#: ui/tabs/homology_tab.py:329 ui/tabs/locus_conversion_tab.py:143
 msgid "输入错误"
 msgstr "Input Error"
 
@@ -3921,148 +3922,148 @@ msgstr "KEGG Orthology"
 msgid "同源关系 (拟南芥)"
 msgstr "Homologous relationship (Arabidopsis thaliana)"
 
-#: ui/tabs/data_download_tab.py:58 ui/tabs/data_download_tab.py:193
+#: ui/tabs/data_download_tab.py:58 ui/tabs/data_download_tab.py:166
 msgid "开始下载"
 msgstr "Start Download"
 
-#: ui/tabs/data_download_tab.py:61 ui/tabs/data_download_tab.py:387
-#: ui/tabs/data_download_tab.py:405
+#: ui/tabs/data_download_tab.py:61 ui/tabs/data_download_tab.py:360
+#: ui/tabs/data_download_tab.py:378
 msgid "预处理BLAST数据库"
 msgstr "Preprocess BLAST database"
 
-#: ui/tabs/data_download_tab.py:65 ui/tabs/data_download_tab.py:195
-#: ui/tabs/data_download_tab.py:517
+#: ui/tabs/data_download_tab.py:65 ui/tabs/data_download_tab.py:168
+#: ui/tabs/data_download_tab.py:491
 msgid "预处理注释文件"
 msgstr "Preprocess Annotation Files"
 
-#: ui/tabs/data_download_tab.py:121 ui/tabs/data_download_tab.py:165
+#: ui/tabs/data_download_tab.py:120
 msgid "数据下载与预处理"
 msgstr "Data Download and Preprocessing"
 
-#: ui/tabs/data_download_tab.py:125 ui/tabs/data_download_tab.py:166
+#: ui/tabs/data_download_tab.py:124
 msgid "选择基因组"
 msgstr "Select Genome"
 
-#: ui/tabs/data_download_tab.py:133 ui/tabs/data_download_tab.py:352
-#: ui/tabs/data_download_tab.py:418 ui/tabs/data_download_tab.py:477
+#: ui/tabs/data_download_tab.py:132 ui/tabs/data_download_tab.py:325
+#: ui/tabs/data_download_tab.py:392 ui/tabs/data_download_tab.py:451
 msgid "配置未加载"
 msgstr "Configuration not loaded"
 
-#: ui/tabs/data_download_tab.py:139 ui/tabs/data_download_tab.py:168
+#: ui/tabs/data_download_tab.py:138
 msgid "文件类型与状态"
 msgstr "File Type and Status"
 
-#: ui/tabs/data_download_tab.py:143 ui/tabs/data_download_tab.py:169
+#: ui/tabs/data_download_tab.py:142
 msgid "下载选项"
 msgstr "Download Options"
 
-#: ui/tabs/data_download_tab.py:148
+#: ui/tabs/data_download_tab.py:147
 msgid "任务进度详情"
 msgstr "Task Progress Details"
 
-#: ui/tabs/data_download_tab.py:155 ui/tabs/data_download_tab.py:170
+#: ui/tabs/data_download_tab.py:153
 msgid "强制重新下载 (覆盖本地已存在文件)"
 msgstr "Force re-download (overwrite local existing files)"
 
-#: ui/tabs/data_download_tab.py:159 ui/tabs/data_download_tab.py:171
+#: ui/tabs/data_download_tab.py:157
 msgid "对数据下载使用网络代理 (请在配置编辑器中设置)"
 msgstr ""
 "Use network proxy for data downloads (please set in the configuration editor)"
 
-#: ui/tabs/data_download_tab.py:174 ui/tabs/data_download_tab.py:228
-msgid "选择文件类型"
-msgstr "Select File Type"
-
-#: ui/tabs/data_download_tab.py:176 ui/tabs/data_download_tab.py:241
-msgid "文件状态"
-msgstr "File Status"
-
-#: ui/tabs/data_download_tab.py:220
+#: ui/tabs/data_download_tab.py:193
 msgid "未下载"
 msgstr "Not Downloaded"
 
-#: ui/tabs/data_download_tab.py:221
+#: ui/tabs/data_download_tab.py:194
 msgid "已下载 (待处理)"
 msgstr "Downloaded (Pending)"
 
-#: ui/tabs/data_download_tab.py:222
+#: ui/tabs/data_download_tab.py:195
 msgid "仅整理 (待建库)"
 msgstr "Organize only (Pending library creation)"
 
-#: ui/tabs/data_download_tab.py:223
+#: ui/tabs/data_download_tab.py:196
 msgid "仅建库 (待整理)"
 msgstr "Build Library Only (To Be Sorted)"
 
-#: ui/tabs/data_download_tab.py:224 ui/tabs/data_download_tab.py:374
-#: ui/tabs/data_download_tab.py:505
+#: ui/tabs/data_download_tab.py:197 ui/tabs/data_download_tab.py:347
+#: ui/tabs/data_download_tab.py:479
 msgid "已就绪"
 msgstr "Ready"
 
-#: ui/tabs/data_download_tab.py:245
+#: ui/tabs/data_download_tab.py:201
+msgid "选择文件类型"
+msgstr "Select File Type"
+
+#: ui/tabs/data_download_tab.py:214
+msgid "文件状态"
+msgstr "File Status"
+
+#: ui/tabs/data_download_tab.py:218
 msgid "刷新状态"
 msgstr "Refresh Status"
 
-#: ui/tabs/data_download_tab.py:294
+#: ui/tabs/data_download_tab.py:267
 msgid "当前基因组版本在配置文件中没有可供下载的URL链接。"
 msgstr ""
 "The current genome version has no downloadable URL links in the "
 "configuration file."
 
-#: ui/tabs/data_download_tab.py:353 ui/tabs/data_download_tab.py:419
-#: ui/tabs/data_download_tab.py:424 ui/tabs/data_download_tab.py:478
+#: ui/tabs/data_download_tab.py:326 ui/tabs/data_download_tab.py:393
+#: ui/tabs/data_download_tab.py:398 ui/tabs/data_download_tab.py:452
 msgid "选择错误"
 msgstr "Selection Error"
 
-#: ui/tabs/data_download_tab.py:353
+#: ui/tabs/data_download_tab.py:326
 msgid "请选择一个有效的基因组。"
 msgstr "Please select a valid genome."
 
-#: ui/tabs/data_download_tab.py:357 ui/tabs/data_download_tab.py:482
+#: ui/tabs/data_download_tab.py:330 ui/tabs/data_download_tab.py:456
 #, python-brace-format
 msgid "找不到基因组 '{}' 的信息。"
 msgstr "No information found for the genome '{}'."
 
-#: ui/tabs/data_download_tab.py:370
+#: ui/tabs/data_download_tab.py:343
 msgid "无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。"
 msgstr ""
 "Unable to start preprocessing because the current genome version does not "
 "have a configured URL for predicting CDS or protein files."
 
-#: ui/tabs/data_download_tab.py:371
+#: ui/tabs/data_download_tab.py:344
 msgid "缺少配置"
 msgstr "Missing configuration"
 
-#: ui/tabs/data_download_tab.py:375
+#: ui/tabs/data_download_tab.py:348
 msgid "所有适用的BLAST数据库均已预处理完成，无需再次运行。"
 msgstr ""
 "All applicable BLAST databases have been preprocessed and do not need to be "
 "run again."
 
-#: ui/tabs/data_download_tab.py:419
+#: ui/tabs/data_download_tab.py:393
 msgid "请选择一个有效的基因组进行下载。"
 msgstr "Please select a valid genome to download."
 
-#: ui/tabs/data_download_tab.py:424
+#: ui/tabs/data_download_tab.py:398
 msgid "请至少选择一种要下载的文件类型。"
 msgstr "Please select at least one file type to download."
 
-#: ui/tabs/data_download_tab.py:431
+#: ui/tabs/data_download_tab.py:405
 msgid "已发送取消请求，下载任务将尽快停止。"
 msgstr "Cancel request has been sent, the download task will stop shortly."
 
-#: ui/tabs/data_download_tab.py:435
+#: ui/tabs/data_download_tab.py:409
 msgid "数据下载中"
 msgstr "Downloading data"
 
-#: ui/tabs/data_download_tab.py:467
+#: ui/tabs/data_download_tab.py:442
 msgid "启动下载任务时发生未知错误:"
 msgstr "An unknown error occurred while starting the download task:"
 
-#: ui/tabs/data_download_tab.py:478
+#: ui/tabs/data_download_tab.py:452
 msgid "请选择一个有效的基因组进行预处理。"
 msgstr "Please select a valid genome to preprocess."
 
-#: ui/tabs/data_download_tab.py:497
+#: ui/tabs/data_download_tab.py:471
 #, python-brace-format
 msgid ""
 "无法开始预处理，以下必需的注释文件尚未下载：\n"
@@ -4078,12 +4079,12 @@ msgstr ""
 "\n"
 "Please download them first."
 
-#: ui/tabs/data_download_tab.py:505
+#: ui/tabs/data_download_tab.py:479
 msgid "注释文件已全部预处理完成，无需再次运行。"
 msgstr ""
 "All annotation files have been preprocessed and do not need to be run again."
 
-#: ui/tabs/data_download_tab.py:535
+#: ui/tabs/data_download_tab.py:509
 msgid "预处理文件"
 msgstr "Preprocessing file"
 
@@ -4310,11 +4311,11 @@ msgstr "GFF gene query in progress"
 msgid "GFF基因查询"
 msgstr "GFF Gene Query"
 
-#: ui/tabs/homology_tab.py:47 ui/tabs/homology_tab.py:326
+#: ui/tabs/homology_tab.py:46 ui/tabs/homology_tab.py:378
 msgid "快速基因同源转换"
 msgstr "Rapid Gene Homology Conversion"
 
-#: ui/tabs/homology_tab.py:52
+#: ui/tabs/homology_tab.py:51
 msgid ""
 "该工具通过动态BLASTN搜索，快速查找一个或多个源基因在目标基因组中的同源基"
 "因。\n"
@@ -4325,110 +4326,110 @@ msgstr ""
 "It is designed for rapid batch retrieval. For higher accuracy, please use "
 "the \"Local BLAST\" tool."
 
-#: ui/tabs/homology_tab.py:57
+#: ui/tabs/homology_tab.py:56
 msgid "输入"
 msgstr "Input"
 
-#: ui/tabs/homology_tab.py:62 ui/tabs/locus_conversion_tab.py:51
+#: ui/tabs/homology_tab.py:61 ui/tabs/locus_conversion_tab.py:51
 #: ui/tabs/locus_conversion_tab.py:89
 msgid "源基因组:"
 msgstr "Source Genome:"
 
-#: ui/tabs/homology_tab.py:68 ui/tabs/locus_conversion_tab.py:57
+#: ui/tabs/homology_tab.py:67 ui/tabs/locus_conversion_tab.py:57
 #: ui/tabs/locus_conversion_tab.py:90
 msgid "目标基因组:"
 msgstr "Target Genome:"
 
-#: ui/tabs/homology_tab.py:97
+#: ui/tabs/homology_tab.py:95
 msgid "参数设置"
 msgstr "Parameter Settings"
 
-#: ui/tabs/homology_tab.py:101
+#: ui/tabs/homology_tab.py:99
 msgid "单基因模式"
 msgstr "Single Gene Mode"
 
-#: ui/tabs/homology_tab.py:106
+#: ui/tabs/homology_tab.py:104
 msgid "严格匹配模式 (同源亚组内优先)"
 msgstr "Strict Match Mode (prioritize within homologous subgenome)"
 
-#: ui/tabs/homology_tab.py:110
+#: ui/tabs/homology_tab.py:108
 msgid "Top N:"
 msgstr "Top N:"
 
-#: ui/tabs/homology_tab.py:111
+#: ui/tabs/homology_tab.py:109
 msgid "PID (%):"
 msgstr "PID (%):"
 
-#: ui/tabs/homology_tab.py:113
+#: ui/tabs/homology_tab.py:111
 msgid "Score:"
 msgstr "Score:"
 
-#: ui/tabs/homology_tab.py:128 ui/tabs/homology_tab.py:178
+#: ui/tabs/homology_tab.py:125 ui/tabs/homology_tab.py:201
 msgid "输出文件 (可选)"
 msgstr "Output File (Optional)"
 
-#: ui/tabs/homology_tab.py:142
+#: ui/tabs/homology_tab.py:146
 msgid "复制"
 msgstr "Copy"
 
-#: ui/tabs/homology_tab.py:152 ui/tabs/homology_tab.py:296
+#: ui/tabs/homology_tab.py:162 ui/tabs/homology_tab.py:347
 msgid "正在查找..."
 msgstr "Searching..."
 
-#: ui/tabs/homology_tab.py:158 ui/tabs/sequence_extraction_tab.py:204
+#: ui/tabs/homology_tab.py:168 ui/tabs/sequence_extraction_tab.py:204
 msgid "复制成功!"
 msgstr "Copied successfully!"
 
-#: ui/tabs/homology_tab.py:168
+#: ui/tabs/homology_tab.py:184
 msgid "单一基因ID:"
 msgstr "Single Gene ID:"
 
-#: ui/tabs/homology_tab.py:170
+#: ui/tabs/homology_tab.py:186
 msgid "输出内容"
 msgstr "Output content"
 
-#: ui/tabs/homology_tab.py:171
+#: ui/tabs/homology_tab.py:187
 msgid "同源基因:"
 msgstr "Homologous genes:"
 
-#: ui/tabs/homology_tab.py:225
+#: ui/tabs/homology_tab.py:270
 msgid "查找成功!"
 msgstr "Successfully found!"
 
-#: ui/tabs/homology_tab.py:228
+#: ui/tabs/homology_tab.py:274
 msgid "未找到同源基因"
 msgstr "No homologous genes found"
 
-#: ui/tabs/homology_tab.py:231
+#: ui/tabs/homology_tab.py:279
 msgid "查询无结果"
 msgstr "No results found"
 
-#: ui/tabs/homology_tab.py:232
+#: ui/tabs/homology_tab.py:280
 msgid "未能根据当前筛选条件找到任何匹配的同源基因。"
 msgstr ""
 "No matching homologous genes were found based on the current filter criteria."
 
-#: ui/tabs/homology_tab.py:247 ui/tabs/homology_tab.py:260
+#: ui/tabs/homology_tab.py:297 ui/tabs/homology_tab.py:310
 msgid "请输入要映射的源基因ID。"
 msgstr "Please enter the source gene IDs to map."
 
-#: ui/tabs/homology_tab.py:254
+#: ui/tabs/homology_tab.py:304
 msgid "请输入有效的基因ID。"
 msgstr "Please enter a valid gene ID."
 
-#: ui/tabs/homology_tab.py:267
+#: ui/tabs/homology_tab.py:317
 msgid "请选择有效的源和目标基因组。"
 msgstr "Please select valid source and target genomes."
 
-#: ui/tabs/homology_tab.py:279
+#: ui/tabs/homology_tab.py:329
 msgid "参数设置中的阈值必须是有效的数字。"
 msgstr "Thresholds in the parameter settings must be valid numbers."
 
-#: ui/tabs/homology_tab.py:292
+#: ui/tabs/homology_tab.py:342
 msgid "正在查找同源基因..."
 msgstr "Searching for homologous genes..."
 
-#: ui/tabs/homology_tab.py:300
+#: ui/tabs/homology_tab.py:352
 msgid "同源基因批量转换中"
 msgstr "Batch conversion of homologous genes in progress"
 
@@ -4460,7 +4461,7 @@ msgstr "Start extracting sequence"
 
 #: ui/tabs/sequence_extraction_tab.py:56
 msgid "基因CDS序列提取"
-msgstr "Extract CDS sequences from genes"
+msgstr "Extract CDS Sequences From genes"
 
 #: ui/tabs/sequence_extraction_tab.py:79
 msgid "模式选择"
@@ -4618,6 +4619,9 @@ msgstr "UI has been refreshed according to the current configuration."
 #: ui/ui_manager.py:565
 msgid "刷新失败或无可用模型"
 msgstr "Refresh failed or no available model"
+
+#~ msgid "同源转换"
+#~ msgstr "Rapid Homologous Conversion"
 
 #~ msgid "检测到文件输入和文本输入同时存在，请清除其中一个。"
 #~ msgstr ""

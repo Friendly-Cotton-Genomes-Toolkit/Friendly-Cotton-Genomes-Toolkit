@@ -57,7 +57,7 @@ class CottonToolkitApp(ttkb.Window):
         return {
             "download": _("数据下载"), "annotation": _("功能注释"), "sequence_extraction": _("CDS序列提取"),
             "enrichment": _("富集分析与绘图"),
-            "genome_identifier": _("基因组鉴定"), "homology": _("同源转换"),
+            "genome_identifier": _("基因组鉴定"), "homology": _("快速同源转换"),
             "arabidopsis_conversion":_("棉花-拟南芥互转"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
