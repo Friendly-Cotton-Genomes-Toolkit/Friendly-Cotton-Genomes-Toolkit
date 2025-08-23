@@ -137,6 +137,15 @@ class HomologyTab(BaseTab):
                                                     wrap="none", state="disabled",
                                                     insertbackground=self.app.style.lookup('TLabel', 'foreground'))
         self.homology_output_text_results.grid(row=0, column=1, padx=0, pady=10, sticky="ew")
+
+        self.scrollbar = ttkb.Scrollbar(self.output_card, orient="vertical",
+                                        command=self.homology_output_text_results.yview, bootstyle="round")
+        self.homology_output_text_results.configure(yscrollcommand=self.scrollbar.set)
+
+        # 将滚动条放置在文本框右侧，默认隐藏
+        self.scrollbar.grid(row=0, column=2, sticky="ns", pady=10, padx=(0, 5))
+        self.scrollbar.grid_remove()
+
         self.homology_output_text_results.grid_remove()  # 默认隐藏
 
         self.browse_button = ttkb.Button(self.output_card, text=_("浏览..."), width=12,
@@ -193,7 +202,7 @@ class HomologyTab(BaseTab):
             self.homology_output_text_results.configure(state="disabled")
 
             self.browse_button.grid_remove()
-            self.copy_button.grid(row=0, column=2, padx=(5, 10), pady=10)
+            self.copy_button.grid(row=0, column=3, padx=(5, 10), pady=10)
         else:
             # 确保此区域内没有其他设置 self.homology_top_n_entry 值的代码
             self.gene_list_label.configure(text=translator("基因ID列表:"))
@@ -209,7 +218,7 @@ class HomologyTab(BaseTab):
                 self.homology_output_file_entry.insert(0, "homology_results.xlsx")
 
             self.copy_button.grid_remove()
-            self.browse_button.grid(row=0, column=2, padx=(5, 10), pady=10)
+            self.browse_button.grid(row=0, column=3, padx=(5, 10), pady=10)
 
         self.homology_map_genes_textbox.delete("1.0", tk.END)
         self.app.ui_manager.refresh_single_placeholder(self.homology_map_genes_textbox, "homology_genes")
@@ -261,19 +270,16 @@ class HomologyTab(BaseTab):
 
             # 根据结果数量显示/隐藏滚动条
             if num_hits > 5:
-                if hasattr(self, 'scrollbar'):
-                    self.scrollbar.grid(row=0, column=2, sticky="ns", pady=10)
+                self.scrollbar.grid()
             else:
-                if hasattr(self, 'scrollbar'):
-                    self.scrollbar.grid_remove()
+                self.scrollbar.grid_remove()
 
             self.copy_success_label.configure(text=self._("查找成功!"))
             self.copy_success_label.after(2000, lambda: self.copy_success_label.configure(text=""))
         else:
             output_widget.configure(height=1) # 未找到结果时，高度设为1
             output_widget.insert("1.0", self._("未找到同源基因"))
-            if hasattr(self, 'scrollbar'):
-                self.scrollbar.grid_remove()
+            self.scrollbar.grid_remove()
             MessageDialog(
                 parent=self.app,
                 title=self._("查询无结果"),

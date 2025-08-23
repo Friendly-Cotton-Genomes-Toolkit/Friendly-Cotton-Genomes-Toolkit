@@ -77,7 +77,7 @@ def run_arabidopsis_homology_conversion(
         output_path: str,
         cancel_event: Optional[threading.Event] = None,
         **kwargs
-) -> Optional[str]:
+) -> Optional[Any]:
     """
     智能解析输入ID，并直接输出数据库中所有匹配的原始同源关系，
     确保输出结果的格式与数据库中的记录完全一致。
@@ -149,18 +149,23 @@ def run_arabidopsis_homology_conversion(
                 'Description': 'Description'
             }, inplace=True)
 
-    # 步骤 4: 保存到文件
-    progress(95, _("正在保存结果文件..."))
-    try:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        result_df.to_csv(output_path, index=False, encoding='utf-8-sig')
-        final_message = _("同源基因转换成功！结果已保存至: {}").format(output_path)
-        logger.info(final_message)
-        progress(100, _("转换完成。"))
-        return final_message
-    except Exception as e:
-        logger.error(_("保存结果文件时出错: {}").format(e));
-        return None
+    # 步骤 4: 保存到文件或直接输出结果
+    if output_path:
+        progress(95, _("正在保存结果文件..."))
+        try:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            result_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            final_message = _("同源基因转换成功！结果已保存至: {}").format(output_path)
+            logger.info(final_message)
+            progress(100, _("转换完成。"))
+            return final_message
+        except Exception as e:
+            logger.error(_("保存结果文件时出错: {}").format(e));
+            return None
+    else:
+        # 如果没有输出路径，直接返回DataFrame
+        progress(100, _("查询完成。"))
+        return result_df
 
 
 @pipeline_task(_("同源基因映射"))
