@@ -112,7 +112,6 @@ class DataDownloadTab(BaseTab):
                 widget.destroy()
         self.task_status_widgets.clear()
 
-
     def _create_widgets(self):
         parent_frame = self.scrollable_frame
         parent_frame.grid_columnconfigure(0, weight=1)
@@ -150,7 +149,6 @@ class DataDownloadTab(BaseTab):
         self.progress_details_card.grid_columnconfigure(1, weight=1)
         parent_frame.grid_rowconfigure(4, weight=1)
 
-
         self.force_download_check = ttkb.Checkbutton(self.options_card,
                                                      text=self._("强制重新下载 (覆盖本地已存在文件)"),
                                                      variable=self.force_download_var, bootstyle="round-toggle")
@@ -160,32 +158,7 @@ class DataDownloadTab(BaseTab):
                                                 variable=self.use_proxy_for_download_var, bootstyle="round-toggle")
         self.use_proxy_check.grid(row=1, column=0, sticky="w", padx=10, pady=5)
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        self._ = translator  # 确保 self._ 是最新的
-        self.title_label.configure(text=self._("数据下载与预处理"))
-        self.genome_card.configure(text=self._("选择基因组"))
-        self.genome_version_label.configure(text=self._("基因组版本:"))
-        self.dynamic_content_frame.configure(text=self._("文件类型与状态"))
-        self.options_card.configure(text=self._("下载选项"))
-        self.force_download_check.configure(text=self._("强制重新下载 (覆盖本地已存在文件)"))
-        self.use_proxy_check.configure(text=self._("对数据下载使用网络代理 (请在配置编辑器中设置)"))
 
-        if 'checkbox_header' in self.dynamic_widgets and self.dynamic_widgets['checkbox_header'].winfo_exists():
-            self.dynamic_widgets['checkbox_header'].configure(text=self._("选择文件类型"))
-        if 'status_header' in self.dynamic_widgets and self.dynamic_widgets['status_header'].winfo_exists():
-            self.dynamic_widgets['status_header'].configure(text=self._("文件状态"))
-
-        self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.clear()
-        for key, display_name_key in self.FILE_TYPE_DISPLAY_NAMES_KEYS.items():
-            self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED[key] = display_name_key
-
-        self.app.ui_manager.update_option_menu(
-            self.genome_option_menu,
-            self.selected_genome_var,
-            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [],
-            self._("无可用基因组"),
-            self._on_genome_selection_change
-        )
 
         self._update_dynamic_widgets(self.selected_genome_var.get())
 
@@ -404,6 +377,7 @@ class DataDownloadTab(BaseTab):
         self.app.event_handler._start_task(
             task_name=self._("预处理BLAST数据库"),
             target_func=run_build_blast_db_pipeline,
+            on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
             kwargs=task_kwargs
         )
 
@@ -458,6 +432,7 @@ class DataDownloadTab(BaseTab):
             self.app.event_handler._start_task(
                 task_name=self._("数据下载"),
                 target_func=run_download_pipeline,
+                on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
                 kwargs=task_kwargs
             )
 
@@ -467,7 +442,6 @@ class DataDownloadTab(BaseTab):
             error_message = f"{self._('启动下载任务时发生未知错误:')}\n\n{type(e).__name__}: {e}\n\n{error_details}"
             self.app.ui_manager.show_error_message(self._("任务启动失败"), error_message)
             raise RuntimeError(error_message)
-
 
     def start_preprocess_task(self):
         # --- 参数验证 ---
@@ -534,6 +508,6 @@ class DataDownloadTab(BaseTab):
         self.app.event_handler._start_task(
             task_name=self._("预处理文件"),
             target_func=run_preprocess_annotation_files,
+            on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
             kwargs=task_kwargs
         )
-

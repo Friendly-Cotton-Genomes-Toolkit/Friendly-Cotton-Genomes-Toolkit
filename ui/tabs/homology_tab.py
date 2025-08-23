@@ -34,7 +34,6 @@ class HomologyTab(BaseTab):
             self.action_button.configure(text=self._("开始转换"), command=self._start_homology_task)
         self.update_from_config()
         # 在单基因模式切换逻辑中处理复制按钮的可见性
-        # self.copy_button.grid_remove() # 这一行可以移除，因为_toggle_single_gene_mode会处理
 
     def _create_widgets(self):
         """
@@ -75,7 +74,6 @@ class HomologyTab(BaseTab):
         self.gene_list_label.grid(row=2, column=0, padx=(10, 5), pady=10, sticky="nw")
 
         text_bg = self.app.style.lookup('TFrame', 'background')
-        # 【修复】移除了 text_fg 的获取和使用
         self.homology_map_genes_textbox = tk.Text(self.input_card, height=10, font=self.app.app_font_mono, wrap="word",
                                                   relief="flat", background=text_bg,
                                                   insertbackground=self.app.style.lookup('TLabel', 'foreground'))
@@ -112,7 +110,6 @@ class HomologyTab(BaseTab):
         self.evalue_label = ttkb.Label(self.params_card, text=_("E-value:"), font=self.app.app_font_bold)
         self.score_label = ttkb.Label(self.params_card, text=_("Score:"), font=self.app.app_font_bold)
 
-        # 【修复】修改了内部函数，不再传递和使用 text_fg
         def create_param_entry(p, label_widget, default_val, r, c):
             label_widget.grid(row=r, column=c * 2, padx=(10, 5), pady=5, sticky="w")
             entry = ttkb.Entry(p, width=15, font=self.app.app_font_mono)
@@ -120,7 +117,7 @@ class HomologyTab(BaseTab):
             entry.grid(row=r, column=c * 2 + 1, padx=(0, 10), pady=5, sticky="ew")
             return entry
 
-        self.homology_top_n_entry = create_param_entry(self.params_card, self.top_n_label, "1", 1, 0)
+        self.homology_top_n_entry = create_param_entry(self.params_card, self.top_n_label, "10", 1, 0)
         self.homology_evalue_entry = create_param_entry(self.params_card, self.evalue_label, "1e-10", 1, 1)
         self.homology_pid_entry = create_param_entry(self.params_card, self.pid_label, "30.0", 2, 0)
         self.homology_score_entry = create_param_entry(self.params_card, self.score_label, "50.0", 2, 1)
@@ -131,9 +128,16 @@ class HomologyTab(BaseTab):
 
         self.output_path_label = ttkb.Label(self.output_card, text=_("输出路径:"), font=self.app.app_font_bold)
         self.output_path_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
-        # 【修复】移除 foreground=text_fg
+
         self.homology_output_file_entry = ttkb.Entry(self.output_card, font=self.app.app_font_mono)
         self.homology_output_file_entry.grid(row=0, column=1, padx=0, pady=10, sticky="ew")
+
+        self.homology_output_text_results = tk.Text(self.output_card, font=self.app.app_font_mono, height=2,
+                                                    relief="flat", background=text_bg,
+                                                    wrap="none", state="disabled",
+                                                    insertbackground=self.app.style.lookup('TLabel', 'foreground'))
+        self.homology_output_text_results.grid(row=0, column=1, padx=0, pady=10, sticky="ew")
+        self.homology_output_text_results.grid_remove()  # 默认隐藏
 
         self.browse_button = ttkb.Button(self.output_card, text=_("浏览..."), width=12,
                                          command=self._browse_output_file, bootstyle="info-outline")
@@ -148,7 +152,13 @@ class HomologyTab(BaseTab):
         self._toggle_single_gene_mode()
 
     def _copy_output_to_clipboard(self):
-        text_to_copy = self.homology_output_file_entry.get()
+        is_single_mode = self.single_gene_mode_var.get()
+
+        if is_single_mode:
+            text_to_copy = self.homology_output_text_results.get("1.0", tk.END).strip()
+        else:
+            text_to_copy = self.homology_output_file_entry.get()
+
         if not text_to_copy or text_to_copy == self._("正在查找..."):
             return
 
@@ -158,26 +168,46 @@ class HomologyTab(BaseTab):
         self.copy_success_label.configure(text=self._("复制成功!"))
         self.copy_success_label.after(2000, lambda: self.copy_success_label.configure(text=""))
 
+
     def _toggle_single_gene_mode(self):
         is_single_mode = self.single_gene_mode_var.get()
         translator = self._
 
         self.copy_success_label.configure(text="")
 
+        # 这一部分会清空输入框并始终将其值设为 "10"，表示默认值
+        self.homology_top_n_entry.delete(0, tk.END)
+        self.homology_top_n_entry.insert(0, "10")
+
         if is_single_mode:
+            # 确保此区域内没有其他设置 self.homology_top_n_entry 值的代码
             self.gene_list_label.configure(text=translator("单一基因ID:"))
             self.homology_map_genes_textbox.configure(height=1)
             self.output_card.configure(text=translator("输出内容"))
             self.output_path_label.configure(text=translator("同源基因:"))
-            self.homology_output_file_entry.configure(state="readonly")
+            # 隐藏文件输入框，显示文本结果框
+            self.homology_output_file_entry.grid_remove()
+            self.homology_output_text_results.grid()
+            self.homology_output_text_results.configure(height=1, state="normal")
+            self.homology_output_text_results.delete("1.0", tk.END)
+            self.homology_output_text_results.configure(state="disabled")
+
             self.browse_button.grid_remove()
             self.copy_button.grid(row=0, column=2, padx=(5, 10), pady=10)
         else:
+            # 确保此区域内没有其他设置 self.homology_top_n_entry 值的代码
             self.gene_list_label.configure(text=translator("基因ID列表:"))
             self.homology_map_genes_textbox.configure(height=10)
             self.output_card.configure(text=translator("输出文件 (可选)"))
             self.output_path_label.configure(text=translator("输出路径:"))
+            # 隐藏文本结果框，显示文件输入框
+            self.homology_output_text_results.grid_remove()
+            self.homology_output_file_entry.grid()
             self.homology_output_file_entry.configure(state="normal")
+            self.homology_output_file_entry.delete(0, tk.END)
+            if self.app.current_config:
+                self.homology_output_file_entry.insert(0, "homology_results.xlsx")
+
             self.copy_button.grid_remove()
             self.browse_button.grid(row=0, column=2, padx=(5, 10), pady=10)
 
@@ -193,6 +223,7 @@ class HomologyTab(BaseTab):
             if self.app.current_config:
                 self.homology_output_file_entry.insert(0, "homology_results.xlsx")
 
+
     def _browse_output_file(self):
         self.app.event_handler._browse_save_file(self.homology_output_file_entry,
                                                  [(_("Excel 文件"), "*.xlsx"), (_("CSV 文件"), "*.csv"),
@@ -200,32 +231,49 @@ class HomologyTab(BaseTab):
 
     def _update_single_gene_output(self, result_df: pd.DataFrame):
         """
-        解析BLAST结果DataFrame，并以优雅的格式显示最佳匹配项。
+        解析BLAST结果DataFrame，支持多行显示，并动态调整输出框高度和滚动条。
         """
-        output_entry = self.homology_output_file_entry
-        output_entry.configure(state="normal")
-        output_entry.delete(0, tk.END)
+        output_widget = self.homology_output_text_results
+        output_widget.configure(state="normal")
+        output_widget.delete("1.0", tk.END)
 
         if result_df is not None and not result_df.empty:
-            # 始终只选择第一个结果，即最佳匹配项
-            best_hit = result_df.iloc[0]
+            num_hits = len(result_df)
+            # 动态调整文本框高度，最多5行
+            display_height = min(num_hits, 5)
+            output_widget.configure(height=display_height)
 
-            hit_gene = best_hit.get('Hit_ID', 'N/A')
-            # 修正：先将可能为字符串的百分比转换为浮点数，再进行格式化
-            try:
-                identity = float(best_hit.get('Identity (%)', 0))
-            except (ValueError, TypeError):
-                identity = 0.0
-            e_value = best_hit.get('E-value', 0)
+            output_lines = []
+            for index, row in result_df.iterrows():
+                hit_gene = row.get('Hit_ID', 'N/A')
+                try:
+                    identity = float(row.get('Identity (%)', 0))
+                except (ValueError, TypeError):
+                    identity = 0.0
+                e_value = row.get('E-value', 0)
+                # 格式化每行结果
+                line = f"{hit_gene} (PID: {identity:.2f}%, E-value: {e_value:.2e})"
+                output_lines.append(line)
 
-            # 使用更简洁、更清晰的格式
-            output_text = f"{hit_gene} (PID: {identity:.2f}%, E-value: {e_value:.2e})"
+            # 将所有行合并为一个字符串，用换行符分隔
+            final_text = "\n".join(output_lines)
+            output_widget.insert("1.0", final_text)
 
-            output_entry.insert(0, output_text)
+            # 根据结果数量显示/隐藏滚动条
+            if num_hits > 5:
+                if hasattr(self, 'scrollbar'):
+                    self.scrollbar.grid(row=0, column=2, sticky="ns", pady=10)
+            else:
+                if hasattr(self, 'scrollbar'):
+                    self.scrollbar.grid_remove()
+
             self.copy_success_label.configure(text=self._("查找成功!"))
             self.copy_success_label.after(2000, lambda: self.copy_success_label.configure(text=""))
         else:
-            output_entry.insert(0, self._("未找到同源基因"))
+            output_widget.configure(height=1) # 未找到结果时，高度设为1
+            output_widget.insert("1.0", self._("未找到同源基因"))
+            if hasattr(self, 'scrollbar'):
+                self.scrollbar.grid_remove()
             MessageDialog(
                 parent=self.app,
                 title=self._("查询无结果"),
@@ -233,7 +281,9 @@ class HomologyTab(BaseTab):
                 icon_type="info"
             )
 
-        output_entry.configure(state="readonly")
+        output_widget.configure(state="disabled") # 设置为只读
+
+
 
     def _start_homology_task(self):
         # --- 参数验证 ---
@@ -291,10 +341,12 @@ class HomologyTab(BaseTab):
             success_callback = self._update_single_gene_output
             dialog_title = _("正在查找同源基因...")
             output_path = None
-            self.homology_output_file_entry.configure(state="normal")
-            self.homology_output_file_entry.delete(0, tk.END)
-            self.homology_output_file_entry.insert(0, _("正在查找..."))
-            self.homology_output_file_entry.configure(state="readonly")
+            output_widget = self.homology_output_text_results
+            output_widget.configure(height=1, state="normal")
+            output_widget.delete("1.0", tk.END)
+            output_widget.insert("1.0", _("正在查找..."))
+            output_widget.configure(state="disabled")
+
         else:
             success_callback = None
             dialog_title = _("同源基因批量转换中")

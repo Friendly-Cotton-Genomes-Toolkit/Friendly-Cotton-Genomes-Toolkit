@@ -229,7 +229,6 @@ def run_homology_mapping(
             logger.error(_("错误: 基因列表为空。"))
             return pd.DataFrame()
 
-        # 修正：移除原来在此处的重复和错误的代码块
 
         criteria = HomologySelectionCriteria()
         if criteria_overrides:

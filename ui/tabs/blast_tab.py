@@ -135,7 +135,7 @@ class BlastTab(BaseTab):
         self.max_seqs_label = ttkb.Label(params_frame, text=_("Max Hits:"), font=self.app.app_font_bold)
         self.max_seqs_label.grid(row=0, column=4, padx=(10, 5), pady=5, sticky='w')
         self.max_seqs_entry = ttkb.Entry(params_frame, width=12)
-        self.max_seqs_entry.insert(0, "500")
+        self.max_seqs_entry.insert(0, "50")
         self.max_seqs_entry.grid(row=0, column=5, padx=(0, 10), pady=5, sticky='ew')
         # 【新增】为 Max Hits 添加悬浮注释
         ToolTip(self.max_seqs_label, text=_(
