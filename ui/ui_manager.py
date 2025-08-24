@@ -250,9 +250,9 @@ class UIManager:
         app.status_label = ttkb.Label(app.status_bar_frame, textvariable=app.latest_log_message_var, font=app.app_font,
                                       bootstyle="secondary")
         app.status_label.pack(side="left", padx=10, fill="x", expand=True)
-        app.event_handler.clear_log_viewer = self._clear_log_viewer_ui
+        app.event_handler.clear_log_viewer = self.clear_log_viewer
 
-    def _clear_log_viewer_ui(self):
+    def clear_log_viewer(self):
         """专门用于清空日志文本框并重新准备接收新日志的UI方法"""
         if hasattr(self.app, 'log_textbox') and self.app.log_textbox.winfo_exists():
             self.app.log_textbox.configure(state="normal")
@@ -261,43 +261,62 @@ class UIManager:
             self.app.latest_log_message_var.set("")
             self.app.logger.info(self.translator_func(_("日志面板已清空。")))
 
-    def display_log_message_in_ui(self, record: logging.LogRecord):
+    def display_log_message_in_ui(self, records: list[logging.LogRecord]):
+        """
+        接收一个日志记录列表，并安排一次UI批量更新。
+        """
         app = self.app
         if hasattr(app, 'log_textbox') and app.log_textbox.winfo_exists():
-            app.after(0, self._update_ui_log, record)
+            # 使用 after(0, ...) 调度UI更新，让界面响应更流畅
+            app.after(0, self._update_ui_log_batch, records)
 
-    def _update_ui_log(self, record: logging.LogRecord):
+    def _update_ui_log_batch(self, records: list[logging.LogRecord]):
+        """
+        高效地处理一批日志记录，并一次性更新UI。
+        """
         app = self.app
-        message = record.getMessage()
-        level = record.levelname
+        if not records:
+            return
 
+        # 1. 一次性开启编辑模式
         app.log_textbox.configure(state="normal")
         try:
-            # 限制日志行数，防止内存占用过高
-            if int(app.log_textbox.index('end-1c').split('.')[0]) > 500:
-                app.log_textbox.delete("1.0", "2.0")
+            # 2. 高效地处理行数限制
+            num_lines_to_add = len(records)
+            current_lines = int(app.log_textbox.index('end-1c').split('.')[0])
 
-            tag_name = level.lower() + "_log"
-            app.log_textbox.insert("end", f"[{record.levelname}] [{record.asctime}] <{record.name}> {message}\n",
-                                   tag_name)
+            if current_lines + num_lines_to_add > 500:
+                lines_to_delete = (current_lines + num_lines_to_add) - 500
+                app.log_textbox.delete("1.0", f"{lines_to_delete + 1}.0")
+
+            # 3. 遍历批处理记录，一次性全部插入
+            for record in records:
+                message = record.getMessage()
+                tag_name = record.levelname.lower() + "_log"
+                formatted_log = f"[{record.levelname}] [{record.asctime}] <{record.name}> {message}\n"
+                app.log_textbox.insert("end", formatted_log, tag_name)
+
+            # 4. 所有内容插入完毕后，只滚动一次UI
             app.log_textbox.see("end")
+
+            # 5. 更新状态栏为最后一条日志的状态
+            last_record = records[-1]
+            app.latest_log_message_var.set(last_record.getMessage())
+
+            is_dark = self.style.theme.type == 'dark'
+            color_map = {
+                "error": "#e57373" if is_dark else "#d9534f",
+                "warning": "#ffb74d" if is_dark else "#f0ad4e",
+                "info": self.style.lookup('TLabel', 'foreground'),
+                "debug": self.app.default_text_color,
+                "critical": "#ff0000" if is_dark else "#8b0000"
+            }
+            display_color = color_map.get(last_record.levelname.lower(), self.style.lookup('TLabel', 'foreground'))
+            app.status_label.configure(foreground=display_color)
+
         finally:
-            # 确保无论是否发生错误，文本框最终都会被禁用，以防止用户编辑
+            # 6. 确保最后将文本框设为禁用状态
             app.log_textbox.configure(state="disabled")
-
-        app.latest_log_message_var.set(message)
-
-        is_dark = self.style.theme.type == 'dark'
-        color_map = {
-            "error": "#e57373" if is_dark else "#d9534f",
-            "warning": "#ffb74d" if is_dark else "#f0ad4e",
-            "info": self.style.lookup('TLabel', 'foreground'),
-            "debug": self.app.default_text_color,
-            "critical": "#ff0000" if is_dark else "#8b0000"
-        }
-
-        display_color = color_map.get(level.lower(), self.style.lookup('TLabel', 'foreground'))
-        app.status_label.configure(foreground=display_color)
 
 
     def _create_navigation_frame(self, parent):

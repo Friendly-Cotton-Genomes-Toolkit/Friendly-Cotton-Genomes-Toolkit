@@ -14,6 +14,7 @@ from cotton_toolkit.core.convertFiles2sqlite import _read_excel_to_dataframe, _r
 from cotton_toolkit.core.downloader import download_genome_data
 from cotton_toolkit.core.file_normalizer import normalize_to_csv
 from cotton_toolkit.core.gff_parser import create_gff_database
+from cotton_toolkit.pipelines.decorators import pipeline_task
 from cotton_toolkit.utils.file_utils import _sanitize_table_name
 
 # 国际化函数占位符
@@ -238,17 +239,19 @@ def check_preprocessing_status(config: MainConfig, genome_info: GenomeSourceItem
     return status_dict
 
 
+@pipeline_task(_("数据下载"))
 def run_download_pipeline(
         config: MainConfig,
         cli_overrides: Optional[Dict[str, Any]] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
-        cancel_event: Optional[threading.Event] = None
+        **kwargs
 ):
-    # 修改: 移除 status_callback 参数
-    progress = progress_callback if progress_callback else lambda p, m: None
+
+    progress = kwargs.get('progress_callback')
+    cancel_event = kwargs.get('cancel_event')
+    check_cancel = kwargs.get('check_cancel')
 
     progress(0, _("下载流程开始..."))
-    if cancel_event and cancel_event.is_set(): logger.info(_("任务在启动时被取消。")); return
+    if check_cancel(): logger.info(_("任务在启动时被取消。")); return
     logger.info(_("下载流程开始..."))
 
     downloader_cfg = config.downloader
@@ -272,7 +275,7 @@ def run_download_pipeline(
             logger.warning(_("下载代理开关已打开，但配置文件中未设置代理地址。"))
 
     progress(5, _("正在准备下载任务列表..."))
-    if cancel_event and cancel_event.is_set(): logger.info(_("任务被取消。")); return
+    if check_cancel(): logger.info(_("任务被取消。")); return
 
     logger.info(_("将尝试下载的基因组版本: {}").format(', '.join(versions_to_download)))
 
@@ -304,7 +307,7 @@ def run_download_pipeline(
                         "url": url
                     })
 
-    if cancel_event and cancel_event.is_set(): logger.info(_("任务在任务列表创建期间被取消。")); return
+    if check_cancel(): logger.info(_("任务在任务列表创建期间被取消。")); return
 
     if not all_download_tasks:
         logger.warning(_("根据您的选择，没有找到任何有效的URL可供下载。"))
@@ -312,7 +315,7 @@ def run_download_pipeline(
         return
 
     progress(10, _("找到 {} 个文件需要下载。").format(len(all_download_tasks)))
-    if cancel_event and cancel_event.is_set(): logger.info(_("任务被取消。")); return
+    if check_cancel(): logger.info(_("任务被取消。")); return
     logger.info(_("准备下载 {} 个文件...").format(len(all_download_tasks)))
 
     successful_downloads, failed_downloads = 0, 0
@@ -362,25 +365,21 @@ def run_download_pipeline(
     progress(100, _("下载流程完成。"))
 
 
+@pipeline_task(task_name=_("预处理注释文件"))
 def run_preprocess_annotation_files(
         config: MainConfig,
         selected_assembly_id: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
-        cancel_event: Optional[threading.Event] = None,
-) -> bool:
+        **kwargs) -> bool:
     """
     串行预处理所有注释和同源文件。
     """
-    progress = progress_callback if progress_callback else lambda p, m: None
+    progress = kwargs.get('progress_callback')
+    cancel_event = kwargs.get('cancel_event')
+    check_cancel = kwargs.get('check_cancel')
     status_update = status_callback if status_callback else lambda key, msg: None
 
-    def check_cancel():
-        if cancel_event and cancel_event.is_set():
-            logger.info(_("任务已被用户取消。"))
-            progress(100, _("任务已取消。"))
-            return True
-        return False
+    if check_cancel(): return False
 
     progress(0, _("开始预处理所有注释文件..."))
     logger.info(_("开始预处理所有注释文件 (包括GFF)..."))
@@ -442,7 +441,7 @@ def run_preprocess_annotation_files(
         tasks_to_run.append(task_info)
 
     if not tasks_to_run:
-        logger.info("No valid files to process after checking paths.")
+        logger.warning(_("未找到有效文件进行处理。"))
         progress(100, "未找到有效文件进行处理。")
         return True
 
@@ -537,21 +536,19 @@ def _process_single_blast_db(
         return _("处理文件 {} 时发生未知错误: {}").format(os.path.basename(compressed_file), e)
 
 
+@pipeline_task(task_name=_("构建BLAST数据库"))
 def run_build_blast_db_pipeline(
         config: MainConfig,
         selected_assembly_id: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
-        cancel_event: Optional[threading.Event] = None
+        **kwargs
 ) -> bool:
+    progress = kwargs.get('progress_callback')
+    cancel_event = kwargs.get('cancel_event')
+    check_cancel = kwargs.get('check_cancel')
     status_update = status_callback if status_callback else lambda key, msg: None
-    progress = progress_callback if progress_callback else lambda p, m: None
 
-    def check_cancel():
-        if cancel_event and cancel_event.is_set():
-            logger.info(_("任务已被用户取消。"))
-            return True
-        return False
+    if check_cancel(): return False
 
     progress(0, _("开始预处理BLAST数据库..."))
     if check_cancel(): logger.info(_("任务被取消。")); return False
@@ -637,21 +634,16 @@ def run_build_blast_db_pipeline(
     return success_count == total_tasks
 
 
+@pipeline_task(_("GFF查询"))
 def run_gff_preprocessing(
         config: MainConfig,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
-        cancel_event: Optional[threading.Event] = None
+        **kwargs
 ) -> bool:
     """
     扫描数据目录，为所有GFF文件预先创建gffutils数据库，以加速后续查询。
     """
-    progress = progress_callback if progress_callback else lambda p, m: None
-
-    def check_cancel():
-        if cancel_event and cancel_event.is_set():
-            logger.info("GFF pre-processing cancelled by user.")
-            return True
-        return False
+    progress = kwargs.get('progress_callback')
+    check_cancel = kwargs.get('check_cancel')
 
     logger.info("Starting GFF file pre-processing to create databases...")
     progress(0, "开始GFF文件预处理...")

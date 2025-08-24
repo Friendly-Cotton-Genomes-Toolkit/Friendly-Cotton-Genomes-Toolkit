@@ -49,23 +49,20 @@ class QueueHandler(logging.Handler):
 class StreamToQueue:
     """一个将流（如sys.stdout）重定向到队列的类。"""
 
-    def __init__(self, log_queue: queue.Queue, level: str = "INFO"):
+    def __init__(self, log_queue: queue.Queue, level: int = logging.INFO):
         self.log_queue = log_queue
         self.level = level
-        self.stream_logger = logging.getLogger("stdout")
-        self.formatter = logging.Formatter(
-            '[%(levelname)s] [%(asctime)s] <%(name)s> %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
+        # 为重定向的流创建一个专用的logger实例
+        self.stream_logger = logging.getLogger("redirected_stream")
+        # 确保这个logger的消息能被所有handler捕获
+        self.stream_logger.propagate = True
 
     def write(self, buf):
+        # 移除空行，并将缓冲区的每一行作为一条独立的日志消息处理
         for line in buf.rstrip().splitlines():
-            record = self.stream_logger.makeRecord(
-                self.stream_logger.name, self.level, fn=None, lno=None, msg=line,
-                args=None, exc_info=None, func=None
-            )
-            formatted_message = self.formatter.format(record)
-            self.log_queue.put((formatted_message, record.levelname))
+            if line: # 确保不处理空行
+                self.stream_logger.log(self.level, line)
+
 
     def flush(self):
         pass
@@ -134,8 +131,8 @@ def setup_global_logger(
         root_logger.addHandler(queue_handler)
 
         # 重定向print()和错误输出到GUI
-        sys.stdout = StreamToQueue(log_queue, "INFO")
-        sys.stderr = StreamToQueue(log_queue, "ERROR")
+        sys.stdout = StreamToQueue(log_queue, logging.INFO)
+        sys.stderr = StreamToQueue(log_queue, logging.ERROR)
 
     fc = _("全局日志系统已初始化，级别设置为: {}")
     logging.info(fc.format(log_level_str))

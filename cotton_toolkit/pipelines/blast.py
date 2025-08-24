@@ -216,11 +216,11 @@ def run_blast_pipeline(
         if check_cancel(): return _("任务已取消。")
 
         if not all_hits:
-            logger.info(_("未找到任何显著的BLAST匹配项。"))
+            logger.warning(_("未找到任何显著的BLAST匹配项。"))
         else:
             results_df = pd.DataFrame()  # 默认返回一个空的DataFrame
             if not all_hits:
-                logger.info(_("未找到任何显著的BLAST匹配项。"))
+                logger.warning(_("未找到任何显著的BLAST匹配项。"))
             else:
                 results_df = pd.DataFrame(all_hits)
                 results_df['Identity (%)'] = results_df['Identity (%)'].map('{:.2f}'.format)

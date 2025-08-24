@@ -71,39 +71,6 @@ class DataDownloadTab(BaseTab):
         # 步骤 4: 最后执行依赖于已创建组件的更新
         self.update_from_config()
 
-    def update_task_status(self, task_key: str, message: str):
-        """
-        线程安全地更新UI上特定任务的状态。
-        这个方法会被后台线程调用。
-        """
-        # 使用 self.app.after 将UI更新操作调度到主线程执行
-        self.app.after(0, self._update_ui_task_status, task_key, message)
-
-    def _update_ui_task_status(self, task_key: str, message: str):
-        """这个方法总是在主线程中执行。"""
-        # 尝试获取与 task_key 关联的UI组件
-        widgets = self.task_status_widgets.get(task_key)
-
-        # 如果组件还不存在，就创建它们
-        if not widgets:
-            # 使用翻译后的友好名称
-            display_name = self.FILE_TYPE_DISPLAY_NAMES_TRANSLATED.get(task_key, task_key)
-
-            # 在进度详情卡片中创建新的一行
-            row_index = len(self.task_status_widgets)
-
-            name_label = ttkb.Label(self.progress_details_card, text=f"{display_name}:", font=self.app.app_font_bold)
-            name_label.grid(row=row_index, column=0, sticky="w", padx=(10, 5), pady=2)
-
-            status_label = ttkb.Label(self.progress_details_card, text=message, width=20)  # 给一个宽度防止跳动
-            status_label.grid(row=row_index, column=1, sticky="ew", padx=5, pady=2)
-
-            self.task_status_widgets[task_key] = {'name': name_label, 'status': status_label}
-        else:
-            # 如果组件已存在，只更新状态标签的文本
-            status_label = widgets.get('status')
-            if status_label and status_label.winfo_exists():
-                status_label.configure(text=message)
 
     def _clear_task_status_display(self):
         """在开始新任务前清空旧的状态显示。"""
@@ -136,27 +103,12 @@ class DataDownloadTab(BaseTab):
         self.genome_option_menu.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
         self.dynamic_content_frame = ttkb.LabelFrame(parent_frame, text=self._("文件类型与状态"), bootstyle="secondary")
-        self.dynamic_content_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
+        self.dynamic_content_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
         self.dynamic_content_frame.grid_columnconfigure(0, weight=1)
 
         self.options_card = ttkb.LabelFrame(parent_frame, text=self._("下载选项"), bootstyle="secondary")
         self.options_card.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
         self.options_card.grid_columnconfigure(0, weight=1)
-
-        # --- 任务实时进度框架 ---
-        self.progress_details_card = ttkb.LabelFrame(parent_frame, text=self._("任务进度详情"), bootstyle="secondary")
-        self.progress_details_card.grid(row=4, column=0, sticky="nsew", padx=10, pady=10)
-        self.progress_details_card.grid_columnconfigure(1, weight=1)
-        parent_frame.grid_rowconfigure(4, weight=1)
-
-        self.force_download_check = ttkb.Checkbutton(self.options_card,
-                                                     text=self._("强制重新下载 (覆盖本地已存在文件)"),
-                                                     variable=self.force_download_var, bootstyle="round-toggle")
-        self.force_download_check.grid(row=0, column=0, sticky="w", padx=10, pady=5)
-        self.use_proxy_check = ttkb.Checkbutton(self.options_card,
-                                                text=self._("对数据下载使用网络代理 (请在配置编辑器中设置)"),
-                                                variable=self.use_proxy_for_download_var, bootstyle="round-toggle")
-        self.use_proxy_check.grid(row=1, column=0, sticky="w", padx=10, pady=5)
 
 
 
@@ -323,12 +275,12 @@ class DataDownloadTab(BaseTab):
                                                                                self._("请先加载配置文件。")); return
         selected_genome_id = self.selected_genome_var.get()
         if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
-            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组。"));
+            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组。"))
             return
         genome_info = self.app.genome_sources_data.get(selected_genome_id)
         if not genome_info:
             msg = self._("找不到基因组 '{}' 的信息。").format(selected_genome_id)
-            self.app.ui_manager.show_error_message(self._("错误"), msg);
+            self.app.ui_manager.show_error_message(self._("错误"), msg)
             return
 
         all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
@@ -369,7 +321,6 @@ class DataDownloadTab(BaseTab):
         task_kwargs = {
             'config': self.app.current_config,
             'selected_assembly_id': selected_genome_id,
-            'status_callback': self.update_task_status,
             'cancel_event': cancel_event,
             'progress_callback': ui_progress_updater
         }
@@ -449,12 +400,12 @@ class DataDownloadTab(BaseTab):
                                                                                self._("请先加载配置文件。")); return
         selected_genome_id = self.selected_genome_var.get()
         if not selected_genome_id or selected_genome_id in [self._("配置未加载"), self._("无可用基因组")]:
-            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组进行预处理。"));
+            self.app.ui_manager.show_error_message(self._("选择错误"), self._("请选择一个有效的基因组进行预处理。"))
             return
         genome_info = self.app.genome_sources_data.get(selected_genome_id)
         if not genome_info:
             msg = self._("找不到基因组 '{}' 的信息。").format(selected_genome_id)
-            self.app.ui_manager.show_error_message(self._("错误"), msg);
+            self.app.ui_manager.show_error_message(self._("错误"), msg)
             return
 
         all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
@@ -500,7 +451,6 @@ class DataDownloadTab(BaseTab):
         task_kwargs = {
             'config': self.app.current_config,
             'selected_assembly_id': selected_genome_id,
-            'status_callback': self.update_task_status,
             'cancel_event': cancel_event,
             'progress_callback': ui_progress_updater
         }

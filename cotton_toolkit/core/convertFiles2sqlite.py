@@ -27,9 +27,15 @@ except (AttributeError, ImportError):
 logger = logging.getLogger("cotton_toolkit.core.convertFiles2sqlite")
 
 
-def _read_annotation_text_file(file_path: str) -> Optional[pd.DataFrame]:
+def _check_cancel_in_loop(line_count: int, cancel_event: Optional[threading.Event]):
+    """每处理10000行检查一次取消事件，以平衡性能和响应速度。"""
+    if line_count % 10000 == 0 and cancel_event and cancel_event.is_set():
+        raise InterruptedError("File processing cancelled by user.")
+
+
+def _read_annotation_text_file(file_path: str, cancel_event: Optional[threading.Event] = None) -> Optional[pd.DataFrame]:
     """
-    【全新专用函数】为GO, KEGG, IPR等注释文本文件设计的解析器。
+     为GO, KEGG, IPR等注释文本文件设计的解析器。
     - 严格将每一行解析为三列：Query, Match, Description。
     - 将第一个连续的空白块作为列分隔符。
     - 分号(;)不被视为分隔符。
@@ -39,11 +45,13 @@ def _read_annotation_text_file(file_path: str) -> Optional[pd.DataFrame]:
 
     processed_data = []
     header = ['Query', 'Match', 'Description']
+    line_count = 0
 
     try:
         open_func = gzip.open if file_path.lower().endswith('.gz') else open
         with open_func(file_path, 'rt', encoding='utf-8', errors='ignore') as f:
             for line in f:
+                _check_cancel_in_loop(line_count, cancel_event)
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
@@ -82,18 +90,21 @@ def _read_annotation_text_file(file_path: str) -> Optional[pd.DataFrame]:
         return None
 
 
-def _read_fasta_to_dataframe(file_path: str, id_regex: Optional[str] = None) -> Optional[pd.DataFrame]:
+def _read_fasta_to_dataframe(file_path: str, id_regex: Optional[str] = None, cancel_event: Optional[threading.Event] = None) -> Optional[pd.DataFrame]:
     """
     【已修改】将FASTA文件解析为DataFrame，并强制使用传入的正则表达式清理ID。
     """
     logger.debug(f"正在为文件: {os.path.basename(file_path)} 使用专用的FASTA解析器 (Regex: {id_regex})")
     fasta_data = []
+    line_count = 0
+
     try:
         open_func = gzip.open if file_path.lower().endswith('.gz') else open
         with open_func(file_path, 'rt', encoding='utf-8', errors='ignore') as f:
             current_id = None
             current_sequence = []
             for line in f:
+                _check_cancel_in_loop(line_count, cancel_event)
                 line = line.strip()
                 if not line:
                     continue
@@ -141,7 +152,7 @@ def _find_header_row_excel(sheet_df: pd.DataFrame, keywords: List[str]) -> Optio
     return None
 
 
-def _read_excel_to_dataframe(file_path: str) -> Optional[pd.DataFrame]:
+def _read_excel_to_dataframe(file_path: str, cancel_event: Optional[threading.Event] = None) -> Optional[pd.DataFrame]:
     """
     智能读取单个Excel文件（xlsx或xlsx.gz），合并所有Sheet页为一个DataFrame。
     """
@@ -151,6 +162,8 @@ def _read_excel_to_dataframe(file_path: str) -> Optional[pd.DataFrame]:
     try:
         open_func = gzip.open if file_path.lower().endswith('.gz') else open
         with open_func(file_path, 'rb') as f:
+            if cancel_event and cancel_event.is_set(): raise InterruptedError
+
             # 读取到内存中以提高性能
             file_content = io.BytesIO(f.read())
             xls = pd.ExcelFile(file_content, engine='openpyxl')
@@ -364,11 +377,15 @@ def convert_files_to_sqlite(
                         logger.warning(f"在配置中未找到版本 '{version_id}' 的基因ID正则表达式。")
 
                 if is_fasta:
-                    dataframe = _read_fasta_to_dataframe(full_path, id_regex=id_regex_to_use)
+                    dataframe = _read_fasta_to_dataframe(full_path, id_regex=id_regex_to_use, cancel_event=cancel_event)
                 elif file_lower.endswith(('.xlsx', '.xlsx.gz')):
-                    dataframe = _read_excel_to_dataframe(full_path)
+                    dataframe = _read_excel_to_dataframe(full_path, cancel_event=cancel_event)
                 else:
+                    if cancel_event and cancel_event.is_set(): continue
                     dataframe = _read_text_to_dataframe(full_path)
+
+                # 在写入数据库这个阻塞操作前，再次检查
+                if cancel_event and cancel_event.is_set(): continue
 
                 if dataframe is not None and not dataframe.empty:
                     try:

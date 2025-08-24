@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import requests
 from tqdm import tqdm
 
+
 from ..config.models import DownloaderConfig, GenomeSourceItem
 
 # --- 国际化和日志设置 ---
@@ -34,7 +35,6 @@ def download_genome_data(
         cancel_event: Optional[threading.Event] = None,
 ) -> bool:
     """
-    【最终重构版】
     为单个文件执行纯粹的下载任务。
     此函数不再执行任何文件解压或格式转换操作。
     """
@@ -42,7 +42,7 @@ def download_genome_data(
         logger.info(_("任务在下载 {} 之前被取消。").format(f"{version_id}_{file_key}"))
         return False
 
-    # 1. 确定输出目录和文件路径 (逻辑不变)
+    # 1. 确定输出目录和文件路径
     base_dir = downloader_config.download_output_base_dir
     version_identifier = getattr(genome_info, 'version_id', version_id)
     version_output_dir = os.path.join(base_dir, version_identifier)
@@ -75,7 +75,6 @@ def download_genome_data(
     if cancel_event and cancel_event.is_set():
         return False
 
-    # 【核心修改】
     # 移除了所有在下载后立即将 .xlsx.gz 转换为 .csv 的逻辑。
     # 下载器的任务在文件成功下载到本地后即告完成。
     # 所有后续的转换和处理都应由 preprocessor.py 中的流程负责。
@@ -102,20 +101,17 @@ def _download_file_with_progress(
             r.raise_for_status()
             total_size = int(r.headers.get('content-length', 0))
 
-            with tqdm(total=total_size, unit='iB', unit_scale=True, desc=description, ncols=100, leave=False,
-                      ascii=" #") as pbar:
-                with open(local_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if cancel_event and cancel_event.is_set():
-                            logger.info(_("下载 {} 的任务被用户取消。").format(description))
-                            # 清理未完成的文件
-                            if os.path.exists(local_path):
-                                os.remove(local_path)
-                            return False
+            with open(local_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if cancel_event and cancel_event.is_set():
+                        logger.info(_("下载 {} 的任务被用户取消。").format(description))
+                        # 清理未完成的文件
+                        if os.path.exists(local_path):
+                            os.remove(local_path)
+                        return False
 
-                        if chunk:
-                            f.write(chunk)
-                            pbar.update(len(chunk))
+                    if chunk:
+                        f.write(chunk)
 
             if total_size != 0 and os.path.getsize(local_path) < total_size:
                 logger.warning(_("下载的文件 {} 大小小于预期，可能不完整。").format(description))

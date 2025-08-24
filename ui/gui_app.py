@@ -150,7 +150,7 @@ class CottonToolkitApp(ttkb.Window):
         self.event_handler = EventHandler(self)
 
         def clear_log_viewer():
-            self.ui_manager._clear_log_viewer_ui()
+            self.ui_manager.clear_log_viewer()
 
         self.event_handler.clear_log_viewer = clear_log_viewer
 
@@ -928,21 +928,23 @@ class CottonToolkitApp(ttkb.Window):
 
     def check_queue_periodic(self):
         try:
-            max_log_messages_to_process = 10
-            for _ in range(max_log_messages_to_process):
+            # --- 日志队列批处理 ---
+            log_records_batch = []
+            # 设定一个合理的上限，比如一次最多处理100条，防止单次UI更新过久
+            max_batch_size = 100
+            while len(log_records_batch) < max_batch_size:
                 try:
-                    # 从日志队列中获取完整的 LogRecord 对象
                     log_record = self.log_queue.get_nowait()
-                    try:
-                        self.ui_manager.display_log_message_in_ui(log_record)
-                    except Exception as e:
-                        # 修改: 将print替换为logger.error
-                        self.logger.error(_("GUI日志处理时发生异常: {}").format(e))
-                        self.logger.debug(traceback.format_exc())
-
+                    log_records_batch.append(log_record)
                 except queue.Empty:
+                    # 队列空了，停止获取
                     break
 
+            # 只有在确实有日志需要处理时，才调用UI更新函数
+            if log_records_batch:
+                self.ui_manager.display_log_message_in_ui(log_records_batch)
+
+            # --- 消息队列处理 ---
             max_messages_to_process = 5
             for _ in range(max_messages_to_process):
                 try:
@@ -952,11 +954,10 @@ class CottonToolkitApp(ttkb.Window):
                 except queue.Empty:
                     break
         except Exception as e:
-            # 修改: 将print替换为logger.error
-            self.logger.error(f"处理消息队列时出错: {e}")
+            self.logger.error(f"处理队列时发生错误: {e}")
             self.logger.debug(traceback.format_exc())
-
-        self.after(100, self.check_queue_periodic)
+        finally:
+            self.after(100, self.check_queue_periodic)
 
     def reconfigure_logging(self, log_level_str: str):
         try:

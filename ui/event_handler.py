@@ -184,6 +184,28 @@ class EventHandler:
             app.message_queue.put(("progress", (100, app._("初始化完成。"))))
             app.message_queue.put(("hide_progress_dialog", None))
 
+    def _cancel_and_cleanup_task(self):
+        """
+        立即取消任务并清理UI，不再等待后台线程的确认。
+        """
+        _ = self.app._
+        logger.warning(_("用户请求取消当前任务..."))
+
+        # 1. 向后台线程发送取消信号（尽力而为）
+        self.app.cancel_current_task_event.set()
+
+        # 2. 核心：不等后台线程响应，立即在UI层面终结任务
+        task_display_name = self.app.active_task_name or _("未知任务")
+        self.ui_manager._finalize_task_ui(
+            task_display_name=task_display_name,
+            success=False,  # 任务未成功
+            result_data="CANCELLED"  # 结果是“已取消”
+        )
+
+        logger.warning(
+            _("任务 '{}' 已被强制取消。后台线程可能会在完成最后的IO操作后悄默声地终止。").format(task_display_name)
+        )
+
     def start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
                    on_success: Optional[Callable] = None, task_key: Optional[str] = None):
         """
@@ -204,7 +226,7 @@ class EventHandler:
         app.active_task_name = task_name
         app.cancel_current_task_event.clear()
         self.app.message_queue.put(("show_progress_dialog", {"title": task_name, "message": _("正在处理..."),
-                                                             "on_cancel": app.cancel_current_task_event.set}))
+                                                             "on_cancel": self._cancel_and_cleanup_task}))
 
         # 1. 创建一个新的字典 thread_kwargs，用于传递给后台线程。
         #    这样做可以避免直接修改原始的 kwargs 字典，是更安全的做法。
@@ -508,18 +530,6 @@ class EventHandler:
                 app.log_text_container.grid_remove()
         app.toggle_log_button.configure(text=_("隐藏日志") if app.log_viewer_visible else _("显示日志"))
 
-    def clear_log_viewer(self):
-        _ = self.app._
-        if hasattr(self.app, 'log_textbox'):
-            self.app.log_textbox.configure(state="normal")
-            self.app.log_textbox.delete("1.0", "end")
-            self.app.log_textbox.configure(state="disabled")
-            # 修改: 使用标准 logger
-            logger.info(_("操作日志已清除。"))
-
-        if hasattr(self.app, 'latest_log_message_var'):
-            self.app.latest_log_message_var.set("")
-            self.app.status_label.configure(foreground=self.app.default_text_color)
 
 
     def load_config_file(self, filepath: Optional[str] = None):
