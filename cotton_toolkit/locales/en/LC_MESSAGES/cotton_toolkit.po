@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.1.1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-23 20:59+0800\n"
-"PO-Revision-Date: 2025-08-23 20:59+0800\n"
+"POT-Creation-Date: 2025-08-24 11:34+0800\n"
+"PO-Revision-Date: 2025-08-24 11:36+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Deepseek V3\n"
 "Language: en\n"
@@ -625,65 +625,65 @@ msgstr "Error querying GFF by ID: {}"
 msgid "AI"
 msgstr "AI"
 
+#: cotton_toolkit/pipelines/ai_tasks.py:36
 #: cotton_toolkit/pipelines/ai_tasks.py:37
-#: cotton_toolkit/pipelines/ai_tasks.py:38
 msgid "AI任务流程开始..."
 msgstr "AI task process started..."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:41
+#: cotton_toolkit/pipelines/ai_tasks.py:40
 msgid "正在解析AI服务配置..."
 msgstr "Parsing AI service configuration..."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:49
+#: cotton_toolkit/pipelines/ai_tasks.py:48
 #, python-brace-format
 msgid "错误: 在配置中未找到AI服务商 '{}' 的设置。"
 msgstr "Error: No configuration found for AI service provider '{}'."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:55
+#: cotton_toolkit/pipelines/ai_tasks.py:54
 #, python-brace-format
 msgid "错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。"
 msgstr ""
 "Error: Please set a valid API Key for the provider '{}' in the configuration "
 "file."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:61
+#: cotton_toolkit/pipelines/ai_tasks.py:60
 msgid "正在初始化AI客户端..."
 msgstr "Initializing AI client..."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:64
+#: cotton_toolkit/pipelines/ai_tasks.py:63
 #, python-brace-format
 msgid "正在初始化AI客户端... 服务商: {}, 模型: {}"
 msgstr "Initializing AI client... Provider: {}, Model: {}"
 
-#: cotton_toolkit/pipelines/ai_tasks.py:75
+#: cotton_toolkit/pipelines/ai_tasks.py:74
 #, python-brace-format
 msgid "将在原文件上修改: {}"
 msgstr "Will modify the original file: {}"
 
-#: cotton_toolkit/pipelines/ai_tasks.py:78
+#: cotton_toolkit/pipelines/ai_tasks.py:77
 #, python-brace-format
 msgid "将创建新文件并保存于源文件目录: {}"
 msgstr "A new file will be created and saved in the source file directory: {}"
 
-#: cotton_toolkit/pipelines/ai_tasks.py:82
+#: cotton_toolkit/pipelines/ai_tasks.py:81
 msgid "正在处理CSV文件并调用AI服务..."
 msgstr "Processing CSV file and calling AI service..."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:95
+#: cotton_toolkit/pipelines/ai_tasks.py:94
 #, python-brace-format
 msgid "AI处理: {}"
 msgstr "AI Processing: {}"
 
-#: cotton_toolkit/pipelines/ai_tasks.py:103
+#: cotton_toolkit/pipelines/ai_tasks.py:102
 msgid "任务完成。"
 msgstr "Task complete."
 
-#: cotton_toolkit/pipelines/ai_tasks.py:104
+#: cotton_toolkit/pipelines/ai_tasks.py:103
 msgid "AI任务流程成功完成。"
 msgstr "AI task process completed successfully."
 
 #: cotton_toolkit/pipelines/annotation.py:27 ui/gui_app.py:62
-#: ui/tabs/annotation_tab.py:41 ui/tabs/annotation_tab.py:181
+#: ui/tabs/annotation_tab.py:40 ui/tabs/annotation_tab.py:180
 msgid "功能注释"
 msgstr "Functional Annotation"
 
@@ -871,93 +871,93 @@ msgstr ""
 "✨ Tip: We have additionally generated matching .R scripts and .csv data "
 "files for you, all stored in the '{}' subfolder."
 
-#: cotton_toolkit/pipelines/blast.py:54
+#: cotton_toolkit/pipelines/blast.py:49
 msgid "BLAST 流程启动..."
 msgstr "BLAST process starting..."
 
-#: cotton_toolkit/pipelines/blast.py:55 cotton_toolkit/pipelines/blast.py:101
-#: cotton_toolkit/pipelines/blast.py:138 cotton_toolkit/pipelines/blast.py:146
-#: cotton_toolkit/pipelines/blast.py:162 cotton_toolkit/pipelines/blast.py:168
-#: cotton_toolkit/pipelines/blast.py:192 cotton_toolkit/pipelines/blast.py:221
-#: cotton_toolkit/pipelines/preprocessing.py:340
-#: cotton_toolkit/pipelines/preprocessing.py:382
+#: cotton_toolkit/pipelines/blast.py:50 cotton_toolkit/pipelines/blast.py:96
+#: cotton_toolkit/pipelines/blast.py:133 cotton_toolkit/pipelines/blast.py:141
+#: cotton_toolkit/pipelines/blast.py:157 cotton_toolkit/pipelines/blast.py:163
+#: cotton_toolkit/pipelines/blast.py:187 cotton_toolkit/pipelines/blast.py:216
+#: cotton_toolkit/pipelines/preprocessing.py:339
+#: cotton_toolkit/pipelines/preprocessing.py:381
 #: ui/tabs/genome_identifier_tab.py:166
 msgid "任务已取消。"
 msgstr "Task cancelled."
 
-#: cotton_toolkit/pipelines/blast.py:57
+#: cotton_toolkit/pipelines/blast.py:52
 msgid "正在验证目标基因组数据库..."
 msgstr "Validating target genome database..."
 
-#: cotton_toolkit/pipelines/blast.py:58
+#: cotton_toolkit/pipelines/blast.py:53
 #, python-brace-format
 msgid "步骤 1: 准备目标数据库 '{}'..."
 msgstr "Step 1: Preparing target database '{}'..."
 
-#: cotton_toolkit/pipelines/blast.py:64
+#: cotton_toolkit/pipelines/blast.py:59
 #, python-brace-format
 msgid "错误: 无法找到目标基因组 '{}' 的配置。"
 msgstr "Error: Unable to find configuration for the target genome '{}'."
 
-#: cotton_toolkit/pipelines/blast.py:70
+#: cotton_toolkit/pipelines/blast.py:65
 #, python-brace-format
 msgid "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
 msgstr "{} requires a database of type {}, the '{}' file will be used."
 
-#: cotton_toolkit/pipelines/blast.py:74
+#: cotton_toolkit/pipelines/blast.py:69
 #, python-brace-format
 msgid "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
 msgstr ""
 "Error: The sequence file '{}' for the target genome was not found. Please "
 "download the data first."
 
-#: cotton_toolkit/pipelines/blast.py:78
+#: cotton_toolkit/pipelines/blast.py:73
 #, python-brace-format
 msgid "BLAST 数据库序列源文件: {}"
 msgstr "BLAST database sequence source file: {}"
 
-#: cotton_toolkit/pipelines/blast.py:85
+#: cotton_toolkit/pipelines/blast.py:80
 msgid "文件为gz压缩格式，正在解压..."
 msgstr "The file is in gz compressed format, decompressing..."
 
-#: cotton_toolkit/pipelines/blast.py:86
+#: cotton_toolkit/pipelines/blast.py:81
 #, python-brace-format
 msgid "正在解压 {} 到 {}..."
 msgstr "Extracting {} to {}..."
 
-#: cotton_toolkit/pipelines/blast.py:91
+#: cotton_toolkit/pipelines/blast.py:86
 msgid "解压过程被取消。"
 msgstr "Extraction process was canceled."
 
-#: cotton_toolkit/pipelines/blast.py:96
+#: cotton_toolkit/pipelines/blast.py:91
 msgid "解压成功。"
 msgstr "Extraction successful."
 
-#: cotton_toolkit/pipelines/blast.py:98
+#: cotton_toolkit/pipelines/blast.py:93
 #, python-brace-format
 msgid "解压文件时出错: {}"
 msgstr "Error extracting file: {}"
 
-#: cotton_toolkit/pipelines/blast.py:104
+#: cotton_toolkit/pipelines/blast.py:99
 #, python-brace-format
 msgid "检查是否存在BLAST索引文件，例如: {}"
 msgstr "Check for the presence of BLAST index files, for example: {}"
 
-#: cotton_toolkit/pipelines/blast.py:106
+#: cotton_toolkit/pipelines/blast.py:101
 msgid "正在创建BLAST数据库... (可能需要一些时间)"
 msgstr "Creating BLAST database... (this may take some time)"
 
-#: cotton_toolkit/pipelines/blast.py:108
+#: cotton_toolkit/pipelines/blast.py:103
 #, python-brace-format
 msgid "未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库..."
 msgstr ""
 "No existing BLAST database found, creating a new {} library for '{}'..."
 
-#: cotton_toolkit/pipelines/blast.py:114
+#: cotton_toolkit/pipelines/blast.py:109
 msgid "数据库创建过程在开始前被取消。"
 msgstr "The database creation process was canceled before it started."
 
-#: cotton_toolkit/pipelines/blast.py:120 cotton_toolkit/pipelines/blast.py:135
+#: cotton_toolkit/pipelines/blast.py:115 cotton_toolkit/pipelines/blast.py:130
 #, python-brace-format
 msgid ""
 "创建BLAST数据库失败: {} \n"
@@ -966,18 +966,18 @@ msgstr ""
 "Failed to create BLAST database: {} \n"
 "Stderror: {}"
 
-#: cotton_toolkit/pipelines/blast.py:124
+#: cotton_toolkit/pipelines/blast.py:119
 msgid ""
 "makeblastdb命令返回了非零退出码，但数据库索引文件已成功创建。将继续执行..."
 msgstr ""
 "The makeblastdb command returned a non-zero exit code, but the database "
 "index files were successfully created. Proceeding..."
 
-#: cotton_toolkit/pipelines/blast.py:128
+#: cotton_toolkit/pipelines/blast.py:123
 msgid "BLAST数据库创建成功。"
 msgstr "BLAST database created successfully."
 
-#: cotton_toolkit/pipelines/blast.py:132
+#: cotton_toolkit/pipelines/blast.py:127
 msgid ""
 "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
 "PATH 环境变量中。\n"
@@ -991,28 +991,28 @@ msgstr ""
 "Official download site:\n"
 "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"
 
-#: cotton_toolkit/pipelines/blast.py:140
+#: cotton_toolkit/pipelines/blast.py:135
 msgid "正在准备查询序列..."
 msgstr "Preparing query sequence..."
 
-#: cotton_toolkit/pipelines/blast.py:147
+#: cotton_toolkit/pipelines/blast.py:142
 #, python-brace-format
 msgid "正在处理输入文件: {}"
 msgstr "Processing input file: {}"
 
-#: cotton_toolkit/pipelines/blast.py:155
+#: cotton_toolkit/pipelines/blast.py:150
 msgid "检测到FASTQ格式，正在转换为FASTA..."
 msgstr "Detected FASTQ format, converting to FASTA..."
 
-#: cotton_toolkit/pipelines/blast.py:158
+#: cotton_toolkit/pipelines/blast.py:153
 msgid "将输入文件作为FASTA格式处理..."
 msgstr "Processing input file as FASTA format..."
 
-#: cotton_toolkit/pipelines/blast.py:163
+#: cotton_toolkit/pipelines/blast.py:158
 msgid "正在处理文本输入..."
 msgstr "Processing text input..."
 
-#: cotton_toolkit/pipelines/blast.py:164
+#: cotton_toolkit/pipelines/blast.py:159
 #, python-brace-format
 msgid ""
 "--- Received query_text in pipeline (first 1000 chars) ---\n"
@@ -1023,80 +1023,76 @@ msgstr ""
 "{}\n"
 "-------------------------------------------------"
 
-#: cotton_toolkit/pipelines/blast.py:167
+#: cotton_toolkit/pipelines/blast.py:162
 #, python-brace-format
 msgid "查询序列已写入临时文件: {}"
 msgstr "Query sequence has been written to temporary file: {}"
 
-#: cotton_toolkit/pipelines/blast.py:170
+#: cotton_toolkit/pipelines/blast.py:165
 #, python-brace-format
 msgid "正在执行 {} ..."
 msgstr "Executing {} ..."
 
-#: cotton_toolkit/pipelines/blast.py:171
+#: cotton_toolkit/pipelines/blast.py:166
 #, python-brace-format
 msgid "步骤 2: 执行 {} ..."
 msgstr "Step 2: Executing {} ..."
 
-#: cotton_toolkit/pipelines/blast.py:181
+#: cotton_toolkit/pipelines/blast.py:176
 #, python-brace-format
 msgid "BLAST命令: {}"
 msgstr "BLAST command: {}"
 
-#: cotton_toolkit/pipelines/blast.py:182
+#: cotton_toolkit/pipelines/blast.py:177
 msgid "BLAST在执行前被取消。"
 msgstr "BLAST was canceled before execution."
 
-#: cotton_toolkit/pipelines/blast.py:187
+#: cotton_toolkit/pipelines/blast.py:182
 #, python-brace-format
 msgid "BLAST运行时发生致命错误: {}"
 msgstr "A fatal error occurred during BLAST runtime: {}"
 
-#: cotton_toolkit/pipelines/blast.py:190
+#: cotton_toolkit/pipelines/blast.py:185
 #, python-brace-format
 msgid "BLAST运行时产生警告或提示信息: {}"
 msgstr "BLAST runtime generated warnings or messages: {}"
 
-#: cotton_toolkit/pipelines/blast.py:194
+#: cotton_toolkit/pipelines/blast.py:189
 msgid "正在解析BLAST结果..."
 msgstr "Parsing BLAST results..."
 
-#: cotton_toolkit/pipelines/blast.py:195
+#: cotton_toolkit/pipelines/blast.py:190
 #, python-brace-format
 msgid "步骤 3: 解析结果并保存到 {} ..."
 msgstr "Step 3: Parsing results and saving to {} ..."
 
-#: cotton_toolkit/pipelines/blast.py:199
+#: cotton_toolkit/pipelines/blast.py:194
 msgid "BLAST运行完毕，但未产生任何结果。"
 msgstr "BLAST completed but produced no results."
 
-#: cotton_toolkit/pipelines/blast.py:203
-msgid "BLAST结果解析过程被取消。"
-msgstr "BLAST result parsing process was canceled."
-
-#: cotton_toolkit/pipelines/blast.py:224 cotton_toolkit/pipelines/blast.py:228
+#: cotton_toolkit/pipelines/blast.py:219 cotton_toolkit/pipelines/blast.py:223
 msgid "未找到任何显著的BLAST匹配项。"
 msgstr "No significant BLAST matches found."
 
-#: cotton_toolkit/pipelines/blast.py:233
+#: cotton_toolkit/pipelines/blast.py:228
 #, python-brace-format
 msgid "成功找到 {} 条匹配记录。"
 msgstr "Successfully found {} matching records."
 
-#: cotton_toolkit/pipelines/blast.py:236
+#: cotton_toolkit/pipelines/blast.py:231
 msgid "正在保存到文件..."
 msgstr "Saving to file..."
 
-#: cotton_toolkit/pipelines/blast.py:241
+#: cotton_toolkit/pipelines/blast.py:236
 #, python-brace-format
 msgid "BLAST 任务完成！结果已保存到 {}"
 msgstr "BLAST task completed! Results have been saved to {}"
 
-#: cotton_toolkit/pipelines/blast.py:243
+#: cotton_toolkit/pipelines/blast.py:238
 msgid "BLAST流程完成。"
 msgstr "BLAST process completed."
 
-#: cotton_toolkit/pipelines/blast.py:247
+#: cotton_toolkit/pipelines/blast.py:242
 #, python-brace-format
 msgid "BLAST流水线执行过程中发生意外错误: {}"
 msgstr "An unexpected error occurred during BLAST pipeline execution: {}"
@@ -1449,29 +1445,33 @@ msgid "位点转换流程出错: {}"
 msgstr "Locus conversion process failed: {}"
 
 #: cotton_toolkit/pipelines/homology.py:459
-#: cotton_toolkit/pipelines/preprocessing.py:490
+#: cotton_toolkit/pipelines/preprocessing.py:489
 msgid "任务因错误而终止。"
 msgstr "Task terminated due to an error."
 
-#: cotton_toolkit/pipelines/mapping.py:37
+#: cotton_toolkit/pipelines/mapping.py:21
+msgid "同源转换"
+msgstr "Rapid Homologous Conversion"
+
+#: cotton_toolkit/pipelines/mapping.py:41
 msgid "正在从数据库提取源基因序列..."
 msgstr "Extracting source gene sequences from the database..."
 
-#: cotton_toolkit/pipelines/mapping.py:38
+#: cotton_toolkit/pipelines/mapping.py:42
 #, python-brace-format
 msgid "步骤 1/3: 正在为 {} 个基因提取序列..."
 msgstr "Step 1/3: Extracting sequences for {} genes..."
 
-#: cotton_toolkit/pipelines/mapping.py:42
+#: cotton_toolkit/pipelines/mapping.py:46
 #: cotton_toolkit/pipelines/seqence_query.py:67
 msgid "未能获取任何查询序列，任务终止。"
 msgstr "No query sequences retrieved, task terminated."
 
-#: cotton_toolkit/pipelines/mapping.py:43
+#: cotton_toolkit/pipelines/mapping.py:47
 msgid "错误：无法获取序列。"
 msgstr "Error: Failed to retrieve sequence."
 
-#: cotton_toolkit/pipelines/mapping.py:47
+#: cotton_toolkit/pipelines/mapping.py:51
 #, python-brace-format
 msgid ""
 "--- BLAST Query Sequence (first 1000 chars) ---\n"
@@ -1482,39 +1482,39 @@ msgstr ""
 "{}\n"
 "-------------------------------------------------"
 
-#: cotton_toolkit/pipelines/mapping.py:50
+#: cotton_toolkit/pipelines/mapping.py:54
 #: cotton_toolkit/pipelines/seqence_query.py:72
 #, python-brace-format
 msgid "以下 {} 个基因未找到序列，将被忽略: {}"
 msgstr "The following {} genes were not found and will be ignored: {}"
 
-#: cotton_toolkit/pipelines/mapping.py:53
+#: cotton_toolkit/pipelines/mapping.py:57
 msgid "正在准备并执行BLASTN搜索..."
 msgstr "Preparing and executing BLASTN search..."
 
-#: cotton_toolkit/pipelines/mapping.py:54
+#: cotton_toolkit/pipelines/mapping.py:58
 #, python-brace-format
 msgid "步骤 2/3: 正在对目标基因组 '{}' 执行BLASTN..."
 msgstr "Step 2/3: Running BLASTN on target genome '{}'..."
 
-#: cotton_toolkit/pipelines/mapping.py:80
+#: cotton_toolkit/pipelines/mapping.py:84
 msgid "BLAST步骤执行失败。"
 msgstr "BLAST step execution failed."
 
-#: cotton_toolkit/pipelines/mapping.py:85
+#: cotton_toolkit/pipelines/mapping.py:89
 msgid "正在应用后处理筛选并保存结果..."
 msgstr "Applying post-processing filters and saving results..."
 
-#: cotton_toolkit/pipelines/mapping.py:86
+#: cotton_toolkit/pipelines/mapping.py:90
 msgid "步骤 3/3: 正在后处理BLAST结果..."
 msgstr "Step 3/3: Post-processing BLAST results..."
 
-#: cotton_toolkit/pipelines/mapping.py:104
+#: cotton_toolkit/pipelines/mapping.py:108
 #, python-brace-format
 msgid "正在将最终结果保存到: {}"
 msgstr "Saving final results to: {}"
 
-#: cotton_toolkit/pipelines/mapping.py:113
+#: cotton_toolkit/pipelines/mapping.py:117
 msgid "同源转换完成。"
 msgstr "Homologous conversion completed."
 
@@ -1590,209 +1590,209 @@ msgstr "Processing failed"
 msgid "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
 msgstr "Error occurred while processing file '{}' to table '{}'. Reason: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:251
-#: cotton_toolkit/pipelines/preprocessing.py:253
+#: cotton_toolkit/pipelines/preprocessing.py:250
+#: cotton_toolkit/pipelines/preprocessing.py:252
 msgid "下载流程开始..."
 msgstr "Download process started..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:252
+#: cotton_toolkit/pipelines/preprocessing.py:251
 msgid "任务在启动时被取消。"
 msgstr "Task was canceled on startup."
 
-#: cotton_toolkit/pipelines/preprocessing.py:271
+#: cotton_toolkit/pipelines/preprocessing.py:270
 #, python-brace-format
 msgid "本次下载将使用代理: {}"
 msgstr "This download will use a proxy: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:273
+#: cotton_toolkit/pipelines/preprocessing.py:272
 msgid "下载代理开关已打开，但配置文件中未设置代理地址。"
 msgstr ""
 "The download proxy is enabled, but no proxy address is set in the "
 "configuration file."
 
-#: cotton_toolkit/pipelines/preprocessing.py:275
+#: cotton_toolkit/pipelines/preprocessing.py:274
 msgid "正在准备下载任务列表..."
 msgstr "Preparing download task list..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:276
-#: cotton_toolkit/pipelines/preprocessing.py:316
-#: cotton_toolkit/pipelines/preprocessing.py:558
-#: cotton_toolkit/pipelines/preprocessing.py:562
-#: cotton_toolkit/pipelines/preprocessing.py:575
+#: cotton_toolkit/pipelines/preprocessing.py:275
+#: cotton_toolkit/pipelines/preprocessing.py:315
+#: cotton_toolkit/pipelines/preprocessing.py:557
+#: cotton_toolkit/pipelines/preprocessing.py:561
+#: cotton_toolkit/pipelines/preprocessing.py:574
 msgid "任务被取消。"
 msgstr "Task was canceled."
 
-#: cotton_toolkit/pipelines/preprocessing.py:278
+#: cotton_toolkit/pipelines/preprocessing.py:277
 #, python-brace-format
 msgid "将尝试下载的基因组版本: {}"
 msgstr "Attempting to download genome version: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:284
+#: cotton_toolkit/pipelines/preprocessing.py:283
 #, python-brace-format
 msgid "未从UI指定文件类型，将尝试检查所有可能的类型: {}"
 msgstr ""
 "No file type specified from the UI, will attempt to check all possible "
 "types: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:287
+#: cotton_toolkit/pipelines/preprocessing.py:286
 #, python-brace-format
 msgid "将根据UI的选择，精确下载以下文件类型: {}"
 msgstr ""
 "The following file types will be precisely downloaded based on UI selection: "
 "{}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:293
+#: cotton_toolkit/pipelines/preprocessing.py:292
 #, python-brace-format
 msgid "在基因组源中未找到版本 '{}'，已跳过。"
 msgstr "Version '{}' not found in genome source, skipped."
 
-#: cotton_toolkit/pipelines/preprocessing.py:308
+#: cotton_toolkit/pipelines/preprocessing.py:307
 msgid "任务在任务列表创建期间被取消。"
 msgstr "Task was canceled during task list creation."
 
-#: cotton_toolkit/pipelines/preprocessing.py:311
+#: cotton_toolkit/pipelines/preprocessing.py:310
 msgid "根据您的选择，没有找到任何有效的URL可供下载。"
 msgstr "Based on your selection, no valid URLs were found for download."
 
-#: cotton_toolkit/pipelines/preprocessing.py:312
+#: cotton_toolkit/pipelines/preprocessing.py:311
 msgid "任务完成：无文件可下载。"
 msgstr "Task complete: No files to download."
 
-#: cotton_toolkit/pipelines/preprocessing.py:315
+#: cotton_toolkit/pipelines/preprocessing.py:314
 #, python-brace-format
 msgid "找到 {} 个文件需要下载。"
 msgstr "Found {} files to download."
 
-#: cotton_toolkit/pipelines/preprocessing.py:317
+#: cotton_toolkit/pipelines/preprocessing.py:316
 #, python-brace-format
 msgid "准备下载 {} 个文件..."
 msgstr "Preparing to download {} files..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:339
+#: cotton_toolkit/pipelines/preprocessing.py:338
 msgid "下载任务已被用户取消。"
 msgstr "Download task was canceled by the user."
 
-#: cotton_toolkit/pipelines/preprocessing.py:353
+#: cotton_toolkit/pipelines/preprocessing.py:352
 #, python-brace-format
 msgid "下载 {} 的 {} 文件时发生严重错误: {}"
 msgstr "A critical error occurred while downloading the {} file for {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:360
+#: cotton_toolkit/pipelines/preprocessing.py:359
 msgid "总体下载进度"
 msgstr "Overall Download Progress"
 
-#: cotton_toolkit/pipelines/preprocessing.py:362
+#: cotton_toolkit/pipelines/preprocessing.py:361
 #, python-brace-format
 msgid "所有指定的下载任务已完成。成功: {}, 失败: {}。"
 msgstr ""
 "All specified download tasks have been completed. Success: {}, failure: {}."
 
-#: cotton_toolkit/pipelines/preprocessing.py:363
+#: cotton_toolkit/pipelines/preprocessing.py:362
 msgid "下载流程完成。"
 msgstr "Download process complete."
 
-#: cotton_toolkit/pipelines/preprocessing.py:381
-#: cotton_toolkit/pipelines/preprocessing.py:553 ui/tabs/base_tab.py:144
+#: cotton_toolkit/pipelines/preprocessing.py:380
+#: cotton_toolkit/pipelines/preprocessing.py:552 ui/tabs/base_tab.py:144
 msgid "任务已被用户取消。"
 msgstr "Task has been canceled by the user."
 
-#: cotton_toolkit/pipelines/preprocessing.py:386
+#: cotton_toolkit/pipelines/preprocessing.py:385
 msgid "开始预处理所有注释文件..."
 msgstr "Starting preprocessing of all annotation files..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:387
+#: cotton_toolkit/pipelines/preprocessing.py:386
 msgid "开始预处理所有注释文件 (包括GFF)..."
 msgstr "Start preprocessing all annotation files (including GFF)..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:389
-#: cotton_toolkit/pipelines/preprocessing.py:561 ui/event_handler.py:172
+#: cotton_toolkit/pipelines/preprocessing.py:388
+#: cotton_toolkit/pipelines/preprocessing.py:560 ui/event_handler.py:172
 msgid "正在加载基因组源数据..."
 msgstr "Loading genome source data..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:394
+#: cotton_toolkit/pipelines/preprocessing.py:393
 msgid "预处理需要从UI明确选择一个基因组版本。"
 msgstr ""
 "Preprocessing requires explicitly selecting a genome version from the UI."
 
-#: cotton_toolkit/pipelines/preprocessing.py:395
+#: cotton_toolkit/pipelines/preprocessing.py:394
 msgid "错误：未选择有效基因组。"
 msgstr "Error: No valid genome selected."
 
-#: cotton_toolkit/pipelines/preprocessing.py:399
+#: cotton_toolkit/pipelines/preprocessing.py:398
 msgid "正在检查所有文件状态..."
 msgstr "Checking all file statuses..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:413
+#: cotton_toolkit/pipelines/preprocessing.py:412
 msgid "所有注释文件均已处理完毕，无需再次运行。"
 msgstr "All comment files have been processed; no need to run again."
 
-#: cotton_toolkit/pipelines/preprocessing.py:414
+#: cotton_toolkit/pipelines/preprocessing.py:413
 msgid "所有文件均已是最新状态。"
 msgstr "All files are up to date."
 
-#: cotton_toolkit/pipelines/preprocessing.py:450
+#: cotton_toolkit/pipelines/preprocessing.py:449
 #, python-brace-format
 msgid "检测到以下待处理文件: {}"
 msgstr "The following pending files were detected: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:451
+#: cotton_toolkit/pipelines/preprocessing.py:450
 #, python-brace-format
 msgid "找到 {} 个待处理文件..."
 msgstr "Found {} pending files..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:464
-#: cotton_toolkit/pipelines/preprocessing.py:613
+#: cotton_toolkit/pipelines/preprocessing.py:463
+#: cotton_toolkit/pipelines/preprocessing.py:612
 msgid "处理中..."
 msgstr "Processing..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:475
-#: cotton_toolkit/pipelines/preprocessing.py:620
+#: cotton_toolkit/pipelines/preprocessing.py:474
+#: cotton_toolkit/pipelines/preprocessing.py:619
 msgid "✅ 完成"
 msgstr "✅ Done"
 
-#: cotton_toolkit/pipelines/preprocessing.py:478
+#: cotton_toolkit/pipelines/preprocessing.py:477
 msgid "🚫 已取消"
 msgstr "🚫 Canceled"
 
-#: cotton_toolkit/pipelines/preprocessing.py:481
-#: cotton_toolkit/pipelines/preprocessing.py:630
+#: cotton_toolkit/pipelines/preprocessing.py:480
+#: cotton_toolkit/pipelines/preprocessing.py:629
 msgid "❌ 错误"
 msgstr "❌ Error"
 
-#: cotton_toolkit/pipelines/preprocessing.py:486
+#: cotton_toolkit/pipelines/preprocessing.py:485
 msgid "所有待处理的注释文件均已成功预处理。"
 msgstr "All pending comment files have been successfully preprocessed."
 
-#: cotton_toolkit/pipelines/preprocessing.py:487
-#: cotton_toolkit/pipelines/preprocessing.py:637
+#: cotton_toolkit/pipelines/preprocessing.py:486
+#: cotton_toolkit/pipelines/preprocessing.py:636
 msgid "预处理完成。"
 msgstr "Preprocessing complete."
 
-#: cotton_toolkit/pipelines/preprocessing.py:489
+#: cotton_toolkit/pipelines/preprocessing.py:488
 msgid "部分文件在预处理过程中失败，请检查日志。"
 msgstr "Some files failed during preprocessing, please check the logs."
 
-#: cotton_toolkit/pipelines/preprocessing.py:513
+#: cotton_toolkit/pipelines/preprocessing.py:512
 #, python-brace-format
 msgid "正在解压 {}..."
 msgstr "Extracting {}..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:523
+#: cotton_toolkit/pipelines/preprocessing.py:522
 #, python-brace-format
 msgid "正在为 {} 创建 {} 数据库..."
 msgstr "Creating {} database for {}..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:527
+#: cotton_toolkit/pipelines/preprocessing.py:526
 #, python-brace-format
 msgid "数据库 {} 创建成功。"
 msgstr "Database {} created successfully."
 
-#: cotton_toolkit/pipelines/preprocessing.py:530
+#: cotton_toolkit/pipelines/preprocessing.py:529
 #, python-brace-format
 msgid "任务在解压时被取消: {}"
 msgstr "Task canceled during extraction: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:532
+#: cotton_toolkit/pipelines/preprocessing.py:531
 msgid ""
 "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
 "PATH 环境变量中。"
@@ -1800,68 +1800,68 @@ msgstr ""
 "Error: 'makeblastdb' command not found. Please ensure BLAST+ is properly "
 "installed and added to the system's PATH environment variable."
 
-#: cotton_toolkit/pipelines/preprocessing.py:536
+#: cotton_toolkit/pipelines/preprocessing.py:535
 #, python-brace-format
 msgid "创建数据库 {} 失败: {}"
 msgstr "Failed to create database {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:538
+#: cotton_toolkit/pipelines/preprocessing.py:537
 #, python-brace-format
 msgid "处理文件 {} 时发生未知错误: {}"
 msgstr "An unknown error occurred while processing file {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:557
+#: cotton_toolkit/pipelines/preprocessing.py:556
 msgid "开始预处理BLAST数据库..."
 msgstr "Starting preprocessing of BLAST database..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:559
+#: cotton_toolkit/pipelines/preprocessing.py:558
 msgid "开始批量创建BLAST数据库..."
 msgstr "Starting batch creation of BLAST databases..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:565
+#: cotton_toolkit/pipelines/preprocessing.py:564
 msgid "未能加载基因组源数据。"
 msgstr "Failed to load genome source data."
 
-#: cotton_toolkit/pipelines/preprocessing.py:566
+#: cotton_toolkit/pipelines/preprocessing.py:565
 msgid "任务终止：未能加载基因组源。"
 msgstr "Task terminated: Failed to load genome source."
 
-#: cotton_toolkit/pipelines/preprocessing.py:574
+#: cotton_toolkit/pipelines/preprocessing.py:573
 msgid "正在检查需要预处理的文件..."
 msgstr "Checking for files that need preprocessing..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:595
+#: cotton_toolkit/pipelines/preprocessing.py:594
 msgid "任务在文件检查后被取消。"
 msgstr "Task was canceled after file inspection."
 
-#: cotton_toolkit/pipelines/preprocessing.py:598
+#: cotton_toolkit/pipelines/preprocessing.py:597
 msgid "所有BLAST数据库均已是最新状态，无需预处理。"
 msgstr "All BLAST databases are up to date and require no preprocessing."
 
-#: cotton_toolkit/pipelines/preprocessing.py:599
+#: cotton_toolkit/pipelines/preprocessing.py:598
 msgid "无需处理，所有文件已是最新。"
 msgstr "No processing needed, all files are up-to-date."
 
+#: cotton_toolkit/pipelines/preprocessing.py:602
 #: cotton_toolkit/pipelines/preprocessing.py:603
-#: cotton_toolkit/pipelines/preprocessing.py:604
 #, python-brace-format
 msgid "找到 {} 个BLAST数据库需要创建。"
 msgstr "Found {} BLAST databases to be created."
 
-#: cotton_toolkit/pipelines/preprocessing.py:622
+#: cotton_toolkit/pipelines/preprocessing.py:621
 msgid "⚠️ 警告"
 msgstr "⚠️ Warning"
 
-#: cotton_toolkit/pipelines/preprocessing.py:626
+#: cotton_toolkit/pipelines/preprocessing.py:625
 msgid "错误: makeblastdb 未找到!"
 msgstr "Error: makeblastdb not found!"
 
-#: cotton_toolkit/pipelines/preprocessing.py:634
+#: cotton_toolkit/pipelines/preprocessing.py:633
 #, python-brace-format
 msgid "进度 ({}/{}) - {}"
 msgstr "Progress ({}/{}) - {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:636
+#: cotton_toolkit/pipelines/preprocessing.py:635
 #, python-brace-format
 msgid "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
 msgstr ""
@@ -2554,11 +2554,11 @@ msgstr "Application startup failed"
 msgid "初始化完成。"
 msgstr "Initialization complete."
 
-#: ui/event_handler.py:195 ui/event_handler.py:871
+#: ui/event_handler.py:195 ui/event_handler.py:870
 msgid "任务进行中"
 msgstr "Task in Progress"
 
-#: ui/event_handler.py:196 ui/event_handler.py:872
+#: ui/event_handler.py:196 ui/event_handler.py:871
 #, python-brace-format
 msgid "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
 msgstr ""
@@ -2726,9 +2726,9 @@ msgstr "Operation log has been cleared."
 msgid "选择配置文件"
 msgstr "Select Configuration File"
 
-#: ui/event_handler.py:533 ui/tabs/annotation_tab.py:49
-#: ui/tabs/annotation_tab.py:142 ui/tabs/arabidopsis_homology_tab.py:67
-#: ui/tabs/arabidopsis_homology_tab.py:292 ui/tabs/blast_tab.py:61
+#: ui/event_handler.py:533 ui/tabs/annotation_tab.py:48
+#: ui/tabs/annotation_tab.py:141 ui/tabs/arabidopsis_homology_tab.py:67
+#: ui/tabs/arabidopsis_homology_tab.py:293 ui/tabs/blast_tab.py:61
 #: ui/tabs/blast_tab.py:188 ui/tabs/enrichment_tab.py:67
 #: ui/tabs/enrichment_tab.py:215 ui/tabs/gff_query_tab.py:111
 #: ui/tabs/gff_query_tab.py:182 ui/tabs/homology_tab.py:64
@@ -2858,31 +2858,38 @@ msgstr "Articles:"
 msgid "基因组引用文献:"
 msgstr "Genome Reference Citations:"
 
-#: ui/event_handler.py:705
+#: ui/event_handler.py:704
 msgid "许可证"
 msgstr "License"
 
-#: ui/event_handler.py:706
-msgid "本软件根据 Apache License 2.0 获得许可。"
-msgstr "This software is licensed under the Apache License 2.0."
+#: ui/event_handler.py:705
+msgid ""
+"本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者"
+"（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题"
+"承担责任。"
+msgstr ""
+"This software is licensed under the Apache License 2.0. You are free to use, "
+"modify, and distribute the code, but no contributor (including the original "
+"author and their affiliated organizations) provides any warranty or is "
+"liable for any problems arising from its use."
 
-#: ui/event_handler.py:708
+#: ui/event_handler.py:707
 msgid "免责声明"
 msgstr "Disclaimer"
 
-#: ui/event_handler.py:709
+#: ui/event_handler.py:708
 msgid "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
 msgstr ""
 "The genomic data download and processing are executed by the user, and this "
 "tool only provides framework services."
 
-#: ui/event_handler.py:730 ui/event_handler.py:760
+#: ui/event_handler.py:729 ui/event_handler.py:759
 msgid "确定"
 msgstr "OK"
 
-#: ui/event_handler.py:782 ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:380
-#: ui/tabs/annotation_tab.py:116 ui/tabs/arabidopsis_homology_tab.py:253
-#: ui/tabs/arabidopsis_homology_tab.py:300 ui/tabs/blast_tab.py:182
+#: ui/event_handler.py:781 ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:341
+#: ui/tabs/annotation_tab.py:115 ui/tabs/arabidopsis_homology_tab.py:254
+#: ui/tabs/arabidopsis_homology_tab.py:301 ui/tabs/blast_tab.py:182
 #: ui/tabs/data_download_tab.py:322 ui/tabs/data_download_tab.py:331
 #: ui/tabs/data_download_tab.py:388 ui/tabs/data_download_tab.py:448
 #: ui/tabs/data_download_tab.py:457 ui/tabs/enrichment_tab.py:202
@@ -2893,106 +2900,106 @@ msgstr "OK"
 msgid "错误"
 msgstr "Error"
 
-#: ui/event_handler.py:782
+#: ui/event_handler.py:781
 #, python-brace-format
 msgid "无法打开帮助链接: {}"
 msgstr "Cannot open help link: {}"
 
-#: ui/event_handler.py:786
+#: ui/event_handler.py:785
 msgid "选择文件"
 msgstr "Select File"
 
-#: ui/event_handler.py:792
+#: ui/event_handler.py:791
 msgid "保存文件为"
 msgstr "Save File As"
 
-#: ui/event_handler.py:799
+#: ui/event_handler.py:798
 msgid "选择目录"
 msgstr "Select Directory"
 
-#: ui/event_handler.py:840
+#: ui/event_handler.py:839
 msgid "信息"
 msgstr "Information"
 
-#: ui/event_handler.py:840
+#: ui/event_handler.py:839
 msgid "请先填写HTTP或HTTPS代理地址。"
 msgstr "Please fill in the HTTP or HTTPS proxy address first."
 
-#: ui/event_handler.py:844
+#: ui/event_handler.py:843
 msgid "正在测试代理..."
 msgstr "Testing proxy..."
 
-#: ui/event_handler.py:844
+#: ui/event_handler.py:843
 msgid "尝试通过代理连接到测试站点..."
 msgstr "Attempting to connect to the test site via proxy..."
 
-#: ui/event_handler.py:852
+#: ui/event_handler.py:851
 msgid "发送请求..."
 msgstr "Sending request..."
 
-#: ui/event_handler.py:856
+#: ui/event_handler.py:855
 msgid "连接成功！"
 msgstr "Connection successful!"
 
-#: ui/event_handler.py:856
+#: ui/event_handler.py:855
 msgid "测试站点报告的IP地址是:"
 msgstr "The IP address reported by the test site is:"
 
-#: ui/event_handler.py:858
+#: ui/event_handler.py:857
 msgid "测试完成。"
 msgstr "Test complete."
 
-#: ui/event_handler.py:860
+#: ui/event_handler.py:859
 msgid "连接失败。"
 msgstr "Connection failed."
 
-#: ui/event_handler.py:860
+#: ui/event_handler.py:859
 msgid "错误详情:"
 msgstr "Error details:"
 
-#: ui/event_handler.py:861
+#: ui/event_handler.py:860
 msgid "测试失败。"
 msgstr "Test failed."
 
-#: ui/event_handler.py:880
+#: ui/event_handler.py:879
 msgid "UI错误"
 msgstr "UI Error"
 
-#: ui/event_handler.py:880
+#: ui/event_handler.py:879
 msgid "配置编辑器UI尚未完全加载。"
 msgstr "The configuration editor UI has not fully loaded yet."
 
-#: ui/event_handler.py:883
+#: ui/event_handler.py:882
 msgid "缺少API Key"
 msgstr "Missing API Key"
 
-#: ui/event_handler.py:884
+#: ui/event_handler.py:883
 #, python-brace-format
 msgid "请先在编辑器中为 '{}' 填写有效的API Key。"
 msgstr "Please fill in a valid API Key for '{}' in the editor first."
 
-#: ui/event_handler.py:890
+#: ui/event_handler.py:889
 msgid "刷新模型列表"
 msgstr "Refresh Model List"
 
-#: ui/event_handler.py:893
+#: ui/event_handler.py:892
 msgid "正在获取模型..."
 msgstr "Fetching models..."
 
-#: ui/event_handler.py:893
+#: ui/event_handler.py:892
 #, python-brace-format
 msgid "连接到 {}..."
 msgstr "Connecting to {}..."
 
-#: ui/event_handler.py:908
+#: ui/event_handler.py:907
 msgid "开始连接AI服务..."
 msgstr "Starting to connect to AI service..."
 
-#: ui/event_handler.py:916
+#: ui/event_handler.py:915
 msgid "数据处理中..."
 msgstr "Data processing..."
 
-#: ui/event_handler.py:921 ui/gui_app.py:326
+#: ui/event_handler.py:920 ui/gui_app.py:326
 msgid "刷新完成。"
 msgstr "Refresh complete."
 
@@ -3095,7 +3102,7 @@ msgstr ""
 "Enter your custom prompt template here. It must include the {text} "
 "placeholder..."
 
-#: ui/gui_app.py:117 ui/tabs/ai_assistant_tab.py:263 ui/ui_manager.py:542
+#: ui/gui_app.py:117 ui/tabs/ai_assistant_tab.py:223 ui/ui_manager.py:542
 msgid "Default prompt is empty, please set it in the configuration editor."
 msgstr "Default prompt is empty, please set it in the configuration editor."
 
@@ -3374,120 +3381,123 @@ msgstr "Application restart requested by user."
 msgid "Error during pre-restart cleanup: {}"
 msgstr "Error during pre-restart cleanup: {}"
 
-#: ui/tabs/ai_assistant_tab.py:42 ui/tabs/ai_assistant_tab.py:181
+#: ui/tabs/ai_assistant_tab.py:42
 msgid "开始处理CSV文件"
 msgstr "Start Processing CSV File"
 
-#: ui/tabs/ai_assistant_tab.py:56 ui/tabs/ai_assistant_tab.py:155
+#: ui/tabs/ai_assistant_tab.py:56
 msgid "AI 助手"
 msgstr "AI Assistant"
 
-#: ui/tabs/ai_assistant_tab.py:60 ui/tabs/ai_assistant_tab.py:157
+#: ui/tabs/ai_assistant_tab.py:60
 msgid "AI服务与模型"
 msgstr "AI Service and Model"
 
-#: ui/tabs/ai_assistant_tab.py:64 ui/tabs/ai_assistant_tab.py:158
+#: ui/tabs/ai_assistant_tab.py:64
 msgid "AI服务商:"
 msgstr "AI Provider:"
 
-#: ui/tabs/ai_assistant_tab.py:73 ui/tabs/ai_assistant_tab.py:159
+#: ui/tabs/ai_assistant_tab.py:73
 msgid "选择模型:"
 msgstr "Select Model:"
 
 #: ui/tabs/ai_assistant_tab.py:75 ui/tabs/ai_assistant_tab.py:76
-#: ui/tabs/ai_assistant_tab.py:185
 msgid "请先选择服务商"
 msgstr "Please select a provider first"
 
-#: ui/tabs/ai_assistant_tab.py:79 ui/tabs/ai_assistant_tab.py:161
+#: ui/tabs/ai_assistant_tab.py:79
 msgid "处理任务与提示词"
 msgstr "Processing Task and Prompt"
 
-#: ui/tabs/ai_assistant_tab.py:86 ui/tabs/ai_assistant_tab.py:162
+#: ui/tabs/ai_assistant_tab.py:86
 msgid "处理任务:"
 msgstr "Processing Task:"
 
-#: ui/tabs/ai_assistant_tab.py:91 ui/tabs/ai_assistant_tab.py:165
+#: ui/tabs/ai_assistant_tab.py:91
 msgid "翻译"
 msgstr "Translate"
 
-#: ui/tabs/ai_assistant_tab.py:95 ui/tabs/ai_assistant_tab.py:166
+#: ui/tabs/ai_assistant_tab.py:95
 msgid "分析"
 msgstr "Analyze"
 
-#: ui/tabs/ai_assistant_tab.py:99 ui/tabs/ai_assistant_tab.py:167
+#: ui/tabs/ai_assistant_tab.py:99
 msgid "自定义"
 msgstr "Custom"
 
-#: ui/tabs/ai_assistant_tab.py:105 ui/tabs/ai_assistant_tab.py:169
+#: ui/tabs/ai_assistant_tab.py:105
 msgid "提示词模板:"
 msgstr "Prompt Template:"
 
-#: ui/tabs/ai_assistant_tab.py:119 ui/tabs/ai_assistant_tab.py:171
+#: ui/tabs/ai_assistant_tab.py:119
 msgid "CSV文件处理"
 msgstr "CSV File Processing"
 
-#: ui/tabs/ai_assistant_tab.py:123 ui/tabs/ai_assistant_tab.py:172
+#: ui/tabs/ai_assistant_tab.py:123
 msgid "CSV文件路径:"
 msgstr "CSV File Path:"
 
-#: ui/tabs/ai_assistant_tab.py:127 ui/tabs/ai_assistant_tab.py:173
-#: ui/tabs/annotation_tab.py:93 ui/tabs/arabidopsis_homology_tab.py:106
-#: ui/tabs/blast_tab.py:101 ui/tabs/blast_tab.py:153 ui/tabs/blast_tab.py:304
-#: ui/tabs/blast_tab.py:309 ui/tabs/enrichment_tab.py:182
-#: ui/tabs/gff_query_tab.py:121 ui/tabs/homology_tab.py:151
-#: ui/tabs/locus_conversion_tab.py:77 ui/tabs/locus_conversion_tab.py:95
+#: ui/tabs/ai_assistant_tab.py:127 ui/tabs/annotation_tab.py:92
+#: ui/tabs/arabidopsis_homology_tab.py:106 ui/tabs/blast_tab.py:101
+#: ui/tabs/blast_tab.py:153 ui/tabs/blast_tab.py:304 ui/tabs/blast_tab.py:309
+#: ui/tabs/enrichment_tab.py:182 ui/tabs/gff_query_tab.py:121
+#: ui/tabs/homology_tab.py:151 ui/tabs/locus_conversion_tab.py:77
+#: ui/tabs/locus_conversion_tab.py:95
 msgid "浏览..."
 msgstr "Browse..."
 
-#: ui/tabs/ai_assistant_tab.py:131 ui/tabs/ai_assistant_tab.py:174
+#: ui/tabs/ai_assistant_tab.py:131
 msgid "待处理列:"
 msgstr "Column to Process:"
 
 #: ui/tabs/ai_assistant_tab.py:133 ui/tabs/ai_assistant_tab.py:134
-#: ui/tabs/ai_assistant_tab.py:187 ui/tabs/ai_assistant_tab.py:395
+#: ui/tabs/ai_assistant_tab.py:356
 msgid "请先选择CSV文件"
 msgstr "Please select a CSV file first"
 
-#: ui/tabs/ai_assistant_tab.py:137 ui/tabs/ai_assistant_tab.py:175
+#: ui/tabs/ai_assistant_tab.py:137
 msgid "新列名称:"
 msgstr "New Column Name:"
 
-#: ui/tabs/ai_assistant_tab.py:144 ui/tabs/ai_assistant_tab.py:177
+#: ui/tabs/ai_assistant_tab.py:144
 msgid "另存为新文件 (否则在原文件上修改)"
 msgstr "Save as new file (otherwise, modifies the original file)"
 
-#: ui/tabs/ai_assistant_tab.py:147 ui/tabs/ai_assistant_tab.py:178
+#: ui/tabs/ai_assistant_tab.py:147
 msgid "为AI服务使用HTTP/HTTPS代理"
 msgstr "Use HTTP/HTTPS proxy for AI services"
 
-#: ui/tabs/ai_assistant_tab.py:288
+#: ui/tabs/ai_assistant_tab.py:247
 msgid "请先选择有效的CSV文件"
 msgstr "Please select a valid CSV file first"
 
-#: ui/tabs/ai_assistant_tab.py:293 ui/tabs/ai_assistant_tab.py:395
+#: ui/tabs/ai_assistant_tab.py:252 ui/tabs/ai_assistant_tab.py:356
 msgid "读取中..."
 msgstr "Reading..."
 
-#: ui/tabs/ai_assistant_tab.py:305
+#: ui/tabs/ai_assistant_tab.py:264
 msgid "无法读取CSV列名"
 msgstr "Cannot read CSV column names"
 
-#: ui/tabs/ai_assistant_tab.py:319 ui/tabs/ai_assistant_tab.py:321
-#: ui/tabs/ai_assistant_tab.py:395
+#: ui/tabs/ai_assistant_tab.py:278 ui/tabs/ai_assistant_tab.py:280
+#: ui/tabs/ai_assistant_tab.py:356
 msgid "读取失败"
 msgstr "Read failed"
 
-#: ui/tabs/ai_assistant_tab.py:324 ui/tabs/ai_assistant_tab.py:395
+#: ui/tabs/ai_assistant_tab.py:283 ui/tabs/ai_assistant_tab.py:356
 msgid "无可用列"
 msgstr "No columns available"
 
-#: ui/tabs/ai_assistant_tab.py:343
+#: ui/tabs/ai_assistant_tab.py:288 ui/tabs/ai_assistant_tab.py:395
+msgid "使用默认模型"
+msgstr "Use the default model"
+
+#: ui/tabs/ai_assistant_tab.py:305
 msgid "无可用模型"
 msgstr "No models available"
 
-#: ui/tabs/ai_assistant_tab.py:380 ui/tabs/annotation_tab.py:116
-#: ui/tabs/arabidopsis_homology_tab.py:253 ui/tabs/blast_tab.py:182
+#: ui/tabs/ai_assistant_tab.py:341 ui/tabs/annotation_tab.py:115
+#: ui/tabs/arabidopsis_homology_tab.py:254 ui/tabs/blast_tab.py:182
 #: ui/tabs/data_download_tab.py:323 ui/tabs/data_download_tab.py:388
 #: ui/tabs/data_download_tab.py:449 ui/tabs/enrichment_tab.py:202
 #: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
@@ -3496,13 +3506,13 @@ msgstr "No models available"
 msgid "请先加载配置文件。"
 msgstr "Please load a configuration file first."
 
-#: ui/tabs/ai_assistant_tab.py:393 ui/tabs/ai_assistant_tab.py:396
-#: ui/tabs/annotation_tab.py:140 ui/tabs/annotation_tab.py:143
-#: ui/tabs/annotation_tab.py:146 ui/tabs/arabidopsis_homology_tab.py:258
-#: ui/tabs/arabidopsis_homology_tab.py:266
-#: ui/tabs/arabidopsis_homology_tab.py:282
-#: ui/tabs/arabidopsis_homology_tab.py:288
-#: ui/tabs/arabidopsis_homology_tab.py:294 ui/tabs/blast_tab.py:190
+#: ui/tabs/ai_assistant_tab.py:354 ui/tabs/ai_assistant_tab.py:357
+#: ui/tabs/annotation_tab.py:139 ui/tabs/annotation_tab.py:142
+#: ui/tabs/annotation_tab.py:145 ui/tabs/arabidopsis_homology_tab.py:259
+#: ui/tabs/arabidopsis_homology_tab.py:267
+#: ui/tabs/arabidopsis_homology_tab.py:283
+#: ui/tabs/arabidopsis_homology_tab.py:289
+#: ui/tabs/arabidopsis_homology_tab.py:295 ui/tabs/blast_tab.py:190
 #: ui/tabs/blast_tab.py:218 ui/tabs/blast_tab.py:222 ui/tabs/blast_tab.py:227
 #: ui/tabs/enrichment_tab.py:211 ui/tabs/enrichment_tab.py:216
 #: ui/tabs/enrichment_tab.py:221 ui/tabs/enrichment_tab.py:228
@@ -3517,33 +3527,33 @@ msgstr "Please load a configuration file first."
 msgid "输入缺失"
 msgstr "Input Missing"
 
-#: ui/tabs/ai_assistant_tab.py:393
+#: ui/tabs/ai_assistant_tab.py:354
 msgid "请确保所有必填项都已填写。"
 msgstr "Please ensure all required fields are filled."
 
-#: ui/tabs/ai_assistant_tab.py:396
+#: ui/tabs/ai_assistant_tab.py:357
 msgid "请选择一个有效的“待处理列”。"
 msgstr "Please select a valid 'Column to Process'."
 
-#: ui/tabs/ai_assistant_tab.py:399
+#: ui/tabs/ai_assistant_tab.py:360
 msgid "文件错误"
 msgstr "File Error"
 
-#: ui/tabs/ai_assistant_tab.py:399
+#: ui/tabs/ai_assistant_tab.py:360
 msgid "指定的CSV文件不存在。"
 msgstr "The specified CSV file does not exist."
 
-#: ui/tabs/ai_assistant_tab.py:402
+#: ui/tabs/ai_assistant_tab.py:363
 msgid "模板错误"
 msgstr "Template Error"
 
-#: ui/tabs/ai_assistant_tab.py:402
+#: ui/tabs/ai_assistant_tab.py:363
 #, python-brace-format
 msgid "提示词模板必须包含 {text} 占位符。"
 msgstr "The prompt template must include the {text} placeholder."
 
-#: ui/tabs/ai_assistant_tab.py:412 ui/tabs/annotation_tab.py:155
-#: ui/tabs/arabidopsis_homology_tab.py:306 ui/tabs/blast_tab.py:246
+#: ui/tabs/ai_assistant_tab.py:373 ui/tabs/annotation_tab.py:154
+#: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/blast_tab.py:246
 #: ui/tabs/data_download_tab.py:356 ui/tabs/data_download_tab.py:405
 #: ui/tabs/data_download_tab.py:487 ui/tabs/enrichment_tab.py:263
 #: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
@@ -3552,61 +3562,61 @@ msgstr "The prompt template must include the {text} placeholder."
 msgid "操作取消"
 msgstr "Operation canceled"
 
-#: ui/tabs/ai_assistant_tab.py:412 ui/tabs/annotation_tab.py:155
+#: ui/tabs/ai_assistant_tab.py:373 ui/tabs/annotation_tab.py:154
 msgid "已发送取消请求，任务将在当前步骤完成后停止。"
 msgstr ""
 "Cancel request has been sent, the task will stop after the current step is "
 "completed."
 
-#: ui/tabs/ai_assistant_tab.py:417
+#: ui/tabs/ai_assistant_tab.py:378
 msgid "AI 处理中"
 msgstr "AI processing"
 
-#: ui/tabs/ai_assistant_tab.py:448
+#: ui/tabs/ai_assistant_tab.py:415
 msgid "AI批量处理CSV"
 msgstr "AI Batch Process CSV"
 
-#: ui/tabs/ai_assistant_tab.py:454 ui/tabs/data_download_tab.py:443
+#: ui/tabs/ai_assistant_tab.py:421 ui/tabs/data_download_tab.py:443
 msgid "任务启动失败"
 msgstr "Task Start Failed"
 
-#: ui/tabs/ai_assistant_tab.py:455
+#: ui/tabs/ai_assistant_tab.py:422
 msgid "准备AI处理任务时发生错误:"
 msgstr "Error preparing AI processing task:"
 
-#: ui/tabs/annotation_tab.py:34
+#: ui/tabs/annotation_tab.py:33
 msgid "开始功能注释"
 msgstr "Start Functional Annotation"
 
-#: ui/tabs/annotation_tab.py:44 ui/tabs/enrichment_tab.py:61
+#: ui/tabs/annotation_tab.py:43 ui/tabs/enrichment_tab.py:61
 #: ui/tabs/sequence_extraction_tab.py:60
 msgid "输入数据"
 msgstr "Input Data"
 
-#: ui/tabs/annotation_tab.py:47 ui/tabs/data_download_tab.py:128
+#: ui/tabs/annotation_tab.py:46 ui/tabs/data_download_tab.py:128
 #: ui/tabs/enrichment_tab.py:65 ui/tabs/sequence_extraction_tab.py:64
 msgid "基因组版本:"
 msgstr "Genome Version:"
 
-#: ui/tabs/annotation_tab.py:52 ui/tabs/arabidopsis_homology_tab.py:71
+#: ui/tabs/annotation_tab.py:51 ui/tabs/arabidopsis_homology_tab.py:71
 #: ui/tabs/arabidopsis_homology_tab.py:160 ui/tabs/homology_tab.py:73
 #: ui/tabs/homology_tab.py:208 ui/tabs/sequence_extraction_tab.py:69
 msgid "基因ID列表:"
 msgstr "Gene ID List:"
 
-#: ui/tabs/annotation_tab.py:73
+#: ui/tabs/annotation_tab.py:72
 msgid "注释类型"
 msgstr "Annotation Type"
 
-#: ui/tabs/annotation_tab.py:89
+#: ui/tabs/annotation_tab.py:88
 msgid "输出文件 (可选):"
 msgstr "Output File (Optional):"
 
-#: ui/tabs/annotation_tab.py:140
+#: ui/tabs/annotation_tab.py:139
 msgid "请输入要注释的基因ID。"
 msgstr "Please enter the gene IDs to be annotated."
 
-#: ui/tabs/annotation_tab.py:142 ui/tabs/blast_tab.py:188
+#: ui/tabs/annotation_tab.py:141 ui/tabs/blast_tab.py:188
 #: ui/tabs/blast_tab.py:337 ui/tabs/data_download_tab.py:278
 #: ui/tabs/data_download_tab.py:286 ui/tabs/data_download_tab.py:325
 #: ui/tabs/data_download_tab.py:392 ui/tabs/data_download_tab.py:451
@@ -3619,16 +3629,16 @@ msgstr "Please enter the gene IDs to be annotated."
 msgid "无可用基因组"
 msgstr "No genomes available"
 
-#: ui/tabs/annotation_tab.py:143 ui/tabs/enrichment_tab.py:216
+#: ui/tabs/annotation_tab.py:142 ui/tabs/enrichment_tab.py:216
 #: ui/tabs/gff_query_tab.py:183 ui/tabs/sequence_extraction_tab.py:254
 msgid "请选择一个基因组版本。"
 msgstr "Please select a genome version."
 
-#: ui/tabs/annotation_tab.py:146
+#: ui/tabs/annotation_tab.py:145
 msgid "请至少选择一种注释类型。"
 msgstr "Please select at least one annotation type."
 
-#: ui/tabs/annotation_tab.py:160
+#: ui/tabs/annotation_tab.py:159
 msgid "功能注释中"
 msgstr "Functional annotation in progress"
 
@@ -3680,7 +3690,7 @@ msgid "复制"
 msgstr "Copy"
 
 #: ui/tabs/arabidopsis_homology_tab.py:130
-#: ui/tabs/arabidopsis_homology_tab.py:276 ui/tabs/homology_tab.py:171
+#: ui/tabs/arabidopsis_homology_tab.py:277 ui/tabs/homology_tab.py:171
 #: ui/tabs/homology_tab.py:353
 msgid "正在查找..."
 msgstr "Searching..."
@@ -3703,9 +3713,10 @@ msgid "同源基因:"
 msgstr "Homologous genes:"
 
 #: ui/tabs/arabidopsis_homology_tab.py:186
-#: ui/tabs/arabidopsis_homology_tab.py:241
-#: ui/tabs/arabidopsis_homology_tab.py:244
-#: ui/tabs/arabidopsis_homology_tab.py:297
+#: ui/tabs/arabidopsis_homology_tab.py:236
+#: ui/tabs/arabidopsis_homology_tab.py:242
+#: ui/tabs/arabidopsis_homology_tab.py:245
+#: ui/tabs/arabidopsis_homology_tab.py:298
 msgid "棉花 -> 拟南芥"
 msgstr "cotton -> Arabidopsis"
 
@@ -3718,57 +3729,57 @@ msgid "未找到同源基因"
 msgstr "No homologous genes found"
 
 #: ui/tabs/arabidopsis_homology_tab.py:227
-#: ui/tabs/arabidopsis_homology_tab.py:241
-#: ui/tabs/arabidopsis_homology_tab.py:297
+#: ui/tabs/arabidopsis_homology_tab.py:242
+#: ui/tabs/arabidopsis_homology_tab.py:298
 msgid "拟南芥 -> 棉花"
 msgstr "Arabidopsis -> Cotton"
 
-#: ui/tabs/arabidopsis_homology_tab.py:249 ui/tabs/blast_tab.py:177
+#: ui/tabs/arabidopsis_homology_tab.py:250 ui/tabs/blast_tab.py:177
 #: ui/tabs/gff_query_tab.py:123 ui/tabs/homology_tab.py:238
 msgid "CSV 文件"
 msgstr "CSV Files"
 
-#: ui/tabs/arabidopsis_homology_tab.py:249 ui/tabs/blast_tab.py:168
+#: ui/tabs/arabidopsis_homology_tab.py:250 ui/tabs/blast_tab.py:168
 #: ui/tabs/homology_tab.py:239 ui/tabs/sequence_extraction_tab.py:190
 msgid "所有文件"
 msgstr "All Files"
 
-#: ui/tabs/arabidopsis_homology_tab.py:258
-#: ui/tabs/arabidopsis_homology_tab.py:288
+#: ui/tabs/arabidopsis_homology_tab.py:259
+#: ui/tabs/arabidopsis_homology_tab.py:289
 msgid "请输入要转换的基因ID。"
 msgstr "Enter the gene ID to convert."
 
-#: ui/tabs/arabidopsis_homology_tab.py:266 ui/tabs/homology_tab.py:310
+#: ui/tabs/arabidopsis_homology_tab.py:267 ui/tabs/homology_tab.py:310
 msgid "请输入有效的基因ID。"
 msgstr "Please enter a valid gene ID."
 
-#: ui/tabs/arabidopsis_homology_tab.py:270 ui/tabs/homology_tab.py:348
+#: ui/tabs/arabidopsis_homology_tab.py:271 ui/tabs/homology_tab.py:348
 msgid "正在查找同源基因..."
 msgstr "Searching for homologous genes..."
 
-#: ui/tabs/arabidopsis_homology_tab.py:282 ui/tabs/blast_tab.py:227
+#: ui/tabs/arabidopsis_homology_tab.py:283 ui/tabs/blast_tab.py:227
 msgid "请指定输出文件路径。"
 msgstr "Please specify the output file path."
 
-#: ui/tabs/arabidopsis_homology_tab.py:285 ui/tabs/homology_tab.py:358
+#: ui/tabs/arabidopsis_homology_tab.py:286 ui/tabs/homology_tab.py:358
 msgid "同源基因批量转换中"
 msgstr "Batch conversion of homologous genes in progress"
 
-#: ui/tabs/arabidopsis_homology_tab.py:293
-#: ui/tabs/arabidopsis_homology_tab.py:340 ui/tabs/blast_tab.py:189
+#: ui/tabs/arabidopsis_homology_tab.py:294
+#: ui/tabs/arabidopsis_homology_tab.py:341 ui/tabs/blast_tab.py:189
 #: ui/tabs/blast_tab.py:345
 msgid "无可用棉花基因组"
 msgstr "No available cotton genome"
 
-#: ui/tabs/arabidopsis_homology_tab.py:294
+#: ui/tabs/arabidopsis_homology_tab.py:295
 msgid "请选择一个有效的棉花基因组版本。"
 msgstr "Please select a valid cotton genome version."
 
-#: ui/tabs/arabidopsis_homology_tab.py:300
+#: ui/tabs/arabidopsis_homology_tab.py:301
 msgid "无效的转换方向。"
 msgstr "Invalid conversion direction."
 
-#: ui/tabs/arabidopsis_homology_tab.py:306 ui/tabs/data_download_tab.py:356
+#: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/data_download_tab.py:356
 #: ui/tabs/data_download_tab.py:487 ui/tabs/enrichment_tab.py:263
 #: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
 #: ui/tabs/homology_tab.py:342 ui/tabs/locus_conversion_tab.py:150
@@ -3777,7 +3788,7 @@ msgid "已发送取消请求，任务将尽快停止。"
 msgstr ""
 "Cancel request has been sent, the task will be stopped as soon as possible."
 
-#: ui/tabs/arabidopsis_homology_tab.py:329
+#: ui/tabs/arabidopsis_homology_tab.py:330
 msgid "同源基因转换"
 msgstr "Homologous gene conversion"
 
@@ -4625,11 +4636,14 @@ msgstr "UI has been refreshed according to the current configuration."
 msgid "刷新失败或无可用模型"
 msgstr "Refresh failed or no available model"
 
+#~ msgid "BLAST结果解析过程被取消。"
+#~ msgstr "BLAST result parsing process was canceled."
+
+#~ msgid "本软件根据 Apache License 2.0 获得许可。"
+#~ msgstr "This software is licensed under the Apache License 2.0."
+
 #~ msgid "同源基因转换中"
 #~ msgstr "Homologous gene conversion in progress"
-
-#~ msgid "同源转换"
-#~ msgstr "Rapid Homologous Conversion"
 
 #~ msgid "检测到文件输入和文本输入同时存在，请清除其中一个。"
 #~ msgstr ""

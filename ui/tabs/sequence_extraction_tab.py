@@ -303,7 +303,7 @@ class SequenceExtractionTab(BaseTab):
                     return result
             return result
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("CDS序列提取"),
             target_func=task_wrapper,
             kwargs=task_kwargs

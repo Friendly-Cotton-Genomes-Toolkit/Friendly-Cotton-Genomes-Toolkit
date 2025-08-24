@@ -286,7 +286,7 @@ class EnrichmentTab(BaseTab):
             'progress_callback': ui_progress_updater,
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("{} 富集分析").format(self.analysis_type_var.get().upper()),
             target_func=run_enrichment_pipeline, kwargs=task_kwargs
         )

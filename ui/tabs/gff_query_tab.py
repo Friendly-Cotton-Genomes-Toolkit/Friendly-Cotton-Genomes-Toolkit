@@ -210,7 +210,7 @@ class GFFQueryTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("GFF基因查询"),
             target_func=run_gff_lookup,
             kwargs=task_kwargs

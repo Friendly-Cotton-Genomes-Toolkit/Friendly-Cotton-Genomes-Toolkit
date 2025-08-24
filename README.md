@@ -25,6 +25,18 @@
 
 ---
 
+## ⚠️ 重要提示：关于基因与转录本ID
+
+1. 通常情况下，本程序同时支持基因（例如 Gohir.A12G149800）和转录本（例如 Gohir.A12G149800.2）两种格式的输入。但在某些情况下，某一种类型的输入可能无法正常工作。详情请参阅以下几点。
+
+2. 如果输入的是基因ID，而数据是以转录本格式存储的，那么该基因ID将被转换为其默认的第一个转录本（例如 Gohir.A12G149800.1）进行搜索。如果数据本身就是以基因格式存储的，则搜索会正常进行。
+
+3. 相反地，如果输入的是转录本ID，而数据是以基因格式存储的，那么转录本的后缀（例如 .1, .2）将被移除，程序将使用基因ID（例如 Gohir.A12G149800）进行搜索。如果数据本身就是以转录本格式存储的，则搜索会正常进行。
+
+4. 总而言之，对于有高精度数据要求的场景，建议使用转录本ID作为输入，并尝试搜索多个不同的转录本，而不要只搜索第一个。
+
+   ---
+
 ## ✨ 核心亮点与功能
 
 ### 1. 极致友好，开箱即用
@@ -39,15 +51,17 @@
 * **智能配置同步**: 在配置编辑器中做的修改（如更换AI模型）会实时同步到所有功能页面，无需重启或手动刷新，所见即所得。
 
 ### 3. 便捷的基因组工具集
-* **可拓展性**：使用`genome_sources_list.yml`储存棉花的基因组等信息，便于用户自行增减或调整下载地址
-* **基因组转换**: 借助拟南芥的同源关系，快速转换不同的棉花基因组名称
-* **一站式数据工具**: 集合了基因注释、GFF查询、富集分析、格式转换等多种常用功能，无需在多个软件间来回切换。
+* **自动识别基因组**：内置自动基因组识别功能，无需手动选择基因组即可自动执行对应的任务。
+* **可拓展性**：使用`genome_sources_list.yml`储存棉花的基因组等信息，便于用户自行增减或调整下载地址。
+* **基因组转换**: 通过BLAST，快速批量转换不同的棉花基因组。也支持与拟南芥的互转。
 * **标准化数据下载**: 一键下载来自 [CottonGen](https://www.cottongen.org/) 权威数据库的主流棉花参考基因组及注释文件。
-* **便捷BLAST+**：无需联网，即可进行BLAST操作
-* **批量功能注释**：对大量基因批量进行GO、KEGG、IPR注释
-* **富集分析绘图**：快速生成气泡图、条形图、cnet图与upset图。并且提供R可用的脚本与数据，便于用户自行优化图形
-* **位点转换**：借助拟南芥的同源关系，将一个基因组位点区域内的基因转换到另一个指定的棉花基因组
-* **GFF查询**：批量查询基因的GFF注释信息
+* **便捷BLAST+**：无需联网，即可进行BLAST操作。
+* **批量功能注释**：对大量基因批量进行GO、KEGG、IPR注释。
+* **富集分析绘图**：快速生成气泡图、条形图、cnet图与upset图。并且提供R可用的脚本与数据，便于用户自行优化图形。
+* **位点转换**：将一个基因组位点区域内的基因转换到另一个指定的棉花基因组。
+* **GFF查询**：批量查询基因的GFF注释信息。
+* **CDS序列提取**：只需输入基因（转录本）ID，即可查询到其编码区序列信息，支持单个基因和多个基因批量查询
+* **AI批量处理**：针对csv表格，可以使用AI对某一列进行批量处理（例如解读该列内容的生物作用），对科研进行快速的预处理。
 
 ### 4. 跨平台，随处可用
 * 我们为 **Windows** 用户都提供了预编译的可执行文件（其他系统的用户可以执行Python运行）。
@@ -149,8 +163,11 @@ pixi run build
   - **CRI_v1**: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.
   - **WHU_v1**: Huang, G. *et al*., Genome sequence of *Gossypium herbaceum* and genome updates of *Gossypium arboreum* and *Gossypium hirsutum* provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4
   - **UTX_v2.1**: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.
-  - **HAU_v2.0**: Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. "High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres." Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722
 
+
+## 许可证及免责声明
+本程序使用`Apache-2.0`许可证。
+> **请注意**：使用者可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。
 
 
 

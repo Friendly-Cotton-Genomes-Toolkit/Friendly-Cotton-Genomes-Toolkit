@@ -171,7 +171,7 @@ class LocusConversionTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("位点转换"),
             target_func=run_locus_conversion,
             kwargs=task_kwargs

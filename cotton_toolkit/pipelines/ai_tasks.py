@@ -25,7 +25,6 @@ def run_ai_task(
         custom_prompt_template: Optional[str],
         cli_overrides: Optional[Dict[str, Any]],
         cancel_event: Optional[threading.Event] = None,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
         output_file: Optional[str] = None,
         **kwargs
 ):

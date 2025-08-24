@@ -14,6 +14,7 @@ from Bio.SearchIO import parse as blast_parse
 
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig
+from cotton_toolkit.pipelines.decorators import pipeline_task
 
 # 国际化函数占位符
 try:
@@ -26,7 +27,7 @@ except (AttributeError, ImportError):
 
 logger = logging.getLogger("cotton_toolkit.pipeline.blast")
 
-
+@pipeline_task("BLAST+")
 def run_blast_pipeline(
         config: MainConfig,
         blast_type: str,
@@ -37,17 +38,11 @@ def run_blast_pipeline(
         evalue: float,
         word_size: int,
         max_target_seqs: int,
-        progress_callback: Optional[Callable[[int, str], None]] = None,
-        cancel_event: Optional[threading.Event] = None
+        **kwargs
 ) -> Optional[pd.DataFrame]:
-    # 修改: 移除 status_callback 参数
-    progress = progress_callback if progress_callback else lambda p, m: None
 
-    def check_cancel(message: str = "任务已取消。"):
-        if cancel_event and cancel_event.is_set():
-            logger.info(message)
-            return True
-        return False
+    progress = kwargs['progress_callback']
+    check_cancel = kwargs['check_cancel']
 
     tmp_query_file_to_clean = None
     try:
@@ -88,7 +83,7 @@ def run_blast_pipeline(
                 try:
                     with gzip.open(compressed_seq_file, 'rb') as f_in, open(decompressed_path, 'wb') as f_out:
                         while True:
-                            if check_cancel(_("解压过程被取消。")): return None
+                            if check_cancel(): return _("解压过程被取消。")
                             chunk = f_in.read(1024 * 1024)
                             if not chunk:
                                 break
@@ -111,7 +106,7 @@ def run_blast_pipeline(
             makeblastdb_cmd = ["makeblastdb", "-in", db_fasta_path, "-dbtype", db_type, "-out", db_fasta_path, "-title",
                                f"{target_assembly_id} {db_type} DB"]
             try:
-                if check_cancel(_("数据库创建过程在开始前被取消。")): return None
+                if check_cancel(): return _("数据库创建过程在开始前被取消。")
                 result = subprocess.run(makeblastdb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 if result.returncode != 0:
                     # 如果返回码非0，我们检查索引文件是否实际已创建
@@ -179,7 +174,7 @@ def run_blast_pipeline(
                                             num_threads=config.downloader.max_workers)
 
         logger.info(_("BLAST命令: {}").format(str(blast_cline)))
-        if check_cancel(_("BLAST在执行前被取消。")): return None
+        if check_cancel(): return _("BLAST在执行前被取消。")
         stdout, stderr = blast_cline()
         if stderr:
             stderr_lower = stderr.lower()
@@ -200,7 +195,7 @@ def run_blast_pipeline(
         else:
             blast_results = blast_parse(output_xml_path, "blast-xml")
             for query_result in blast_results:
-                if check_cancel(_("BLAST结果解析过程被取消。")): break
+                if check_cancel(): break
                 for hit in query_result:
                     for hsp in hit:
                         hit_data = {

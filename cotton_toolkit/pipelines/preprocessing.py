@@ -235,7 +235,6 @@ def check_preprocessing_status(config: MainConfig, genome_info: GenomeSourceItem
         if conn:
             conn.close()
 
-    logger.debug(f"[CHECKER] Final status dictionary for '{genome_info.version_id}': {status_dict}")
     return status_dict
 
 

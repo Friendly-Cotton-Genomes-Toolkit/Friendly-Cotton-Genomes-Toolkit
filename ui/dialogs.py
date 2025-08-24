@@ -326,6 +326,8 @@ class FirstLaunchDialog(ttkb.Toplevel):
         notes_frame.pack(fill="x", expand=True, pady=10)
 
         points = [
+            ("Please monitor the log system promptly. "
+             "When the output results are unsatisfactory, there may be useful information in the logs that requires attention or handling."),
             ("Typically, this program supports both gene (e.g., Gohir.A12G149800) and transcript "
              "(e.g., Gohir.A12G149800.2) inputs. However, in some cases, one type of input may not work. "
              "See the following points for details."),

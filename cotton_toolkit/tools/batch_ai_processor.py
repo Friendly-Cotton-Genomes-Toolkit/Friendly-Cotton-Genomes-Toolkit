@@ -247,10 +247,10 @@ def process_single_csv_file(
     if output_csv_path:
         actual_target_output_path = output_csv_path
     else:
-        task_specific_output_dir = os.path.join(output_csv_directory, task_identifier)
+        task_specific_output_dir = output_csv_directory
         os.makedirs(task_specific_output_dir, exist_ok=True)
         base, ext = os.path.splitext(os.path.basename(input_csv_path))
-        actual_target_output_path = os.path.join(task_specific_output_dir, f"{base}_{task_identifier}_processed{ext}")
+        actual_target_output_path = os.path.join(task_specific_output_dir, f"{base}_ai_processed{ext}")
 
     # 修改: 直接使用 logger
     logger.info(_("处理单个CSV文件: {}").format(os.path.abspath(input_csv_path)))

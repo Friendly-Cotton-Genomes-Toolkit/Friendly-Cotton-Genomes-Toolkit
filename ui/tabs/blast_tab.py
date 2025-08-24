@@ -270,7 +270,7 @@ class BlastTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("本地 BLAST"),
             target_func=run_blast_pipeline,
             kwargs=task_kwargs

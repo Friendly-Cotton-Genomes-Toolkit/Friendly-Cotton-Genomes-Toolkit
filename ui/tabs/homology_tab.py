@@ -380,7 +380,7 @@ class HomologyTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("快速基因同源转换"),
             target_func=run_homology_mapping,
             kwargs=task_kwargs,

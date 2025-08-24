@@ -96,7 +96,7 @@ def run_arabidopsis_homology_conversion(
             unique_gene_ids = sorted(list(set(gene_ids)))
             query_ids = resolve_gene_ids(config, assembly_id, unique_gene_ids)
         except (ValueError, FileNotFoundError) as e:
-            logger.error(e);
+            logger.error(e)
             return None
     else:  # ath_to_cotton
         try:

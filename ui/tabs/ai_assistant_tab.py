@@ -143,51 +143,13 @@ class AIAssistantTab(BaseTab):
         options_frame.grid(row=3, column=1, columnspan=2, padx=5, pady=10, sticky="w")
         self.save_as_new_check = ttkb.Checkbutton(options_frame, text=_("另存为新文件 (否则在原文件上修改)"),
                                                   variable=self.save_as_new_var, bootstyle="round-toggle")
-        self.save_as_new_check.pack(side='left', anchor='w')
+        self.save_as_new_check.pack(side='top', anchor='w', pady=(0, 5))
+
         self.use_proxy_check = ttkb.Checkbutton(options_frame, text=_("为AI服务使用HTTP/HTTPS代理"),
                                                 variable=self.ai_proxy_var, bootstyle="round-toggle")
-        self.use_proxy_check.pack(side='left', anchor='w', padx=(20, 0))
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        """
-        【新增】当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
-        """
-        self.title_label.configure(text=translator("AI 助手"))
+        self.use_proxy_check.pack(side='top', anchor='w')
 
-        self.provider_card.configure(text=translator("AI服务与模型"))
-        self.provider_label.configure(text=translator("AI服务商:"))
-        self.model_label.configure(text=translator("选择模型:"))
-
-        self.prompt_card.configure(text=translator("处理任务与提示词"))
-        self.task_label.configure(text=translator("处理任务:"))
-
-        # Radiobutton 的 text 需要更新，value 保持英文键不变
-        self.translation_radio.configure(text=translator("翻译"))
-        self.analysis_radio.configure(text=translator("分析"))
-        self.custom_radio.configure(text=translator("自定义"))
-
-        self.prompt_template_label.configure(text=translator("提示词模板:"))
-
-        self.csv_card.configure(text=translator("CSV文件处理"))
-        self.csv_path_label.configure(text=translator("CSV文件路径:"))
-        self.csv_browse_button.configure(text=translator("浏览..."))
-        self.source_column_label.configure(text=translator("待处理列:"))
-        self.new_column_label.configure(text=translator("新列名称:"))
-
-        self.save_as_new_check.configure(text=translator("另存为新文件 (否则在原文件上修改)"))
-        self.use_proxy_check.configure(text=translator("为AI服务使用HTTP/HTTPS代理"))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始处理CSV文件"))
-
-        # 更新 OptionMenu 中的占位符
-        self.app.ui_manager.update_option_menu(self.model_dropdown, self.ai_selected_model_var, [],
-                                               translator("请先选择服务商"))
-        self.app.ui_manager.update_option_menu(self.source_column_dropdown, self.source_column_var, [],
-                                               translator("请先选择CSV文件"))
-
-        # 强制刷新当前显示的提示词，确保其翻译正确
-        self._on_task_type_change()
 
     def _on_prompt_change_debounced(self, event=None):
         if self._prompt_save_timer is not None: self.after_cancel(self._prompt_save_timer)
@@ -267,7 +229,6 @@ class AIAssistantTab(BaseTab):
         self.update_model_dropdown()
 
     def _browse_csv_file(self):
-        # ... (此方法逻辑保持不变) ...
         filepath = filedialog.askopenfilename(filetypes=(("CSV files", "*.csv"), ("All files", "*.*")))
         if filepath:
             self.csv_path_entry.delete(0, tk.END)
@@ -325,22 +286,37 @@ class AIAssistantTab(BaseTab):
 
     def update_model_dropdown(self):
         """根据当前选定的服务商，从配置的 available_models 字段更新模型列表。"""
+
+        default_model_option = self._("使用默认模型")
+
         provider_name = self.ai_selected_provider_var.get()
         provider_key = next((k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == provider_name), None)
 
         models = []
         if self.app.current_config and provider_key:
             provider_cfg = self.app.current_config.ai_services.providers.get(provider_key)
-            # --- 【核心修正】从新的 available_models 字段读取列表 ---
+            # 只从 available_models 字段读取完整的模型列表，不再错误地回退到 model 字段
             if provider_cfg and provider_cfg.available_models:
-                # 如果 available_models 有内容，则用它作为选项
                 models = [m.strip() for m in provider_cfg.available_models.split(',') if m.strip()]
-            elif provider_cfg and provider_cfg.model:
-                # 否则，作为备用方案，使用旧的 model 字段
-                models = [m.strip() for m in provider_cfg.model.split(',') if m.strip()]
 
-        # 使用获取到的模型列表更新UI下拉菜单
-        self.app.ui_manager.update_option_menu(self.model_dropdown, self.ai_selected_model_var, models, _("无可用模型"))
+        # 无论models是否为空，都将“使用默认模型”作为第一个选项
+        full_options_list = [default_model_option] + models
+
+        # 使用完整的模型列表更新UI
+        self.app.ui_manager.update_option_menu(self.model_dropdown, self.ai_selected_model_var, full_options_list,
+                                               self._("无可用模型"))
+
+        selected_model = default_model_option  # 默认选中“使用默认模型”
+        if self.app.current_config and provider_key:
+            provider_cfg = self.app.current_config.ai_services.providers.get(provider_key)
+            # 如果配置中指定了默认模型，并且该模型存在于我们刚刚获取的完整列表中
+            if provider_cfg and provider_cfg.model and provider_cfg.model in models:
+                # 那么就将配置的那个模型设为默认选中项
+                selected_model = provider_cfg.model
+
+        # 应用最终确定的默认选项
+        self.ai_selected_model_var.set(selected_model)
+
 
     def update_from_config(self):
         """当主配置加载或更新后，刷新此选项卡的状态。"""
@@ -357,19 +333,6 @@ class AIAssistantTab(BaseTab):
         # 这会使用新的逻辑从 available_models 更新选项列表
         self.update_model_dropdown()
 
-        # 从配置的 model 字段读取“当前选定”的模型并设置
-        provider_key_for_model = next(
-            (k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == self.ai_selected_provider_var.get()), None)
-        if provider_key_for_model:
-            provider_cfg = self.app.current_config.ai_services.providers.get(provider_key_for_model)
-            # 确保 model 字段的值在可选列表中
-            if provider_cfg and provider_cfg.model and provider_cfg.model in self.ai_selected_model_var.get().split(
-                    ','):
-                self.ai_selected_model_var.set(provider_cfg.model)
-            elif self.model_dropdown['menu'].index('end') is not None:
-                # 如果已保存的模型不在列表中，则默认选择列表中的第一个
-                first_option = self.model_dropdown['menu'].entrycget(0, "label")
-                self.ai_selected_model_var.set(first_option)
 
         self._on_task_type_change()
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
@@ -428,7 +391,13 @@ class AIAssistantTab(BaseTab):
             config_for_task.ai_services.use_proxy_for_ai = self.ai_proxy_var.get()
             provider_key = next((k for k, v in self.app.AI_PROVIDERS.items() if v['name'] == provider_name), None)
 
-            cli_overrides = {"ai_provider": provider_key, "ai_model": model}
+            # 判断用户是否选择了“使用默认模型”
+            selected_model_option = self.ai_selected_model_var.get()
+            model_to_use = None
+            if selected_model_option != self._("使用默认模型"):
+                model_to_use = selected_model_option
+
+            cli_overrides = {"ai_provider": provider_key, "ai_model": model_to_use}
             output_file = None
             if not self.save_as_new_var.get():
                 output_file = csv_path
@@ -444,7 +413,7 @@ class AIAssistantTab(BaseTab):
                 'progress_callback': ui_progress_updater
             }
 
-            self.app.event_handler._start_task(
+            self.app.event_handler.start_task(
                 task_name=_("AI批量处理CSV"),
                 target_func=run_ai_task,
                 kwargs=task_kwargs

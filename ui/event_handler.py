@@ -184,8 +184,8 @@ class EventHandler:
             app.message_queue.put(("progress", (100, app._("初始化完成。"))))
             app.message_queue.put(("hide_progress_dialog", None))
 
-    def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
-                    on_success: Optional[Callable] = None, task_key: Optional[str] = None):
+    def start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
+                   on_success: Optional[Callable] = None, task_key: Optional[str] = None):
         """
         启动一个后台任务，并确保所有必要的回调函数（包括自定义的 status_callback）都被正确传递。
         """
@@ -698,12 +698,11 @@ class EventHandler:
                 "• CRI_v1: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.",
                 "• WHU_v1: Huang, G. et al., Genome sequence of Gossypium herbaceum and genome updates of Gossypium arboreum and Gossypium hirsutum provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4",
                 "• UTX_v2.1: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.",
-                "• HAU_v2.0: Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. \"High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres.\" Plant Communications 5, no. 2 (2024). doi.org/10.1016/j.xplc.2023.100722"
             ]
             for cit in citations: add_label(cit, content_font)
             add_separator()
             add_label(_("许可证"), header_font)
-            add_label(_("本软件根据 Apache License 2.0 获得许可。"), content_font)
+            add_label(_("本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。"), content_font)
             add_separator()
             add_label(_("免责声明"), header_font)
             add_label(_("上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"), content_font)

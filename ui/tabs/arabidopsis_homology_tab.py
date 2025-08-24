@@ -233,8 +233,9 @@ class ArabidopsisHomologyConversionTab(BaseTab):
             gene_input_textbox=self.gene_input_textbox,
             target_assembly_var=self.selected_cotton_assembly
         )
+        self.conversion_direction_var.set(_("棉花 -> 拟南芥"))
 
-        # 其他方法保持不变
+
 
 
     def _update_direction_options(self):
@@ -325,7 +326,7 @@ class ArabidopsisHomologyConversionTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("同源基因转换"),
             target_func=run_arabidopsis_homology_conversion,
             kwargs=task_kwargs,

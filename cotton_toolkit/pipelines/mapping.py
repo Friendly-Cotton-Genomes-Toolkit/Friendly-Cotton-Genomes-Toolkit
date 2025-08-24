@@ -8,6 +8,7 @@ import tempfile
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.pipelines.blast import run_blast_pipeline
 from cotton_toolkit.core.data_access import get_sequences_for_gene_ids
+from cotton_toolkit.pipelines.decorators import pipeline_task
 
 try:
     from builtins import _
@@ -17,6 +18,7 @@ except ImportError:
 
 logger = logging.getLogger("cotton_toolkit.pipelines.mapping")
 
+@pipeline_task(_("同源转换"))
 def run_homology_mapping(
         config: MainConfig,
         source_assembly_id: str,
@@ -31,7 +33,9 @@ def run_homology_mapping(
     """
     【新版】通过动态BLAST执行同源基因映射。
     """
-    progress = progress_callback if progress_callback else lambda p, m: None
+
+    progress = kwargs['progress_callback']
+    check_cancel = kwargs['check_cancel']
 
     # 1. 获取源基因序列
     progress(10, _("正在从数据库提取源基因序列..."))

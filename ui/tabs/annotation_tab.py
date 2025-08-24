@@ -30,7 +30,6 @@ class AnnotationTab(BaseTab):
         # 2. 将 translator 传递给父类的构造函数
         super().__init__(parent, app, translator=translator)
         if self.action_button:
-            # 【可选优化】这里的 _ 应该使用父类中保存的 self._，不过它在 super().__init__ 后已经可用
             self.action_button.configure(text=_("开始功能注释"), command=self.start_annotation_task)
         self.update_from_config()
 
@@ -177,7 +176,7 @@ class AnnotationTab(BaseTab):
             'progress_callback': ui_progress_updater,
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("功能注释"),
             target_func=run_functional_annotation,
             kwargs=task_kwargs

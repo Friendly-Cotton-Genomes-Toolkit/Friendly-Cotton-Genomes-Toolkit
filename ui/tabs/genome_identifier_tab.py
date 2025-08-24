@@ -144,7 +144,7 @@ class GenomeIdentifierTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=self._("基因组批量鉴定"),
             target_func=self._batch_identify_worker,
             kwargs=task_kwargs,

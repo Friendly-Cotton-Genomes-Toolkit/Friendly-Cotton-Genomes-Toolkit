@@ -374,7 +374,7 @@ class DataDownloadTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=self._("预处理BLAST数据库"),
             target_func=run_build_blast_db_pipeline,
             on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
@@ -429,7 +429,7 @@ class DataDownloadTab(BaseTab):
                 'progress_callback': ui_progress_updater
             }
 
-            self.app.event_handler._start_task(
+            self.app.event_handler.start_task(
                 task_name=self._("数据下载"),
                 target_func=run_download_pipeline,
                 on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
@@ -505,7 +505,7 @@ class DataDownloadTab(BaseTab):
             'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=self._("预处理文件"),
             target_func=run_preprocess_annotation_files,
             on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
