@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any, Callable
 import tkinter as tk
 import ttkbootstrap as ttkb
 import json
-
+import subprocess
 from ui import get_persistent_settings_path
 from ui.dialogs import FirstLaunchDialog
 
@@ -980,10 +980,17 @@ class CottonToolkitApp(ttkb.Window):
             self.logger.error(self._("配置日志级别时出错: {}").format(e))
 
     def restart_app(self):
-        self.logger.info(_("Application restart requested by user."))
+        self.logger.info(_("用户请求重启应用程序。"))
+        command = [sys.executable] + sys.argv
         try:
-            self.destroy()
+            # 启动一个新的、分离的进程
+            self.logger.info(_("正在启动新进程: {}").format(' '.join(command)))
+            subprocess.Popen(command)
+
+            # 平稳地退出当前应用程序
+            self.logger.info(_("正在关闭当前实例。"))
+            self.destroy()  # 如果是图形界面应用，调用destroy()
+            # 如果是非图形界面应用，可以使用 sys.exit(0)
+
         except Exception as e:
-            self.logger.error(_("Error during pre-restart cleanup: {}").format(e))
-        python = sys.executable
-        os.execv(python, [python] + sys.argv)
+            self.logger.error(_("重启过程中发生错误: {}").format(e))

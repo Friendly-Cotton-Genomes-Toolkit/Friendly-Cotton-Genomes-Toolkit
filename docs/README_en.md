@@ -202,6 +202,7 @@ This tool relies on [CottonGen](https://www.cottongen.org/) authoritative data p
   - **CRI_v1**: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.
   - **WHU_v1**: Huang, G. *et al*., Genome sequence of *Gossypium herbaceum* and genome updates of *Gossypium arboreum* and *Gossypium hirsutum* provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4
   - **UTX_v2.1**: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.
+  - **UTX_v3.1**: Chen et al. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement Nat Genet 20 April 2020.
 
 ---
 
@@ -213,11 +214,13 @@ This program is licensed under the `Apache-2.0` License.
 
 > **Please Note**: Users are free to use, modify, and distribute the code, but no contributor (including the original author and their affiliated institution) provides any warranty and is not liable for any issues arising from the use of this software.
 
-> **Disclaimer**: The downloading and processing of the aforementioned genome data are performed by the user. This tool only provides the framework service.
-
-------
-
-## Feedback and Communication
+> **Disclaimer**: 
+>
+> **Tool's Role:** This software provides framework services only. It does not host or distribute any genomic data.
+>
+> **User's Responsibility:** The download, processing, and analysis of all genomic data are executed solely by the user. Users are responsible for ensuring they comply with all licenses, terms of use, and publication restrictions set by the original data providers.
+>
+> **No Warranty:** This tool and its generated results are provided "as is" for research purposes only, without any warranty of accuracy or fitness for a particular purpose.Feedback and Communication
 
 
 

@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.1.1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-24 13:14+0800\n"
-"PO-Revision-Date: 2025-08-24 13:14+0800\n"
+"POT-Creation-Date: 2025-08-25 18:34+0800\n"
+"PO-Revision-Date: 2025-08-25 18:34+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Deepseek V3\n"
 "Language: en\n"
@@ -2587,11 +2587,11 @@ msgstr ""
 "Task '{}' has been forcibly canceled. Background threads may terminate "
 "silently after completing final IO operations."
 
-#: ui/event_handler.py:217 ui/event_handler.py:880
+#: ui/event_handler.py:217 ui/event_handler.py:887
 msgid "任务进行中"
 msgstr "Task in Progress"
 
-#: ui/event_handler.py:218 ui/event_handler.py:881
+#: ui/event_handler.py:218 ui/event_handler.py:888
 #, python-brace-format
 msgid "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
 msgstr ""
@@ -2883,11 +2883,11 @@ msgstr "Articles:"
 msgid "基因组引用文献:"
 msgstr "Genome Reference Citations:"
 
-#: ui/event_handler.py:714
+#: ui/event_handler.py:715
 msgid "许可证"
 msgstr "License"
 
-#: ui/event_handler.py:715
+#: ui/event_handler.py:716
 msgid ""
 "本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者"
 "（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题"
@@ -2898,21 +2898,40 @@ msgstr ""
 "author and their affiliated organizations) provides any warranty or is "
 "liable for any problems arising from its use."
 
-#: ui/event_handler.py:717
+#: ui/event_handler.py:718
 msgid "免责声明"
 msgstr "Disclaimer"
 
-#: ui/event_handler.py:718
-msgid "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
+#: ui/event_handler.py:720
+msgid "工具角色：本软件仅提供技术框架服务，自身不托管或分发任何基因组数据。"
 msgstr ""
-"The genomic data download and processing are executed by the user, and this "
-"tool only provides framework services."
+"Tool's Role: This software provides framework services only. It does not "
+"host or distribute any genomic data."
 
-#: ui/event_handler.py:739 ui/event_handler.py:769
+#: ui/event_handler.py:724
+msgid ""
+"用户责任：所有基因组数据的下载、处理和分析均由用户独立执行。用户有责任确保其"
+"行为遵守原始数据提供方设定的所有许可、使用条款和发表限制。"
+msgstr ""
+"User's Responsibility: The download, processing, and analysis of all genomic "
+"data are executed solely by the user. Users are responsible for ensuring "
+"they comply with all licenses, terms of use, and publication restrictions "
+"set by the original data providers."
+
+#: ui/event_handler.py:728
+msgid ""
+"无担保声明：本工具及其生成的分析结果仅供科研目的“按原样”提供，我们对其准确性"
+"或特定用途的适用性不作任何保证。"
+msgstr ""
+"No Warranty: This tool and its generated results are provided \"as is\" for "
+"research purposes only, without any warranty of accuracy or fitness for a "
+"particular purpose.Feedback and Communication"
+
+#: ui/event_handler.py:752 ui/event_handler.py:776
 msgid "确定"
 msgstr "OK"
 
-#: ui/event_handler.py:791 ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:343
+#: ui/event_handler.py:798 ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:343
 #: ui/tabs/annotation_tab.py:115 ui/tabs/arabidopsis_homology_tab.py:254
 #: ui/tabs/arabidopsis_homology_tab.py:301 ui/tabs/blast_tab.py:182
 #: ui/tabs/data_download_tab.py:274 ui/tabs/data_download_tab.py:283
@@ -2925,106 +2944,106 @@ msgstr "OK"
 msgid "错误"
 msgstr "Error"
 
-#: ui/event_handler.py:791
+#: ui/event_handler.py:798
 #, python-brace-format
 msgid "无法打开帮助链接: {}"
 msgstr "Cannot open help link: {}"
 
-#: ui/event_handler.py:795
+#: ui/event_handler.py:802
 msgid "选择文件"
 msgstr "Select File"
 
-#: ui/event_handler.py:801
+#: ui/event_handler.py:808
 msgid "保存文件为"
 msgstr "Save File As"
 
-#: ui/event_handler.py:808
+#: ui/event_handler.py:815
 msgid "选择目录"
 msgstr "Select Directory"
 
-#: ui/event_handler.py:849
+#: ui/event_handler.py:856
 msgid "信息"
 msgstr "Information"
 
-#: ui/event_handler.py:849
+#: ui/event_handler.py:856
 msgid "请先填写HTTP或HTTPS代理地址。"
 msgstr "Please fill in the HTTP or HTTPS proxy address first."
 
-#: ui/event_handler.py:853
+#: ui/event_handler.py:860
 msgid "正在测试代理..."
 msgstr "Testing proxy..."
 
-#: ui/event_handler.py:853
+#: ui/event_handler.py:860
 msgid "尝试通过代理连接到测试站点..."
 msgstr "Attempting to connect to the test site via proxy..."
 
-#: ui/event_handler.py:861
+#: ui/event_handler.py:868
 msgid "发送请求..."
 msgstr "Sending request..."
 
-#: ui/event_handler.py:865
+#: ui/event_handler.py:872
 msgid "连接成功！"
 msgstr "Connection successful!"
 
-#: ui/event_handler.py:865
+#: ui/event_handler.py:872
 msgid "测试站点报告的IP地址是:"
 msgstr "The IP address reported by the test site is:"
 
-#: ui/event_handler.py:867
+#: ui/event_handler.py:874
 msgid "测试完成。"
 msgstr "Test complete."
 
-#: ui/event_handler.py:869
+#: ui/event_handler.py:876
 msgid "连接失败。"
 msgstr "Connection failed."
 
-#: ui/event_handler.py:869
+#: ui/event_handler.py:876
 msgid "错误详情:"
 msgstr "Error details:"
 
-#: ui/event_handler.py:870
+#: ui/event_handler.py:877
 msgid "测试失败。"
 msgstr "Test failed."
 
-#: ui/event_handler.py:889
+#: ui/event_handler.py:896
 msgid "UI错误"
 msgstr "UI Error"
 
-#: ui/event_handler.py:889
+#: ui/event_handler.py:896
 msgid "配置编辑器UI尚未完全加载。"
 msgstr "The configuration editor UI has not fully loaded yet."
 
-#: ui/event_handler.py:892
+#: ui/event_handler.py:899
 msgid "缺少API Key"
 msgstr "Missing API Key"
 
-#: ui/event_handler.py:893
+#: ui/event_handler.py:900
 #, python-brace-format
 msgid "请先在编辑器中为 '{}' 填写有效的API Key。"
 msgstr "Please fill in a valid API Key for '{}' in the editor first."
 
-#: ui/event_handler.py:899
+#: ui/event_handler.py:906
 msgid "刷新模型列表"
 msgstr "Refresh Model List"
 
-#: ui/event_handler.py:902
+#: ui/event_handler.py:909
 msgid "正在获取模型..."
 msgstr "Fetching models..."
 
-#: ui/event_handler.py:902
+#: ui/event_handler.py:909
 #, python-brace-format
 msgid "连接到 {}..."
 msgstr "Connecting to {}..."
 
-#: ui/event_handler.py:917
+#: ui/event_handler.py:924
 msgid "开始连接AI服务..."
 msgstr "Starting to connect to AI service..."
 
-#: ui/event_handler.py:925
+#: ui/event_handler.py:932
 msgid "数据处理中..."
 msgstr "Data processing..."
 
-#: ui/event_handler.py:930 ui/gui_app.py:326
+#: ui/event_handler.py:937 ui/gui_app.py:326
 msgid "刷新完成。"
 msgstr "Refresh complete."
 
@@ -4633,6 +4652,11 @@ msgstr "UI has been refreshed according to the current configuration."
 #: ui/ui_manager.py:577
 msgid "刷新失败或无可用模型"
 msgstr "Refresh failed or no available model"
+
+#~ msgid "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
+#~ msgstr ""
+#~ "The genomic data download and processing are executed by the user, and "
+#~ "this tool only provides framework services."
 
 #~ msgid "任务进度详情"
 #~ msgstr "Task Progress Details"
