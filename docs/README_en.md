@@ -127,6 +127,8 @@ pixi run build
 
 <img src="../assets\位点转换.png"  style="zoom:50%;"/>
 
+<img src="../assets\GFF查询.png"  style="zoom:50%;"/>
+
 <img src="../assets\本地BLAST.png"  style="zoom:50%;"/>
 
 <img src="../assets\AI辅助.png"  style="zoom:50%;"/>
