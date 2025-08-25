@@ -11,43 +11,62 @@
 
 
 
-## 选择你的语言 | Select your language | 言語を選択 | 選擇語言
+## Change language
 
-[中文（简体）](../README.md) | [English](docs/README_en.md) | [日本語](docs/README_ja.md) | [繁體中文](docs/README_zh-hant.md)
+ [English](docs/README_en.md) 
 
 ---
 
 ## 🚀 项目简介
 
-**FCGT (Friendly Cotton Genomes Toolkit)** 是一款专为棉花研究者，尤其是**非生物信息专业背景**的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可**开箱即用**。
+**FCGT (Friendly Cotton Genomes Toolkit)** 是一款专为棉花研究者，尤其是**非生物信息专业背景**的科研人员和学生设计的基因组数据分析工具箱。我们致力于将复杂的数据处理流程封装在简洁的图形界面（GUI）背后，让您无需进行繁琐的环境配置和代码编写，即可**开箱即用**。
 
-本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的、**稳定可靠**的得力助手。
+本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因映射（Liftover）、基因功能注释、基因位点查询、富集分析、BLAST、AI助手批量处理数据等。它旨在成为您日常科研工作中不可或缺的、**稳定可靠**的得力助手。
 
 ---
+
+## ⚠️ 重要提示：关于基因与转录本ID
+
+1. 通常情况下，本程序同时支持基因（例如 Gohir.A12G149800）和转录本（例如 Gohir.A12G149800.2）两种格式的输入。但在某些情况下，某一种类型的输入可能无法正常工作。详情请参阅以下几点。
+
+2. 如果输入的是基因ID，而数据是以转录本格式存储的，那么该基因ID将被转换为其默认的第一个转录本（例如 Gohir.A12G149800.1）进行搜索。如果数据本身就是以基因格式存储的，则搜索会正常进行。
+
+3. 相反地，如果输入的是转录本ID，而数据是以基因格式存储的，那么转录本的后缀（例如 .1, .2）将被移除，程序将使用基因ID（例如 Gohir.A12G149800）进行搜索。如果数据本身就是以转录本格式存储的，则搜索会正常进行。
+
+4. 总而言之，对于有高精度数据要求的场景，建议使用转录本ID作为输入，并尝试搜索多个不同的转录本，而不要只搜索第一个。
+
+   ---
 
 ## ✨ 核心亮点与功能
 
 ### 1. 极致友好，开箱即用
-* **数据安全**：除数据下载、AI功能和更新检测外，全程无需联网，防止数据泄露。源码开源，接受社区检查。
+* **数据安全**：除数据下载与AI功能外，全程无需联网，防止数据泄露。源码开源，接受社区检查。
 * **图形界面优先**: 所有核心工具均可通过直观的图形界面完成，鼠标点击即可运行分析。
-* **交互式任务反馈**: **所有耗时操作（如数据下载、AI处理）均配有实时进度条弹窗，您可以随时取消任务。任务结束后会收到清晰的成功、失败或取消提示，彻底告别盲目等待。**
-* *流畅的操作体验**: 经过精心优化的UI逻辑，确保了界面切换的即时响应和**全页面顺滑的鼠标滚轮滚动**，体验媲美原生桌面应用。**
-* 多语言支持**: 内置简/繁中文、英文、日文界面，打破语言壁垒。
+* **交互式任务反馈**: 所有耗时操作（如数据下载、AI处理）均配有实时进度条弹窗，您可以随时取消任务。任务结束后会收到清晰的成功、失败或取消提示，彻底告别盲目等待。
+* **多语言支持**: 内置简体中文和英文，打破语言壁垒。
 
 ### 2. 高效的自动化与批量处理
 
 * **强大的并发与任务管理**: 内置多线程加速，无论是下载海量基因组数据，还是使用AI助手批量处理上千行表格，都能显著缩短等待时间。交互式的进度弹窗让您对任务状态了如指掌，并能随时取消。
 * **智能配置同步**: 在配置编辑器中做的修改（如更换AI模型）会实时同步到所有功能页面，无需重启或手动刷新，所见即所得。
-* **命令行支持**: 对于高级用户，我们同样提供功能完善的命令行工具，方便您将FCGT整合到自动化分析流程中。
+* **批量处理基因数据**：解决部分网站或工具只能处理查询单一基因的问题，允许较高准确度的批量处理。
 
-### 3. 精准的基因组工具集
-* **棉花版 Liftover**: 解决了棉花领域长期缺乏在不同基因组版本间进行基因列表转换工具的难题。
-* **一站式数据工具**: 集合了基因注释、GFF查询、富集分析、格式转换等多种常用功能，无需在多个软件间来回切换。
-* **标准化数据下载**: 一键下载来自 [CottonGen](https://www.cottongen.org/) 等权威数据库的主流棉花参考基因组及注释文件。
+### 3. 便捷的基因组工具集
+* **自动识别基因组**：内置自动基因组识别功能，无需手动选择基因组即可自动执行对应的任务。
+* **可拓展性**：使用`genome_sources_list.yml`储存棉花的基因组等信息，便于用户自行增减或调整下载地址。
+* **基因组转换**: 通过BLAST，快速批量转换不同的棉花基因组。也支持与拟南芥的互转。
+* **标准化数据下载**: 一键下载来自 [CottonGen](https://www.cottongen.org/) 权威数据库的主流棉花参考基因组及注释文件。
+* **便捷BLAST+**：无需联网，即可进行BLAST操作。
+* **批量功能注释**：对大量基因批量进行GO、KEGG、IPR注释。
+* **富集分析绘图**：快速生成气泡图、条形图、cnet图与upset图。并且提供R可用的脚本与数据，便于用户自行优化图形。
+* **位点转换**：将一个基因组位点区域内的基因转换到另一个指定的棉花基因组。
+* **GFF查询**：批量查询基因的GFF注释信息。
+* **CDS序列提取**：只需输入基因（转录本）ID，即可查询到其编码区序列信息，支持单个基因和多个基因批量查询。
+* **AI批量处理**：针对csv表格，可以使用AI对某一列进行批量处理（例如解读该列内容的生物作用），对科研进行快速的预处理。
 
 ### 4. 跨平台，随处可用
-* 我们为 **Windows** 用户都提供了预编译的可执行文件（其他系统的用户可以执行Python运行）。
-* 无论您使用何种主流操作系统，都能获得一致、流畅的使用体验。
+* 我们为 **Windows** 用户都提供了预编译的可执行文件（其他系统的用户可以执行Python脚本运行或自行编译）。
+* 无论您使用何种主流操作系统，都能获得一致的使用体验。
 
 ---
 
@@ -55,19 +74,17 @@
 
 我们已在 **[发布页面 (Releases)](https://github.com/PureAmaya/Friendly-Cotton-Genomes-Toolkit/releases)** 为您准备了开箱即用的可执行文件，这是最推荐的使用方式。
 
-* **图形界面版**: 下载 `FCGT-GUI.exe` (Windows) 或对应您系统的文件，直接双击运行。
-* **命令行工具**: 下载 `FCGT.exe` (Windows) 或对应您系统的文件，在终端中运行。
+* **图形界面版**: 下载安装`fcgt-setup.exe` (Windows)，安装完成后打开运行即可 。
 
 **开发者与高级用户**也可以从源码启动：
+
 ```bash
 # 运行图形界面
-python gui_app.py
+pixi run start
 
-# 查看命令行帮助
-python -m cotton_toolkit.cli --help
+# 编译程序（Nuitka）
+pixi run build
 ```
-
-------
 
 ## 截图预览
 
@@ -75,7 +92,25 @@ python -m cotton_toolkit.cli --help
 
 <img src="assets\配置编辑器.png" style="zoom:50%;" />
 
-<img src="assets\数据工具.png" style="zoom:50%;" />
+<img src="assets\数据下载.png" style="zoom:50%;" />
+
+<img src="assets\功能注释.png"  style="zoom:50%;"/>
+
+<img src="assets\富集分析.png"  style="zoom:50%;"/>
+
+<img src="assets\序列提取.png"  style="zoom:50%;"/>
+
+<img src="assets\组类识别.png"  style="zoom:50%;"/>
+
+<img src="assets\同源转换.png"  style="zoom:50%;"/>
+
+<img src="assets\拟南芥互转.png"  style="zoom:50%;"/>
+
+<img src="assets\位点转换.png"  style="zoom:50%;"/>
+
+<img src="assets\本地BLAST.png"  style="zoom:50%;"/>
+
+<img src="assets\AI辅助.png"  style="zoom:50%;"/>
 
 ------
 
@@ -89,55 +124,70 @@ python -m cotton_toolkit.cli --help
 
 本工具的开发使用了以下优秀的开源软件包，感谢它们的开发者：
 
-| **库**                  | **主要用途**                                                 | **开源许可证**                                     |
-| ----------------------- | ------------------------------------------------------------ | -------------------------------------------------- |
-| **pydantic**            | 用于数据验证、设置管理和类型提示强制，是项目中配置模型的核心。 | MIT License                                        |
-| **typing-extensions**   | 为标准 `typing` 模块提供新的或实验性的类型提示支持。         | Python Software Foundation License                 |
-| **packaging**           | 用于处理 Python 包的版本、标记和规范。                       | Apache-2.0 / BSD                                   |
-| **requests**            | 一个优雅、简洁的HTTP库，用于执行网络请求，如下载数据。       | Apache-2.0 License                                 |
-| **tqdm**                | 一个快速、可扩展的进度条工具，用于在命令行和循环中显示进度。 | MIT License                                        |
-| **gffutils**            | 用于创建、管理和查询GFF/GTF文件数据库，是基因组注释操作的基础。 | MIT License                                        |
-| **pandas**              | 提供高性能、易于使用的数据结构和数据分析工具，是所有数据处理的核心。 | BSD 3-Clause License                               |
-| **pyyaml**              | 用于解析YAML文件，是加载 `config.yml` 配置文件的关键。       | MIT License                                        |
-| **google-generativeai** | Google 的官方库，用于与 Gemini 等生成式AI模型进行交互。      | Apache-2.0 License                                 |
-| **numpy**               | Python科学计算的基础包，为Pandas等库提供多维数组对象和数学运算支持。 | BSD 3-Clause License                               |
-| **customtkinter**       | 用于构建现代化、美观的图形用户界面（GUI）。                  | MIT License                                        |
-| **pillow**              | Pillow (PIL Fork) 是一个强大的图像处理库，用于在GUI中加载和显示图标等图片。 | Historical Permission Notice and Disclaimer (HPND) |
-| **diskcache**           | 提供基于磁盘的缓存功能，用于存储临时或可重复使用的数据，以提高性能。 | Apache-2.0 License                                 |
-| **click**               | 用于以组合式的方式创建漂亮的命令行界面（CLI）。              | BSD 3-Clause License                               |
-| **matplotlib**          | 一个全面的库，用于在Python中创建静态、动画和交互式的可视化图表。 | matplotlib License (BSD-style)                     |
-| **statsmodels**         | 提供用于估计多种统计模型、进行统计检验和数据探索的类和函数。 | BSD 3-Clause License                               |
-| **protobuf**            | Google 的数据交换格式，通常被其他库（如TensorFlow或某些API客户端）所依赖。 | BSD 3-Clause License                               |
-| **openpyxl**            | 用于读取和写入 Excel 2010 xlsx/xlsm/xltx/xltm 文件的库。     | MIT License                                        |
-| **networkx**            | 用于创建、操作和研究复杂网络的结构、动态和功能的Python包。   | BSD 3-Clause License                               |
-| **upsetplot**           | 用于生成UpSet图，这是一种用于可视化集合交集数据的有效方法。  | BSD 3-Clause License                               |
+- 应用程序本体
+
+| **库**       | **主要用途**                   | **开源许可证**                                               |
+| ------------ | ------------------------------ | ------------------------------------------------------------ |
+| babel        | 国际化工具                     | BSD License (BSD-3-Clause)                                   |
+| biopython    | 生物学处理                     | Freely Distributable                                         |
+| click        | 用于创建命令行工具             | BSD-3-Clause                                                 |
+| diskcache    | AI回答记录缓存到硬盘中         | Apache 2.0                                                   |
+| gffutils     | 处理GFF建库任务                | MIT License                                                  |
+| matplotlib   | 图表绘制                       | Python Software Foundation License (License agreement for matplotlib versions 1.3.0 and later |
+| networkx     | 互作图绘制                     | BSD License                                                  |
+| numpy        | 快速数据计算                   | BSD License (Copyright (c) 2005-2025                         |
+| openpyxl     | 读写excel                      | MIT License                                                  |
+| pandas       | excel数据处理                  | BSD 3-Clause License                                         |
+| pillow       | GUI图片处理                    | MIT-CMU                                                      |
+| protobuf     | 序列化数据                     | 3-Clause BSD License                                         |
+| pydantic     | 维护数据结构                   | MIT                                                          |
+| pyyaml       | 储存配置文件和棉花数据下载地址 | MIT License                                                  |
+| requests     | 网络请求（下载数据和AI请求）   | Apache-2.0                                                   |
+| scipy        | 高级科学运算                   | BSD License (Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.) |
+| statsmodels  | 统计分析和建模                 | BSD License                                                  |
+| ttkbootstrap | GUI                            | MIT License                                                  |
+| tqdm         | 显示任务进度                   | MIT License                                                  |
+| upsetplot    | Upset图绘制                    | BSD License (BSD-3-Clause)                                   |
+
+- po翻译器
+
+| **库**   | **主要用途**         | **开源许可证** |
+| -------- | -------------------- | -------------- |
+| openai   | 简易地处理AI翻译逻辑 | Apache-2.0     |
+| polib    | 读写po文件           | MIT License    |
+| tenacity | 翻译失败后重试       | Apache 2.0     |
+| tqdm     | 翻译进度显示         | MIT License    |
 
 ### 数据来源与引文
 
 本工具依赖 [CottonGen](https://www.cottongen.org/) 提供的权威数据，感谢其团队持续的开放和维护。
 
 - **CottonGen 文章**:
-
   - Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. *Plants* 10(12), 2805.
   - Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. *Nucleic Acids Research* 42(D1), D1229-D1236.
-- **基因组引用文献**:
+- **BLAST+ 文章:**
+  - Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. BLAST+: architecture and applications. BMC Bioinformatics. 2009 Dec 15;10:421. doi: 10.1186/1471-2105-10-421. PMID: 20003500; PMCID: PMC2803857.
 
-  - **NAU-NBI_v1.1**: Zhang et. al., [Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement](http://www.nature.com/nbt/journal/v33/n5/full/nbt.3207.html). *Nature Biotechnology*. 33, 531–537. 2015
+- **基因组引用文献**:
+  - **NAU-NBI_v1.1**: Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. *Nature Biotechnology*. 33, 531–537. 2015
   - **UTX-JGI-Interim-release_v1.1**: 
     - Haas, B.J., Delcher, A.L., Mount, S.M., Wortman, J.R., Smith Jr, R.K., Jr., Hannick, L.I., Maiti, R., Ronning, C.M., Rusch, D.B., Town, C.D. et al. (2003) Improving the Arabidopsis genome annotation using maximal transcript alignment assemblies. http://nar.oupjournals.org/cgi/content/full/31/19/5654 [Nucleic Acids Res, 31, 5654-5666].
     - Smit, AFA, Hubley, R & Green, P. RepeatMasker Open-3.0. 1996-2011 .
     - Yeh, R.-F., Lim, L. P., and Burge, C. B. (2001) Computational inference of homologous gene structures in the human genome. Genome Res. 11: 803-816.
     - Salamov, A. A. and Solovyev, V. V. (2000). Ab initio gene finding in Drosophila genomic DNA. Genome Res 10, 516-22.
 
-  - **HAU_v1 / v1.1**: Wang *et al.* [Reference genome sequences of two cultivated allotetraploid cottons, Gossypium hirsutum and Gossypium barbadense.](https://www.nature.com/articles/s41588-018-0282-x) *Nature genetics*. 2018 Dec 03
+  - **HAU_v1 / v1.1**: Wang *et al.* Reference genome sequences of two cultivated allotetraploid cottons, Gossypium hirsutum and Gossypium barbadense. *Nature genetics*. 2018 Dec 03
   - **ZJU-improved_v2.1_a1**: Hu et al. Gossypium barbadense and Gossypium hirsutum genomes provide insights into the origin and evolution of allotetraploid cotton. *Nature genetics*. 2019 Jan;51(1):164.
-  - **CRI_v1**: [Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.](https://www.cottongen.org/bio_data/16035)
-  - **WHU_v1**: Huang, G. *et al*., Genome sequence of *Gossypium herbaceum* and genome updates of *Gossypium arboreum* and *Gossypium hirsutum* provide insights into cotton A-genome evolution. Nature Genetics. 2020. [doi.org/10.1038/s41588-020-0607-4](https://doi.org/10.1038/s41588-020-0607-4)
-  - **UTX_v2.1**: [Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.](https://www.cottongen.org/bio_data/13714)
-  - **HAU_v2.0**: Chang, Xing, Xin He, Jianying Li, Zhenping Liu, Ruizhen Pi, Xuanxuan Luo, Ruipeng Wang et al. "[High-quality Gossypium hirsutum and Gossypium barbadense genome assemblies reveal the landscape and evolution of centromeres](https://www.cottongen.org/bio_data/9803222)." Plant Communications 5, no. 2 (2024). [doi.org/10.1016/j.xplc.2023.100722](https://doi.org/10.1016/j.xplc.2023.100722)
+  - **CRI_v1**: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.
+  - **WHU_v1**: Huang, G. *et al*., Genome sequence of *Gossypium herbaceum* and genome updates of *Gossypium arboreum* and *Gossypium hirsutum* provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4
+  - **UTX_v2.1**: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.
+
+---
 
 
-
+## 许可证及免责声明
+本程序使用`Apache-2.0`许可证。
+> **请注意**：使用者可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。
 
 > **免责声明**：上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。
 

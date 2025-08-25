@@ -52,7 +52,8 @@ def normalize_to_dataframe(input_path: str) -> Optional[pd.DataFrame]:
         # --- 2. 处理 CSV 文件 ---
         elif filename.endswith('.csv') or filename.endswith('.csv.gz'):
             # pandas可以直接处理压缩的csv
-            df = pd.read_csv(input_path, compression='gzip' if is_gzipped else None, on_bad_lines='warn', header=0) # 假定有表头
+            df = pd.read_csv(input_path, compression='gzip' if is_gzipped else None, on_bad_lines='warn',
+                             header=0)  # 假定有表头
 
         # --- 3. 处理 TXT 文件 (智能识别分隔符) ---
         elif filename.endswith('.txt') or filename.endswith('.txt.gz'):
@@ -60,24 +61,73 @@ def normalize_to_dataframe(input_path: str) -> Optional[pd.DataFrame]:
             mode = 'rt' if is_gzipped else 'r'
             with opener(input_path, mode, encoding='utf-8', errors='ignore') as f:
                 first_line = f.readline()
-                # 简单嗅探分隔符
-                sep = '\t' if '\t' in first_line else ','
-                logger.info(_("检测到 TXT 文件的分隔符为: '{}'").format('Tab' if sep == '\t' else 'Comma'))
+                if '\t' in first_line:
+                    sep = '\t'
+                    logger.info(_("检测到 TXT 文件的分隔符为: '{}'").format('Tab'))
+                    # 检查逗号
+                elif ',' in first_line:
+                    sep = ','
+                    logger.info(_("检测到 TXT 文件的分隔符为: '{}'").format('Comma'))
+                    # 检查多个连续空格（至少2个）
+                elif '  ' in first_line:
+                    sep = r'\s+'  # 使用正则表达式匹配一个或多个空白字符
+                    logger.info(_("检测到 TXT 文件的分隔符为: '{}'").format('Multiple Spaces'))
+                else:
+                    sep = None
+                    logger.warning(_("无法自动检测 TXT 文件的分隔符，尝试使用默认空格。"))
 
-            # 使用嗅探到的分隔符读取，并明确指出无表头
-            df = pd.read_csv(input_path, sep=sep, compression='gzip' if is_gzipped else None, on_bad_lines='warn', header=None)
+            # 分隔符是多个空格
+            engine = 'python' if sep == r'\s+' else 'c'
+
+            # 使用嗅探到的分隔符或默认空格读取，并明确指出无表头
+            df = pd.read_csv(input_path, sep=sep, compression='gzip' if is_gzipped else None,
+                             on_bad_lines='warn', header=None, engine=engine)
 
         else:
             logger.warning(_("不支持的文件格式或无法识别的文件: {}").format(filename))
             return None
 
-        # --- 统一列名 ---
-        # 为无表头的文件（如TXT）或合并后的Excel生成标准列名
-        if df is not None and all(isinstance(c, int) for c in df.columns):
-             df.columns = [f'Column_{i+1}' for i in range(len(df.columns))]
+        # --- 统一列名与表头自定义 ---
+        if df is not None:
+            # 检查列名是否为默认整数（无表头）
+            if all(isinstance(c, int) for c in df.columns):
 
-        logger.info(_("成功将 '{}' 加载到DataFrame。").format(filename))
-        return df
+                # 【核心修改】
+                custom_headers = ['Query', 'Match', 'Description']
+                original_num_cols = len(df.columns)
+
+                # 确保 DataFrame 至少有三列
+                if original_num_cols < len(custom_headers):
+                    for i in range(len(custom_headers) - original_num_cols):
+                        df[original_num_cols + i] = pd.NA
+
+                # 填充自定义表头
+                new_columns = []
+                for i in range(len(df.columns)):
+                    if i < len(custom_headers):
+                        new_columns.append(custom_headers[i])
+                    else:
+                        # 如果列数超过预设表头，使用原始的默认命名
+                        new_columns.append(f'Column_{i + 1}')
+
+                df.columns = new_columns
+                logger.info(_("检测到无表头，已使用预设表头 'Query', 'Match', 'Description'。"))
+
+            logger.info(_("成功将 '{}' 加载到DataFrame。").format(filename))
+
+            # --- 处理包含 "|" 的列，将其拆分为多行 ---
+            logger.info(_("正在检查并拆分包含 '|' 的单元格..."))
+            for col in df.columns:
+                if df[col].dtype == 'object' and df[col].astype(str).str.contains('|', regex=False).any():
+                    logger.info(_("发现列 '{}' 包含 '|' 分隔符，正在执行拆分...").format(col))
+                    try:
+                        df[col] = df[col].astype(str).str.split('|')
+                        df = df.explode(col)
+                        logger.info(_("列 '{}' 拆分成功，DataFrame已更新。").format(col))
+                    except Exception as e:
+                        logger.warning(_("处理列 '{}' 时拆分失败: {}").format(col, e))
+
+            return df
 
     except Exception as e:
         logger.error(_("处理文件 '{}' 时发生错误: {}").format(filename, e))
@@ -93,12 +143,15 @@ def normalize_to_csv(input_path: str, output_path: str) -> Optional[str]:
     :return: 如果成功，返回输出文件的路径，否则返回None。
     """
     df = normalize_to_dataframe(input_path)
+    logger.debug(f"DataFrame is None: {df is None}")
+
     if df is not None:
         try:
             # 确保输出目录存在
             output_dir = os.path.dirname(output_path)
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
+                logger.debug(f"csv尝试写入到: {output_path}")
 
             df.to_csv(output_path, index=False, encoding='utf-8-sig')  # 使用 utf-8-sig 以便Excel正确打开
             logger.info(_("已成功将文件转换为CSV格式: {}").format(output_path))

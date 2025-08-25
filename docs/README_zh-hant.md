@@ -48,10 +48,10 @@
 
 ```
 # 執行圖形化介面
-python gui_app.py
+pixi run start
 
-# 查看命令列說明
-python -m cotton_toolkit.cli --help
+# 打包程式
+pixi run build
 ```
 
 ## 截圖預覽

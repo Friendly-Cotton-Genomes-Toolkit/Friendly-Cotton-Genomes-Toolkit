@@ -4,6 +4,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Callable, List
+import threading
 
 import ttkbootstrap as ttkb
 
@@ -29,7 +30,6 @@ class AnnotationTab(BaseTab):
         # 2. 将 translator 传递给父类的构造函数
         super().__init__(parent, app, translator=translator)
         if self.action_button:
-            # 【可选优化】这里的 _ 应该使用父类中保存的 self._，不过它在 super().__init__ 后已经可用
             self.action_button.configure(text=_("开始功能注释"), command=self.start_annotation_task)
         self.update_from_config()
 
@@ -51,15 +51,15 @@ class AnnotationTab(BaseTab):
         self.gene_id_label = ttk.Label(self.input_card, text=_("基因ID列表:"), font=self.app.app_font_bold)
         self.gene_id_label.grid(row=1, column=0, sticky="nw", padx=(10, 5), pady=10)
         text_bg = self.app.style.lookup('TFrame', 'background')
-        text_fg = self.app.style.lookup('TLabel', 'foreground')
         self.annotation_genes_textbox = tk.Text(self.input_card, height=10, font=self.app.app_font_mono, wrap="word",
-                                                relief="flat", background=text_bg, foreground=text_fg,
-                                                insertbackground=text_fg)
+                                                relief="flat", background=text_bg,
+                                                insertbackground=self.app.style.lookup('TLabel', 'foreground'))
+
         self.annotation_genes_textbox.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
 
-        # 【修正】在创建时就正确地从字典获取文本
         initial_placeholder_text = self.app.placeholders.get("genes_input", "...")
-        self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, initial_placeholder_text)
+        self.annotation_genes_textbox.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.annotation_genes_textbox, initial_placeholder_text))
 
         self.annotation_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                        self.annotation_genes_textbox,
@@ -95,29 +95,6 @@ class AnnotationTab(BaseTab):
                                              [("CSV files", "*.csv"), ("All files", "*.*")]), bootstyle="info-outline")
         self.browse_button.grid(row=1, column=2, padx=(0, 10), pady=5)
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        self.title_label.configure(text=translator("功能注释"))
-        self.input_card.configure(text=translator("输入数据"))
-        self.genome_version_label.configure(text=translator("基因组版本:"))
-        self.gene_id_label.configure(text=translator("基因ID列表:"))
-        self.anno_card.configure(text=translator("注释类型"))
-        self.output_label.configure(text=translator("输出文件 (可选):"))
-        self.browse_button.configure(text=translator("浏览..."))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始功能注释"))
-
-        # 【修正】调用独立的刷新方法
-        self.refresh_placeholders()
-
-        self.app.ui_manager.refresh_single_placeholder(self.annotation_genes_textbox, "genes_input")
-
-    def refresh_placeholders(self):
-        """【新增】此方法由 UIManager 统一调用，以确保占位符被刷新。"""
-        if hasattr(self, 'annotation_genes_textbox') and self.annotation_genes_textbox:
-            # 【修正】从中央字典获取翻译好的文本，再传递
-            placeholder_text = self.app.placeholders.get("genes_input", "")
-            self.app.ui_manager.add_placeholder(self.annotation_genes_textbox, placeholder_text)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.selected_annotation_assembly, assembly_ids)
@@ -125,9 +102,7 @@ class AnnotationTab(BaseTab):
     def update_from_config(self):
         self.update_assembly_dropdowns(
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-        default_anno_dir = os.path.join(os.getcwd(), "annotation_results.csv")
         self.annotation_output_csv_entry.delete(0, tk.END)
-        self.annotation_output_csv_entry.insert(0, default_anno_dir)
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def _on_gene_input_change(self, event=None):
@@ -135,12 +110,12 @@ class AnnotationTab(BaseTab):
                                                              self.selected_annotation_assembly)
 
     def start_annotation_task(self):
+        # --- 参数验证  ---
         if not self.app.current_config:
-            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
+            self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         gene_ids_text = ""
-        # 检查占位符状态
         if getattr(self.annotation_genes_textbox, 'is_placeholder', False):
             gene_ids_text = ""
         else:
@@ -154,27 +129,56 @@ class AnnotationTab(BaseTab):
                                              (self.kegg_path_anno_var, 'kegg_pathways')] if var.get()]
         output_path = self.annotation_output_csv_entry.get().strip()
         if not output_path:
-            output_path = os.path.join(os.getcwd(), "annotation_results", f"annotation_result_{assembly_id}.csv")
+            output_dir = os.path.join(os.getcwd(), "annotation_results")
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"annotation_result_{assembly_id}.csv")
+            self.annotation_output_csv_entry.delete(0, tk.END)
+            self.annotation_output_csv_entry.insert(0, output_path)
 
         if not gene_ids:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要注释的基因ID。"))
             return
         if not assembly_id or assembly_id in [_("加载中..."), _("无可用基因组")]:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
             return
         if not anno_types:
-            self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。"));
+            self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种注释类型。"))
             return
 
+
+        # 1. 创建取消事件
+        cancel_event = threading.Event()
+
+        # 2. 定义取消操作
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将在当前步骤完成后停止。"))
+            cancel_event.set()
+
+        # 3. 创建并显示进度对话框
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("功能注释中"),
+            on_cancel=on_cancel_action
+        )
+
+        # 4. 定义线程安全的UI更新函数
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数，并加入通信工具 ---
         task_kwargs = {
             'config': self.app.current_config,
+            'assembly_id': assembly_id,
             'gene_ids': gene_ids,
-            'source_genome': assembly_id,
-            'target_genome': assembly_id,
-            'bridge_species': assembly_id,
             'annotation_types': anno_types,
             'output_path': output_path,
-            'output_dir': os.path.dirname(output_path)
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater,
         }
-        self.app.event_handler._start_task(task_name=_("功能注释"), target_func=run_functional_annotation,
-                                           kwargs=task_kwargs)
+
+        self.app.event_handler.start_task(
+            task_name=_("功能注释"),
+            target_func=run_functional_annotation,
+            kwargs=task_kwargs
+        )
+

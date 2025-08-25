@@ -5,7 +5,7 @@ import re
 import tkinter as tk
 from tkinter import ttk, filedialog
 from typing import TYPE_CHECKING, Callable, Optional, List
-
+import threading
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_enrichment_pipeline
@@ -31,7 +31,6 @@ class EnrichmentTab(BaseTab):
         self.has_header_var = tk.BooleanVar(value=False)
         self.has_log2fc_var = tk.BooleanVar(value=False)
         self.analysis_type_var = tk.StringVar(value="go")
-        self.collapse_transcripts_var = tk.BooleanVar(value=False)
         self.bubble_plot_var = tk.BooleanVar(value=True)
         self.bar_plot_var = tk.BooleanVar(value=True)
         self.upset_plot_var = tk.BooleanVar(value=False)
@@ -78,17 +77,21 @@ class EnrichmentTab(BaseTab):
         self.gene_input_text = tk.Text(self.input_card, height=10, font=self.app.app_font_mono, wrap="word",
                                        relief="flat", background=text_bg, foreground=text_fg, insertbackground=text_fg)
         self.gene_input_text.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
-        self.app.ui_manager.add_placeholder(self.gene_input_text,
-                                            self.app.placeholders.get("enrichment_genes_input", "..."))
+        self.gene_input_text.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.gene_input_text, self.app.placeholders.get("enrichment_genes_input", "...")))
+
         self.gene_input_text.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e, self.gene_input_text,
                                                                                               "enrichment_genes_input"))
         self.gene_input_text.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.gene_input_text,
                                                                                                 "enrichment_genes_input"))
 
+        # --- 绑定键盘释放事件，以触发自动识别 ---
+        self.gene_input_text.bind("<KeyRelease>", self._on_gene_input_change)
+
         self.format_card = ttkb.LabelFrame(parent_frame, text=_("输入格式与分析类型"), bootstyle="secondary")
         self.format_card.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         self.format_card.grid_columnconfigure(1, weight=1)
-
+        # ... 后续控件创建代码保持不变 ...
         self.input_format_label = ttk.Label(self.format_card, text=_("输入格式:"), font=self.app.app_font_bold)
         self.input_format_label.grid(row=0, column=0, padx=15, pady=5, sticky="w")
         input_format_frame = ttk.Frame(self.format_card)
@@ -110,14 +113,6 @@ class EnrichmentTab(BaseTab):
         self.kegg_radio = ttkb.Radiobutton(radio_frame, text="KEGG", variable=self.analysis_type_var, value="kegg",
                                            bootstyle="toolbutton-success")
         self.kegg_radio.pack(side="left", padx=5)
-
-        self.collapse_check = ttkb.Checkbutton(self.format_card, text=_("合并转录本到基因"),
-                                               variable=self.collapse_transcripts_var, bootstyle="round-toggle")
-        self.collapse_check.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=5)
-        self.collapse_note_label = ttkb.Label(self.format_card, text=_(
-            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"),
-                                              font=self.app.app_comment_font, bootstyle="info")
-        self.collapse_note_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 5))
 
         self.plot_config_card = ttkb.LabelFrame(parent_frame, text=_("绘图设置"), bootstyle="secondary")
         self.plot_config_card.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
@@ -145,11 +140,16 @@ class EnrichmentTab(BaseTab):
         self.top_n_entry = ttk.Entry(self.plot_config_card, textvariable=self.top_n_var, width=10)
         self.top_n_entry.grid(row=1, column=1, sticky="w", padx=10, pady=5)
 
+        #self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
+        #self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
+        #self.sort_by_dropdown = ttkb.OptionMenu(self.plot_config_card, self.sort_by_var, "FDR", "FDR", "PValue",
+        #                                        bootstyle="info")
+        #self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
+
         self.sort_by_label = ttk.Label(self.plot_config_card, text=_("排序依据:"), font=self.app.app_font_bold)
         self.sort_by_label.grid(row=2, column=0, padx=15, pady=5, sticky="w")
-        self.sort_by_dropdown = ttkb.OptionMenu(self.plot_config_card, self.sort_by_var, "FDR", "FDR", "PValue",
-                                                "FoldEnrichment", bootstyle="info")
-        self.sort_by_dropdown.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
+        self.sort_by_value_label = ttk.Label(self.plot_config_card, text="FDR", font=self.app.app_font)
+        self.sort_by_value_label.grid(row=2, column=1, sticky="w", padx=10, pady=5)
 
         self.show_title_check = ttkb.Checkbutton(self.plot_config_card, text=_("显示图表标题"),
                                                  variable=self.show_title_var, bootstyle="round-toggle")
@@ -184,74 +184,28 @@ class EnrichmentTab(BaseTab):
                                              self.enrichment_output_dir_entry), bootstyle="info-outline")
         self.browse_button.grid(row=0, column=2, padx=(0, 10), pady=5)
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        # --- 更新所有静态文本 ---
-        self.title_label.config(text=translator("富集分析与绘图"))
-        self.input_card.config(text=translator("输入数据"))
-        self.assembly_id_label.config(text=translator("基因组版本:"))
-        self.gene_list_label.config(text=translator("基因ID列表 (或基因ID,Log2FC):"))
-        self.format_card.config(text=translator("输入格式与分析类型"))
-        self.input_format_label.config(text=translator("输入格式:"))
-        self.has_header_check.config(text=translator("包含表头"))
-        self.has_log2fc_check.config(text=translator("包含Log2FC"))
-        self.analysis_type_label.config(text=translator("分析类型:"))
-        self.collapse_check.config(text=translator("合并转录本到基因"))
-        self.collapse_note_label.config(text=translator(
-            "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"))
-        self.plot_config_card.configure(text=translator("绘图设置"))
-        self.plot_type_label.configure(text=translator("绘图类型:"))
-        self.bubble_check.configure(text=translator("气泡图"))
-        self.bar_check.configure(text=translator("条形图"))
-        self.upset_check.configure(text=translator("Upset图"))
-        self.cnet_check.configure(text=translator("网络图(Cnet)"))
-        self.top_n_label.configure(text=translator("显示前N项:"))
-        self.sort_by_label.configure(text=translator("排序依据:"))
-        self.show_title_check.configure(text=translator("显示图表标题"))
-        self.width_label.configure(text=translator("图表宽度 (英寸):"))
-        self.height_label.configure(text=translator("图表高度 (英寸):"))
-        self.file_format_label.configure(text=translator("文件格式:"))
-        self.output_dir_card.configure(text=translator("输出设置"))
-        self.output_dir_label.configure(text=translator("输出目录:"))
-        self.browse_button.configure(text=translator("浏览..."))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始富集分析"))
-
-            # 【最终修正】直接调用 UIManager 的方法来设置占位符
-            # UIManager 的 _update_placeholders 已经更新了 self.app.placeholders 字典
-        new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
-        self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
-
-        self.app.ui_manager.refresh_single_placeholder(self.gene_input_text, "enrichment_genes_input")
-
-    def refresh_placeholders(self):
-        """【新增】此方法现在由UIManager统一调用，以确保占位符被刷新。"""
-        if hasattr(self, 'gene_input_text') and self.gene_input_text:
-            new_placeholder_text = self.app.placeholders.get("enrichment_genes_input", "")
-            self.app.ui_manager.add_placeholder(self.gene_input_text, new_placeholder_text)
-
+    # --- 【新增】处理键盘事件的函数 ---
+    def _on_gene_input_change(self, event=None):
+        """当基因输入框内容改变时，调用事件处理器中的自动识别函数。"""
+        self.app.event_handler._auto_identify_genome_version(
+            self.gene_input_text,  # 传递文本框本身
+            self.assembly_id_var  # 传递控制下拉菜单的变量
+        )
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.assembly_id_var, assembly_ids,
                                                _("无可用基因组"))
 
-    def update_from_config(self):
-        self.update_assembly_dropdowns(
-            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-        default_dir = os.path.join(os.getcwd(), "enrichment_results")
-        self.enrichment_output_dir_entry.delete(0, tk.END)
-        self.enrichment_output_dir_entry.insert(0, default_dir)
-        self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
-
     def start_enrichment_task(self):
-        # ... [此方法的逻辑与上一版相同] ...
+        # --- 参数验证 ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"));
             return
 
         gene_ids_text = self.gene_input_text.get("1.0", tk.END).strip()
-        is_placeholder = (gene_ids_text == self.app.placeholders.get("enrichment_genes_input", ""))
-        lines = [] if is_placeholder else gene_ids_text.splitlines()
+        if getattr(self.gene_input_text, 'is_placeholder', False):
+            gene_ids_text = ""
+        lines = [] if not gene_ids_text else gene_ids_text.splitlines()
 
         if not lines:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请输入要分析的基因ID。"));
@@ -274,31 +228,27 @@ class EnrichmentTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请至少选择一种图表类型。"));
             return
 
-        study_gene_ids = []
-        gene_log2fc_map = {} if self.has_log2fc_var.get() else None
-
         try:
+            study_gene_ids = []
+            gene_log2fc_map = {} if self.has_log2fc_var.get() else None
             effective_lines = lines[1:] if self.has_header_var.get() and len(lines) > 1 else lines
+
             if self.has_log2fc_var.get():
                 for i, line in enumerate(effective_lines):
                     if not line.strip(): continue
                     parts = re.split(r'[\s\t,;]+', line.strip())
                     if len(parts) >= 2:
                         gene_id, log2fc_str = parts[0], parts[1]
-                        try:
-                            gene_log2fc_map[gene_id] = float(log2fc_str)
-                            study_gene_ids.append(gene_id)
-                        except ValueError:
-                            raise ValueError(_("第 {i + 1} 行Log2FC值无效:").format(i=i) + f" '{log2fc_str}'")
+                        gene_log2fc_map[gene_id] = float(log2fc_str)
+                        study_gene_ids.append(gene_id)
                     else:
-                        raise ValueError(_("第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):").format(i=i) + f" '{line}'")
+                        raise ValueError(f"第 {i + 1} 行格式错误")
             else:
                 for line in effective_lines:
                     if not line.strip(): continue
-                    parts = re.split(r'[\s\t,;]+', line.strip())
-                    study_gene_ids.extend([p for p in parts if p])
-        except ValueError as e:
-            self.app.ui_manager.show_error_message(_("输入格式错误"), str(e));
+                    study_gene_ids.extend([p for p in re.split(r'[\s\t,;]+', line.strip()) if p])
+        except (ValueError, TypeError) as e:
+            self.app.ui_manager.show_error_message(_("输入格式错误"), f"{_('解析基因列表时出错')}: {e}");
             return
 
         study_gene_ids = sorted(list(set(study_gene_ids)))
@@ -306,17 +256,38 @@ class EnrichmentTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("解析后未发现有效基因ID。"));
             return
 
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("富集分析运行中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数  ---
         task_kwargs = {
             'config': self.app.current_config, 'assembly_id': assembly_id,
             'study_gene_ids': study_gene_ids, 'analysis_type': self.analysis_type_var.get(),
             'plot_types': plot_types, 'output_dir': output_dir,
             'gene_log2fc_map': gene_log2fc_map, 'top_n': self.top_n_var.get(),
-            'sort_by': self.sort_by_var.get(), 'show_title': self.show_title_var.get(),
+            'sort_by': self.sort_by_var.get(),
+            'show_title': self.show_title_var.get(),
             'width': self.width_var.get(), 'height': self.height_var.get(),
-            'file_format': self.file_format_var.get(), 'collapse_transcripts': self.collapse_transcripts_var.get()
+            'file_format': self.file_format_var.get(),
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater,
         }
 
-        self.app.event_handler._start_task(
+        self.app.event_handler.start_task(
             task_name=_("{} 富集分析").format(self.analysis_type_var.get().upper()),
             target_func=run_enrichment_pipeline, kwargs=task_kwargs
         )
+

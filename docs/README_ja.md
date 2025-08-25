@@ -48,10 +48,10 @@
 
 ```
 # GUIを実行
-python gui_app.py
+pixi run start
 
-# コマンドラインヘルプを表示
-python -m cotton_toolkit.cli --help
+# パッケージングプログラム
+pixi run build
 ```
 
 ## スクリーンショットプレビュー

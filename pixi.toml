@@ -1,0 +1,66 @@
+[workspace]
+authors = ["Yuzuki Asane <gkoishi0514@gmail.com>"]
+channels = ["conda-forge"]
+name = "cotton_tool"
+platforms = ["win-64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+start = "python main.py"
+build-win = """
+python -m nuitka \
+    --standalone \
+    --mingw64 \
+    --windows-disable-console \
+    --windows-icon-from-ico=ui/assets/logo.ico \
+    --plugin-enable=tk-inter \
+    --plugin-enable=anti-bloat \
+    --lto=yes \
+    --include-data-dir=ui/assets=ui/assets \
+    --include-data-dir=cotton_toolkit/locales=cotton_toolkit/locales \
+    --include-package-data=ttkbootstrap \
+    --include-package=Bio.SearchIO \
+    --output-dir=dist \
+    main.py
+"""
+
+build-linux = """
+python -m nuitka \
+    --standalone \
+    --plugin-enable=tk-inter \
+    --plugin-enable=anti-bloat \
+    --lto=yes \
+    --include-data-dir=ui/assets=ui/assets \
+    --include-data-dir=cotton_toolkit/locales=cotton_toolkit/locales \
+    --include-package-data=ttkbootstrap \
+    --include-package=Bio.SearchIO \
+    --output-dir=dist \
+    main.py
+"""
+
+[dependencies]
+python = "3.12.*"
+pixi-pycharm = ">=0.0.8,<0.0.9"
+nuitka = ">=2.7.12,<3"
+
+[pypi-dependencies]
+pydantic = "~=2.11.7"
+requests = "~=2.32.3"
+tqdm = "~=4.67.1"
+gffutils = "~=0.13"
+pandas = "~=2.2.3"
+pyyaml = "~=6.0.2"
+numpy = "~=2.0.1"
+pillow = "~=10.4.0"
+diskcache = "~=5.6.3"
+click = "~=8.1.8"
+matplotlib = "~=3.10.3"
+statsmodels = "~=0.14.4"
+protobuf = "~=5.29.5"
+openpyxl = "~=3.1.5"
+networkx = "~=3.5"
+upsetplot = "~=0.9.0"
+ttkbootstrap = "~=1.13.12"
+scipy = "~=1.16.0"
+babel = "~=2.17.0"
+biopython = ">=1.85, <2"

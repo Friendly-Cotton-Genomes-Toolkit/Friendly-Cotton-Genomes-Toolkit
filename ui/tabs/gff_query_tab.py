@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, List, Callable
-
+import threading
 import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines import run_gff_lookup
@@ -37,13 +37,11 @@ class GFFQueryTab(BaseTab):
     def _create_widgets(self):
         """
         创建此选项卡内的所有 UI 元件。
-        【修改】将所有需要翻译的元件都储存为 self 的属性。
         """
         parent = self.scrollable_frame
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_rowconfigure(1, weight=1)
 
-        # --- 储存 UI 元件 ---
         self.title_label = ttkb.Label(parent, text=_("基因/区域位点查询"), font=self.app.app_title_font,
                                       bootstyle="primary")
         self.title_label.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
@@ -53,7 +51,6 @@ class GFFQueryTab(BaseTab):
         main_frame.grid_columnconfigure((0, 1), weight=1, uniform="group1")
         main_frame.grid_rowconfigure(0, weight=1)
 
-        # --- 左侧：输入卡片 ---
         self.input_frame = ttkb.LabelFrame(main_frame, text=_("输入参数"), bootstyle="secondary")
         self.input_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=10)
         self.input_frame.grid_columnconfigure(0, weight=1)
@@ -64,12 +61,15 @@ class GFFQueryTab(BaseTab):
         self.gene_id_label.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 0))
 
         text_bg = self.app.style.lookup('TFrame', 'background')
-        text_fg = self.app.style.lookup('TLabel', 'foreground')
+
         self.gff_query_genes_textbox = tk.Text(self.input_frame, wrap="word", height=10, font=self.app.app_font_mono,
-                                               relief="flat", background=text_bg, foreground=text_fg,
-                                               insertbackground=text_fg)
+                                               relief="flat", background=text_bg,
+                                               insertbackground=self.app.style.lookup('TLabel', 'foreground'))
         self.gff_query_genes_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
-        self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
+        self.gff_query_genes_textbox.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.gff_query_genes_textbox,
+            self.app.placeholders.get("gff_genes", "...")
+        ))
         self.gff_query_genes_textbox.bind("<FocusIn>", lambda e: self.app.ui_manager._handle_focus_in(e,
                                                                                                       self.gff_query_genes_textbox,
                                                                                                       "gff_genes"))
@@ -80,9 +80,16 @@ class GFFQueryTab(BaseTab):
 
         self.region_label = ttkb.Label(self.input_frame, text=_("或 输入染色体区域:"), font=self.app.app_font_bold)
         self.region_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
-        self.gff_query_region_entry = ttkb.Entry(self.input_frame, font=self.app.app_font_mono, foreground=text_fg)
+
+        self.gff_query_region_entry = tk.Text(self.input_frame, height=1, wrap="none", font=self.app.app_font_mono,
+                                              relief="flat", background=text_bg,
+                                              insertbackground=self.app.style.lookup('TLabel', 'foreground'))
         self.gff_query_region_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 10))
-        self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
+
+        self.gff_query_region_entry.after(10, lambda: self.app.ui_manager.add_placeholder(
+            self.gff_query_region_entry,
+            self.app.placeholders.get("gff_region", "...")
+        ))
         self.gff_query_region_entry.bind("<FocusIn>",
                                          lambda e: self.app.ui_manager._handle_focus_in(e, self.gff_query_region_entry,
                                                                                         "gff_region"))
@@ -90,7 +97,9 @@ class GFFQueryTab(BaseTab):
                                          lambda e: self.app.ui_manager._handle_focus_out(e, self.gff_query_region_entry,
                                                                                          "gff_region"))
 
-        # --- 右侧：配置与输出卡片 ---
+        # 阻止在单行模式的 Text 控件中按回车键换行
+        self.gff_query_region_entry.bind("<Return>", lambda e: "break")
+
         self.config_frame = ttkb.LabelFrame(main_frame, text=_("配置与输出"), bootstyle="secondary")
         self.config_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=10)
         self.config_frame.grid_columnconfigure(0, weight=1)
@@ -104,8 +113,9 @@ class GFFQueryTab(BaseTab):
 
         self.output_path_label = ttkb.Label(self.config_frame, text=_("结果输出CSV文件:"), font=self.app.app_font_bold)
         self.output_path_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
+        # 【修复】移除了 foreground=text_fg
         self.gff_query_output_csv_entry = ttkb.Entry(self.config_frame, textvariable=self.output_path_var,
-                                                     font=self.app.app_font_mono, foreground=text_fg)
+                                                     font=self.app.app_font_mono)
         self.gff_query_output_csv_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
 
         self.browse_button = ttkb.Button(self.config_frame, text=_("浏览..."), width=12, bootstyle="info-outline",
@@ -113,35 +123,7 @@ class GFFQueryTab(BaseTab):
                                              self.gff_query_output_csv_entry, [(_("CSV 文件"), "*.csv")]))
         self.browse_button.grid(row=4, column=0, sticky='e', padx=10, pady=5)
 
-    def retranslate_ui(self, translator: Callable[[str], str]):
-        """
-        【新增】当语言切换时，此方法被 UIManager 调用以更新 UI 文本。
-        """
-        self.title_label.configure(text=translator("基因/区域位点查询"))
-        self.input_frame.configure(text=translator("输入参数"))
-        self.gene_id_label.configure(text=translator("输入基因ID (多行或逗号分隔):"))
-        self.region_label.configure(text=translator("或 输入染色体区域:"))
 
-        self.config_frame.configure(text=translator("配置与输出"))
-        self.genome_version_label.configure(text=translator("选择基因组版本:"))
-        self.output_path_label.configure(text=translator("结果输出CSV文件:"))
-        self.browse_button.configure(text=translator("浏览..."))
-
-        if self.action_button:
-            self.action_button.configure(text=translator("开始基因查询"))
-
-        # 刷新占位符
-        self.app.ui_manager.add_placeholder(self.gff_query_genes_textbox, "gff_genes")
-        self.app.ui_manager.add_placeholder(self.gff_query_region_entry, "gff_region")
-
-        self.app.ui_manager.refresh_single_placeholder(self.gff_query_genes_textbox, "gff_genes")
-        self.app.ui_manager.refresh_single_placeholder(self.gff_query_region_entry, "gff_region")
-
-
-    def update_from_config(self):
-        self.update_assembly_dropdowns(
-            list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
-        self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         valid_ids = assembly_ids or [_("无可用基因组")]
@@ -160,20 +142,21 @@ class GFFQueryTab(BaseTab):
                                                              self.selected_gff_query_assembly)
 
     def start_gff_query_task(self):
+        # --- 参数验证 ---
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
         assembly_id = self.selected_gff_query_assembly.get()
         gene_ids_text = self.gff_query_genes_textbox.get("1.0", tk.END).strip()
-        region_str = self.gff_query_region_entry.get().strip()
+        region_str = self.gff_query_region_entry.get("1.0", "end-1c").strip()  # 使用 "1.0", "end-1c" 来获取单行Text内容
         output_path = self.output_path_var.get().strip()
         if not output_path:
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定结果文件的保存路径。"))
             return
 
-        is_region_placeholder = (region_str == self.app.placeholders.get("gff_region", ""))
-        is_genes_placeholder = (gene_ids_text == self.app.placeholders.get("gff_genes", ""))
+        is_region_placeholder = getattr(self.gff_query_region_entry, 'is_placeholder', False)
+        is_genes_placeholder = getattr(self.gff_query_genes_textbox, 'is_placeholder', False)
         has_genes = bool(gene_ids_text and not is_genes_placeholder)
         has_region = bool(region_str and not is_region_placeholder)
 
@@ -183,17 +166,16 @@ class GFFQueryTab(BaseTab):
         if has_genes and has_region:
             self.app.ui_manager.show_warning_message(_("输入冲突"), _("将优先使用基因ID列表进行查询。"))
             region_str = ""
+            has_region = False
 
         gene_ids_list = [g.strip() for g in gene_ids_text.replace(",", "\n").splitlines() if
                          g.strip()] if has_genes else None
         region_tuple = None
 
-        if has_region and not has_genes:
-            try:
-                chrom, pos_range = region_str.split(':')
-                start, end = map(int, pos_range.split('-'))
-                region_tuple = (chrom.strip(), start, end)
-            except ValueError:
+        if has_region:
+            from cotton_toolkit.utils.gene_utils import parse_region_string  # 导入解析函数
+            region_tuple = parse_region_string(region_str)
+            if not region_tuple:
                 self.app.ui_manager.show_error_message(_("输入错误"), _("区域格式不正确。请使用 'Chr:Start-End' 格式。"))
                 return
 
@@ -201,11 +183,35 @@ class GFFQueryTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
             return
 
+        # --- 创建通信工具和对话框 ---
+        cancel_event = threading.Event()
+
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=_("GFF 基因查询中"),
+            on_cancel=on_cancel_action
+        )
+
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids_list,
             'region': region_tuple,
-            'output_csv_path': output_path
+            'output_csv_path': output_path,
+            'cancel_event': cancel_event,
+            'progress_callback': ui_progress_updater
         }
-        self.app.event_handler._start_task(task_name=_("GFF基因查询"), target_func=run_gff_lookup, kwargs=task_kwargs)
+
+        self.app.event_handler.start_task(
+            task_name=_("GFF基因查询"),
+            target_func=run_gff_lookup,
+            kwargs=task_kwargs
+        )

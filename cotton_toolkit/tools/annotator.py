@@ -2,15 +2,16 @@
 
 import logging
 import os
-import re
+import sqlite3
 import pandas as pd
 from typing import List, Dict, Optional, Callable
 
+from .. import PREPROCESSED_DB_NAME
 from ..config.models import MainConfig, GenomeSourceItem
 from ..config.loader import get_local_downloaded_file_path
-from ..utils.file_utils import smart_load_file
+from ..utils.file_utils import smart_load_file, _sanitize_table_name
 
-logger = logging.getLogger("cotton_toolkit.annotator")
+logger = logging.getLogger("cotton_toolkit.tools.annotator")
 
 
 try:
@@ -28,136 +29,133 @@ class Annotator:
     - 使用基因组专属的正则表达式进行精确匹配。
     """
 
-    # __init__ 方法保持不变
     def __init__(
             self,
             main_config: MainConfig,
             genome_id: str,
             genome_info: GenomeSourceItem,
-            status_callback: Optional[Callable[[str, str], None]] = None,
             progress_callback: Optional[Callable[[int, str], None]] = None,
-            custom_db_dir: Optional[str] = None
+            **kwargs  # 接受额外参数以保持接口兼容
     ):
+        """
+        初始化Annotator。
+
+        Args:
+            main_config: 主配置对象。
+            genome_id: 目标基因组的唯一ID (例如 'HAU_v1')。
+            genome_info: 目标基因组的详细配置信息对象。
+            progress_callback: 用于报告进度的回调函数。
+
+        Raises:
+            FileNotFoundError: 如果预处理数据库 (genomes.db) 不存在。
+        """
         self.config = main_config
         self.genome_id = genome_id
         self.genome_info = genome_info
-        self.log = status_callback if status_callback else lambda msg, level="INFO": logger.info(f"[{level}] {msg}")
         self.progress = progress_callback if progress_callback else lambda p, m: logger.info(f"[{p}%] {m}")
-        self.db_cache: Dict[str, pd.DataFrame] = {}
-        self.custom_db_dir = custom_db_dir
-        if self.custom_db_dir:
-            self.log(_("INFO: 将优先使用自定义注释数据库目录: {}").format(self.custom_db_dir))
+
+        # 直接定位到预处理数据库的路径
+        project_root = os.path.dirname(self.config.config_file_abs_path_)
+        self.db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
+
+        # 在初始化时就检查数据库是否存在，提前失败
+        if not os.path.exists(self.db_path):
+            raise FileNotFoundError(_("预处理数据库未找到: {}。请先运行数据预处理流程。").format(self.db_path))
 
 
-    # --- 以下函数是本次修改的核心 ---
-    def _load_annotation_db(self, db_key: str) -> Optional[pd.DataFrame]:
-        """
-        【最终稳定版】只加载预处理后的 .csv 注释文件，并强制重命名表头。
-        """
-        if db_key in self.db_cache:
-            return self.db_cache[db_key]
-
-        original_path = get_local_downloaded_file_path(self.config, self.genome_info, db_key)
-        if not original_path:
-            self.log(_("警告: 在配置中未找到 {} 的下载信息。").format(db_key), "WARNING")
-            return None
-
-        # 准确地推断出预处理后的CSV文件路径
-        base_path = original_path.replace('.xlsx.gz', '').replace('.xlsx', '')
-        processed_csv_path = base_path + '.csv'
-
-        # 只检查 .csv 文件是否存在
-        if not os.path.exists(processed_csv_path):
-            self.log(_("错误: 未找到预处理好的注释文件 '{}'。").format(os.path.basename(processed_csv_path)), "ERROR")
-            self.log(_("请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"), "ERROR")
-            return None
-
-        self.log(_("INFO: 正在加载预处理的注释文件: {}").format(os.path.basename(processed_csv_path)), "INFO")
-        df = smart_load_file(processed_csv_path, logger_func=self.log)
-
-        if df is not None and not df.empty:
-            # --- 最终解决方案：无论CSV表头是什么，都强制在内存中重命名 ---
-            self.log(_("DEBUG: 从CSV加载的原始列名: {}").format(df.columns.tolist()), "DEBUG")
-            rename_map = {}
-            if len(df.columns) > 0: rename_map[df.columns[0]] = 'Query'
-            if len(df.columns) > 1: rename_map[df.columns[1]] = 'Match'
-            if len(df.columns) > 2: rename_map[df.columns[2]] = 'Description'
-            df.rename(columns=rename_map, inplace=True)
-            self.log(_("DEBUG: 强制重命名后的列名: {}").format(df.columns.tolist()), "DEBUG")
-
-            self.db_cache[db_key] = df
-            return df
-        else:
-            self.log(_("ERROR: 无法加载文件或文件为空: {}。").format(processed_csv_path), "ERROR")
-            return None
-
-    # annotate_genes 方法保持不变，因为它已经是最终形态
     def annotate_genes(self, gene_ids: List[str], annotation_types: List[str]) -> pd.DataFrame:
         """
-        【最终专业版】使用正则表达式提取核心ID，进行精确匹配。
+        为给定的基因ID列表批量添加功能注释。
+
+        此方法直接从SQLite数据库中查询所有请求的注释类型，然后将结果
+        聚合到每个基因ID上，并返回一个包含所有注释信息的DataFrame。
+
+        Args:
+            gene_ids: 需要查询注释的基因ID列表。
+            annotation_types: 一个包含所需注释类型的列表 (例如 ['go', 'ipr', 'kegg_orthologs'])。
+
+        Returns:
+            一个Pandas DataFrame，索引为基因ID，列为所请求的各类注释信息。
         """
-        # ... (此函数的代码与上一轮回复中的完全相同，无需修改) ...
         if not gene_ids:
             return pd.DataFrame()
 
-        regex = self.genome_info.gene_id_regex
-        if not regex:
-            self.log(_("错误: 基因组 {} 未在配置中定义 'gene_id_regex'。").format(self.genome_id), "ERROR")
-            return pd.DataFrame([{'Gene_ID': gid, 'Error': _('No regex defined for genome')} for gid in gene_ids])
+        # 使用 set 去重以提高查询效率
+        unique_gene_ids = sorted(list(set(gene_ids)))
+        final_df = pd.DataFrame({'Gene_ID': unique_gene_ids})
 
-        self.log(_("INFO: 使用正则表达式进行匹配: {}").format(regex), "INFO")
+        # 定义注释类型到文件关键字的映射，用于推断数据库中的表名
+        key_map = {
+            'go': 'GO',
+            'ipr': 'IPR',
+            'kegg_orthologs': 'KEGG_orthologs',
+            'kegg_pathways': 'KEGG_pathways'
+        }
 
-        input_id_map = {}
-        for original_id in gene_ids:
-            match = re.search(regex, original_id, re.IGNORECASE)
-            if match:
-                core_id = match.group(0).lower()
-                if core_id not in input_id_map:
-                    input_id_map[core_id] = original_id
-            else:
-                self.log(
-                    _("警告: 输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。").format(original_id, self.genome_id),
-                    "WARNING")
+        # 使用只读模式连接数据库，更安全
+        with sqlite3.connect(f'file:{self.db_path}?mode=ro', uri=True) as conn:
+            for i, anno_type in enumerate(annotation_types):
+                self.progress(int((i / len(annotation_types)) * 100) if annotation_types else 0,
+                              _("正在处理 {} 注释...").format(anno_type))
 
+                db_key = key_map.get(anno_type.lower())
+                if not db_key:
+                    logger.warning(_("不支持的注释类型: '{}'，已跳过。").format(anno_type))
+                    continue
 
-        final_results = {original_id: {'Gene_ID': original_id} for original_id in gene_ids}
+                # 1. 根据配置动态推断表名
+                url = getattr(self.genome_info, f"{db_key}_url", None)
+                if not url:
+                    logger.warning(
+                        _("基因组 '{}' 的配置中未找到 '{}' 的URL，无法推断表名。").format(self.genome_id, db_key))
+                    continue
+                table_name = _sanitize_table_name(os.path.basename(url), version_id=self.genome_id)
 
-        for i, anno_type in enumerate(annotation_types):
-            self.progress(int((i / len(annotation_types)) * 100) if annotation_types else 0,
-                          _("正在处理 {} 注释...").format(anno_type))
+                try:
+                    # 2. 从数据库批量查询基因的注释信息
+                    placeholders = ','.join('?' for _V in unique_gene_ids)
+                    # 假设预处理后的表中，基因ID列统一为 'Query'
+                    query = f'SELECT * FROM "{table_name}" WHERE Query IN ({placeholders})'
 
-            key_map = {'go': 'GO', 'ipr': 'IPR', 'kegg_orthologs': 'KEGG_orthologs', 'kegg_pathways': 'KEGG_pathways'}
-            db_key = key_map.get(anno_type.lower())
-            if not db_key: continue
+                    logger.info(f"正在从表 '{table_name}' 中查询 {len(unique_gene_ids)} 个基因的 '{db_key}' 注释...")
+                    anno_df = pd.read_sql_query(query, conn, params=unique_gene_ids)
 
-            anno_df = self._load_annotation_db(db_key)
-            if anno_df is None or anno_df.empty: continue
+                    if anno_df.empty:
+                        logger.warning(_("在表 '{}' 中未找到任何匹配的注释信息。").format(table_name))
+                        continue
 
-            anno_df['Core_ID'] = anno_df['Query'].astype(str).str.extract(regex, flags=re.IGNORECASE,
-                                                                          expand=False).str.lower()
+                    # 3. 数据聚合：将同一基因的多个注释条目合并为一行
+                    anno_df = anno_df.rename(columns={'Query': 'Gene_ID'})
 
-            matched_df = anno_df.dropna(subset=['Core_ID']).copy()
-            matched_df = matched_df[matched_df['Core_ID'].isin(input_id_map.keys())]
+                    agg_dict = {}
+                    if 'Match' in anno_df.columns:
+                        agg_dict[f'{anno_type}_ID'] = pd.NamedAgg(
+                            column='Match',
+                            aggfunc=lambda s: "; ".join(s.dropna().astype(str).unique())
+                        )
+                    if 'Description' in anno_df.columns:
+                        agg_dict[f'{anno_type}_Description'] = pd.NamedAgg(
+                            column='Description',
+                            aggfunc=lambda s: "; ".join(s.dropna().astype(str).unique())
+                        )
 
-            if matched_df.empty: continue
+                    if not agg_dict:
+                        continue
 
-            def aggregate_annotations(series):
-                return "; ".join(series.dropna().astype(str).unique())
+                    aggregated_annos = anno_df.groupby('Gene_ID').agg(**agg_dict).reset_index()
 
-            agg_functions = {}
-            if 'Match' in matched_df.columns: agg_functions[f'{anno_type}_ID'] = ('Match', aggregate_annotations)
-            if 'Description' in matched_df.columns: agg_functions[f'{anno_type}_Description'] = ('Description',
-                                                                                                 aggregate_annotations)
-            if not agg_functions: continue
+                    # 4. 将当前注释类型的结果合并到最终的DataFrame中
+                    final_df = pd.merge(final_df, aggregated_annos, on='Gene_ID', how='left')
 
-            grouped_annos = matched_df.groupby('Core_ID').agg(**agg_functions)
+                except (sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
+                    if "no such table" in str(e):
+                        logger.error(
+                            _("错误: 数据库中未找到表 '{}'。请确保对应的原始文件已通过预处理脚本正确转换。").format(
+                                table_name))
+                    else:
+                        logger.error(_("查询表 '{}' 时发生数据库错误: {}").format(table_name, e))
 
-            for core_id, original_id in input_id_map.items():
-                if core_id in grouped_annos.index:
-                    final_results[original_id].update(grouped_annos.loc[core_id].to_dict())
-
-        final_df = pd.DataFrame(list(final_results.values()))
+        # 使用 'N/A' 填充所有未找到注释的单元格
         final_df.fillna("N/A", inplace=True)
-
         self.progress(100, _("所有注释处理完成。"))
         return final_df

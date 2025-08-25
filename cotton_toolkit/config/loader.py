@@ -4,29 +4,26 @@ import os
 import re
 
 import yaml
-import logging  # Ensure logging is imported
+import logging
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
 from pydantic import ValidationError
 
 # 确保从 models.py 正确导入 MainConfig 和 GenomeSourcesConfig, GenomeSourceItem
-from cotton_toolkit.config.models import MainConfig, GenomeSourcesConfig, GenomeSourceItem  # ADD GenomeSourceItem
+from cotton_toolkit.config.models import MainConfig, GenomeSourcesConfig, GenomeSourceItem
 
 # --- 模块级缓存变量 ---
-_GENOME_SOURCES_CACHE: Optional[Dict[str, GenomeSourceItem]] = None  # 缓存的类型改为 Dict[str, GenomeSourceItem]
+_GENOME_SOURCES_CACHE: Optional[Dict[str, GenomeSourceItem]] = None
 _LAST_CACHED_GS_FILE_PATH: Optional[str] = None
 
 
 # --- 国际化和日志设置 ---
-# 假设 _ 函数已由主应用程序入口设置到 builtins
-# 为了让静态检查工具识别 _，可以这样做：
 try:
     import builtins
 
     _ = builtins._  # type: ignore
-except (AttributeError, ImportError):  # builtins._ 未设置或导入builtins失败
-    # 如果在测试或独立运行此模块时，_ 可能未设置
+except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
@@ -48,10 +45,8 @@ def get_local_downloaded_file_path(config: MainConfig, genome_info: GenomeSource
     filename = os.path.basename(url)
     base_dir = config.downloader.download_output_base_dir
 
-    # 确保 genome_info 有 version_id 属性，如果没有则尝试从 species_name 推断或使用默认值
     version_identifier = getattr(genome_info, 'version_id', None)
     if not version_identifier:
-        # 如果没有version_id，退回到使用 species_name 或一个通用名称
         version_identifier = re.sub(r'[\\/*?:"<>|]', "_", genome_info.species_name).replace(" ", "_") if genome_info.species_name else "unknown_genome"
 
     version_specific_dir = os.path.join(base_dir, version_identifier)
@@ -62,7 +57,6 @@ def get_local_downloaded_file_path(config: MainConfig, genome_info: GenomeSource
 def save_config(config: MainConfig, path: str) -> bool:
     """将配置对象保存到YAML文件。"""
     try:
-        # 更新 exclude 参数中的字段名
         config_dict = config.model_dump(exclude={'config_file_abs_path_'}, exclude_none=True, exclude_defaults=False)
 
         with open(path, 'w', encoding='utf-8') as f:
@@ -85,8 +79,7 @@ def load_config(path: str) -> MainConfig:
 
         config_obj = MainConfig.model_validate(data)
 
-        # 更新设置字段的名称
-        setattr(config_obj, 'config_file_abs_path_', abs_path) # 更新设置字段的名称
+        setattr(config_obj, 'config_file_abs_path_', abs_path)
 
         logger.info(_("主配置文件加载并验证成功。"))
         return config_obj
@@ -96,7 +89,7 @@ def load_config(path: str) -> MainConfig:
     except yaml.YAMLError as e:
         logger.error(_("解析YAML文件时发生错误 '{}': {}").format(abs_path, e))
         raise
-    except ValidationError as e:  # Pydantic 的 ValidationError 会捕获所有验证失败
+    except ValidationError as e:
         logger.error(_("配置文件验证失败 '{}':\n{}").format(abs_path, e))
         raise
     except Exception as e:
@@ -104,48 +97,71 @@ def load_config(path: str) -> MainConfig:
         raise
 
 
-def get_genome_data_sources(config: MainConfig, logger_func=None) -> Dict[str, GenomeSourceItem]:
-    """从主配置中指定的基因组源文件加载数据。"""
-    # config 现在是 MainConfig 实例，访问 config.downloader 是安全的
-    if not config.downloader.genome_sources_file:
-        if logger_func: logger_func(_("警告: 配置文件中未指定基因组源文件。"), "WARNING")
+def get_genome_data_sources(config: MainConfig) -> Dict[str, GenomeSourceItem]:
+    """
+    【已修正】
+    从主配置中获取基因组来源列表文件的路径，加载并解析该文件。
+    增加了缓存机制以提高性能。
+    """
+    global _GENOME_SOURCES_CACHE, _LAST_CACHED_GS_FILE_PATH
+
+    # 1. 检查传入的config对象是否有效，以及是否包含定位其他文件所需的绝对路径
+    if not config or not getattr(config, 'config_file_abs_path_', None):
+        logger.error(_("主配置对象无效或缺少必需的路径信息 'config_file_abs_path_'。"))
         return {}
 
-    config_dir = os.path.dirname(getattr(config, 'config_file_abs_path_', '.')) # 更新访问字段的名称
-    sources_path = os.path.join(config_dir, config.downloader.genome_sources_file)
+    # 2. 从 downloader 配置中获取文件名，并构建其绝对路径
+    sources_filename = config.downloader.genome_sources_file
+    config_dir = os.path.dirname(config.config_file_abs_path_)
+    sources_filepath = os.path.join(config_dir, sources_filename)
 
-    if not os.path.exists(sources_path):
-        if logger_func: logger_func(_("警告: 基因组源文件未找到: '{}'").format(sources_path), "WARNING")
+    # 3. 使用缓存（如果文件路径未变且缓存存在）
+    if _LAST_CACHED_GS_FILE_PATH == sources_filepath and _GENOME_SOURCES_CACHE is not None:
+        logger.debug(_("从缓存加载基因组源数据。"))
+        return _GENOME_SOURCES_CACHE
+
+    # 4. 检查文件是否存在
+    if not os.path.exists(sources_filepath):
+        logger.error(_("基因组来源文件未找到: {}").format(sources_filepath))
+        # 清空缓存
+        _GENOME_SOURCES_CACHE = None
+        _LAST_CACHED_GS_FILE_PATH = None
         return {}
 
+    # 5. 加载、解析和验证YAML文件
     try:
-        with open(sources_path, 'r', encoding='utf-8') as f:
+        logger.info(_("正在从 '{}' 加载基因组源...").format(sources_filepath))
+        with open(sources_filepath, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
 
-        # 使用 GenomeSourcesConfig (Pydantic BaseModel) 来验证和加载数据
-        # 这会自动将嵌套的字典 item_data 转换为 GenomeSourceItem 实例
+        # 使用正确的模型 GenomeSourcesConfig 来验证整个文件
         genome_sources_config = GenomeSourcesConfig.model_validate(data)
 
-        genome_sources_dict = {}
-        for version_id, item_data in genome_sources_config.genome_sources.items():
-            # Pydantic 已经处理了嵌套的验证和类型转换，item_data 已经是 GenomeSourceItem 实例
-            # 在这里，如果 GenomeSourceItem 没有 version_id 属性，可以手动添加
-            # 例如：setattr(item_data, 'version_id', version_id)
-            # 或者在 GenomeSourceItem 定义中添加 version_id: str = None (如果 config.yml 中没有)
-            # 根据您提供的 models.py，GenomeSourceItem 没有 version_id 属性。
-            # 这里需要确保将其添加，以便 get_local_downloaded_file_path 可以使用它
-            setattr(item_data, 'version_id', version_id)  # 补充 version_id
+        # 提取核心的字典数据
+        genome_sources_map = genome_sources_config.genome_sources
 
-            genome_sources_dict[version_id] = item_data
+        # 关键步骤：用字典的key填充每个item中可能缺失的 version_id
+        for version_id, item in genome_sources_map.items():
+            if item.version_id is None:
+                item.version_id = version_id
 
-        if logger_func: logger_func(_("已成功加载 {} 个基因组源。").format(len(genome_sources_dict)))
-        return genome_sources_dict
-    except ValidationError as e:  # 捕获 Pydantic 验证错误
-        if logger_func: logger_func(_("加载基因组源文件时验证出错 '{}':\n{}").format(sources_path, e), "ERROR")
-        return {}
+        logger.info(_("已成功加载 {} 个基因组源。").format(len(genome_sources_map)))
+
+        # 更新缓存
+        _GENOME_SOURCES_CACHE = genome_sources_map
+        _LAST_CACHED_GS_FILE_PATH = sources_filepath
+
+        return genome_sources_map
+
+    except (yaml.YAMLError, ValidationError) as e:
+        logger.error(_("解析或验证基因组来源文件 '{}' 失败: {}").format(sources_filepath, e))
     except Exception as e:
-        if logger_func: logger_func(_("加载基因组源文件时发生错误 '%s': %s"), sources_path, e)
-        return {}
+        logger.error(_("加载基因组来源文件 '{}' 时发生未知错误: {}").format(sources_filepath, e))
+
+    # 如果发生任何错误，清空缓存并返回空字典
+    _GENOME_SOURCES_CACHE = None
+    _LAST_CACHED_GS_FILE_PATH = None
+    return {}
 
 
 def generate_default_config_files(output_dir: str, overwrite: bool = False, main_config_filename="config.yml",
@@ -161,12 +177,10 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
             logger.warning(_("一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"))
             return False, None, None
 
-        # 创建并保存默认主配置 (MainConfig 现在是 Pydantic BaseModel)
         default_config = MainConfig()
-        default_config.downloader.genome_sources_file = sources_filename  # 指向相对路径
+        default_config.downloader.genome_sources_file = sources_filename
         save_config(default_config, main_config_path)
 
-        # 创建并保存默认基因组源文件 (GenomeSourcesConfig 现在是 Pydantic BaseModel)
         default_sources_data = GenomeSourcesConfig()
 
         with open(sources_path, 'w', encoding='utf-8') as f:
@@ -180,9 +194,7 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
         return False, None, None
 
 
-
 def check_annotation_file_status(config: MainConfig, genome_info: GenomeSourceItem, file_type: str) -> str:
-    # 此函数逻辑不变，因为它已经期望 MainConfig 和 GenomeSourceItem 是正确类型的对象
     local_path = get_local_downloaded_file_path(config, genome_info, file_type)
 
     if not local_path:

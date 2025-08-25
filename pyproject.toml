@@ -1,6 +1,6 @@
 [project]
 name = "friendly-cotton-genomes-toolkit"
-version = "1.0.0"
+version = "1.1.1"
 authors = [
   { name="Liu Junchen", email="gkoishi0514@gmail.com" },
 ]
@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
@@ -38,6 +39,8 @@ dependencies = [
     "upsetplot~=0.9.0",
     "ttkbootstrap~=1.13.12",
     "scipy~=1.16.0",
+    "setuptools~=78.1.1",
+    "babel~=2.17.0",
 ]
 
 [project.urls]
@@ -51,3 +54,26 @@ packages = ["cotton_toolkit"]
 
 [tool.setuptools.package-data]
 "cotton_toolkit" = ["locales/*/LC_MESSAGES/*.mo"]
+
+# --- Nuitka打包配置 ---
+[tool.nuitka]
+# 核心设置
+main = "main.py"
+standalone = true
+lto = "yes"
+output-dir = "dist"
+
+# Windows 特定设置
+mingw64 = true
+windows-disable-console = true
+windows-icon-from-ico = "ui/assets/logo.ico"
+
+# 插件配置
+enable-plugins = [
+    "tk-inter",
+    "anti-bloat"
+]
+
+# 数据和包文件包含
+include-data-dir = { "ui/assets" = "ui/assets" }
+include-package-data = ["ttkbootstrap"]

@@ -9,7 +9,9 @@ from .genome_identifier_tab import GenomeIdentifierTab
 from .gff_query_tab import GFFQueryTab
 from .homology_tab import HomologyTab
 from .locus_conversion_tab import LocusConversionTab
-from .xlsx_converter_tab import XlsxConverterTab
+from .blast_tab import BlastTab
+from .sequence_extraction_tab import SequenceExtractionTab
+from .arabidopsis_homology_tab import ArabidopsisHomologyConversionTab
 
 # 定义此包的公共API，当使用 from ui.tabs import * 时会导入这些
 __all__ = [
@@ -22,5 +24,7 @@ __all__ = [
     "GFFQueryTab",
     "HomologyTab",
     "LocusConversionTab",
-    "XlsxConverterTab",
+    "BlastTab",
+    "SequenceExtractionTab",
+    "ArabidopsisHomologyConversionTab"
 ]

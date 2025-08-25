@@ -7,505 +7,68 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: friendly-cotton-genomes-toolkit 1.0.0\n"
+"Project-Id-Version: friendly-cotton-genomes-toolkit 1.1.1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-07-18 20:47+0800\n"
-"PO-Revision-Date: 2025-07-18 20:47+0800\n"
+"POT-Creation-Date: 2025-08-24 13:14+0800\n"
+"PO-Revision-Date: 2025-08-24 13:14+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
-"Language-Team: Gemini 2.5 Pro\n"
-"Language: zh_CN\n"
+"Language-Team: gkoishi0514@gmail.com\n"
+"Language: zh\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
-"X-Generator: Poedit 3.6\n"
-"X-Poedit-SourceCharset: UTF-8\n"
+"X-Generator: Poedit 3.7\n"
 "X-Poedit-Basepath: ../../../..\n"
-"X-Poedit-SearchPath-0: .\n"
-"X-Poedit-SearchPathExcluded-0: build_temp\n"
-"X-Poedit-SearchPathExcluded-1: release\n"
-"X-Poedit-SearchPathExcluded-2: dist\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-SearchPath-0: cotton_toolkit\n"
+"X-Poedit-SearchPath-1: ui\n"
+"X-Poedit-SearchPathExcluded-0: .pixi\n"
+"X-Poedit-SearchPathExcluded-1: docs\n"
+"X-Poedit-SearchPathExcluded-2: main.build\n"
+"X-Poedit-SearchPathExcluded-3: dist\n"
+"X-Poedit-SearchPathExcluded-4: genomes\n"
+"X-Poedit-SearchPathExcluded-5: tests\n"
+"X-Poedit-SearchPathExcluded-6: .venv\n"
+"X-Poedit-SearchPathExcluded-7: .git\n"
+"X-Poedit-SearchPathExcluded-8: .idea\n"
+"X-Poedit-SearchPathExcluded-9: tmp\n"
+"X-Poedit-SearchPathExcluded-10: assets\n"
+"X-Poedit-SearchPathExcluded-11: data\n"
+"X-Poedit-SearchPathExcluded-12: gff_databases_cache\n"
+"X-Poedit-SearchPathExcluded-13: cotton_toolkit/locales/.pixi\n"
 
-#: cotton_toolkit/cli.py:39
-msgid "错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。"
-msgstr "错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。"
-
-#: cotton_toolkit/cli.py:43
-msgid "错误: 配置文件 '{}' 未找到。请检查路径或运行 'init' 命令。"
-msgstr "错误: 配置文件 '{}' 未找到。请检查路径或运行 'init' 命令。"
-
-#: cotton_toolkit/cli.py:46
-msgid "错误: 加载配置文件时发生意外错误: {}"
-msgstr "错误: 加载配置文件时发生意外错误: {}"
-
-#: cotton_toolkit/cli.py:52
-msgid ""
-"\n"
-"捕获到中断信号！正在尝试优雅地取消任务..."
-msgstr ""
-"\n"
-"捕获到中断信号！正在尝试优雅地取消任务..."
-
-#: cotton_toolkit/cli.py:66
-msgid "配置文件路径。"
-msgstr "配置文件路径。"
-
-#: cotton_toolkit/cli.py:68
-msgid "启用详细日志输出。"
-msgstr "启用详细日志输出。"
-
-#: cotton_toolkit/cli.py:97
-msgid "生成配置文件的目录。"
-msgstr "生成配置文件的目录。"
-
-#: cotton_toolkit/cli.py:98
-msgid "覆盖已存在的配置文件。"
-msgstr "覆盖已存在的配置文件。"
-
-#: cotton_toolkit/cli.py:102
-msgid "正在于 '{}' 生成默认配置文件..."
-msgstr "正在于 '{}' 生成默认配置文件..."
-
-#: cotton_toolkit/cli.py:105
-msgid ""
-"默认文件生成成功:\n"
-"- {}\n"
-"- {}"
-msgstr ""
-"默认文件生成成功:\n"
-"- {}\n"
-"- {}"
-
-#: cotton_toolkit/cli.py:107
-msgid "生成部分或全部配置文件失败。"
-msgstr "生成部分或全部配置文件失败。"
-
-#: cotton_toolkit/cli.py:110
-msgid "要下载的基因组版本列表，以逗号分隔。默认为全部。"
-msgstr "要下载的基因组版本列表，以逗号分隔。默认为全部。"
-
-#: cotton_toolkit/cli.py:111
-msgid "即使文件已存在也强制重新下载。"
-msgstr "即使文件已存在也强制重新下载。"
-
-#: cotton_toolkit/cli.py:112
-msgid "为本次下载强制使用代理（覆盖配置）。"
-msgstr "为本次下载强制使用代理（覆盖配置）。"
-
-#: cotton_toolkit/cli.py:121
-msgid "准备下载..."
-msgstr "准备下载..."
-
-#: cotton_toolkit/cli.py:131
-msgid "源基因ID列表，以逗号分隔。"
-msgstr "源基因ID列表，以逗号分隔。"
-
-#: cotton_toolkit/cli.py:132
-msgid "源基因组区域, 格式如 'Chr01:1000-5000'。"
-msgstr "源基因组区域, 格式如 'Chr01:1000-5000'。"
-
-#: cotton_toolkit/cli.py:133 cotton_toolkit/cli.py:242
-msgid "源基因组版本ID。"
-msgstr "源基因组版本ID。"
-
-#: cotton_toolkit/cli.py:134 cotton_toolkit/cli.py:243
-msgid "目标基因组版本ID。"
-msgstr "目标基因组版本ID。"
-
-#: cotton_toolkit/cli.py:135 cotton_toolkit/cli.py:245
-msgid "保存输出CSV文件的路径。"
-msgstr "保存输出CSV文件的路径。"
-
-#: cotton_toolkit/cli.py:136
-msgid "为每个基因保留的最佳同源匹配数(0表示所有)。"
-msgstr "为每个基因保留的最佳同源匹配数(0表示所有)。"
-
-#: cotton_toolkit/cli.py:137
-msgid "E-value阈值。"
-msgstr "E-value阈值。"
-
-#: cotton_toolkit/cli.py:138
-msgid "序列一致性百分比(PID)阈值。"
-msgstr "序列一致性百分比(PID)阈值。"
-
-#: cotton_toolkit/cli.py:139
-msgid "BLAST得分(Score)阈值。"
-msgstr "BLAST得分(Score)阈值。"
-
-#: cotton_toolkit/cli.py:140
-msgid "禁用严格的同亚组/同源染色体匹配模式。"
-msgstr "禁用严格的同亚组/同源染色体匹配模式。"
-
-#: cotton_toolkit/cli.py:145 cotton_toolkit/cli.py:209
-msgid "错误: 必须提供 --genes 或 --region 参数之一。"
-msgstr "错误: 必须提供 --genes 或 --region 参数之一。"
-
-#: cotton_toolkit/cli.py:155
-msgid "区域格式无效。请使用 'chr:start-end' 格式。"
-msgstr "区域格式无效。请使用 'chr:start-end' 格式。"
-
-#: cotton_toolkit/cli.py:163
-msgid "警告: 严格模式已关闭，可能导致不同染色体的基因发生错配。"
-msgstr "警告: 严格模式已关闭，可能导致不同染色体的基因发生错配。"
-
-#: cotton_toolkit/cli.py:165
-msgid "准备同源映射..."
-msgstr "准备同源映射..."
-
-#: cotton_toolkit/cli.py:176
-msgid "输入的CSV文件。"
-msgstr "输入的CSV文件。"
-
-#: cotton_toolkit/cli.py:177
-msgid "要处理的源列名。"
-msgstr "要处理的源列名。"
-
-#: cotton_toolkit/cli.py:178
-msgid "要创建的新列名。"
-msgstr "要创建的新列名。"
-
-#: cotton_toolkit/cli.py:179
-msgid "指定输出CSV文件的完整路径。默认为自动生成。"
-msgstr "指定输出CSV文件的完整路径。默认为自动生成。"
-
-#: cotton_toolkit/cli.py:180
-msgid "AI任务类型。"
-msgstr "AI任务类型。"
-
-#: cotton_toolkit/cli.py:181
+#: cotton_toolkit/config/loader.py:64
 #, python-brace-format
-msgid "自定义提示词模板。必须包含 {text}。"
-msgstr "自定义提示词模板。必须包含 {text}。"
-
-#: cotton_toolkit/cli.py:182
-msgid "控制模型输出的随机性。"
-msgstr "控制模型输出的随机性。"
-
-#: cotton_toolkit/cli.py:183
-msgid "为本次AI任务强制使用代理（覆盖配置）。"
-msgstr "为本次AI任务强制使用代理（覆盖配置）。"
-
-#: cotton_toolkit/cli.py:191
-msgid "准备AI任务..."
-msgstr "准备AI任务..."
-
-#: cotton_toolkit/cli.py:201
-msgid "要查询的基因组版本ID。"
-msgstr "要查询的基因组版本ID。"
-
-#: cotton_toolkit/cli.py:202
-msgid "要查询的基因ID列表，以逗号分隔。"
-msgstr "要查询的基因ID列表，以逗号分隔。"
-
-#: cotton_toolkit/cli.py:203
-msgid "要查询的染色体区域，格式如 'A01:10000-20000'。"
-msgstr "要查询的染色体区域，格式如 'A01:10000-20000'。"
-
-#: cotton_toolkit/cli.py:204
-msgid "【可选】保存结果的CSV文件路径。不提供则自动命名。"
-msgstr "【可选】保存结果的CSV文件路径。不提供则自动命名。"
-
-#: cotton_toolkit/cli.py:211
-msgid "警告: 同时提供了 --genes 和 --region，将优先使用 --genes。"
-msgstr "警告: 同时提供了 --genes 和 --region，将优先使用 --genes。"
-
-#: cotton_toolkit/cli.py:222 cotton_toolkit/cli.py:251
-msgid "区域格式无效。请使用 'Chr:Start-End' 格式。"
-msgstr "区域格式无效。请使用 'Chr:Start-End' 格式。"
-
-#: cotton_toolkit/cli.py:224
-msgid "准备GFF查询..."
-msgstr "准备GFF查询..."
-
-#: cotton_toolkit/cli.py:237
-msgid "GFF查询任务成功完成。"
-msgstr "GFF查询任务成功完成。"
-
-#: cotton_toolkit/cli.py:239
-msgid "GFF查询任务失败或无结果。"
-msgstr "GFF查询任务失败或无结果。"
-
-#: cotton_toolkit/cli.py:244
-msgid "要转换的源基因组区域, 格式如 'Chr:Start-End' 或 'Chr:Start..End'。"
-msgstr "要转换的源基因组区域, 格式如 'Chr:Start-End' 或 'Chr:Start..End'。"
-
-#: cotton_toolkit/cli.py:253
-msgid "准备位点转换..."
-msgstr "准备位点转换..."
-
-#: cotton_toolkit/cli.py:267
-msgid "位点转换失败。请查看日志获取详情。"
-msgstr "位点转换失败。请查看日志获取详情。"
-
-#: cotton_toolkit/cli.py:271
-msgid "输入的Excel (.xlsx) 文件路径。"
-msgstr "输入的Excel (.xlsx) 文件路径。"
-
-#: cotton_toolkit/cli.py:272
-msgid "输出的CSV文件路径。"
-msgstr "输出的CSV文件路径。"
-
-#: cotton_toolkit/cli.py:276
-msgid "准备转换Excel..."
-msgstr "准备转换Excel..."
-
-#: cotton_toolkit/cli.py:285
-msgid "文件转换成功！"
-msgstr "文件转换成功！"
-
-#: cotton_toolkit/cli.py:287
-msgid "文件转换失败。"
-msgstr "文件转换失败。"
-
-#: cotton_toolkit/cli.py:296
-msgid "请输入至少一个基因ID。"
-msgstr "请输入至少一个基因ID。"
-
-#: cotton_toolkit/cli.py:300
-msgid "正在为 {} 个基因ID进行基因组鉴定..."
-msgstr "正在为 {} 个基因ID进行基因组鉴定..."
-
-#: cotton_toolkit/cli.py:304
-msgid "错误: 未能加载基因组源数据，无法进行鉴定。"
-msgstr "错误: 未能加载基因组源数据，无法进行鉴定。"
-
-#: cotton_toolkit/cli.py:314
-msgid "鉴定结果: {}"
-msgstr "鉴定结果: {}"
-
-#: cotton_toolkit/cli.py:316
-msgid "未能识别到匹配的基因组版本。"
-msgstr "未能识别到匹配的基因组版本。"
-
-#: cotton_toolkit/cli.py:319
-msgid "要注释的基因ID列表，以逗号分隔。或包含基因列表的文件路径。"
-msgstr "要注释的基因ID列表，以逗号分隔。或包含基因列表的文件路径。"
-
-#: cotton_toolkit/cli.py:320 cotton_toolkit/cli.py:362
-msgid "基因ID所属的基因组版本。"
-msgstr "基因ID所属的基因组版本。"
-
-#: cotton_toolkit/cli.py:321
-msgid "要执行的注释类型，以逗号分隔 (go,ipr,kegg_orthologs,kegg_pathways)。"
-msgstr "要执行的注释类型，以逗号分隔 (go,ipr,kegg_orthologs,kegg_pathways)。"
-
-#: cotton_toolkit/cli.py:322
-msgid "【可选】指定完整的输出CSV文件路径。"
-msgstr "【可选】指定完整的输出CSV文件路径。"
-
-#: cotton_toolkit/cli.py:330 cotton_toolkit/cli.py:376
-msgid "从文件读取基因列表: {}"
-msgstr "从文件读取基因列表: {}"
-
-#: cotton_toolkit/cli.py:333
-msgid "从命令行参数读取 {} 个基因ID。"
-msgstr "从命令行参数读取 {} 个基因ID。"
-
-#: cotton_toolkit/cli.py:336
-msgid "错误: 'genes' 参数既不是有效的文件路径，也不是基因ID列表。"
-msgstr "错误: 'genes' 参数既不是有效的文件路径，也不是基因ID列表。"
-
-#: cotton_toolkit/cli.py:340
-msgid "必须至少提供一种注释类型。"
-msgstr "必须至少提供一种注释类型。"
-
-#: cotton_toolkit/cli.py:344
-msgid "准备功能注释..."
-msgstr "准备功能注释..."
-
-#: cotton_toolkit/cli.py:361
-msgid "要进行富集分析的基因ID列表 (逗号分隔), 或包含基因列表的文件路径。"
-msgstr "要进行富集分析的基因ID列表 (逗号分隔), 或包含基因列表的文件路径。"
-
-#: cotton_toolkit/cli.py:363
-msgid "富集分析的类型。"
-msgstr "富集分析的类型。"
-
-#: cotton_toolkit/cli.py:364
-msgid "富集结果和图表的输出目录。"
-msgstr "富集结果和图表的输出目录。"
-
-#: cotton_toolkit/cli.py:365
-msgid "要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"
-msgstr "要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"
-
-#: cotton_toolkit/cli.py:366
-msgid "在图表中显示的前N个富集条目。"
-msgstr "在图表中显示的前N个富集条目。"
-
-#: cotton_toolkit/cli.py:367
-msgid "将转录本ID合并为其父基因ID进行分析。"
-msgstr "将转录本ID合并为其父基因ID进行分析。"
-
-#: cotton_toolkit/cli.py:380
-msgid "读取基因文件失败: {}"
-msgstr "读取基因文件失败: {}"
-
-#: cotton_toolkit/cli.py:385
-msgid "错误: 未提供任何有效的基因ID。"
-msgstr "错误: 未提供任何有效的基因ID。"
-
-#: cotton_toolkit/cli.py:387
-msgid "共找到 {} 个唯一基因ID用于分析。"
-msgstr "共找到 {} 个唯一基因ID用于分析。"
-
-#: cotton_toolkit/cli.py:390
-msgid "准备富集分析..."
-msgstr "准备富集分析..."
-
-#: cotton_toolkit/cli.py:404
-msgid "富集分析流程执行完毕。结果已保存至: {}"
-msgstr "富集分析流程执行完毕。结果已保存至: {}"
-
-#: cotton_toolkit/cli.py:413
-msgid "错误: 未能加载基因组源数据。"
-msgstr "错误: 未能加载基因组源数据。"
-
-#: cotton_toolkit/cli.py:432
-msgid "准备预处理..."
-msgstr "准备预处理..."
-
-#: cotton_toolkit/cli.py:441
-msgid ""
-"要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"
-msgstr ""
-"要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务商。"
-
-#: cotton_toolkit/cli.py:447
-msgid "正在测试服务商: {}..."
-msgstr "正在测试服务商: {}..."
-
-#: cotton_toolkit/cli.py:451
-msgid "错误: 在配置文件中未找到服务商 '{}' 的配置。"
-msgstr "错误: 在配置文件中未找到服务商 '{}' 的配置。"
-
-#: cotton_toolkit/cli.py:483
-msgid "友好棉花基因组工具包 (FCGT)"
-msgstr "友好棉花基因组工具包 (FCGT)"
-
-#: cotton_toolkit/cli.py:485
-msgid "本软件遵守 Apache-2.0 license 开源协议"
-msgstr "本软件遵守 Apache-2.0 license 开源协议"
-
-#: cotton_toolkit/cli.py:489
-msgid "软件简介"
-msgstr "软件简介"
-
-#: cotton_toolkit/cli.py:491
-msgid ""
-"FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计"
-"的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面"
-"（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即"
-"用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因"
-"映射（Liftover）、功能注释、富集分析和AI助手等。"
-msgstr ""
-"FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生设计"
-"的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界面"
-"（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可“开箱即"
-"用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间的同源基因"
-"映射（Liftover）、功能注释、富集分析和AI助手等。"
-
-#: cotton_toolkit/cli.py:496
-msgid "核心亮点"
-msgstr "核心亮点"
-
-#: cotton_toolkit/cli.py:497
-#, python-brace-format
-msgid "  • {feature}: 图形界面优先，无需复杂配置，多语言支持。"
-msgstr "  • {feature}: 图形界面优先，无需复杂配置，多语言支持。"
-
-#: cotton_toolkit/cli.py:498
-msgid "极致友好，开箱即用"
-msgstr "极致友好，开箱即用"
-
-#: cotton_toolkit/cli.py:499
-#, python-brace-format
-msgid "  • {feature}: 多线程加速，支持复杂的批量任务。"
-msgstr "  • {feature}: 多线程加速，支持复杂的批量任务。"
-
-#: cotton_toolkit/cli.py:500
-msgid "高效的自动化与批量处理"
-msgstr "高效的自动化与批量处理"
-
-#: cotton_toolkit/cli.py:501
-#, python-brace-format
-msgid "  • {feature}: 棉花版 Liftover，一站式数据工具，标准化数据下载。"
-msgstr "  • {feature}: 棉花版 Liftover，一站式数据工具，标准化数据下载。"
-
-#: cotton_toolkit/cli.py:502
-msgid "精准的基因组工具集"
-msgstr "精准的基因组工具集"
-
-#: cotton_toolkit/cli.py:503
-#, python-brace-format
-msgid "  • {feature}: 为Windows/macOS提供预编译可执行文件，随处可用。"
-msgstr "  • {feature}: 为Windows/macOS提供预编译可执行文件，随处可用。"
-
-#: cotton_toolkit/cli.py:504
-msgid "跨平台，易于分发"
-msgstr "跨平台，易于分发"
-
-#: cotton_toolkit/cli.py:508
-msgid "获取更多信息"
-msgstr "获取更多信息"
-
-#: cotton_toolkit/cli.py:509
-msgid "项目开源地址: "
-msgstr "项目开源地址: "
-
-#: cotton_toolkit/cli.py:513
-msgid "数据来源与引文"
-msgstr "数据来源与引文"
-
-#: cotton_toolkit/cli.py:514 ui/event_handler.py:557
-msgid "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"
-msgstr "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"
-
-#: cotton_toolkit/cli.py:516
-msgid "CottonGen 主要引文:"
-msgstr "CottonGen 主要引文:"
-
-#: cotton_toolkit/cli.py:522 ui/event_handler.py:567
-msgid "基因组引用文献:"
-msgstr "基因组引用文献:"
-
-#: cotton_toolkit/cli.py:553
-msgid "致谢"
-msgstr "致谢"
-
-#: cotton_toolkit/cli.py:555
-msgid ""
-"感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI "
-"协助开发，功能持续迭代，欢迎学术交流和贡献。"
-msgstr ""
-"感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini AI "
-"协助开发，功能持续迭代，欢迎学术交流和贡献。"
-
-#: cotton_toolkit/config/loader.py:70
 msgid "配置文件已成功保存到: {}"
 msgstr "配置文件已成功保存到: {}"
 
-#: cotton_toolkit/config/loader.py:73
+#: cotton_toolkit/config/loader.py:67
+#, python-brace-format
 msgid "保存配置文件到 '{}' 时发生错误: {}"
 msgstr "保存配置文件到 '{}' 时发生错误: {}"
 
-#: cotton_toolkit/config/loader.py:80
+#: cotton_toolkit/config/loader.py:74
+#, python-brace-format
 msgid "正在从 '{}' 加载主配置文件..."
 msgstr "正在从 '{}' 加载主配置文件..."
 
-#: cotton_toolkit/config/loader.py:90
+#: cotton_toolkit/config/loader.py:84
 msgid "主配置文件加载并验证成功。"
 msgstr "主配置文件加载并验证成功。"
 
-#: cotton_toolkit/config/loader.py:93
+#: cotton_toolkit/config/loader.py:87
+#, python-brace-format
 msgid "配置文件未找到: {}"
 msgstr "配置文件未找到: {}"
 
-#: cotton_toolkit/config/loader.py:96
+#: cotton_toolkit/config/loader.py:90
+#, python-brace-format
 msgid "解析YAML文件时发生错误 '{}': {}"
 msgstr "解析YAML文件时发生错误 '{}': {}"
 
-#: cotton_toolkit/config/loader.py:99
+#: cotton_toolkit/config/loader.py:93
+#, python-brace-format
 msgid ""
 "配置文件验证失败 '{}':\n"
 "{}"
@@ -513,48 +76,68 @@ msgstr ""
 "配置文件验证失败 '{}':\n"
 "{}"
 
-#: cotton_toolkit/config/loader.py:102
+#: cotton_toolkit/config/loader.py:96
+#, python-brace-format
 msgid "加载配置文件时发生未知错误 '{}': {}"
 msgstr "加载配置文件时发生未知错误 '{}': {}"
 
 #: cotton_toolkit/config/loader.py:110
-msgid "警告: 配置文件中未指定基因组源文件。"
-msgstr "警告: 配置文件中未指定基因组源文件。"
+msgid "主配置对象无效或缺少必需的路径信息 'config_file_abs_path_'。"
+msgstr "主配置对象无效或缺少必需的路径信息 'config_file_abs_path_'。"
 
-#: cotton_toolkit/config/loader.py:117
-msgid "警告: 基因组源文件未找到: '{}'"
-msgstr "警告: 基因组源文件未找到: '{}'"
+#: cotton_toolkit/config/loader.py:120
+msgid "从缓存加载基因组源数据。"
+msgstr "从缓存加载基因组源数据。"
 
-#: cotton_toolkit/config/loader.py:140
+#: cotton_toolkit/config/loader.py:125
+#, python-brace-format
+msgid "基因组来源文件未找到: {}"
+msgstr "基因组来源文件未找到: {}"
+
+#: cotton_toolkit/config/loader.py:133
+#, python-brace-format
+msgid "正在从 '{}' 加载基因组源..."
+msgstr "正在从 '{}' 加载基因组源..."
+
+#: cotton_toolkit/config/loader.py:148
+#, python-brace-format
 msgid "已成功加载 {} 个基因组源。"
 msgstr "已成功加载 {} 个基因组源。"
 
-#: cotton_toolkit/config/loader.py:143
-msgid ""
-"加载基因组源文件时验证出错 '{}':\n"
-"{}"
-msgstr ""
-"加载基因组源文件时验证出错 '{}':\n"
-"{}"
+#: cotton_toolkit/config/loader.py:157
+#, python-brace-format
+msgid "解析或验证基因组来源文件 '{}' 失败: {}"
+msgstr "解析或验证基因组来源文件 '{}' 失败: {}"
 
-#: cotton_toolkit/config/loader.py:146
-#, python-format
-msgid "加载基因组源文件时发生错误 '%s': %s"
-msgstr "加载基因组源文件时发生错误 '%s': %s"
+#: cotton_toolkit/config/loader.py:159
+#, python-brace-format
+msgid "加载基因组来源文件 '{}' 时发生未知错误: {}"
+msgstr "加载基因组来源文件 '{}' 时发生未知错误: {}"
 
-#: cotton_toolkit/config/loader.py:160
+#: cotton_toolkit/config/loader.py:177
 msgid "一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"
 msgstr "一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"
 
-#: cotton_toolkit/config/loader.py:178
+#: cotton_toolkit/config/loader.py:193
+#, python-brace-format
 msgid "生成默认配置文件时发生错误: {}"
 msgstr "生成默认配置文件时发生错误: {}"
 
-#: cotton_toolkit/core/ai_wrapper.py:65
+#: cotton_toolkit/core/ai_wrapper.py:66 cotton_toolkit/core/ai_wrapper.py:67
 msgid "AI服务商、API Key和模型名称不能为空。"
 msgstr "AI服务商、API Key和模型名称不能为空。"
 
-#: cotton_toolkit/core/ai_wrapper.py:77 cotton_toolkit/core/ai_wrapper.py:161
+#: cotton_toolkit/core/ai_wrapper.py:76
+#, python-brace-format
+msgid "正在初始化AI服务: {}"
+msgstr "正在初始化AI服务: {}"
+
+#: cotton_toolkit/core/ai_wrapper.py:80 cotton_toolkit/core/ai_wrapper.py:168
+#: cotton_toolkit/core/ai_wrapper.py:225
+msgid "缺少 'google-generativeai' 库。"
+msgstr "缺少 'google-generativeai' 库。"
+
+#: cotton_toolkit/core/ai_wrapper.py:81 cotton_toolkit/core/ai_wrapper.py:169
 msgid ""
 "缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安"
 "装。"
@@ -562,1280 +145,1815 @@ msgstr ""
 "缺少 'google-generativeai' 库，请运行 'pip install google-generativeai' 安"
 "装。"
 
-#: cotton_toolkit/core/ai_wrapper.py:95 cotton_toolkit/core/ai_wrapper.py:183
+#: cotton_toolkit/core/ai_wrapper.py:99 cotton_toolkit/core/ai_wrapper.py:100
+#: cotton_toolkit/core/ai_wrapper.py:191 cotton_toolkit/core/ai_wrapper.py:192
 msgid "不支持的服务商或缺少Base URL:"
 msgstr "不支持的服务商或缺少Base URL:"
 
-#: cotton_toolkit/core/ai_wrapper.py:132
+#: cotton_toolkit/core/ai_wrapper.py:134
 msgid "AI API请求失败 (requests):"
 msgstr "AI API请求失败 (requests):"
 
-#: cotton_toolkit/core/ai_wrapper.py:137
+#: cotton_toolkit/core/ai_wrapper.py:139
 msgid "服务商响应:"
 msgstr "服务商响应:"
 
-#: cotton_toolkit/core/ai_wrapper.py:139
+#: cotton_toolkit/core/ai_wrapper.py:141
 msgid "服务商响应 (非JSON):"
 msgstr "服务商响应 (非JSON):"
 
-#: cotton_toolkit/core/ai_wrapper.py:143
+#: cotton_toolkit/core/ai_wrapper.py:146
 msgid "AI API处理时发生错误"
 msgstr "AI API处理时发生错误"
 
-#: cotton_toolkit/core/ai_wrapper.py:157
+#: cotton_toolkit/core/ai_wrapper.py:160
+msgid "正在获取AI模型列表..."
+msgstr "正在获取AI模型列表..."
+
+#: cotton_toolkit/core/ai_wrapper.py:162 cotton_toolkit/core/ai_wrapper.py:163
 msgid "API Key不能为空。"
 msgstr "API Key不能为空。"
 
-#: cotton_toolkit/core/ai_wrapper.py:204
+#: cotton_toolkit/core/ai_wrapper.py:202
+#, python-brace-format
+msgid "获取模型列表失败: {}"
+msgstr "获取模型列表失败: {}"
+
+#: cotton_toolkit/core/ai_wrapper.py:215
+msgid "正在测试AI连接..."
+msgstr "正在测试AI连接..."
+
+#: cotton_toolkit/core/ai_wrapper.py:217
 msgid "API Key 未配置或无效。"
 msgstr "API Key 未配置或无效。"
 
-#: cotton_toolkit/core/ai_wrapper.py:206
+#: cotton_toolkit/core/ai_wrapper.py:219
 msgid "模型名称不能为空。"
 msgstr "模型名称不能为空。"
 
-#: cotton_toolkit/core/ai_wrapper.py:212
-msgid "缺少 'google-generativeai' 库。"
-msgstr "缺少 'google-generativeai' 库。"
-
-#: cotton_toolkit/core/ai_wrapper.py:217
+#: cotton_toolkit/core/ai_wrapper.py:230 cotton_toolkit/core/ai_wrapper.py:231
 msgid "Google Gemini SDK 连接成功！"
 msgstr "Google Gemini SDK 连接成功！"
 
-#: cotton_toolkit/core/ai_wrapper.py:219 cotton_toolkit/core/ai_wrapper.py:226
+#: cotton_toolkit/core/ai_wrapper.py:233 cotton_toolkit/core/ai_wrapper.py:234
+#: cotton_toolkit/core/ai_wrapper.py:242 cotton_toolkit/core/ai_wrapper.py:243
 msgid "连接异常：收到了空响应。"
 msgstr "连接异常：收到了空响应。"
 
-#: cotton_toolkit/core/ai_wrapper.py:224
+#: cotton_toolkit/core/ai_wrapper.py:239 cotton_toolkit/core/ai_wrapper.py:240
 msgid "连接成功！配置有效。"
 msgstr "连接成功！配置有效。"
 
-#: cotton_toolkit/core/ai_wrapper.py:229
+#: cotton_toolkit/core/ai_wrapper.py:246
 msgid "连接失败:"
 msgstr "连接失败:"
 
-#: cotton_toolkit/core/ai_wrapper.py:229
+#: cotton_toolkit/core/ai_wrapper.py:246
 msgid "详情:"
 msgstr "详情:"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:47
-msgid "INFO: Starting intelligent conversion for: {}"
-msgstr "信息：正在为 {} 启动智能转换"
-
 #: cotton_toolkit/core/convertXlsx2csv.py:50
-msgid "INFO: Conversion cancelled before starting."
-msgstr "信息: 转换在开始前已取消。"
+#, python-brace-format
+msgid "Starting intelligent conversion for: {}"
+msgstr "开始智能转换：{}"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:69
-msgid "DEBUG: Header found in sheet '{}' at row {}."
-msgstr "调试: Header found in sheet '{}' at row {}."
+#: cotton_toolkit/core/convertXlsx2csv.py:53
+msgid "Conversion cancelled before starting."
+msgstr "转换在开始前已取消"
+
+#: cotton_toolkit/core/convertXlsx2csv.py:63
+msgid "Conversion cancelled while processing sheets."
+msgstr "转换在处理工作表时已取消"
+
+#: cotton_toolkit/core/convertXlsx2csv.py:72
+#, python-brace-format
+msgid "Header found in sheet '{}' at row {}."
+msgstr "在表格“{}”的第{}行找到标题。"
 
 #: cotton_toolkit/core/convertXlsx2csv.py:77
-msgid "WARNING: No valid header found in sheet '{}'. Skipping this sheet."
-msgstr "警告：工作表 '{}' 中未找到有效的表头。跳过此工作表。"
+#, python-brace-format
+msgid "No valid header found in sheet '{}'. Skipping this sheet."
+msgstr "在工作表 '{}' 中未找到有效标题。跳过此工作表。"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:80
-msgid "ERROR: Failed to process sheet '{}'. Reason: {}"
-msgstr "错误：处理工作表“{}”失败。原因：{}"
+#: cotton_toolkit/core/convertXlsx2csv.py:79
+#, python-brace-format
+msgid "Failed to process sheet '{}'. Reason: {}"
+msgstr "处理工作表“{}”失败。原因：{}"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:83
-msgid "ERROR: No data could be extracted from any sheet in the Excel file."
-msgstr "错误：无法从 Excel 文件的任何工作表中提取数据。"
+#: cotton_toolkit/core/convertXlsx2csv.py:82
+msgid "No data could be extracted from any sheet in the Excel file."
+msgstr "无法从Excel文件的任何工作表中提取数据。"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:92
-msgid "INFO: Conversion cancelled before writing file."
-msgstr "信息：文件写入前已取消转换。"
+#: cotton_toolkit/core/convertXlsx2csv.py:89
+msgid "Conversion cancelled before writing file."
+msgstr "转换在写入文件前已取消"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:96
-msgid "SUCCESS: Successfully converted and saved to: {}"
-msgstr "成功：已成功转换并保存至：{}"
+#: cotton_toolkit/core/convertXlsx2csv.py:93
+#, python-brace-format
+msgid "Successfully converted and saved to: {}"
+msgstr "成功转换并保存到：{}"
 
-#: cotton_toolkit/core/convertXlsx2csv.py:100
-msgid ""
-"ERROR: A critical error occurred during Excel to CSV conversion. Reason: {}"
-msgstr "错误：Excel 转换为 CSV 时发生严重错误。原因：{}"
+#: cotton_toolkit/core/convertXlsx2csv.py:97
+#, python-brace-format
+msgid "A critical error occurred during Excel to CSV conversion. Reason: {}"
+msgstr "Excel 转 CSV 时发生严重错误。原因：{}"
 
-#: cotton_toolkit/core/downloader.py:37
-msgid "DEBUG: Successfully decompressed '{}' to temporary file."
-msgstr "调试：成功将 '{}' 解压到临时文件中。"
+#: cotton_toolkit/core/data_access.py:45 cotton_toolkit/core/data_access.py:188
+#: cotton_toolkit/core/data_access.py:252
+#: cotton_toolkit/utils/gene_utils.py:210
+msgid "错误: 预处理数据库 'genomes.db' 未找到。"
+msgstr "错误: 预处理数据库 'genomes.db' 未找到。"
 
-#: cotton_toolkit/core/downloader.py:40
-msgid "ERROR: Failed to decompress file '{}': {}"
-msgstr "错误：解压文件“{}”失败：{}"
+#: cotton_toolkit/core/data_access.py:67 cotton_toolkit/core/data_access.py:204
+#: cotton_toolkit/core/data_access.py:268
+#, python-brace-format
+msgid "错误: 在数据库中找不到表 '{}'。"
+msgstr "错误: 在数据库中找不到表 '{}'。"
+
+#: cotton_toolkit/core/data_access.py:80
+#, python-brace-format
+msgid "查询序列时发生数据库错误: {}"
+msgstr "查询序列时发生数据库错误: {}"
+
+#: cotton_toolkit/core/data_access.py:97
+#, python-brace-format
+msgid "警告: 在数据库中未能找到 {} 个基因的序列: {}"
+msgstr "警告: 在数据库中未能找到 {} 个基因的序列: {}"
+
+#: cotton_toolkit/core/data_access.py:117
+#, python-brace-format
+msgid "批量获取序列时发生数据库错误: {}"
+msgstr "批量获取序列时发生数据库错误: {}"
+
+#: cotton_toolkit/core/data_access.py:145
+#, python-brace-format
+msgid "Annotation file not found at: {}"
+msgstr "在以下位置找不到标注文件：{}"
+
+#: cotton_toolkit/core/data_access.py:153
+#, python-brace-format
+msgid "Annotation file '{}' is empty."
+msgstr "注解文件 '{}' 为空。"
+
+#: cotton_toolkit/core/data_access.py:169
+#, python-brace-format
+msgid "Failed to load and process standardized file {}. Reason: {}"
+msgstr "加载并处理标准化文件{}失败。原因：{}"
+
+#: cotton_toolkit/core/data_access.py:194
+#: cotton_toolkit/core/data_access.py:258
+#, python-brace-format
+msgid "错误: 基因组 '{}' 的配置中未定义 'homology_ath_url'。"
+msgstr "错误: 基因组 '{}' 的配置中未定义 'homology_ath_url'。"
+
+#: cotton_toolkit/core/data_access.py:230
+#, python-brace-format
+msgid "查询同源数据库时出错: {}"
+msgstr "查询同源数据库时出错: {}"
+
+#: cotton_toolkit/core/data_access.py:287
+msgid "无法在数据库中匹配提供的拟南芥ID样本，将使用原始ID进行查询。"
+msgstr "无法在数据库中匹配提供的拟南芥ID样本，将使用原始ID进行查询。"
+
+#: cotton_toolkit/core/data_access.py:290
+msgid "智能解析：探测到数据库匹配拟南芥转录本ID。"
+msgstr "智能解析：探测到数据库匹配拟南芥转录本ID。"
+
+#: cotton_toolkit/core/data_access.py:293
+msgid "智能解析：探测到数据库匹配拟南芥基础基因ID。"
+msgstr "智能解析：探测到数据库匹配拟南芥基础基因ID。"
+
+#: cotton_toolkit/core/downloader.py:42
+#, python-brace-format
+msgid "任务在下载 {} 之前被取消。"
+msgstr "任务在下载 {} 之前被取消。"
 
 #: cotton_toolkit/core/downloader.py:53
-msgid "文件已存在: {} (跳过下载)"
-msgstr "文件已存在: {} (跳过下载)"
+#, python-brace-format
+msgid "错误: 创建目录 {} 失败。原因: {}"
+msgstr "错误: 创建目录 {} 失败。原因: {}"
 
-#: cotton_toolkit/core/downloader.py:60
-msgid "已创建目录: {}"
-msgstr "已创建目录: {}"
+#: cotton_toolkit/core/downloader.py:61
+#, python-brace-format
+msgid "文件已存在，跳过下载: {}"
+msgstr "文件已存在，跳过下载: {}"
 
-#: cotton_toolkit/core/downloader.py:62
-msgid "创建目录 {} 失败: {}"
-msgstr "创建目录 {} 失败: {}"
+#: cotton_toolkit/core/downloader.py:66
+#, python-brace-format
+msgid "开始下载: {}..."
+msgstr "开始下载：{}..."
 
-#: cotton_toolkit/core/downloader.py:68
-msgid "开始下载: {} -> {} (代理: {})"
-msgstr "开始下载: {} -> {} (代理: {})"
+#: cotton_toolkit/core/downloader.py:107
+#, python-brace-format
+msgid "下载 {} 的任务被用户取消。"
+msgstr "下载 {} 的任务被用户取消。"
 
-#: cotton_toolkit/core/downloader.py:68
-msgid "系统默认/无"
-msgstr "系统默认/无"
+#: cotton_toolkit/core/downloader.py:117
+#, python-brace-format
+msgid "下载的文件 {} 大小小于预期，可能不完整。"
+msgstr "下载的文件 {} 大小小于预期，可能不完整。"
 
-#: cotton_toolkit/core/downloader.py:89
-msgid "错误: 下载的文件 {} 大小 ({}) 与预期 ({}) 不符。可能下载不完整。"
-msgstr "错误: 下载的文件 {} 大小 ({}) 与预期 ({}) 不符。可能下载不完整。"
+#: cotton_toolkit/core/downloader.py:120
+#, python-brace-format
+msgid "文件 {} 下载成功。"
+msgstr "文件 {} 下载成功。"
 
-#: cotton_toolkit/core/downloader.py:96
-msgid "网络请求错误导致下载失败: {}. URL: {}"
-msgstr "网络请求错误导致下载失败: {}. URL: {}"
+#: cotton_toolkit/core/downloader.py:125
+#, python-brace-format
+msgid "下载 {} (来自 {}) 失败。网络错误: {}"
+msgstr "下载 {} (来自 {}) 失败。网络错误: {}"
 
-#: cotton_toolkit/core/downloader.py:98
-msgid "下载 {} 时发生未知错误:"
-msgstr "下载 {} 时发生未知错误:"
-
-#: cotton_toolkit/core/downloader.py:103
-msgid "已删除不完整的下载文件: {}"
-msgstr "已删除不完整的下载文件: {}"
-
-#: cotton_toolkit/core/downloader.py:105
-msgid "删除不完整文件 {} 失败: {}"
-msgstr "删除不完整文件 {} 失败: {}"
-
-#: cotton_toolkit/core/downloader.py:124
-msgid "INFO: Task cancelled before downloading {}."
-msgstr "信息：任务在下载{}前已取消。"
-
-#: cotton_toolkit/core/downloader.py:131
-msgid ""
-"WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back to "
-"species name for directory."
-msgstr "警告：{}的 GenomeSourceItem 缺少'version_id'。将使用物种名称作为目录。"
-
-#: cotton_toolkit/core/downloader.py:139
-msgid "ERROR: Failed to create directory {}. Reason: {}"
-msgstr "错误：创建目录{}失败。原因：{}"
-
-#: cotton_toolkit/core/downloader.py:146
-msgid "INFO: 文件已存在，跳过下载: {}"
-msgstr "信息: 文件已存在，跳过下载: {}"
-
-#: cotton_toolkit/core/downloader.py:150
-msgid "INFO: 开始下载: {}..."
-msgstr "信息: 开始下载: {}..."
-
-#: cotton_toolkit/core/downloader.py:163
-msgid "INFO: 对应的CSV文件已存在，跳过转换: {}"
-msgstr "信息: 对应的CSV文件已存在，跳过转换: {}"
-
-#: cotton_toolkit/core/downloader.py:166
-msgid "INFO: 尝试将 {} 转换为 CSV..."
-msgstr "信息: 尝试将 {} 转换为 CSV..."
-
-#: cotton_toolkit/core/downloader.py:172
-msgid "ERROR: 转换Excel到CSV时发生错误: {}"
-msgstr "错误: 转换Excel到CSV时发生错误: {}"
-
-#: cotton_toolkit/core/downloader.py:182
-msgid "ERROR: 删除临时文件 {} 失败: {}"
-msgstr "错误: 删除临时文件 {} 失败: {}"
-
-#: cotton_toolkit/core/downloader.py:209
-msgid "INFO: Download for {} was cancelled by user."
-msgstr "信息: 用户已取消{}的下载。"
-
-#: cotton_toolkit/core/downloader.py:217
-msgid ""
-"WARNING: Downloaded size for {} is less than expected. The file might be "
-"incomplete."
-msgstr "警告：{}的下载大小小于预期值，文件可能不完整。"
-
-#: cotton_toolkit/core/downloader.py:224
-msgid "INFO: Download for {} was cancelled during request setup."
-msgstr "信息：{}的下载在请求设置期间被取消。"
-
-#: cotton_toolkit/core/downloader.py:226
-msgid "ERROR: Failed to download {} from {}. Network error: {}"
-msgstr "错误：无法从{}下载{}。网络错误：{}"
-
-#: cotton_toolkit/core/downloader.py:230
-msgid "ERROR: An unexpected error occurred while downloading {}: {}"
-msgstr "错误：下载{}时发生意外错误：{}"
+#: cotton_toolkit/core/downloader.py:129
+#, python-brace-format
+msgid "下载 {} 时发生未知错误: {}"
+msgstr "下载 {} 时发生未知错误: {}"
 
 #: cotton_toolkit/core/file_normalizer.py:33
+#: cotton_toolkit/utils/file_utils.py:34
+#, python-brace-format
 msgid "输入文件不存在: {}"
 msgstr "输入文件不存在: {}"
 
 #: cotton_toolkit/core/file_normalizer.py:40
+#, python-brace-format
 msgid "正在尝试将 '{}' 标准化为DataFrame..."
 msgstr "正在尝试将 '{}' 标准化为DataFrame..."
 
-#: cotton_toolkit/core/file_normalizer.py:65
+#: cotton_toolkit/core/file_normalizer.py:66
+#: cotton_toolkit/core/file_normalizer.py:70
+#: cotton_toolkit/core/file_normalizer.py:74
+#, python-brace-format
 msgid "检测到 TXT 文件的分隔符为: '{}'"
 msgstr "检测到 TXT 文件的分隔符为: '{}'"
 
-#: cotton_toolkit/core/file_normalizer.py:71
+#: cotton_toolkit/core/file_normalizer.py:77
+msgid "无法自动检测 TXT 文件的分隔符，尝试使用默认空格。"
+msgstr "无法自动检测 TXT 文件的分隔符，尝试使用默认空格。"
+
+#: cotton_toolkit/core/file_normalizer.py:87
+#, python-brace-format
 msgid "不支持的文件格式或无法识别的文件: {}"
 msgstr "不支持的文件格式或无法识别的文件: {}"
 
-#: cotton_toolkit/core/file_normalizer.py:79
+#: cotton_toolkit/core/file_normalizer.py:114
+msgid "检测到无表头，已使用预设表头 'Query', 'Match', 'Description'。"
+msgstr "检测到无表头，已使用预设表头 'Query', 'Match', 'Description'。"
+
+#: cotton_toolkit/core/file_normalizer.py:116
+#, python-brace-format
 msgid "成功将 '{}' 加载到DataFrame。"
 msgstr "成功将 '{}' 加载到DataFrame。"
 
-#: cotton_toolkit/core/file_normalizer.py:83
+#: cotton_toolkit/core/file_normalizer.py:119
+msgid "正在检查并拆分包含 '|' 的单元格..."
+msgstr "正在检查并拆分包含 '|' 的单元格..."
+
+#: cotton_toolkit/core/file_normalizer.py:122
+#, python-brace-format
+msgid "发现列 '{}' 包含 '|' 分隔符，正在执行拆分..."
+msgstr "发现列 '{}' 包含 '|' 分隔符，正在执行拆分..."
+
+#: cotton_toolkit/core/file_normalizer.py:126
+#, python-brace-format
+msgid "列 '{}' 拆分成功，DataFrame已更新。"
+msgstr "列 '{}' 拆分成功，DataFrame已更新。"
+
+#: cotton_toolkit/core/file_normalizer.py:128
+#, python-brace-format
+msgid "处理列 '{}' 时拆分失败: {}"
+msgstr "处理列 '{}' 时拆分失败: {}"
+
+#: cotton_toolkit/core/file_normalizer.py:133
+#, python-brace-format
 msgid "处理文件 '{}' 时发生错误: {}"
 msgstr "处理文件 '{}' 时发生错误: {}"
 
-#: cotton_toolkit/core/file_normalizer.py:104
+#: cotton_toolkit/core/file_normalizer.py:157
+#, python-brace-format
 msgid "已成功将文件转换为CSV格式: {}"
 msgstr "已成功将文件转换为CSV格式: {}"
 
-#: cotton_toolkit/core/file_normalizer.py:107
+#: cotton_toolkit/core/file_normalizer.py:160
+#, python-brace-format
 msgid "无法将DataFrame写入CSV文件 '{}': {}"
 msgstr "无法将DataFrame写入CSV文件 '{}': {}"
 
-#: cotton_toolkit/core/gff_parser.py:33
+#: cotton_toolkit/core/gff_parser.py:48
+#, python-brace-format
+msgid "GFF查询工作线程发生错误: {}"
+msgstr "GFF查询工作线程发生错误: {}"
+
+#: cotton_toolkit/core/gff_parser.py:66
+#, python-brace-format
+msgid "文件扫描完毕，共 {} 行。"
+msgstr "文件扫描完毕，共 {} 行。"
+
+#: cotton_toolkit/core/gff_parser.py:87
+msgid "正在解析基因..."
+msgstr "正在解析基因..."
+
+#: cotton_toolkit/core/gff_parser.py:101
+#, python-brace-format
 msgid "精确匹配成功: '{}' -> '{}'"
 msgstr "精确匹配成功: '{}' -> '{}'"
 
-#: cotton_toolkit/core/gff_parser.py:40
+#: cotton_toolkit/core/gff_parser.py:108
+#, python-brace-format
 msgid "模糊匹配成功: '{}' -> '{}'"
 msgstr "模糊匹配成功: '{}' -> '{}'"
 
-#: cotton_toolkit/core/gff_parser.py:44
+#: cotton_toolkit/core/gff_parser.py:113
+#, python-brace-format
 msgid "警告: 发现多个可能的匹配项 for '{}': {}。将使用第一个: {}"
 msgstr "警告: 发现多个可能的匹配项 for '{}': {}。将使用第一个: {}"
 
-#: cotton_toolkit/core/gff_parser.py:48
+#: cotton_toolkit/core/gff_parser.py:116
+#, python-brace-format
 msgid "错误: 无法在数据库中找到与 '{}' 匹配的序列ID。"
 msgstr "错误: 无法在数据库中找到与 '{}' 匹配的序列ID。"
 
-#: cotton_toolkit/core/gff_parser.py:60
+#: cotton_toolkit/core/gff_parser.py:128
+#, python-brace-format
 msgid "Opening {}{}file for parsing: {}"
-msgstr "正在打开 {}{} 文件进行解析：{}"
+msgstr "正在打开{}{}文件进行解析：{}"
 
-#: cotton_toolkit/core/gff_parser.py:72
+#: cotton_toolkit/core/gff_parser.py:140
+#, python-brace-format
 msgid "Skipping malformed GFF line: {} | Error: {}"
 msgstr "跳过格式错误的 GFF 行：{} | 错误：{}"
 
-#: cotton_toolkit/core/gff_parser.py:87
-msgid "数据库 '{}' 已存在且有效，直接使用。"
-msgstr "数据库 '{}' 已存在且有效，直接使用。"
+#: cotton_toolkit/core/gff_parser.py:165
+msgid "数据库已是最新。"
+msgstr "数据库已是最新。"
 
-#: cotton_toolkit/core/gff_parser.py:94
-msgid "正在创建GFF数据库(仅包含基因)：{} 从 {}"
-msgstr "正在创建GFF数据库(仅包含基因)：{} 从 {}"
+#: cotton_toolkit/core/gff_parser.py:168
+#, python-brace-format
+msgid "正在创建或更新GFF数据库(仅包含基因)：{} 从 {}"
+msgstr "正在创建或更新GFF数据库（仅包含基因）：{} 从 {}"
 
-#: cotton_toolkit/core/gff_parser.py:117
+#: cotton_toolkit/core/gff_parser.py:170
+msgid "开始创建GFF数据库..."
+msgstr "开始创建GFF数据库..."
+
+#: cotton_toolkit/core/gff_parser.py:187
+msgid "警告：GFF文件为空。"
+msgstr "警告：GFF文件为空。"
+
+#: cotton_toolkit/core/gff_parser.py:201
+msgid "数据库结构创建完毕..."
+msgstr "数据库结构创建完毕..."
+
+#: cotton_toolkit/core/gff_parser.py:203
+#, python-brace-format
 msgid "成功创建GFF数据库: {}"
 msgstr "成功创建GFF数据库: {}"
 
-#: cotton_toolkit/core/gff_parser.py:121
+#: cotton_toolkit/core/gff_parser.py:204
+msgid "GFF数据库处理完成。"
+msgstr "GFF数据库处理完成。"
+
+#: cotton_toolkit/core/gff_parser.py:208
+#, python-brace-format
 msgid "错误: 创建GFF数据库 '{}' 失败: {}"
 msgstr "错误: 创建GFF数据库 '{}' 失败: {}"
 
-#: cotton_toolkit/core/gff_parser.py:177 cotton_toolkit/core/gff_parser.py:224
-#: cotton_toolkit/pipelines.py:717
+#: cotton_toolkit/core/gff_parser.py:214
+msgid "创建GFF数据库失败。"
+msgstr "创建GFF数据库失败。"
+
+#: cotton_toolkit/core/gff_parser.py:269 cotton_toolkit/core/gff_parser.py:320
 msgid "正在准备GFF数据库..."
 msgstr "正在准备GFF数据库..."
 
-#: cotton_toolkit/core/gff_parser.py:181
+#: cotton_toolkit/core/gff_parser.py:272 cotton_toolkit/core/gff_parser.py:273
 msgid "无法获取或创建GFF数据库，无法查询区域基因。"
 msgstr "无法获取或创建GFF数据库，无法查询区域基因。"
 
-#: cotton_toolkit/core/gff_parser.py:183
+#: cotton_toolkit/core/gff_parser.py:275
 msgid "正在打开数据库并查找序列ID..."
 msgstr "正在打开数据库并查找序列ID..."
 
-#: cotton_toolkit/core/gff_parser.py:188
+#: cotton_toolkit/core/gff_parser.py:280
 msgid "在数据库中未找到匹配的染色体/序列。"
 msgstr "在数据库中未找到匹配的染色体/序列。"
 
-#: cotton_toolkit/core/gff_parser.py:191
+#: cotton_toolkit/core/gff_parser.py:283
+#, python-brace-format
 msgid "正在查询区域: {}..."
 msgstr "正在查询区域: {}..."
 
-#: cotton_toolkit/core/gff_parser.py:194
+#: cotton_toolkit/core/gff_parser.py:286
 msgid "正在提取基因详细信息..."
 msgstr "正在提取基因详细信息..."
 
-#: cotton_toolkit/core/gff_parser.py:196
+#: cotton_toolkit/core/gff_parser.py:288
+#, python-brace-format
 msgid "在区域内共找到 {} 个基因。"
 msgstr "在区域内共找到 {} 个基因。"
 
-#: cotton_toolkit/core/gff_parser.py:197
+#: cotton_toolkit/core/gff_parser.py:289
 msgid "区域基因提取完成。"
 msgstr "区域基因提取完成。"
 
-#: cotton_toolkit/core/gff_parser.py:201
+#: cotton_toolkit/core/gff_parser.py:293
+#, python-brace-format
 msgid "查询GFF区域时发生错误: {}"
 msgstr "查询GFF区域时发生错误: {}"
 
-#: cotton_toolkit/core/gff_parser.py:202
+#: cotton_toolkit/core/gff_parser.py:294
 msgid "GFF区域查询失败的完整堆栈跟踪:"
 msgstr "GFF区域查询失败的完整堆栈跟踪:"
 
-#: cotton_toolkit/core/gff_parser.py:203 cotton_toolkit/core/gff_parser.py:267
+#: cotton_toolkit/core/gff_parser.py:295 cotton_toolkit/core/gff_parser.py:365
 msgid "查询时发生错误。"
 msgstr "查询时发生错误。"
 
-#: cotton_toolkit/core/gff_parser.py:228
+#: cotton_toolkit/core/gff_parser.py:323
 msgid "无法获取或创建GFF数据库，无法查询基因ID。"
 msgstr "无法获取或创建GFF数据库，无法查询基因ID。"
 
-#: cotton_toolkit/core/gff_parser.py:230
-msgid "正在打开数据库..."
-msgstr "正在打开数据库..."
+#: cotton_toolkit/core/gff_parser.py:325
+#, python-brace-format
+msgid "正在并行查询 {} 个基因..."
+msgstr "正在并行查询 {} 个基因..."
 
-#: cotton_toolkit/core/gff_parser.py:233
-msgid "正在根据 {} 个ID查询基因信息..."
-msgstr "正在根据 {} 个ID查询基因信息..."
+#: cotton_toolkit/core/gff_parser.py:340
+msgid "已完成"
+msgstr "已完成"
 
-#: cotton_toolkit/core/gff_parser.py:242
-msgid "正在查询基因"
-msgstr "正在查询基因"
+#: cotton_toolkit/core/gff_parser.py:340
+msgid "个查询批次"
+msgstr "查询批次"
 
-#: cotton_toolkit/core/gff_parser.py:251
+#: cotton_toolkit/core/gff_parser.py:351
+#, python-brace-format
 msgid "警告: {} 个基因ID未在GFF数据库中找到: {}{}"
 msgstr "警告: {} 个基因ID未在GFF数据库中找到: {}{}"
 
-#: cotton_toolkit/core/gff_parser.py:256
+#: cotton_toolkit/core/gff_parser.py:355
 msgid "查询完成，未找到任何基因。"
 msgstr "查询完成，未找到任何基因。"
 
-#: cotton_toolkit/core/gff_parser.py:260
-msgid "成功查询到 {} 个基因的详细信息。"
-msgstr "成功查询到 {} 个基因的详细信息。"
+#: cotton_toolkit/core/gff_parser.py:359
+#, python-brace-format
+msgid "成功并行查询到 {} 个基因的详细信息。"
+msgstr "成功并行查询到 {} 个基因的详细信息。"
 
-#: cotton_toolkit/core/gff_parser.py:261
+#: cotton_toolkit/core/gff_parser.py:360
 msgid "基因查询完成。"
 msgstr "基因查询完成。"
 
-#: cotton_toolkit/core/gff_parser.py:265
+#: cotton_toolkit/core/gff_parser.py:364
+#, python-brace-format
 msgid "根据ID查询GFF时发生错误: {}"
 msgstr "根据ID查询GFF时发生错误: {}"
 
-#: cotton_toolkit/core/gff_parser.py:266
-msgid "GFF ID查询失败的完整堆栈跟踪:"
-msgstr "GFF ID查询失败的完整堆栈跟踪:"
-
-#: cotton_toolkit/core/homology_mapper.py:75 cotton_toolkit/pipelines.py:349
-msgid "配置错误: 在同源文件中找不到查询列 '{}'。可用列: {}"
-msgstr "配置错误: 在同源文件中找不到查询列 '{}'。可用列: {}"
-
-#: cotton_toolkit/core/homology_mapper.py:78
-msgid "配置错误: 在同源文件中找不到匹配列 '{}'。可用列: {}"
-msgstr "配置错误: 在同源文件中找不到匹配列 '{}'。可用列: {}"
-
-#: cotton_toolkit/core/homology_mapper.py:110 cotton_toolkit/pipelines.py:53
-msgid "同源文件未找到: {}"
-msgstr "同源文件未找到: {}"
-
-#: cotton_toolkit/core/homology_mapper.py:118
-msgid "不支持的同源文件格式: {}"
-msgstr "不支持的同源文件格式: {}"
-
-#: cotton_toolkit/core/homology_mapper.py:160
-msgid "正在映射: 源 -> 桥梁..."
-msgstr "正在映射: 源 -> 桥梁..."
-
-#: cotton_toolkit/core/homology_mapper.py:169
-msgid "正在映射: 桥梁 -> 目标..."
-msgstr "正在映射: 桥梁 -> 目标..."
-
-#: cotton_toolkit/core/homology_mapper.py:179
-msgid "正在合并映射结果..."
-msgstr "正在合并映射结果..."
-
-#: cotton_toolkit/core/homology_mapper.py:189
-msgid "正在根据模式筛选和排序..."
-msgstr "正在根据模式筛选和排序..."
-
-#: cotton_toolkit/core/homology_mapper.py:204
-msgid "已启用严格模式：仅保留同亚组、同染色体编号的匹配。"
-msgstr "已启用严格模式：仅保留同亚组、同染色体编号的匹配。"
-
-#: cotton_toolkit/core/homology_mapper.py:220
-msgid "严格模式已关闭，使用常规双分数排序规则。"
-msgstr "严格模式已关闭，使用常规双分数排序规则。"
-
-#: cotton_toolkit/core/homology_mapper.py:224
-msgid "正在筛选 Top N 结果..."
-msgstr "正在筛选 Top N 结果..."
-
-#: cotton_toolkit/core/homology_mapper.py:232
-msgid "信息: {} 个源基因未能找到符合条件的同源匹配。"
-msgstr "信息: {} 个源基因未能找到符合条件的同源匹配。"
-
-#: cotton_toolkit/pipelines.py:58
-msgid "正在打开文件: {}..."
-msgstr "正在打开文件: {}..."
-
-#: cotton_toolkit/pipelines.py:63
-msgid "正在解析文件结构..."
-msgstr "正在解析文件结构..."
-
-#: cotton_toolkit/pipelines.py:69
-msgid "正在处理工作表: {}..."
-msgstr "正在处理工作表: {}..."
-
-#: cotton_toolkit/pipelines.py:77
-msgid "在Excel文件的任何工作表中都未能找到有效的表头或数据。"
-msgstr "在Excel文件的任何工作表中都未能找到有效的表头或数据。"
-
-#: cotton_toolkit/pipelines.py:78
-msgid "正在合并所有工作表..."
-msgstr "正在合并所有工作表..."
-
-#: cotton_toolkit/pipelines.py:81
-msgid "正在读取文本数据..."
-msgstr "正在读取文本数据..."
-
-#: cotton_toolkit/pipelines.py:84
-msgid "读取同源文件 '{}' 时出错: {}"
-msgstr "读取同源文件 '{}' 时出错: {}"
-
-#: cotton_toolkit/pipelines.py:87
-msgid "文件加载完成。"
-msgstr "文件加载完成。"
-
-#: cotton_toolkit/pipelines.py:101
-msgid "配置覆盖警告：在对象 {} 中找不到键 '{}'。"
-msgstr "配置覆盖警告：在对象 {} 中找不到键 '{}'。"
-
-#: cotton_toolkit/pipelines.py:123
-msgid "步骤 1: 正在加载基因组源配置..."
-msgstr "步骤 1: 正在加载基因组源配置..."
-
-#: cotton_toolkit/pipelines.py:124
-msgid "步骤 1: 加载配置和同源数据..."
-msgstr "步骤 1: 加载配置和同源数据..."
-
-#: cotton_toolkit/pipelines.py:132
-msgid "错误: 一个或多个指定的基因组名称无效。"
-msgstr "错误: 一个或多个指定的基因组名称无效。"
-
-#: cotton_toolkit/pipelines.py:133 cotton_toolkit/pipelines.py:309
-#: cotton_toolkit/pipelines.py:556 cotton_toolkit/pipelines.py:708
-#: cotton_toolkit/pipelines.py:932
-msgid "任务终止：基因组配置错误。"
-msgstr "任务终止：基因组配置错误。"
-
-#: cotton_toolkit/pipelines.py:138
-msgid "步骤 2: 从染色体区域提取基因ID..."
-msgstr "步骤 2: 从染色体区域提取基因ID..."
-
-#: cotton_toolkit/pipelines.py:148 cotton_toolkit/pipelines.py:325
-msgid "在区域 {} 中未找到任何基因。"
-msgstr "在区域 {} 中未找到任何基因。"
-
-#: cotton_toolkit/pipelines.py:149 cotton_toolkit/pipelines.py:326
-msgid "任务终止：区域内无基因。"
-msgstr "任务终止：区域内无基因。"
-
-#: cotton_toolkit/pipelines.py:154
-msgid "错误: 输入的基因列表为空。"
-msgstr "错误: 输入的基因列表为空。"
-
-#: cotton_toolkit/pipelines.py:155 cotton_toolkit/pipelines.py:539
-msgid "任务终止：基因列表为空。"
-msgstr "任务终止：基因列表为空。"
-
-#: cotton_toolkit/pipelines.py:158
-msgid "步骤 3: 加载同源文件..."
-msgstr "步骤 3: 加载同源文件..."
-
-#: cotton_toolkit/pipelines.py:163
-msgid "加载源到桥梁文件: {}"
-msgstr "加载源到桥梁文件: {}"
-
-#: cotton_toolkit/pipelines.py:165
-msgid "加载桥梁到目标文件: {}"
-msgstr "加载桥梁到目标文件: {}"
-
-#: cotton_toolkit/pipelines.py:168
-msgid "步骤 4: 通过桥梁物种执行基因映射..."
-msgstr "步骤 4: 通过桥梁物种执行基因映射..."
-
-#: cotton_toolkit/pipelines.py:201 cotton_toolkit/pipelines.py:371
-#: cotton_toolkit/pipelines.py:598
-msgid "基因映射: {}"
-msgstr "基因映射: {}"
-
-#: cotton_toolkit/pipelines.py:206
-msgid "INFO: 任务在基因映射阶段被用户取消。"
-msgstr "信息: 任务在基因映射阶段被用户取消。"
-
-#: cotton_toolkit/pipelines.py:207 cotton_toolkit/pipelines.py:377
-#: cotton_toolkit/pipelines.py:604 cotton_toolkit/pipelines.py:638
-#: cotton_toolkit/pipelines.py:747 cotton_toolkit/pipelines.py:869
-#: cotton_toolkit/pipelines.py:975 cotton_toolkit/pipelines.py:1125
-msgid "任务已取消。"
-msgstr "任务已取消。"
-
-#: cotton_toolkit/pipelines.py:210
-msgid "步骤 5: 保存映射结果..."
-msgstr "步骤 5: 保存映射结果..."
-
-#: cotton_toolkit/pipelines.py:211
-msgid "正在保存映射结果..."
-msgstr "正在保存映射结果..."
-
-#: cotton_toolkit/pipelines.py:218
-msgid "正在计算目标概要位点..."
-msgstr "正在计算目标概要位点..."
-
-#: cotton_toolkit/pipelines.py:241
-msgid "无具体位点信息"
-msgstr "无具体位点信息"
-
-#: cotton_toolkit/pipelines.py:243
-msgid " | 无具体位点信息"
-msgstr " | 无具体位点信息"
-
-#: cotton_toolkit/pipelines.py:245
-msgid "目标基因组的位点（即转换后的大体的位点）"
-msgstr "目标基因组的位点（即转换后的大体的位点）"
-
-#: cotton_toolkit/pipelines.py:255
-msgid "# 未找到任何成功的同源匹配。\n"
-msgstr "# 未找到任何成功的同源匹配。\n"
-
-#: cotton_toolkit/pipelines.py:259
-msgid "# --- 匹配失败的源基因 ---\n"
-msgstr "# --- 匹配失败的源基因 ---\n"
-
-#: cotton_toolkit/pipelines.py:262
-msgid ""
-"未能在目标基因组中找到满足所有筛选条件（如E-value, PID, 严格模式等）的同源基"
-"因。"
-msgstr ""
-"未能在目标基因组中找到满足所有筛选条件（如E-value, PID, 严格模式等）的同源基"
-"因。"
-
-#: cotton_toolkit/pipelines.py:266
-msgid "结果已成功保存到: {}"
-msgstr "结果已成功保存到: {}"
-
-#: cotton_toolkit/pipelines.py:268
-msgid "未提供输出路径，跳过保存文件。"
-msgstr "未提供输出路径，跳过保存文件。"
-
-#: cotton_toolkit/pipelines.py:270
-msgid "同源映射流程完成。"
-msgstr "同源映射流程完成。"
-
-#: cotton_toolkit/pipelines.py:274
-msgid "流水线执行过程中发生意外错误: {}"
-msgstr "流水线执行过程中发生意外错误: {}"
-
-#: cotton_toolkit/pipelines.py:276 cotton_toolkit/pipelines.py:402
-msgid "任务因错误而终止。"
-msgstr "任务因错误而终止。"
-
-#: cotton_toolkit/pipelines.py:295
-msgid "流程开始，正在加载基因组配置..."
-msgstr "流程开始，正在加载基因组配置..."
-
-#: cotton_toolkit/pipelines.py:296
-msgid "步骤1: 加载配置..."
-msgstr "步骤1: 加载配置..."
-
-#: cotton_toolkit/pipelines.py:307
-msgid "错误: 无法为 {}, {} 或 {} 找到配置。"
-msgstr "错误: 无法为 {}, {} 或 {} 找到配置。"
-
-#: cotton_toolkit/pipelines.py:312
-msgid "正在从GFF文件中提取基因..."
-msgstr "正在从GFF文件中提取基因..."
-
-#: cotton_toolkit/pipelines.py:322
-msgid "提取基因: {}"
-msgstr "提取基因: {}"
-
-#: cotton_toolkit/pipelines.py:327
-msgid "在指定区域未找到任何基因。"
-msgstr "在指定区域未找到任何基因。"
-
-#: cotton_toolkit/pipelines.py:330
-msgid "正在加载同源文件..."
-msgstr "正在加载同源文件..."
-
-#: cotton_toolkit/pipelines.py:336
-msgid "错误: 缺少必要的同源文件。请先为相关基因组下载数据。"
-msgstr "错误: 缺少必要的同源文件。请先为相关基因组下载数据。"
-
-#: cotton_toolkit/pipelines.py:337 cotton_toolkit/pipelines.py:566
-msgid "任务终止：缺少同源文件。"
-msgstr "任务终止：缺少同源文件。"
-
-#: cotton_toolkit/pipelines.py:340 cotton_toolkit/pipelines.py:569
-msgid "正在解析源到桥梁的同源文件..."
-msgstr "正在解析源到桥梁的同源文件..."
-
-#: cotton_toolkit/pipelines.py:342
-msgid "解析同源文件 (S->B): {}"
-msgstr "解析同源文件 (S->B): {}"
-
-#: cotton_toolkit/pipelines.py:343 cotton_toolkit/pipelines.py:572
-msgid "正在解析桥梁到目标的同源文件..."
-msgstr "正在解析桥梁到目标的同源文件..."
-
-#: cotton_toolkit/pipelines.py:345
-msgid "解析同源文件 (B->T): {}"
-msgstr "解析同源文件 (B->T): {}"
-
-#: cotton_toolkit/pipelines.py:356
-msgid "正在执行核心同源映射..."
-msgstr "正在执行核心同源映射..."
-
-#: cotton_toolkit/pipelines.py:376 cotton_toolkit/pipelines.py:603
-msgid "任务在同源映射阶段被用户取消。"
-msgstr "任务在同源映射阶段被用户取消。"
-
-#: cotton_toolkit/pipelines.py:380
-msgid "映射完成，正在整理并保存结果..."
-msgstr "映射完成，正在整理并保存结果..."
-
-#: cotton_toolkit/pipelines.py:385
-msgid "# Source Locus: {} | {}:{}-{}\n"
-msgstr "# Source Locus: {} | {}:{}-{}\n"
-
-#: cotton_toolkit/pipelines.py:386
-msgid "# Target Assembly: {}\n"
-msgstr "# Target Assembly: {}\n"
-
-#: cotton_toolkit/pipelines.py:387
-msgid "# Failed to map {} genes: {}\n"
-msgstr "# Failed to map {} genes: {}\n"
-
-#: cotton_toolkit/pipelines.py:388
-msgid ""
-"#\n"
-"# --- Detailed Mapping Results ---\n"
-msgstr ""
-"#\n"
-"# --- Detailed Mapping Results ---\n"
-
-#: cotton_toolkit/pipelines.py:392
-msgid "# No successful homologous matches found.\n"
-msgstr "# No successful homologous matches found.\n"
-
-#: cotton_toolkit/pipelines.py:394
-msgid "全部完成！"
-msgstr "全部完成！"
-
-#: cotton_toolkit/pipelines.py:395
-msgid ""
-"位点转换结果已成功保存到:\n"
-"{}"
-msgstr ""
-"位点转换结果已成功保存到:\n"
-"{}"
-
-#: cotton_toolkit/pipelines.py:400
-msgid "位点转换流程出错: {}"
-msgstr "位点转换流程出错: {}"
-
-#: cotton_toolkit/pipelines.py:423 cotton_toolkit/pipelines.py:424
+#: cotton_toolkit/pipelines/ai_tasks.py:18
+msgid "AI"
+msgstr "人工智能"
+
+#: cotton_toolkit/pipelines/ai_tasks.py:36
+#: cotton_toolkit/pipelines/ai_tasks.py:37
 msgid "AI任务流程开始..."
 msgstr "AI任务流程开始..."
 
-#: cotton_toolkit/pipelines.py:427
-#| msgid "AI 服务配置"
+#: cotton_toolkit/pipelines/ai_tasks.py:40
 msgid "正在解析AI服务配置..."
 msgstr "正在解析AI服务配置..."
 
-#: cotton_toolkit/pipelines.py:433
-#| msgid "错误: 在配置中未找到默认AI服务商 '{}' 的设置。"
+#: cotton_toolkit/pipelines/ai_tasks.py:48
+#, python-brace-format
 msgid "错误: 在配置中未找到AI服务商 '{}' 的设置。"
 msgstr "错误: 在配置中未找到AI服务商 '{}' 的设置。"
 
-#: cotton_toolkit/pipelines.py:439
+#: cotton_toolkit/pipelines/ai_tasks.py:54
+#, python-brace-format
 msgid "错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。"
 msgstr "错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。"
 
-#: cotton_toolkit/pipelines.py:445
+#: cotton_toolkit/pipelines/ai_tasks.py:60
 msgid "正在初始化AI客户端..."
 msgstr "正在初始化AI客户端..."
 
-#: cotton_toolkit/pipelines.py:446
+#: cotton_toolkit/pipelines/ai_tasks.py:63
+#, python-brace-format
 msgid "正在初始化AI客户端... 服务商: {}, 模型: {}"
 msgstr "正在初始化AI客户端... 服务商: {}, 模型: {}"
 
-#: cotton_toolkit/pipelines.py:461
-#| msgid "另存为新文件 (否则在原文件上修改)"
+#: cotton_toolkit/pipelines/ai_tasks.py:74
+#, python-brace-format
 msgid "将在原文件上修改: {}"
 msgstr "将在原文件上修改: {}"
 
-#: cotton_toolkit/pipelines.py:467
+#: cotton_toolkit/pipelines/ai_tasks.py:77
+#, python-brace-format
 msgid "将创建新文件并保存于源文件目录: {}"
 msgstr "将创建新文件并保存于源文件目录: {}"
 
-#: cotton_toolkit/pipelines.py:474
+#: cotton_toolkit/pipelines/ai_tasks.py:81
 msgid "正在处理CSV文件并调用AI服务..."
 msgstr "正在处理CSV文件并调用AI服务..."
 
-#: cotton_toolkit/pipelines.py:485
+#: cotton_toolkit/pipelines/ai_tasks.py:94
+#, python-brace-format
 msgid "AI处理: {}"
 msgstr "AI处理: {}"
 
-#: cotton_toolkit/pipelines.py:494
+#: cotton_toolkit/pipelines/ai_tasks.py:102
 msgid "任务完成。"
 msgstr "任务完成。"
 
-#: cotton_toolkit/pipelines.py:495
+#: cotton_toolkit/pipelines/ai_tasks.py:103
 msgid "AI任务流程成功完成。"
 msgstr "AI任务流程成功完成。"
 
-#: cotton_toolkit/pipelines.py:516
+#: cotton_toolkit/pipelines/annotation.py:27 ui/gui_app.py:62
+#: ui/tabs/annotation_tab.py:40 ui/tabs/annotation_tab.py:180
+msgid "功能注释"
+msgstr "功能注释"
+
+#: cotton_toolkit/pipelines/annotation.py:43
 msgid "准备输入基因列表..."
 msgstr "准备输入基因列表..."
 
-#: cotton_toolkit/pipelines.py:520
-msgid "INFO: 从参数直接获取了 {} 个唯一基因ID。"
-msgstr "信息: 从参数直接获取了 {} 个唯一基因ID。"
+#: cotton_toolkit/pipelines/annotation.py:50
+#: cotton_toolkit/pipelines/homology.py:195
+#: cotton_toolkit/tools/enrichment_analyzer.py:180
+#: cotton_toolkit/tools/enrichment_analyzer.py:249
+msgid "正在智能解析输入基因ID..."
+msgstr "正在智能解析输入基因ID..."
 
-#: cotton_toolkit/pipelines.py:523
+#: cotton_toolkit/pipelines/annotation.py:52
+#, python-brace-format
+msgid "从参数智能解析了 {} 个唯一基因ID。"
+msgstr "从参数智能解析了 {} 个唯一基因ID。"
+
+#: cotton_toolkit/pipelines/annotation.py:58
 msgid "正在从文件读取基因列表..."
 msgstr "正在从文件读取基因列表..."
 
-#: cotton_toolkit/pipelines.py:524
-msgid "INFO: 正在从文件 '{}' 中读取基因列表..."
-msgstr "信息: 正在从文件 '{}' 中读取基因列表..."
+#: cotton_toolkit/pipelines/annotation.py:62
+#, python-brace-format
+msgid "从文件中读取并解析了 {} 个唯一基因ID。"
+msgstr "从文件中读取并解析了 {} 个唯一基因ID。"
 
-#: cotton_toolkit/pipelines.py:527
-msgid "INFO: 从文件中读取了 {} 个唯一基因ID。"
-msgstr "信息: 从文件中读取了 {} 个唯一基因ID。"
+#: cotton_toolkit/pipelines/annotation.py:64
+#, python-brace-format
+msgid "读取或解析基因列表文件时出错: {}"
+msgstr "读取或解析基因列表文件时出错: {}"
 
-#: cotton_toolkit/pipelines.py:529
-msgid "读取基因列表文件时出错: {}"
-msgstr "读取基因列表文件时出错: {}"
-
-#: cotton_toolkit/pipelines.py:530
-msgid "任务终止：读取基因列表失败。"
-msgstr "任务终止：读取基因列表失败。"
-
-#: cotton_toolkit/pipelines.py:533
+#: cotton_toolkit/pipelines/annotation.py:67
 msgid "错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"
 msgstr "错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"
 
-#: cotton_toolkit/pipelines.py:534
-msgid "任务终止：缺少基因输入。"
-msgstr "任务终止：缺少基因输入。"
+#: cotton_toolkit/pipelines/annotation.py:71
+msgid "输入的基因列表为空或无法解析，流程终止。"
+msgstr "输入的基因列表为空或无法解析，流程终止。"
 
-#: cotton_toolkit/pipelines.py:538
-msgid "输入的基因列表为空，流程终止。"
-msgstr "输入的基因列表为空，流程终止。"
-
-#: cotton_toolkit/pipelines.py:545
-msgid "检查是否需要同源映射..."
-msgstr "检查是否需要同源映射..."
-
-#: cotton_toolkit/pipelines.py:547
-msgid "源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。"
-msgstr "源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。"
-
-#: cotton_toolkit/pipelines.py:555
-msgid "一个或多个基因组名称无效，无法找到配置信息。"
-msgstr "一个或多个基因组名称无效，无法找到配置信息。"
-
-#: cotton_toolkit/pipelines.py:559
-msgid "加载同源数据文件..."
-msgstr "加载同源数据文件..."
-
-#: cotton_toolkit/pipelines.py:565
-msgid "缺少必要的同源文件，无法进行转换。请先下载数据。"
-msgstr "缺少必要的同源文件，无法进行转换。请先下载数据。"
-
-#: cotton_toolkit/pipelines.py:571 cotton_toolkit/pipelines.py:575
-msgid "加载同源数据: {}"
-msgstr "加载同源数据: {}"
-
-#: cotton_toolkit/pipelines.py:583
-msgid "正在通过桥梁物种进行基因映射..."
-msgstr "正在通过桥梁物种进行基因映射..."
-
-#: cotton_toolkit/pipelines.py:608
-msgid "同源转换未能映射到任何基因，流程终止。"
-msgstr "同源转换未能映射到任何基因，流程终止。"
-
-#: cotton_toolkit/pipelines.py:609
-msgid "任务终止：同源映射失败。"
-msgstr "任务终止：同源映射失败。"
-
-#: cotton_toolkit/pipelines.py:615
+#: cotton_toolkit/pipelines/annotation.py:77
 msgid "初始化注释器..."
 msgstr "初始化注释器..."
 
-#: cotton_toolkit/pipelines.py:619
+#: cotton_toolkit/pipelines/annotation.py:84
+#, python-brace-format
 msgid "错误：无法为目标基因组 {} 找到配置信息。"
 msgstr "错误：无法为目标基因组 {} 找到配置信息。"
 
-#: cotton_toolkit/pipelines.py:620
-msgid "任务终止：目标基因组配置错误。"
-msgstr "任务终止：目标基因组配置错误。"
-
-#: cotton_toolkit/pipelines.py:629
+#: cotton_toolkit/pipelines/annotation.py:91
+#, python-brace-format
 msgid "执行注释: {}"
 msgstr "执行注释: {}"
 
-#: cotton_toolkit/pipelines.py:633
+#: cotton_toolkit/pipelines/annotation.py:95
 msgid "正在执行功能注释..."
 msgstr "正在执行功能注释..."
 
-#: cotton_toolkit/pipelines.py:637
-msgid "任务在注释阶段被用户取消。"
-msgstr "任务在注释阶段被用户取消。"
-
-#: cotton_toolkit/pipelines.py:641
+#: cotton_toolkit/pipelines/annotation.py:104
 msgid "整理并保存结果..."
 msgstr "整理并保存结果..."
 
-#: cotton_toolkit/pipelines.py:660
-msgid "错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"
-msgstr "错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"
-
-#: cotton_toolkit/pipelines.py:661
-msgid "任务终止：未提供输出路径。"
-msgstr "任务终止：未提供输出路径。"
-
-#: cotton_toolkit/pipelines.py:666
+#: cotton_toolkit/pipelines/annotation.py:115
+#, python-brace-format
 msgid "注释成功！结果已保存至: {}"
 msgstr "注释成功！结果已保存至: {}"
 
-#: cotton_toolkit/pipelines.py:668
+#: cotton_toolkit/pipelines/annotation.py:117
+#, python-brace-format
 msgid "保存结果到 {} 时发生错误: {}"
 msgstr "保存结果到 {} 时发生错误: {}"
 
-#: cotton_toolkit/pipelines.py:669 cotton_toolkit/pipelines.py:770
-msgid "任务终止：保存结果失败。"
-msgstr "任务终止：保存结果失败。"
-
-#: cotton_toolkit/pipelines.py:673
+#: cotton_toolkit/pipelines/annotation.py:120
 msgid "注释完成，但没有生成任何结果。"
 msgstr "注释完成，但没有生成任何结果。"
 
-#: cotton_toolkit/pipelines.py:674
-#: cotton_toolkit/tools/enrichment_analyzer.py:128
-#: cotton_toolkit/tools/enrichment_analyzer.py:153
-msgid "任务完成：无结果。"
-msgstr "任务完成：无结果。"
-
-#: cotton_toolkit/pipelines.py:676
+#: cotton_toolkit/pipelines/annotation.py:122
 msgid "功能注释流程结束。"
 msgstr "功能注释流程结束。"
 
-#: cotton_toolkit/pipelines.py:693
-msgid "错误: 必须提供基因ID列表或染色体区域进行查询。"
-msgstr "错误: 必须提供基因ID列表或染色体区域进行查询。"
+#: cotton_toolkit/pipelines/annotation.py:125
+msgid "富集分析"
+msgstr "富集分析"
 
-#: cotton_toolkit/pipelines.py:694
-msgid "任务终止：缺少查询参数。"
-msgstr "任务终止：缺少查询参数。"
-
-#: cotton_toolkit/pipelines.py:697
-msgid "流程开始，正在初始化配置..."
-msgstr "流程开始，正在初始化配置..."
-
-#: cotton_toolkit/pipelines.py:698
-msgid "开始GFF基因查询流程..."
-msgstr "开始GFF基因查询流程..."
-
-#: cotton_toolkit/pipelines.py:707
-msgid "错误: 基因组 '{}' 未在基因组源列表中找到。"
-msgstr "错误: 基因组 '{}' 未在基因组源列表中找到。"
-
-#: cotton_toolkit/pipelines.py:713
-msgid "错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。"
-msgstr "错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。"
-
-#: cotton_toolkit/pipelines.py:714
-msgid "任务终止：GFF文件缺失。"
-msgstr "任务终止：GFF文件缺失。"
-
-#: cotton_toolkit/pipelines.py:724
-msgid "正在数据库中查询..."
-msgstr "正在数据库中查询..."
-
-#: cotton_toolkit/pipelines.py:726
-msgid "按基因ID查询 {} 个基因..."
-msgstr "按基因ID查询 {} 个基因..."
-
-#: cotton_toolkit/pipelines.py:731
-msgid "查询基因ID: {}"
-msgstr "查询基因ID: {}"
-
-#: cotton_toolkit/pipelines.py:735
-msgid "按区域 {}:{}-{} 查询基因..."
-msgstr "按区域 {}:{}-{} 查询基因..."
-
-#: cotton_toolkit/pipelines.py:740
-msgid "查询区域基因: {}"
-msgstr "查询区域基因: {}"
-
-#: cotton_toolkit/pipelines.py:750
-msgid "查询完成，正在整理结果..."
-msgstr "查询完成，正在整理结果..."
-
-#: cotton_toolkit/pipelines.py:752
-msgid "未找到任何符合条件的基因。"
-msgstr "未找到任何符合条件的基因。"
-
-#: cotton_toolkit/pipelines.py:753
-msgid "任务完成：未找到结果。"
-msgstr "任务完成：未找到结果。"
-
-#: cotton_toolkit/pipelines.py:755
-msgid "查询完成，找到 {} 个基因记录。"
-msgstr "查询完成，找到 {} 个基因记录。"
-
-#: cotton_toolkit/pipelines.py:767
-msgid "GFF基因查询结果已保存到: {}"
-msgstr "GFF基因查询结果已保存到: {}"
-
-#: cotton_toolkit/pipelines.py:769
-msgid "保存结果时出错: {}"
-msgstr "保存结果时出错: {}"
-
-#: cotton_toolkit/pipelines.py:773
-msgid "GFF查询流程结束。"
-msgstr "GFF查询流程结束。"
-
-#: cotton_toolkit/pipelines.py:787
-msgid "下载流程开始..."
-msgstr "下载流程开始..."
-
-#: cotton_toolkit/pipelines.py:788
-msgid "INFO: 下载流程开始..."
-msgstr "信息: 下载流程开始..."
-
-#: cotton_toolkit/pipelines.py:805
-msgid "INFO: 本次下载将使用代理: {}"
-msgstr "信息: 本次下载将使用代理: {}"
-
-#: cotton_toolkit/pipelines.py:807
-msgid "WARNING: 下载代理开关已打开，但配置文件中未设置代理地址。"
-msgstr "警告: 下载代理开关已打开，但配置文件中未设置代理地址。"
-
-#: cotton_toolkit/pipelines.py:809
-msgid "正在准备下载任务列表..."
-msgstr "正在准备下载任务列表..."
-
-#: cotton_toolkit/pipelines.py:810
-msgid "INFO: 将尝试下载的基因组版本: {}"
-msgstr "信息: 将尝试下载的基因组版本: {}"
-
-#: cotton_toolkit/pipelines.py:816
-msgid "DEBUG: 未从UI指定文件类型，将尝试检查所有可能的类型: {}"
-msgstr "调试: 未从UI指定文件类型，将尝试检查所有可能的类型: {}"
-
-#: cotton_toolkit/pipelines.py:819
-msgid "DEBUG: 将根据UI的选择，精确下载以下文件类型: {}"
-msgstr "调试: 将根据UI的选择，精确下载以下文件类型: {}"
-
-#: cotton_toolkit/pipelines.py:824
-msgid "WARNING: 在基因组源中未找到版本 '{}'，已跳过。"
-msgstr "警告: 在基因组源中未找到版本 '{}'，已跳过。"
-
-#: cotton_toolkit/pipelines.py:840
-msgid "WARNING: 根据您的选择，没有找到任何有效的URL可供下载。"
-msgstr "警告: 根据您的选择，没有找到任何有效的URL可供下载。"
-
-#: cotton_toolkit/pipelines.py:841
-msgid "任务完成：无文件可下载。"
-msgstr "任务完成：无文件可下载。"
-
-#: cotton_toolkit/pipelines.py:844
-msgid "找到 {} 个文件需要下载。"
-msgstr "找到 {} 个文件需要下载。"
-
-#: cotton_toolkit/pipelines.py:845
-msgid "INFO: 准备下载 {} 个文件..."
-msgstr "信息: 准备下载 {} 个文件..."
-
-#: cotton_toolkit/pipelines.py:879
-msgid "ERROR: 下载 {} 的 {} 文件时发生严重错误: {}"
-msgstr "错误: 下载 {} 的 {} 文件时发生严重错误: {}"
-
-#: cotton_toolkit/pipelines.py:888
-msgid "总体下载进度"
-msgstr "总体下载进度"
-
-#: cotton_toolkit/pipelines.py:890
-msgid "INFO: 所有指定的下载任务已完成。成功: {}, 失败: {}。"
-msgstr "信息: 所有指定的下载任务已完成。成功: {}, 失败: {}。"
-
-#: cotton_toolkit/pipelines.py:891
-msgid "下载流程完成。"
-msgstr "下载流程完成。"
-
-#: cotton_toolkit/pipelines.py:916
+#: cotton_toolkit/pipelines/annotation.py:148
 msgid "富集分析与可视化流程启动。"
 msgstr "富集分析与可视化流程启动。"
 
-#: cotton_toolkit/pipelines.py:917
-msgid "INFO: {} 富集与可视化流程启动。"
-msgstr "信息: {} 富集与可视化流程启动。"
+#: cotton_toolkit/pipelines/annotation.py:150
+#, python-brace-format
+msgid "{} 富集与可视化流程启动。"
+msgstr "{} 富集与可视化流程启动。"
 
-#: cotton_toolkit/pipelines.py:921
-msgid "正在将RNA合并到基因..."
-msgstr "正在将RNA合并到基因..."
+#: cotton_toolkit/pipelines/annotation.py:152
+msgid "正在智能解析研究基因ID..."
+msgstr "正在智能解析研究基因ID..."
 
-#: cotton_toolkit/pipelines.py:922
-msgid "INFO: 正在将RNA合并到基因..."
-msgstr "信息: 正在将RNA合并到基因..."
+#: cotton_toolkit/pipelines/annotation.py:154
+#, python-brace-format
+msgid "ID智能解析完成，得到 {} 个标准化的ID。"
+msgstr "ID智能解析完成，得到 {} 个标准化的ID。"
 
-#: cotton_toolkit/pipelines.py:924
-msgid "INFO: 基因列表已从 {} 个RNA合并为 {} 个唯一基因。"
-msgstr "信息: 基因列表已从 {} 个RNA合并为 {} 个唯一基因。"
+#: cotton_toolkit/pipelines/annotation.py:159
+#, python-brace-format
+msgid "基因列表已从 {} 个RNA合并为 {} 个唯一基因。"
+msgstr "基因列表已从 {} 个RNA合并为 {} 个唯一基因。"
 
-#: cotton_toolkit/pipelines.py:927
+#: cotton_toolkit/pipelines/annotation.py:162
 msgid "正在获取基因组信息..."
 msgstr "正在获取基因组信息..."
 
-#: cotton_toolkit/pipelines.py:931
-msgid "ERROR: 无法在配置中找到基因组 '{}'。"
-msgstr "错误: 无法在配置中找到基因组 '{}'。"
+#: cotton_toolkit/pipelines/annotation.py:168
+#, python-brace-format
+msgid "无法在配置中找到基因组 '{}'。"
+msgstr "无法在配置中找到基因组 '{}'。"
 
-#: cotton_toolkit/pipelines.py:936
-msgid "ERROR: 获取基因组源数据时失败: {}"
-msgstr "错误: 获取基因组源数据时失败: {}"
+#: cotton_toolkit/pipelines/annotation.py:169
+msgid "任务终止：基因组配置错误。"
+msgstr "任务终止：基因组配置错误。"
 
-#: cotton_toolkit/pipelines.py:937
+#: cotton_toolkit/pipelines/annotation.py:173
+#, python-brace-format
+msgid "获取基因组源数据时失败: {}"
+msgstr "获取基因组源数据时失败: {}"
+
+#: cotton_toolkit/pipelines/annotation.py:174
 msgid "任务终止：获取基因组信息失败。"
 msgstr "任务终止：获取基因组信息失败。"
 
-#: cotton_toolkit/pipelines.py:944
+#: cotton_toolkit/pipelines/annotation.py:182
 msgid "正在执行GO富集分析..."
 msgstr "正在执行GO富集分析..."
 
-#: cotton_toolkit/pipelines.py:947
-msgid "ERROR: 未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。"
-msgstr "错误: 未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。"
-
-#: cotton_toolkit/pipelines.py:948
-msgid "任务终止：缺少GO注释文件。"
-msgstr "任务终止：缺少GO注释文件。"
-
-#: cotton_toolkit/pipelines.py:953
-msgid "GO富集: {}"
-msgstr "GO富集: {}"
-
-#: cotton_toolkit/pipelines.py:956
+#: cotton_toolkit/pipelines/annotation.py:193
 msgid "正在执行KEGG富集分析..."
 msgstr "正在执行KEGG富集分析..."
 
-#: cotton_toolkit/pipelines.py:959
-msgid "ERROR: 未找到 '{}' 的KEGG通路文件。请先下载数据。"
-msgstr "错误: 未找到 '{}' 的KEGG通路文件。请先下载数据。"
+#: cotton_toolkit/pipelines/annotation.py:206
+msgid "富集分析未发现任何显著结果，流程终止。"
+msgstr "富集分析未发现任何显著结果，流程终止。"
 
-#: cotton_toolkit/pipelines.py:960
-msgid "任务终止：缺少KEGG通路文件。"
-msgstr "任务终止：缺少KEGG通路文件。"
-
-#: cotton_toolkit/pipelines.py:965
-msgid "KEGG富集: {}"
-msgstr "KEGG富集: {}"
-
-#: cotton_toolkit/pipelines.py:969
-msgid "ERROR: 未知的分析类型 '{}'。"
-msgstr "错误: 未知的分析类型 '{}'。"
-
-#: cotton_toolkit/pipelines.py:970
-msgid "任务终止：分析类型未知。"
-msgstr "任务终止：分析类型未知。"
-
-#: cotton_toolkit/pipelines.py:974
-msgid "INFO: 任务在分析后被取消。"
-msgstr "信息: 任务在分析后被取消。"
-
-#: cotton_toolkit/pipelines.py:979
-msgid "WARNING: 富集分析未发现任何显著结果，流程终止。"
-msgstr "警告: 富集分析未发现任何显著结果，流程终止。"
-
-#: cotton_toolkit/pipelines.py:980
+#: cotton_toolkit/pipelines/annotation.py:207
 msgid "任务完成：无显著结果。"
 msgstr "任务完成：无显著结果。"
 
-#: cotton_toolkit/pipelines.py:983
+#: cotton_toolkit/pipelines/annotation.py:210
 msgid "富集分析完成，正在生成图表..."
 msgstr "富集分析完成，正在生成图表..."
 
-#: cotton_toolkit/pipelines.py:1005
-msgid "生成气泡图 ({})"
-msgstr "生成气泡图 ({})"
+#: cotton_toolkit/pipelines/annotation.py:250
+msgid "正在生成 R 脚本和数据..."
+msgstr "Generating R script and data..."
 
-#: cotton_toolkit/pipelines.py:1014
-msgid "生成条形图 ({})"
-msgstr "生成条形图 ({})"
+#: cotton_toolkit/pipelines/annotation.py:252
+msgid "正在为绘图生成 R 脚本和配套数据..."
+msgstr "正在为绘图生成 R 脚本和配套数据..."
 
-#: cotton_toolkit/pipelines.py:1023
-msgid "生成Upset图 ({})"
-msgstr "生成Upset图 ({})"
+#: cotton_toolkit/pipelines/annotation.py:288
+msgid "所有图表和脚本已生成。"
+msgstr "所有图表和脚本已生成。"
 
-#: cotton_toolkit/pipelines.py:1031
-msgid "生成网络图(Cnet) ({})"
-msgstr "生成网络图(Cnet) ({})"
+#: cotton_toolkit/pipelines/annotation.py:289
+#, python-brace-format
+msgid ""
+"富集分析成功！\n"
+"\n"
+"在输出目录 '{}' 中共生成 {} 个文件。\n"
+msgstr ""
+"富集分析成功！\n"
+"\n"
+"在输出目录 '{}' 中共生成 {} 个文件。\n"
 
-#: cotton_toolkit/pipelines.py:1046
-msgid "生成气泡图..."
-msgstr "生成气泡图..."
+#: cotton_toolkit/pipelines/annotation.py:293
+#, python-brace-format
+msgid ""
+"\n"
+"✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 "
+"'{}' 子文件夹中。"
+msgstr ""
+"\n"
+"✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 "
+"'{}' 子文件夹中。"
 
-#: cotton_toolkit/pipelines.py:1053
-msgid "生成条形图..."
-msgstr "生成条形图..."
+#: cotton_toolkit/pipelines/blast.py:49
+msgid "BLAST 流程启动..."
+msgstr "BLAST 流程启动..."
 
-#: cotton_toolkit/pipelines.py:1060
-msgid "生成Upset图..."
-msgstr "生成Upset图..."
+#: cotton_toolkit/pipelines/blast.py:50 cotton_toolkit/pipelines/blast.py:96
+#: cotton_toolkit/pipelines/blast.py:133 cotton_toolkit/pipelines/blast.py:141
+#: cotton_toolkit/pipelines/blast.py:157 cotton_toolkit/pipelines/blast.py:163
+#: cotton_toolkit/pipelines/blast.py:187 cotton_toolkit/pipelines/blast.py:216
+#: cotton_toolkit/pipelines/preprocessing.py:342
+#: ui/tabs/genome_identifier_tab.py:166
+msgid "任务已取消。"
+msgstr "任务已取消。"
 
-#: cotton_toolkit/pipelines.py:1066
-msgid "生成网络图(Cnet)..."
-msgstr "生成网络图(Cnet)..."
+#: cotton_toolkit/pipelines/blast.py:52
+msgid "正在验证目标基因组数据库..."
+msgstr "正在验证目标基因组数据库..."
 
-#: cotton_toolkit/pipelines.py:1072
-msgid "所有图表已生成。"
-msgstr "所有图表已生成。"
+#: cotton_toolkit/pipelines/blast.py:53
+#, python-brace-format
+msgid "步骤 1: 准备目标数据库 '{}'..."
+msgstr "步骤 1: 准备目标数据库 '{}'..."
 
-#: cotton_toolkit/pipelines.py:1073
-msgid "流程完成。在 '{}' 中成功生成 {} 个图表。"
-msgstr "流程完成。在 '{}' 中成功生成 {} 个图表。"
+#: cotton_toolkit/pipelines/blast.py:59
+#, python-brace-format
+msgid "错误: 无法找到目标基因组 '{}' 的配置。"
+msgstr "错误: 无法找到目标基因组 '{}' 的配置。"
 
-#: cotton_toolkit/pipelines.py:1089 cotton_toolkit/pipelines.py:1090
-msgid "开始预处理注释文件（转换为CSV）..."
-msgstr "开始预处理注释文件（转换为CSV）..."
+#: cotton_toolkit/pipelines/blast.py:65
+#, python-brace-format
+msgid "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
+msgstr "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
 
-#: cotton_toolkit/pipelines.py:1092 ui/event_handler.py:165
+#: cotton_toolkit/pipelines/blast.py:69
+#, python-brace-format
+msgid "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
+msgstr "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
+
+#: cotton_toolkit/pipelines/blast.py:73
+#, python-brace-format
+msgid "BLAST 数据库序列源文件: {}"
+msgstr "BLAST 数据库序列源文件: {}"
+
+#: cotton_toolkit/pipelines/blast.py:80
+msgid "文件为gz压缩格式，正在解压..."
+msgstr "文件为gz压缩格式，正在解压..."
+
+#: cotton_toolkit/pipelines/blast.py:81
+#, python-brace-format
+msgid "正在解压 {} 到 {}..."
+msgstr "正在解压 {} 到 {}..."
+
+#: cotton_toolkit/pipelines/blast.py:86
+msgid "解压过程被取消。"
+msgstr "解压过程已取消。"
+
+#: cotton_toolkit/pipelines/blast.py:91
+msgid "解压成功。"
+msgstr "解压成功。"
+
+#: cotton_toolkit/pipelines/blast.py:93
+#, python-brace-format
+msgid "解压文件时出错: {}"
+msgstr "解压文件时出错: {}"
+
+#: cotton_toolkit/pipelines/blast.py:99
+#, python-brace-format
+msgid "检查是否存在BLAST索引文件，例如: {}"
+msgstr "检查是否存在BLAST索引文件，例如: {}"
+
+#: cotton_toolkit/pipelines/blast.py:101
+msgid "正在创建BLAST数据库... (可能需要一些时间)"
+msgstr "正在创建BLAST数据库... (可能需要一些时间)"
+
+#: cotton_toolkit/pipelines/blast.py:103
+#, python-brace-format
+msgid "未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库..."
+msgstr "未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库..."
+
+#: cotton_toolkit/pipelines/blast.py:109
+msgid "数据库创建过程在开始前被取消。"
+msgstr "数据库创建过程在开始前被取消。"
+
+#: cotton_toolkit/pipelines/blast.py:115 cotton_toolkit/pipelines/blast.py:130
+#, python-brace-format
+msgid ""
+"创建BLAST数据库失败: {} \n"
+"Stderror: {}"
+msgstr ""
+"创建BLAST数据库失败: {} \n"
+"Stderror: {}"
+
+#: cotton_toolkit/pipelines/blast.py:119
+msgid ""
+"makeblastdb命令返回了非零退出码，但数据库索引文件已成功创建。将继续执行..."
+msgstr ""
+"makeblastdb命令返回了非零退出码，但数据库索引文件已成功创建。将继续执行..."
+
+#: cotton_toolkit/pipelines/blast.py:123
+msgid "BLAST数据库创建成功。"
+msgstr "BLAST数据库创建成功。"
+
+#: cotton_toolkit/pipelines/blast.py:127
+msgid ""
+"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
+"PATH 环境变量中。\n"
+"\n"
+"官方下载地址:\n"
+"https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"
+msgstr ""
+"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
+"PATH 环境变量中。\n"
+"\n"
+"官方下载地址:\n"
+"https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"
+
+#: cotton_toolkit/pipelines/blast.py:135
+msgid "正在准备查询序列..."
+msgstr "正在准备查询序列..."
+
+#: cotton_toolkit/pipelines/blast.py:142
+#, python-brace-format
+msgid "正在处理输入文件: {}"
+msgstr "正在处理输入文件: {}"
+
+#: cotton_toolkit/pipelines/blast.py:150
+msgid "检测到FASTQ格式，正在转换为FASTA..."
+msgstr "检测到FASTQ格式，正在转换为FASTA..."
+
+#: cotton_toolkit/pipelines/blast.py:153
+msgid "将输入文件作为FASTA格式处理..."
+msgstr "将输入文件作为FASTA格式处理..."
+
+#: cotton_toolkit/pipelines/blast.py:158
+msgid "正在处理文本输入..."
+msgstr "正在处理文本输入..."
+
+#: cotton_toolkit/pipelines/blast.py:159
+#, python-brace-format
+msgid ""
+"--- Received query_text in pipeline (first 1000 chars) ---\n"
+"{}\n"
+"-------------------------------------------------"
+msgstr ""
+"在流水线中收到的query_text（前1000个字符）---\n"
+"{}\n"
+"-------------------------------------------------"
+
+#: cotton_toolkit/pipelines/blast.py:162
+#, python-brace-format
+msgid "查询序列已写入临时文件: {}"
+msgstr "查询序列已写入临时文件: {}"
+
+#: cotton_toolkit/pipelines/blast.py:165
+#, python-brace-format
+msgid "正在执行 {} ..."
+msgstr "正在执行 {} ..."
+
+#: cotton_toolkit/pipelines/blast.py:166
+#, python-brace-format
+msgid "步骤 2: 执行 {} ..."
+msgstr "步骤 2: 执行 {} ..."
+
+#: cotton_toolkit/pipelines/blast.py:176
+#, python-brace-format
+msgid "BLAST命令: {}"
+msgstr "BLAST命令: {}"
+
+#: cotton_toolkit/pipelines/blast.py:177
+msgid "BLAST在执行前被取消。"
+msgstr "BLAST在执行前被取消。"
+
+#: cotton_toolkit/pipelines/blast.py:182
+#, python-brace-format
+msgid "BLAST运行时发生致命错误: {}"
+msgstr "BLAST运行时发生致命错误: {}"
+
+#: cotton_toolkit/pipelines/blast.py:185
+#, python-brace-format
+msgid "BLAST运行时产生警告或提示信息: {}"
+msgstr "BLAST运行时产生警告或提示信息: {}"
+
+#: cotton_toolkit/pipelines/blast.py:189
+msgid "正在解析BLAST结果..."
+msgstr "正在解析BLAST结果..."
+
+#: cotton_toolkit/pipelines/blast.py:190
+#, python-brace-format
+msgid "步骤 3: 解析结果并保存到 {} ..."
+msgstr "步骤 3: 解析结果并保存到 {} ..."
+
+#: cotton_toolkit/pipelines/blast.py:194
+msgid "BLAST运行完毕，但未产生任何结果。"
+msgstr "BLAST运行完毕，但未产生任何结果。"
+
+#: cotton_toolkit/pipelines/blast.py:219 cotton_toolkit/pipelines/blast.py:223
+msgid "未找到任何显著的BLAST匹配项。"
+msgstr "未找到任何显著的BLAST匹配项。"
+
+#: cotton_toolkit/pipelines/blast.py:228
+#, python-brace-format
+msgid "成功找到 {} 条匹配记录。"
+msgstr "成功找到 {} 条匹配记录。"
+
+#: cotton_toolkit/pipelines/blast.py:231
+msgid "正在保存到文件..."
+msgstr "正在保存到文件..."
+
+#: cotton_toolkit/pipelines/blast.py:236
+#, python-brace-format
+msgid "BLAST 任务完成！结果已保存到 {}"
+msgstr "BLAST 任务完成！结果已保存到 {}"
+
+#: cotton_toolkit/pipelines/blast.py:238
+msgid "BLAST流程完成。"
+msgstr "BLAST流程完成。"
+
+#: cotton_toolkit/pipelines/blast.py:242
+#, python-brace-format
+msgid "BLAST流水线执行过程中发生意外错误: {}"
+msgstr "BLAST流水线执行过程中发生意外错误: {}"
+
+#: cotton_toolkit/pipelines/decorators.py:41 ui/ui_manager.py:466
+#, python-brace-format
+msgid "任务 '{}' 已被用户取消。"
+msgstr "任务 '{}' 已被用户取消。"
+
+#: cotton_toolkit/pipelines/decorators.py:50
+#, python-brace-format
+msgid "--- 开始执行流水线任务: {} ---"
+msgstr "--- 开始执行流水线任务: {} ---"
+
+#: cotton_toolkit/pipelines/decorators.py:52
+#, python-brace-format
+msgid "{} - 任务启动..."
+msgstr "{} - 任务启动中..."
+
+#: cotton_toolkit/pipelines/decorators.py:60
+#, python-brace-format
+msgid "--- 流水线任务成功完成: {} ---"
+msgstr "--- 流水线任务成功完成: {} ---"
+
+#: cotton_toolkit/pipelines/decorators.py:61
+#, python-brace-format
+msgid "{} - 任务完成。"
+msgstr "{} - 任务完成。"
+
+#: cotton_toolkit/pipelines/decorators.py:64
+#, python-brace-format
+msgid "流水线任务 '{}' 发生意外错误: {}"
+msgstr "流水线任务'{}'发生意外错误：{}"
+
+#: cotton_toolkit/pipelines/decorators.py:65
+#, python-brace-format
+msgid "{} - 任务因错误而终止。"
+msgstr "{} - 任务因错误而终止。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:24
+msgid "GFF检索"
+msgstr "GFF检索"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:40
+msgid "错误: 必须提供基因ID列表或染色体区域进行查询。"
+msgstr "错误: 必须提供基因ID列表或染色体区域进行查询。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:41
+msgid "任务终止：缺少查询参数。"
+msgstr "任务终止：缺少查询参数。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:83
+msgid "正在数据库中查询..."
+msgstr "正在数据库中查询..."
+
+#: cotton_toolkit/pipelines/gff_tasks.py:87
+msgid "正在对输入的基因ID进行智能解析..."
+msgstr "正在对输入的基因ID进行智能解析..."
+
+#: cotton_toolkit/pipelines/gff_tasks.py:91
+#, python-brace-format
+msgid "按基因ID查询 {} 个基因... (已完成智能解析)"
+msgstr "按基因ID查询 {} 个基因... (已完成智能解析)"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:97
+#, python-brace-format
+msgid "查询基因ID: {}"
+msgstr "查询基因ID: {}"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:101
+#: cotton_toolkit/pipelines/homology.py:200
+#: cotton_toolkit/tools/enrichment_analyzer.py:185
+#: cotton_toolkit/tools/enrichment_analyzer.py:254
+msgid "任务终止：基因ID解析失败。"
+msgstr "任务终止：基因ID解析失败。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:106
+#, python-brace-format
+msgid "按区域 {}:{}-{} 查询基因..."
+msgstr "按区域 {}:{}-{} 查询基因..."
+
+#: cotton_toolkit/pipelines/gff_tasks.py:111
+#, python-brace-format
+msgid "查询区域基因: {}"
+msgstr "查询区域基因: {}"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:118
+msgid "查询完成，正在整理结果..."
+msgstr "查询完成，正在整理结果..."
+
+#: cotton_toolkit/pipelines/gff_tasks.py:122
+msgid "未找到任何符合条件的基因。"
+msgstr "未找到任何符合条件的基因。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:123
+msgid "任务完成：未找到结果。"
+msgstr "任务完成：未找到结果。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:125
+#, python-brace-format
+msgid "查询完成，找到 {} 个基因记录。"
+msgstr "查询完成，找到 {} 个基因记录。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:136
+#, python-brace-format
+msgid "GFF基因查询结果已保存到: {}"
+msgstr "GFF基因查询结果已保存到: {}"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:138
+#, python-brace-format
+msgid "保存结果时出错: {}"
+msgstr "保存结果时出错: {}"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:139
+msgid "任务终止：保存结果失败。"
+msgstr "任务终止：保存结果失败。"
+
+#: cotton_toolkit/pipelines/gff_tasks.py:142
+msgid "GFF查询流程结束。"
+msgstr "GFF查询流程结束。"
+
+#: cotton_toolkit/pipelines/homology.py:71
+msgid "拟南芥基因转换"
+msgstr "拟南芥基因转换"
+
+#: cotton_toolkit/pipelines/homology.py:88
+msgid "正在准备同源转换..."
+msgstr "Preparing for same-origin conversion..."
+
+#: cotton_toolkit/pipelines/homology.py:95
+msgid "正在智能解析棉花基因ID..."
+msgstr "正在智能解析棉花基因ID..."
+
+#: cotton_toolkit/pipelines/homology.py:103
+msgid "正在智能解析拟南芥基因ID..."
+msgstr "正在智能解析拟南芥基因ID..."
+
+#: cotton_toolkit/pipelines/homology.py:110
+msgid "解析后输入基因列表为空。"
+msgstr "解析后输入基因列表为空。"
+
+#: cotton_toolkit/pipelines/homology.py:113
+msgid "正在从数据库获取同源关系..."
+msgstr "正在从数据库获取同源关系..."
+
+#: cotton_toolkit/pipelines/homology.py:127
+msgid "正在整理转换结果..."
+msgstr "正在整理转换结果..."
+
+#: cotton_toolkit/pipelines/homology.py:130
+msgid "在数据库中未找到任何同源基因匹配。"
+msgstr "在数据库中未找到任何同源基因匹配。"
+
+#: cotton_toolkit/pipelines/homology.py:137
+#, python-brace-format
+msgid "成功从数据库中查询到 {} 条同源匹配项。"
+msgstr "成功从数据库中查询到 {} 条同源匹配项。"
+
+#: cotton_toolkit/pipelines/homology.py:154
+msgid "正在保存结果文件..."
+msgstr "正在保存结果文件..."
+
+#: cotton_toolkit/pipelines/homology.py:158
+#, python-brace-format
+msgid "同源基因转换成功！结果已保存至: {}"
+msgstr "同源基因转换成功！结果已保存至: {}"
+
+#: cotton_toolkit/pipelines/homology.py:160
+msgid "转换完成。"
+msgstr "转换完成。"
+
+#: cotton_toolkit/pipelines/homology.py:163
+#, python-brace-format
+msgid "保存结果文件时出错: {}"
+msgstr "保存结果文件时出错: {}"
+
+#: cotton_toolkit/pipelines/homology.py:167
+msgid "查询完成。"
+msgstr "查询完成。"
+
+#: cotton_toolkit/pipelines/homology.py:171
+msgid "同源基因映射"
+msgstr "同源基因映射"
+
+#: cotton_toolkit/pipelines/homology.py:197
+msgid "ID解析完成，准备执行BLAST。"
+msgstr "ID解析完成，准备执行BLAST。"
+
+#: cotton_toolkit/pipelines/homology.py:204
+msgid "正在从GFF数据库提取区域基因..."
+msgstr "正在从GFF数据库提取区域基因..."
+
+#: cotton_toolkit/pipelines/homology.py:217
+#, python-brace-format
+msgid "在区域 {} 中未找到任何基因。"
+msgstr "在区域 {} 中未找到任何基因。"
+
+#: cotton_toolkit/pipelines/homology.py:221
+#, python-brace-format
+msgid "从GFF区域提取到 {} 个原始基因ID。前5个示例: {}"
+msgstr "从GFF区域提取到 {} 个原始基因ID。前5个示例: {}"
+
+#: cotton_toolkit/pipelines/homology.py:223
+msgid "正在使用正则表达式规范化从GFF中提取的基因ID..."
+msgstr "正在使用正则表达式规范化从GFF中提取的基因ID..."
+
+#: cotton_toolkit/pipelines/homology.py:231
+#, python-brace-format
+msgid "规范化后得到 {} 个有效基因ID。前5个示例: {}"
+msgstr "规范化后得到 {} 个有效基因ID。前5个示例: {}"
+
+#: cotton_toolkit/pipelines/homology.py:234
+msgid "错误: 基因列表为空。"
+msgstr "错误: 基因列表为空。"
+
+#: cotton_toolkit/pipelines/homology.py:248
+#, python-brace-format
+msgid "正在并行启动BLAST任务 (共 {} 个子任务)..."
+msgstr "正在并行启动BLAST任务 (共 {} 个子任务)..."
+
+#: cotton_toolkit/pipelines/homology.py:269
+#, python-brace-format
+msgid "已完成 {}/{} 个BLAST子任务..."
+msgstr "已完成 {}/{} 个BLAST子任务..."
+
+#: cotton_toolkit/pipelines/homology.py:274
+msgid "所有BLAST任务完成，但未找到任何匹配项。"
+msgstr "所有BLAST任务完成，但未找到任何匹配项。"
+
+#: cotton_toolkit/pipelines/homology.py:278
+#, python-brace-format
+msgid "所有线程共返回 {} 条原始匹配。"
+msgstr "所有线程共返回 {} 条原始匹配。"
+
+#: cotton_toolkit/pipelines/homology.py:280
+msgid "正在应用筛选条件并整理结果..."
+msgstr "正在应用筛选条件并整理结果..."
+
+#: cotton_toolkit/pipelines/homology.py:294
+msgid "已启用严格模式：筛选同亚组、同染色体编号的匹配。"
+msgstr "已启用严格模式：筛选同亚组、同染色体编号的匹配。"
+
+#: cotton_toolkit/pipelines/homology.py:303
+msgid "正在保存最终结果..."
+msgstr "正在保存最终结果..."
+
+#: cotton_toolkit/pipelines/homology.py:304
+#, python-brace-format
+msgid "正在将最终BLAST结果保存到: {}"
+msgstr "正在将最终BLAST结果保存到: {}"
+
+#: cotton_toolkit/pipelines/homology.py:310
+msgid "同源映射完成。"
+msgstr "同源映射完成。"
+
+#: cotton_toolkit/pipelines/homology.py:314
+#, python-brace-format
+msgid "同源映射流水线发生意外错误: {}"
+msgstr "同源映射流水线发生意外错误: {}"
+
+#: cotton_toolkit/pipelines/homology.py:318 ui/gui_app.py:66
+#: ui/tabs/locus_conversion_tab.py:175
+msgid "位点转换"
+msgstr "位点转换"
+
+#: cotton_toolkit/pipelines/homology.py:338
+msgid "正在通过BLAST进行同源基因映射..."
+msgstr "正在通过BLAST进行同源基因映射..."
+
+#: cotton_toolkit/pipelines/homology.py:355
+msgid "未能找到任何同源基因，无法进行位点转换。"
+msgstr "未能找到任何同源基因，无法进行位点转换。"
+
+#: cotton_toolkit/pipelines/homology.py:356
+msgid "任务完成：无同源基因。"
+msgstr "任务完成：无同源基因。"
+
+#: cotton_toolkit/pipelines/homology.py:360
+#, python-brace-format
+msgid "# Source Locus: {} | {}:{}-{}\n"
+msgstr "# 源轨迹：{} | {}:{}-{}\n"
+
+#: cotton_toolkit/pipelines/homology.py:361
+#, python-brace-format
+msgid "# Target Assembly: {}\n"
+msgstr "# 目标集：{}\n"
+
+#: cotton_toolkit/pipelines/homology.py:362
+msgid "# No successful homologous matches found to convert locus.\n"
+msgstr "# 未找到成功的同源匹配以转换基因位点。\n"
+
+#: cotton_toolkit/pipelines/homology.py:363
+msgid "在指定区域未找到可转换的同源基因。"
+msgstr "在指定区域未找到可转换的同源基因。"
+
+#: cotton_toolkit/pipelines/homology.py:367
+msgid "正在查询源基因的坐标..."
+msgstr "正在查询源基因的坐标..."
+
+#: cotton_toolkit/pipelines/homology.py:371
+#, python-brace-format
+msgid "正在为 {} 个唯一的源基因ID查询GFF信息。"
+msgstr "正在为 {} 个唯一的源基因ID查询GFF信息。"
+
+#: cotton_toolkit/pipelines/homology.py:396
+msgid "正在查询目标基因的坐标..."
+msgstr "正在查询目标基因的坐标..."
+
+#: cotton_toolkit/pipelines/homology.py:404
+#, python-brace-format
+msgid "将 {} 个同源Hit_ID规范化为 {} 个唯一的基础基因ID进行GFF查询。"
+msgstr "将 {} 个同源Hit_ID规范化为 {} 个唯一的基础基因ID进行GFF查询。"
+
+#: cotton_toolkit/pipelines/homology.py:418
+msgid "找到了同源基因ID，但无法在目标GFF中查询到它们的坐标信息。"
+msgstr "找到了同源基因ID，但无法在目标GFF中查询到它们的坐标信息。"
+
+#: cotton_toolkit/pipelines/homology.py:427
+msgid "正在合并BLAST结果与坐标信息..."
+msgstr "正在合并BLAST结果与坐标信息..."
+
+#: cotton_toolkit/pipelines/homology.py:449
+#, python-brace-format
+msgid "正在将位点转换结果保存到: {}"
+msgstr "正在将位点转换结果保存到: {}"
+
+#: cotton_toolkit/pipelines/homology.py:451
+msgid "位点转换完成！"
+msgstr "位点转换完成！"
+
+#: cotton_toolkit/pipelines/homology.py:452
+#, python-brace-format
+msgid ""
+"位点转换结果已成功保存到:\n"
+"{}"
+msgstr ""
+"位点转换结果已成功保存到:\n"
+"{}"
+
+#: cotton_toolkit/pipelines/homology.py:457
+#, python-brace-format
+msgid "位点转换流程出错: {}"
+msgstr "位点转换流程出错: {}"
+
+#: cotton_toolkit/pipelines/homology.py:459
+#: cotton_toolkit/pipelines/preprocessing.py:488
+msgid "任务因错误而终止。"
+msgstr "任务因错误而终止。"
+
+#: cotton_toolkit/pipelines/mapping.py:21
+msgid "同源转换"
+msgstr "同源转换"
+
+#: cotton_toolkit/pipelines/mapping.py:41
+msgid "正在从数据库提取源基因序列..."
+msgstr "正在从数据库提取源基因序列..."
+
+#: cotton_toolkit/pipelines/mapping.py:42
+#, python-brace-format
+msgid "步骤 1/3: 正在为 {} 个基因提取序列..."
+msgstr "步骤 1/3: 正在为 {} 个基因提取序列..."
+
+#: cotton_toolkit/pipelines/mapping.py:46
+#: cotton_toolkit/pipelines/seqence_query.py:67
+msgid "未能获取任何查询序列，任务终止。"
+msgstr "未能获取任何查询序列，任务终止。"
+
+#: cotton_toolkit/pipelines/mapping.py:47
+msgid "错误：无法获取序列。"
+msgstr "错误：无法获取序列。"
+
+#: cotton_toolkit/pipelines/mapping.py:51
+#, python-brace-format
+msgid ""
+"--- BLAST Query Sequence (first 1000 chars) ---\n"
+"{}\n"
+"-------------------------------------------------"
+msgstr ""
+"BLAST查询序列（前1000个字符）---\n"
+"{}\n"
+"-------------------------------------------------"
+
+#: cotton_toolkit/pipelines/mapping.py:54
+#: cotton_toolkit/pipelines/seqence_query.py:72
+#, python-brace-format
+msgid "以下 {} 个基因未找到序列，将被忽略: {}"
+msgstr "以下 {} 个基因未找到序列，将被忽略: {}"
+
+#: cotton_toolkit/pipelines/mapping.py:57
+msgid "正在准备并执行BLASTN搜索..."
+msgstr "正在准备并执行BLASTN搜索..."
+
+#: cotton_toolkit/pipelines/mapping.py:58
+#, python-brace-format
+msgid "步骤 2/3: 正在对目标基因组 '{}' 执行BLASTN..."
+msgstr "步骤 2/3: 正在对目标基因组 '{}' 执行BLASTN..."
+
+#: cotton_toolkit/pipelines/mapping.py:84
+msgid "BLAST步骤执行失败。"
+msgstr "BLAST步骤执行失败。"
+
+#: cotton_toolkit/pipelines/mapping.py:89
+msgid "正在应用后处理筛选并保存结果..."
+msgstr "正在应用后处理筛选并保存结果..."
+
+#: cotton_toolkit/pipelines/mapping.py:90
+msgid "步骤 3/3: 正在后处理BLAST结果..."
+msgstr "步骤 3/3: 正在后处理BLAST结果..."
+
+#: cotton_toolkit/pipelines/mapping.py:108
+#, python-brace-format
+msgid "正在将最终结果保存到: {}"
+msgstr "正在将最终结果保存到: {}"
+
+#: cotton_toolkit/pipelines/mapping.py:117
+msgid "同源转换完成。"
+msgstr "同源转换完成。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:70
+msgid "文件处理过程被取消。"
+msgstr "文件处理过程已取消。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:76
+msgid "开始处理..."
+msgstr "开始处理..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:79
+msgid "正在读取文件..."
+msgstr "正在读取文件..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:96
+#, python-brace-format
+msgid "跳过文件 '{}'，因为未能读取到有效数据。"
+msgstr "跳过文件 '{}'，因为未能读取到有效数据。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:99
+msgid "文件读取完毕, 正在清洗ID..."
+msgstr "文件读取完毕，正在清洗ID..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:105
+#, python-brace-format
+msgid "正在对 {} 的 '{}' 列应用正则表达式..."
+msgstr "正在对 {} 的 '{}' 列应用正则表达式..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:108
+#, python-brace-format
+msgid "成功清洗了 '{}' 列。"
+msgstr "成功清洗了 '{}' 列。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:114
+msgid "正在写入数据库..."
+msgstr "正在写入数据库..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:125
+#, python-brace-format
+msgid "成功将 '{}' 转换到表 '{}'。"
+msgstr "成功将 '{}' 转换到表 '{}'。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:126
+msgid "处理完成"
+msgstr "处理完成"
+
+#: cotton_toolkit/pipelines/preprocessing.py:130
+#, python-brace-format
+msgid "文件 '{}' 的处理过程被取消。"
+msgstr "文件 '{}' 的处理已取消。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:131 ui/ui_manager.py:465
+msgid "任务已取消"
+msgstr "任务已取消"
+
+#: cotton_toolkit/pipelines/preprocessing.py:139
+#, python-brace-format
+msgid "成功清理表 '{}'。"
+msgstr "成功清理表 '{}'。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:141
+#, python-brace-format
+msgid "清理表 '{}' 时发生错误: {}"
+msgstr "清理表 '{}' 时发生错误: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:145
+msgid "处理失败"
+msgstr "处理失败"
+
+#: cotton_toolkit/pipelines/preprocessing.py:147
+#, python-brace-format
+msgid "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
+msgstr "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:242 ui/gui_app.py:62
+#: ui/tabs/data_download_tab.py:384
+msgid "数据下载"
+msgstr "数据下载"
+
+#: cotton_toolkit/pipelines/preprocessing.py:253
+#: cotton_toolkit/pipelines/preprocessing.py:255
+msgid "下载流程开始..."
+msgstr "下载流程开始..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:254
+msgid "任务在启动时被取消。"
+msgstr "任务在启动时被取消。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:273
+#, python-brace-format
+msgid "本次下载将使用代理: {}"
+msgstr "本次下载将使用代理: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:275
+msgid "下载代理开关已打开，但配置文件中未设置代理地址。"
+msgstr "下载代理开关已打开，但配置文件中未设置代理地址。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:277
+msgid "正在准备下载任务列表..."
+msgstr "正在准备下载任务列表..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:278
+#: cotton_toolkit/pipelines/preprocessing.py:318
+#: cotton_toolkit/pipelines/preprocessing.py:554
+#: cotton_toolkit/pipelines/preprocessing.py:558
+#: cotton_toolkit/pipelines/preprocessing.py:571
+msgid "任务被取消。"
+msgstr "任务已取消。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:280
+#, python-brace-format
+msgid "将尝试下载的基因组版本: {}"
+msgstr "将尝试下载的基因组版本: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:286
+#, python-brace-format
+msgid "未从UI指定文件类型，将尝试检查所有可能的类型: {}"
+msgstr "未从UI指定文件类型，将尝试检查所有可能的类型: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:289
+#, python-brace-format
+msgid "将根据UI的选择，精确下载以下文件类型: {}"
+msgstr "将根据UI的选择，精确下载以下文件类型: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:295
+#, python-brace-format
+msgid "在基因组源中未找到版本 '{}'，已跳过。"
+msgstr "在基因组源中未找到版本 '{}'，已跳过。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:310
+msgid "任务在任务列表创建期间被取消。"
+msgstr "任务在任务列表创建期间被取消。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:313
+msgid "根据您的选择，没有找到任何有效的URL可供下载。"
+msgstr "根据您的选择，没有找到任何有效的URL可供下载。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:314
+msgid "任务完成：无文件可下载。"
+msgstr "任务完成：无文件可下载。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:317
+#, python-brace-format
+msgid "找到 {} 个文件需要下载。"
+msgstr "找到 {} 个文件需要下载。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:319
+#, python-brace-format
+msgid "准备下载 {} 个文件..."
+msgstr "准备下载 {} 个文件..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:341
+msgid "下载任务已被用户取消。"
+msgstr "下载任务已被用户取消。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:355
+#, python-brace-format
+msgid "下载 {} 的 {} 文件时发生严重错误: {}"
+msgstr "下载 {} 的 {} 文件时发生严重错误: {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:362
+msgid "总体下载进度"
+msgstr "总体下载进度"
+
+#: cotton_toolkit/pipelines/preprocessing.py:364
+#, python-brace-format
+msgid "所有指定的下载任务已完成。成功: {}, 失败: {}。"
+msgstr "所有指定的下载任务已完成。成功: {}, 失败: {}。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:365
+msgid "下载流程完成。"
+msgstr "下载流程完成。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:368
+#: ui/tabs/data_download_tab.py:65 ui/tabs/data_download_tab.py:120
+#: ui/tabs/data_download_tab.py:442
+msgid "预处理注释文件"
+msgstr "预处理注释文件"
+
+#: cotton_toolkit/pipelines/preprocessing.py:384
+msgid "开始预处理所有注释文件..."
+msgstr "开始预处理所有注释文件..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:385
+msgid "开始预处理所有注释文件 (包括GFF)..."
+msgstr "开始预处理所有注释文件（包括GFF）..."
+
+#: cotton_toolkit/pipelines/preprocessing.py:387
+#: cotton_toolkit/pipelines/preprocessing.py:557 ui/event_handler.py:172
 msgid "正在加载基因组源数据..."
 msgstr "正在加载基因组源数据..."
 
-#: cotton_toolkit/pipelines.py:1095
-msgid "未能加载基因组源数据。"
-msgstr "未能加载基因组源数据。"
+#: cotton_toolkit/pipelines/preprocessing.py:392
+msgid "预处理需要从UI明确选择一个基因组版本。"
+msgstr "预处理需要从用户界面明确选择一个基因组版本。"
 
-#: cotton_toolkit/pipelines.py:1096
-msgid "任务终止：未能加载基因组源。"
-msgstr "任务终止：未能加载基因组源。"
+#: cotton_toolkit/pipelines/preprocessing.py:393
+msgid "错误：未选择有效基因组。"
+msgstr "错误：未选择有效基因组。"
 
-#: cotton_toolkit/pipelines.py:1101
-msgid "正在检查需要预处理的文件..."
-msgstr "正在检查需要预处理的文件..."
+#: cotton_toolkit/pipelines/preprocessing.py:397
+msgid "正在检查所有文件状态..."
+msgstr "正在检查所有文件状态..."
 
-#: cotton_toolkit/pipelines.py:1113
-msgid "所有注释文件均已是最新状态，无需预处理。"
-msgstr "所有注释文件均已是最新状态，无需预处理。"
+#: cotton_toolkit/pipelines/preprocessing.py:411
+msgid "所有注释文件均已处理完毕，无需再次运行。"
+msgstr "所有注释文件均已处理完毕，无需再次运行。"
 
-#: cotton_toolkit/pipelines.py:1114
-msgid "无需处理，所有文件已是最新。"
-msgstr "无需处理，所有文件已是最新。"
+#: cotton_toolkit/pipelines/preprocessing.py:412
+msgid "所有文件均已是最新状态。"
+msgstr "所有文件均为最新版本。"
 
-#: cotton_toolkit/pipelines.py:1118 cotton_toolkit/pipelines.py:1119
-msgid "找到 {} 个文件需要进行预处理。"
-msgstr "找到 {} 个文件需要进行预处理。"
+#: cotton_toolkit/pipelines/preprocessing.py:444
+msgid "未找到有效文件进行处理。"
+msgstr "未找到有效文件进行处理。"
 
-#: cotton_toolkit/pipelines.py:1124
-msgid "任务被用户取消。"
-msgstr "任务被用户取消。"
+#: cotton_toolkit/pipelines/preprocessing.py:448
+#, python-brace-format
+msgid "检测到以下待处理文件: {}"
+msgstr "检测到以下待处理文件：{}"
 
-#: cotton_toolkit/pipelines.py:1130
-msgid "正在转换: {} ({}/{})"
-msgstr "正在转换: {} ({}/{})"
+#: cotton_toolkit/pipelines/preprocessing.py:449
+#, python-brace-format
+msgid "找到 {} 个待处理文件..."
+msgstr "找到 {} 个待处理文件..."
 
-#: cotton_toolkit/pipelines.py:1136
-msgid "预处理完成。成功转换 {}/{} 个文件。"
-msgstr "预处理完成。成功转换 {}/{} 个文件。"
+#: cotton_toolkit/pipelines/preprocessing.py:462
+#: cotton_toolkit/pipelines/preprocessing.py:609
+msgid "处理中..."
+msgstr "处理中..."
 
-#: cotton_toolkit/pipelines.py:1137
+#: cotton_toolkit/pipelines/preprocessing.py:473
+#: cotton_toolkit/pipelines/preprocessing.py:616
+msgid "✅ 完成"
+msgstr "✅ 完成"
+
+#: cotton_toolkit/pipelines/preprocessing.py:476
+msgid "🚫 已取消"
+msgstr "🚫 已取消"
+
+#: cotton_toolkit/pipelines/preprocessing.py:479
+#: cotton_toolkit/pipelines/preprocessing.py:626
+msgid "❌ 错误"
+msgstr "❌ 错误"
+
+#: cotton_toolkit/pipelines/preprocessing.py:484
+msgid "所有待处理的注释文件均已成功预处理。"
+msgstr "所有待处理的注释文件均已成功预处理。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:485
+#: cotton_toolkit/pipelines/preprocessing.py:633
 msgid "预处理完成。"
 msgstr "预处理完成。"
 
-#: cotton_toolkit/pipelines.py:1152
-msgid "开始将 '{}' 转换为CSV..."
-msgstr "开始将 '{}' 转换为CSV..."
+#: cotton_toolkit/pipelines/preprocessing.py:487
+msgid "部分文件在预处理过程中失败，请检查日志。"
+msgstr "部分文件在预处理过程中失败，请检查日志。"
 
-#: cotton_toolkit/pipelines.py:1160
-msgid "成功将文件转换为CSV格式: {}"
-msgstr "成功将文件转换为CSV格式: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:511
+#, python-brace-format
+msgid "正在解压 {}..."
+msgstr "正在解压 {}..."
 
-#: cotton_toolkit/pipelines.py:1162
-msgid "转换文件时失败。"
-msgstr "转换文件时失败。"
+#: cotton_toolkit/pipelines/preprocessing.py:521
+#, python-brace-format
+msgid "正在为 {} 创建 {} 数据库..."
+msgstr "正在为 {} 创建 {} 数据库..."
 
-#: cotton_toolkit/pipelines.py:1165
-msgid "执行Excel到CSV转换流水线时发生错误: {}"
-msgstr "执行Excel到CSV转换流水线时发生错误: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:525
+#, python-brace-format
+msgid "数据库 {} 创建成功。"
+msgstr "数据库 {} 创建成功。"
 
-#: cotton_toolkit/tools/annotator.py:49
-msgid "INFO: 将优先使用自定义注释数据库目录: {}"
-msgstr "信息: 将优先使用自定义注释数据库目录: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:528
+#, python-brace-format
+msgid "任务在解压时被取消: {}"
+msgstr "任务在解压时被取消: {}"
 
-#: cotton_toolkit/tools/annotator.py:62
-msgid "警告: 在配置中未找到 {} 的下载信息。"
-msgstr "警告: 在配置中未找到 {} 的下载信息。"
+#: cotton_toolkit/pipelines/preprocessing.py:530
+msgid ""
+"错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
+"PATH 环境变量中。"
+msgstr ""
+"错误: 未找到 'makeblastdb' 命令。请确保 BLAST+ 已正确安装并添加到系统的 PATH "
+"环境变量中。"
 
-#: cotton_toolkit/tools/annotator.py:71
-msgid "错误: 未找到预处理好的注释文件 '{}'。"
-msgstr "错误: 未找到预处理好的注释文件 '{}'。"
+#: cotton_toolkit/pipelines/preprocessing.py:534
+#, python-brace-format
+msgid "创建数据库 {} 失败: {}"
+msgstr "创建数据库 {} 失败: {}"
 
-#: cotton_toolkit/tools/annotator.py:72
-msgid "请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"
-msgstr "请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"
+#: cotton_toolkit/pipelines/preprocessing.py:536
+#, python-brace-format
+msgid "处理文件 {} 时发生未知错误: {}"
+msgstr "处理文件 {} 时发生未知错误: {}"
 
-#: cotton_toolkit/tools/annotator.py:75
-msgid "INFO: 正在加载预处理的注释文件: {}"
-msgstr "信息: 正在加载预处理的注释文件: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:539
+msgid "构建BLAST数据库"
+msgstr "构建BLAST数据库"
 
-#: cotton_toolkit/tools/annotator.py:80
-msgid "DEBUG: 从CSV加载的原始列名: {}"
-msgstr "调试: 从CSV加载的原始列名: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:553
+msgid "开始预处理BLAST数据库..."
+msgstr "开始预处理BLAST数据库..."
 
-#: cotton_toolkit/tools/annotator.py:86
-msgid "DEBUG: 强制重命名后的列名: {}"
-msgstr "调试: 强制重命名后的列名: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:555
+msgid "开始批量创建BLAST数据库..."
+msgstr "开始批量创建BLAST数据库..."
 
-#: cotton_toolkit/tools/annotator.py:91
-msgid "ERROR: 无法加载文件或文件为空: {}。"
-msgstr "错误: 无法加载文件或文件为空: {}。"
+#: cotton_toolkit/pipelines/preprocessing.py:561
+msgid "未能加载基因组源数据。"
+msgstr "未能加载基因组源数据。"
 
-#: cotton_toolkit/tools/annotator.py:105
-msgid "错误: 基因组 {} 未在配置中定义 'gene_id_regex'。"
-msgstr "错误: 基因组 {} 未在配置中定义 'gene_id_regex'。"
+#: cotton_toolkit/pipelines/preprocessing.py:562
+msgid "任务终止：未能加载基因组源。"
+msgstr "任务终止：未能加载基因组源。"
 
-#: cotton_toolkit/tools/annotator.py:106
-msgid "No regex defined for genome"
-msgstr "未定义用于基因组的正则表达式"
+#: cotton_toolkit/pipelines/preprocessing.py:570
+msgid "正在检查需要预处理的文件..."
+msgstr "正在检查需要预处理的文件..."
 
-#: cotton_toolkit/tools/annotator.py:108
-msgid "INFO: 使用正则表达式进行匹配: {}"
-msgstr "信息: 使用正则表达式进行匹配: {}"
+#: cotton_toolkit/pipelines/preprocessing.py:591
+msgid "任务在文件检查后被取消。"
+msgstr "任务在文件检查后被取消。"
 
-#: cotton_toolkit/tools/annotator.py:119
-msgid "警告: 输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。"
-msgstr "警告: 输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。"
+#: cotton_toolkit/pipelines/preprocessing.py:594
+msgid "所有BLAST数据库均已是最新状态，无需预处理。"
+msgstr "所有BLAST数据库均已是最新状态，无需预处理。"
 
-#: cotton_toolkit/tools/annotator.py:127
+#: cotton_toolkit/pipelines/preprocessing.py:595
+msgid "无需处理，所有文件已是最新。"
+msgstr "无需处理，所有文件已是最新。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:599
+#: cotton_toolkit/pipelines/preprocessing.py:600
+#, python-brace-format
+msgid "找到 {} 个BLAST数据库需要创建。"
+msgstr "找到 {} 个BLAST数据库需要创建。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:618
+msgid "⚠️ 警告"
+msgstr "⚠️ 警告"
+
+#: cotton_toolkit/pipelines/preprocessing.py:622
+msgid "错误: makeblastdb 未找到!"
+msgstr "错误: makeblastdb 未找到！"
+
+#: cotton_toolkit/pipelines/preprocessing.py:630
+#, python-brace-format
+msgid "进度 ({}/{}) - {}"
+msgstr "进度 ({}/{}) - {}"
+
+#: cotton_toolkit/pipelines/preprocessing.py:632
+#, python-brace-format
+msgid "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
+msgstr "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
+
+#: cotton_toolkit/pipelines/preprocessing.py:637 ui/gui_app.py:66
+msgid "GFF查询"
+msgstr "GFF查询"
+
+#: cotton_toolkit/pipelines/seqence_query.py:24 ui/gui_app.py:62
+#: ui/tabs/sequence_extraction_tab.py:307
+msgid "CDS序列提取"
+msgstr "CDS序列提取"
+
+#: cotton_toolkit/pipelines/seqence_query.py:44
+msgid "正在解析基因/转录本ID..."
+msgstr "正在解析基因/转录本ID..."
+
+#: cotton_toolkit/pipelines/seqence_query.py:48
+msgid "输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。"
+msgstr "输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。"
+
+#: cotton_toolkit/pipelines/seqence_query.py:51
+#, python-brace-format
+msgid "基因ID解析完成，共 {} 个有效ID。"
+msgstr "基因ID解析完成，共 {} 个有效ID。"
+
+#: cotton_toolkit/pipelines/seqence_query.py:53
+#, python-brace-format
+msgid "基因ID解析失败: {}"
+msgstr "基因ID解析失败: {}"
+
+#: cotton_toolkit/pipelines/seqence_query.py:61
+msgid "正在从数据库提取基因序列..."
+msgstr "正在从数据库提取基因序列..."
+
+#: cotton_toolkit/pipelines/seqence_query.py:68
+msgid "未能获取任何查询序列。"
+msgstr "未能获取任何查询序列。"
+
+#: cotton_toolkit/pipelines/seqence_query.py:74
+msgid "序列提取完成，正在整理输出..."
+msgstr "序列提取完成，正在整理输出..."
+
+#: cotton_toolkit/pipelines/seqence_query.py:95
+#, python-brace-format
+msgid "成功为查询ID提取了 {} 条CDS序列。"
+msgstr "成功为查询ID提取了 {} 条CDS序列。"
+
+#: cotton_toolkit/pipelines/seqence_query.py:102
+#, python-brace-format
+msgid "CDS序列已成功保存到: {}"
+msgstr "CDS序列已成功保存到：{}"
+
+#: cotton_toolkit/pipelines/seqence_query.py:106
+#, python-brace-format
+msgid "保存CSV文件失败: {}"
+msgstr "保存CSV文件失败: {}"
+
+#: cotton_toolkit/tools/annotator.py:63
+#, python-brace-format
+msgid "预处理数据库未找到: {}。请先运行数据预处理流程。"
+msgstr "预处理数据库未找到: {}。请先运行数据预处理流程。"
+
+#: cotton_toolkit/tools/annotator.py:99
+#, python-brace-format
 msgid "正在处理 {} 注释..."
 msgstr "正在处理 {} 注释..."
 
-#: cotton_toolkit/tools/annotator.py:162
+#: cotton_toolkit/tools/annotator.py:103
+#, python-brace-format
+msgid "不支持的注释类型: '{}'，已跳过。"
+msgstr "不支持的注释类型: '{}'，已跳过。"
+
+#: cotton_toolkit/tools/annotator.py:110
+#, python-brace-format
+msgid "基因组 '{}' 的配置中未找到 '{}' 的URL，无法推断表名。"
+msgstr "基因组 '{}' 的配置中未找到 '{}' 的URL，无法推断表名。"
+
+#: cotton_toolkit/tools/annotator.py:124
+#, python-brace-format
+msgid "在表 '{}' 中未找到任何匹配的注释信息。"
+msgstr "在表 '{}' 中未找到任何匹配的注释信息。"
+
+#: cotton_toolkit/tools/annotator.py:153
+#, python-brace-format
+msgid ""
+"错误: 数据库中未找到表 '{}'。请确保对应的原始文件已通过预处理脚本正确转换。"
+msgstr ""
+"错误: 数据库中未找到表 '{}'。请确保对应的原始文件已通过预处理脚本正确转换。"
+
+#: cotton_toolkit/tools/annotator.py:156
+#, python-brace-format
+msgid "查询表 '{}' 时发生数据库错误: {}"
+msgstr "查询表 '{}' 时发生数据库错误: {}"
+
+#: cotton_toolkit/tools/annotator.py:160
 msgid "所有注释处理完成。"
 msgstr "所有注释处理完成。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:32
+#: cotton_toolkit/tools/batch_ai_processor.py:36
+#, python-brace-format
 msgid "任务 '{}' 的缓存目录: {}"
 msgstr "任务 '{}' 的缓存目录: {}"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:35
+#: cotton_toolkit/tools/batch_ai_processor.py:40
+#, python-brace-format
 msgid "错误: 无法创建缓存目录 {}: {}"
 msgstr "错误: 无法创建缓存目录 {}: {}"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:85
+#: cotton_toolkit/tools/batch_ai_processor.py:88
+#, python-brace-format
 msgid "API调用错误: {}。在 {}秒 后重试 {}/{}。"
 msgstr "API调用错误: {}。在 {}秒 后重试 {}/{}。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:95
+#: cotton_toolkit/tools/batch_ai_processor.py:97
+#, python-brace-format
 msgid "警告: 经过 {} 次尝试后，文本 '{}' 处理失败。"
 msgstr "警告: 经过 {} 次尝试后，文本 '{}' 处理失败。"
 
@@ -1844,126 +1962,132 @@ msgid "PROCESSING_ERROR: Max retries reached"
 msgstr "处理错误：已达最大重试次数"
 
 #: cotton_toolkit/tools/batch_ai_processor.py:119
+#, python-brace-format
 msgid "警告: 列 '{}' 在DataFrame中未找到。"
 msgstr "警告: 列 '{}' 在DataFrame中未找到。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:155
-#: cotton_toolkit/tools/batch_ai_processor.py:163
+#: cotton_toolkit/tools/batch_ai_processor.py:151
+#: cotton_toolkit/tools/batch_ai_processor.py:159
 msgid "正在处理行"
 msgstr "正在处理行"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:170
+#: cotton_toolkit/tools/batch_ai_processor.py:165
+#, python-brace-format
 msgid "新列 '{}' 已插入到 '{}' 之后。"
 msgstr "新列 '{}' 已插入到 '{}' 之后。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:172
+#: cotton_toolkit/tools/batch_ai_processor.py:168
+#, python-brace-format
 msgid "插入新列时发生错误: {}。将新列附加到末尾作为备用方案。"
 msgstr "插入新列时发生错误: {}。将新列附加到末尾作为备用方案。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:197
+#: cotton_toolkit/tools/batch_ai_processor.py:192
+#, python-brace-format
 msgid "文件 {} UTF-8解码失败，尝试GBK..."
 msgstr "文件 {} UTF-8解码失败，尝试GBK..."
 
-#: cotton_toolkit/tools/batch_ai_processor.py:202
+#: cotton_toolkit/tools/batch_ai_processor.py:198
+#, python-brace-format
 msgid "警告: 列 '{}' 在 {} 中未找到。跳过。"
 msgstr "警告: 列 '{}' 在 {} 中未找到。跳过。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:216
+#: cotton_toolkit/tools/batch_ai_processor.py:212
+#, python-brace-format
 msgid "文件 {} 已处理并保存到: {}"
 msgstr "文件 {} 已处理并保存到: {}"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:221
-#: cotton_toolkit/utils/file_utils.py:74
+#: cotton_toolkit/tools/batch_ai_processor.py:217
+#: cotton_toolkit/utils/file_utils.py:73
+#, python-brace-format
 msgid "处理文件 {} 时发生严重错误: {}"
 msgstr "处理文件 {} 时发生严重错误: {}"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:247
+#: cotton_toolkit/tools/batch_ai_processor.py:243
+#, python-brace-format
 msgid "错误: 任务 '{}' 的缓存初始化失败，处理中止。"
 msgstr "错误: 任务 '{}' 的缓存初始化失败，处理中止。"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:259
+#: cotton_toolkit/tools/batch_ai_processor.py:256
+#, python-brace-format
 msgid "处理单个CSV文件: {}"
 msgstr "处理单个CSV文件: {}"
 
-#: cotton_toolkit/tools/batch_ai_processor.py:277
+#: cotton_toolkit/tools/batch_ai_processor.py:273
+#, python-brace-format
 msgid "任务 '{}' 的磁盘缓存已关闭。"
 msgstr "任务 '{}' 的磁盘缓存已关闭。"
 
-#: cotton_toolkit/tools/data_loader.py:24
-msgid "ERROR: Annotation file not found at: {}"
-msgstr "错误：在以下路径未找到注释文件：{}"
-
-#: cotton_toolkit/tools/data_loader.py:32
-msgid "WARNING: Annotation file '{}' is empty."
-msgstr "警告：注释文件'{}'为空。"
-
-#: cotton_toolkit/tools/data_loader.py:50
-msgid "ERROR: Failed to load and process standardized file {}. Reason: {}"
-msgstr "错误：未能加载并处理标准化文件{}。原因：{}"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:41
+#: cotton_toolkit/tools/enrichment_analyzer.py:36
+#: cotton_toolkit/tools/enrichment_analyzer.py:38
 msgid "正在准备富集分析背景数据..."
 msgstr "正在准备富集分析背景数据..."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:61
+#: cotton_toolkit/tools/enrichment_analyzer.py:57
 msgid "正在生成基因匹配报告..."
 msgstr "正在生成基因匹配报告..."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:77
+#: cotton_toolkit/tools/enrichment_analyzer.py:73
 msgid "匹配成功 (Matched)"
 msgstr "匹配成功 (Matched)"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:77
+#: cotton_toolkit/tools/enrichment_analyzer.py:73
 msgid "在背景中找到，已用于分析"
 msgstr "在背景中找到，已用于分析"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:78
+#: cotton_toolkit/tools/enrichment_analyzer.py:74
 msgid "在背景中但无注释条目"
 msgstr "在背景中但无注释条目"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:80
+#: cotton_toolkit/tools/enrichment_analyzer.py:76
 msgid "匹配失败 (Failed)"
 msgstr "匹配失败 (Failed)"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:80
+#: cotton_toolkit/tools/enrichment_analyzer.py:76
 msgid "基因ID不在背景注释中"
 msgstr "基因ID不在背景注释中"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:93
-msgid "INFO: 详细注释报告已保存至: {}"
-msgstr "信息: 详细注释报告已保存至: {}"
+#: cotton_toolkit/tools/enrichment_analyzer.py:90
+#, python-brace-format
+msgid "详细注释报告已保存至: {}"
+msgstr "详细注释报告已保存至: {}"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:95
-msgid "WARNING: 创建基因匹配报告时发生错误: {}"
-msgstr "警告: 创建基因匹配报告时发生错误: {}"
+#: cotton_toolkit/tools/enrichment_analyzer.py:93
+#, python-brace-format
+msgid "创建基因匹配报告时发生错误: {}"
+msgstr "创建基因匹配报告时发生错误: {}"
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:97
+msgid "经过标准化和背景过滤后，没有有效的基因用于富集分析。"
+msgstr "经过标准化和背景过滤后，没有有效的基因可用于富集分析。"
 
 #: cotton_toolkit/tools/enrichment_analyzer.py:98
-msgid "WARNING: 经过标准化和背景过滤后，没有有效的基因用于富集分析。"
-msgstr "警告: 经过标准化和背景过滤后，没有有效的基因用于富集分析。"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:99
 msgid "任务终止：无有效基因。"
 msgstr "任务终止：无有效基因。"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:107
+#: cotton_toolkit/tools/enrichment_analyzer.py:106
 msgid "开始超几何检验..."
 msgstr "开始超几何检验..."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:112
+#: cotton_toolkit/tools/enrichment_analyzer.py:110
 msgid "正在计算富集项"
 msgstr "正在计算富集项"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:127
-msgid "WARNING: 分析未产生任何结果。"
-msgstr "警告: 分析未产生任何结果。"
+#: cotton_toolkit/tools/enrichment_analyzer.py:126
+msgid "分析未产生任何结果。"
+msgstr "分析未产生任何结果。"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:133
+#: cotton_toolkit/tools/enrichment_analyzer.py:127
+#: cotton_toolkit/tools/enrichment_analyzer.py:156
+msgid "任务完成：无结果。"
+msgstr "任务完成：无结果。"
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:132
 msgid "正在进行多重检验校正..."
 msgstr "正在进行多重检验校正..."
 
 #: cotton_toolkit/tools/enrichment_analyzer.py:136
-msgid "WARNING: 所有Term的p-value计算失败。"
-msgstr "警告: 所有Term的p-value计算失败。"
+msgid "所有Term的p-value计算失败。"
+msgstr "所有Term的p值计算失败。"
 
 #: cotton_toolkit/tools/enrichment_analyzer.py:137
 msgid "任务终止：p-value计算失败。"
@@ -1973,264 +2097,338 @@ msgstr "任务终止：p-value计算失败。"
 msgid "正在保存完整结果..."
 msgstr "正在保存完整结果..."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:147
-msgid "INFO: 完整的富集结果清单已保存至: {}"
-msgstr "信息: 完整的富集结果清单已保存至: {}"
+#: cotton_toolkit/tools/enrichment_analyzer.py:148
+#, python-brace-format
+msgid "完整的富集结果清单已保存至: {}"
+msgstr "完整的富集结果清单已保存至: {}"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:149
-msgid "WARNING: 保存完整富集结果时出错: {}"
-msgstr "警告: 保存完整富集结果时出错: {}"
+#: cotton_toolkit/tools/enrichment_analyzer.py:151
+#, python-brace-format
+msgid "保存完整富集结果时出错: {}"
+msgstr "保存完整富集结果时出错: {}"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:152
-msgid "WARNING: 富集分析未发现任何结果。"
-msgstr "警告: 富集分析未发现任何结果。"
+#: cotton_toolkit/tools/enrichment_analyzer.py:155
+msgid "富集分析未发现任何结果。"
+msgstr "富集分析未发现任何结果。"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:156
-msgid "SUCCESS: 富集分析完成，共计算出 {} 个Term的结果。"
-msgstr "成功: 富集分析完成，共计算出 {} 个Term的结果。"
+#: cotton_toolkit/tools/enrichment_analyzer.py:160
+#, python-brace-format
+msgid "富集分析完成，共计算出 {} 个Term的结果。"
+msgstr "富集分析完成，共计算出 {} 个Term的结果。"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:157
+#: cotton_toolkit/tools/enrichment_analyzer.py:161
 msgid "富集分析完成。"
 msgstr "富集分析完成。"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:175
-msgid "准备GO富集分析..."
-msgstr "准备GO富集分析..."
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:180
-msgid "GO注释文件准备失败，富集分析终止。"
-msgstr "GO注释文件准备失败，富集分析终止。"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:181
-msgid "任务终止：GO文件准备失败。"
-msgstr "任务终止：GO文件准备失败。"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:184
-msgid "加载GO背景数据..."
-msgstr "加载GO背景数据..."
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:185
-msgid "正在加载处理后的GO注释背景数据..."
-msgstr "正在加载处理后的GO注释背景数据..."
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:198
-msgid "读取或重命名GO背景文件失败: {}"
-msgstr "读取或重命名GO背景文件失败: {}"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:199
-msgid "任务终止：读取GO背景失败。"
-msgstr "任务终止：读取GO背景失败。"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:228
-msgid "准备KEGG富集分析..."
-msgstr "准备KEGG富集分析..."
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:233
-msgid "KEGG注释文件准备失败。"
-msgstr "KEGG注释文件准备失败。"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:235
-msgid "加载KEGG背景数据..."
-msgstr "加载KEGG背景数据..."
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:238
-msgid "加载的KEGG注释文件为空或格式不正确。"
-msgstr "加载的KEGG注释文件为空或格式不正确。"
-
-#: cotton_toolkit/tools/enrichment_analyzer.py:250
-msgid "ERROR: 准备KEGG背景文件时出错: {}"
-msgstr "错误: 准备KEGG背景文件时出错: {}"
-
+#: cotton_toolkit/tools/enrichment_analyzer.py:182
 #: cotton_toolkit/tools/enrichment_analyzer.py:251
-msgid "任务终止：准备KEGG背景失败。"
-msgstr "任务终止：准备KEGG背景失败。"
+#, python-brace-format
+msgid "ID智能解析完成，得到 {} 个标准化的ID用于富集分析。"
+msgstr "ID智能解析完成，得到 {} 个标准化的ID用于富集分析。"
 
-#: cotton_toolkit/tools/visualizer.py:35
-msgid "Warning: Enrichment DataFrame is empty for bubble plot."
-msgstr "警告：气泡 (bubble) 图的富集数据框为空。"
+#: cotton_toolkit/tools/enrichment_analyzer.py:188
+msgid "正在从数据库加载GO背景数据..."
+msgstr "正在从数据库加载GO背景数据..."
 
-#: cotton_toolkit/tools/visualizer.py:71 cotton_toolkit/tools/visualizer.py:184
-msgid ""
-"Error: Neither '{}' nor common alternatives found in DataFrame columns for "
-"sorting. Available columns: {}"
-msgstr "错误：在 DataFrame 列中未找到用于排序的'{}'或其常见替代项。可用列：{}"
+#: cotton_toolkit/tools/enrichment_analyzer.py:197
+#, python-brace-format
+msgid "基因组 '{}' 配置中缺少 GO_url"
+msgstr "基因组 '{}' 配置中缺少 GO_url"
 
-#: cotton_toolkit/tools/visualizer.py:78
-msgid ""
-"Error: Missing required columns for bubble plot: {}. Available columns: {}"
-msgstr "错误：缺失气泡图所需列：{}。可用列：{}"
+#: cotton_toolkit/tools/enrichment_analyzer.py:201
+#, python-brace-format
+msgid "正在从数据库表 '{}' 加载GO背景注释..."
+msgstr "正在从数据库表 '{}' 加载GO背景注释..."
 
-#: cotton_toolkit/tools/visualizer.py:86
-msgid "Warning: DataFrame is empty after sorting and head for cnet plot."
-msgstr "警告：排序并提取 cnet 图头部数据后，DataFrame 为空。"
+#: cotton_toolkit/tools/enrichment_analyzer.py:214
+msgid "GO背景文件中未找到 'Namespace' 列，将使用默认值 'GO'。"
+msgstr "背景文件中未找到 'Namespace' 列，将使用默认值 'GO'。"
 
-#: cotton_toolkit/tools/visualizer.py:93
-msgid "Warning: DataFrame is empty after dropping NA for bubble plot."
-msgstr "警告：生成气泡图时删除 NA 值后 DataFrame 为空。"
+#: cotton_toolkit/tools/enrichment_analyzer.py:218
+#, python-brace-format
+msgid "加载GO背景数据失败: {}"
+msgstr "加载GO背景数据失败: {}"
 
-#: cotton_toolkit/tools/visualizer.py:130
+#: cotton_toolkit/tools/enrichment_analyzer.py:220
+#: cotton_toolkit/tools/enrichment_analyzer.py:290
+#, python-brace-format
+msgid "请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。"
+msgstr "请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。"
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:222
+msgid "任务终止：加载GO背景数据失败。"
+msgstr "任务终止：加载GO背景数据失败。"
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:257
+msgid "正在从数据库加载KEGG背景数据..."
+msgstr "正在从数据库加载KEGG背景数据..."
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:267
+#, python-brace-format
+msgid "基因组 '{}' 配置中缺少 'KEGG_pathways_url'。"
+msgstr "基因组 '{}' 配置中缺少 'KEGG_pathways_url'。"
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:272
+#, python-brace-format
+msgid "正在从数据库表 '{}' 加载KEGG背景注释..."
+msgstr "正在从数据库表 '{}' 加载KEGG背景注释..."
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:288
+#, python-brace-format
+msgid "加载KEGG背景数据失败: {}"
+msgstr "加载KEGG背景数据失败: {}"
+
+#: cotton_toolkit/tools/enrichment_analyzer.py:292
+msgid "任务终止：加载KEGG背景数据失败。"
+msgstr "任务终止：加载KEGG背景数据失败。"
+
+#: cotton_toolkit/tools/visualizer.py:43
+msgid "Enrichment DataFrame is empty for bubble plot."
+msgstr "气泡图的数据框为空。"
+
+#: cotton_toolkit/tools/visualizer.py:132
+#, python-brace-format
 msgid "Error plotting bubble chart: {}"
 msgstr "绘制气泡图时出错：{}"
 
-#: cotton_toolkit/tools/visualizer.py:149
-msgid "Warning: Enrichment DataFrame is empty for bar plot."
-msgstr "警告：柱状图的富集数据框为空。"
+#: cotton_toolkit/tools/visualizer.py:152
+msgid "Enrichment DataFrame is empty for bar plot."
+msgstr "柱状图图的数据框为空。"
 
-#: cotton_toolkit/tools/visualizer.py:191
-msgid "Warning: DataFrame is empty after sorting and head for bar plot."
-msgstr "警告：排序后 DataFrame 为空，无法生成条形图的前几行数据。"
-
-#: cotton_toolkit/tools/visualizer.py:195
-msgid "Error: 'FDR' column is required for bar plot but not found."
-msgstr "错误：柱状图需要'FDR'列但未找到。"
-
-#: cotton_toolkit/tools/visualizer.py:201
-msgid "Warning: DataFrame is empty after dropping NA for bar plot."
-msgstr "警告：生成柱状图时删除 NA 值后 DataFrame 为空。"
-
-#: cotton_toolkit/tools/visualizer.py:253
+#: cotton_toolkit/tools/visualizer.py:216
+#, python-brace-format
 msgid "Error plotting bar chart: {}"
-msgstr "绘制柱状图时出错：{}"
+msgstr "绘制条形图时出错：{}"
 
-#: cotton_toolkit/tools/visualizer.py:266
-msgid "Warning: Enrichment DataFrame is empty for upset plot."
-msgstr "警告：用于维恩（upset）图的富集数据框为空。"
+#: cotton_toolkit/tools/visualizer.py:230
+msgid "Enrichment DataFrame is empty for upset plot."
+msgstr "upset图的数据框为空。"
 
-#: cotton_toolkit/tools/visualizer.py:273
+#: cotton_toolkit/tools/visualizer.py:238
+#, python-brace-format
 msgid ""
 "Error: Missing required columns for upset plot: {}. Available columns: {}"
-msgstr "错误：缺失绘制冲突图所需的列：{}。可用列：{}"
+msgstr "缺失绘制冲突图所需的列：{}。可用列：{}"
 
-#: cotton_toolkit/tools/visualizer.py:281
-msgid "Warning: DataFrame is empty after sorting and head for upset plot."
-msgstr "警告：排序后 DataFrame 变为空，无法生成堆叠图。"
+#: cotton_toolkit/tools/visualizer.py:246
+msgid "DataFrame is empty after sorting and head for upset plot."
+msgstr "排序并提取头部数据后，DataFrame 为空，无法生成upset图。"
 
-#: cotton_toolkit/tools/visualizer.py:299
+#: cotton_toolkit/tools/visualizer.py:266
+#, python-brace-format
 msgid "Error plotting upset chart: {}"
-msgstr "绘制Upset图时出错：{}"
+msgstr "绘制upset图时出错：{}"
 
-#: cotton_toolkit/tools/visualizer.py:313
-msgid "Warning: Enrichment DataFrame is empty for cnet plot."
-msgstr "警告：cnet 图的富集数据框为空。"
+#: cotton_toolkit/utils/config_overrides_utils.py:22
+#, python-brace-format
+msgid "配置覆盖警告：在对象 {} 中找不到键 '{}'。"
+msgstr "配置覆盖警告：在对象 {} 中找不到键 '{}'。"
 
-#: cotton_toolkit/tools/visualizer.py:320
-msgid ""
-"Error: Missing required columns for cnet plot: {}. Available columns: {}"
-msgstr "错误：缺少 cnet 图所需的列：{}。可用列：{}"
-
-#: cotton_toolkit/tools/visualizer.py:384
-msgid "Error plotting cnet chart: {}"
-msgstr "绘制 cnet 图表时出错：{}"
-
-#: cotton_toolkit/utils/file_utils.py:37
-msgid "ERROR: 输入文件不存在: {}"
-msgstr "错误: 输入文件不存在: {}"
-
-#: cotton_toolkit/utils/file_utils.py:53
+#: cotton_toolkit/utils/file_utils.py:49
+#, python-brace-format
 msgid "发现有效的缓存文件，将直接使用: {}"
 msgstr "发现有效的缓存文件，将直接使用: {}"
 
-#: cotton_toolkit/utils/file_utils.py:58
+#: cotton_toolkit/utils/file_utils.py:54
+#, python-brace-format
 msgid "无法检查文件时间戳: {}"
 msgstr "无法检查文件时间戳: {}"
 
-#: cotton_toolkit/utils/file_utils.py:60
+#: cotton_toolkit/utils/file_utils.py:57
+#, python-brace-format
 msgid "正在处理新文件或已更新的文件: {}"
 msgstr "正在处理新文件或已更新的文件: {}"
 
-#: cotton_toolkit/utils/file_utils.py:67
+#: cotton_toolkit/utils/file_utils.py:64
+#, python-brace-format
 msgid "文件已成功转换为标准CSV并缓存: {}"
 msgstr "文件已成功转换为标准CSV并缓存: {}"
 
-#: cotton_toolkit/utils/file_utils.py:71
+#: cotton_toolkit/utils/file_utils.py:69
+#, python-brace-format
 msgid "文件规范化失败: {}"
 msgstr "文件规范化失败: {}"
 
-#: cotton_toolkit/utils/file_utils.py:95
+#: cotton_toolkit/utils/file_utils.py:83
+#, python-brace-format
 msgid "错误: 文件不存在 -> {}"
 msgstr "错误: 文件不存在 -> {}"
 
-#: cotton_toolkit/utils/file_utils.py:109
+#: cotton_toolkit/utils/file_utils.py:95
+#, python-brace-format
 msgid "正在读取文件: {} (类型: {}, 压缩: {})"
 msgstr "正在读取文件: {} (类型: {}, 压缩: {})"
 
-#: cotton_toolkit/utils/file_utils.py:126
+#: cotton_toolkit/utils/file_utils.py:109
+#, python-brace-format
 msgid "文件 {} 使用UTF-8解码失败，尝试latin-1编码。"
 msgstr "文件 {} 使用UTF-8解码失败，尝试latin-1编码。"
 
-#: cotton_toolkit/utils/file_utils.py:133
+#: cotton_toolkit/utils/file_utils.py:116
+#, python-brace-format
 msgid "检测到制表符(Tab)分隔符: {}"
 msgstr "检测到制表符(Tab)分隔符: {}"
 
-#: cotton_toolkit/utils/file_utils.py:136
+#: cotton_toolkit/utils/file_utils.py:120
+#, python-brace-format
 msgid "默认使用逗号(Comma)分隔符: {}"
 msgstr "默认使用逗号(Comma)分隔符: {}"
 
-#: cotton_toolkit/utils/file_utils.py:141
+#: cotton_toolkit/utils/file_utils.py:126
+#, python-brace-format
 msgid "警告: 不支持的文件扩展名 '{}' 来自文件: {}"
 msgstr "警告: 不支持的文件扩展名 '{}' 来自文件: {}"
 
-#: cotton_toolkit/utils/file_utils.py:144
+#: cotton_toolkit/utils/file_utils.py:130
+#, python-brace-format
 msgid "文件 {} 加载成功，共 {} 行。"
 msgstr "文件 {} 加载成功，共 {} 行。"
 
-#: cotton_toolkit/utils/file_utils.py:148
+#: cotton_toolkit/utils/file_utils.py:135
+#, python-brace-format
 msgid "加载或解析文件 {} 时发生严重错误: {}"
 msgstr "加载或解析文件 {} 时发生严重错误: {}"
 
-#: cotton_toolkit/utils/file_utils.py:181
-msgid "DataFrame 已成功保存为CSV文件: {}"
-msgstr "DataFrame 已成功保存为CSV文件: {}"
-
-#: cotton_toolkit/utils/file_utils.py:184
-msgid "DataFrame 已成功保存为Excel文件: {}"
-msgstr "DataFrame 已成功保存为Excel文件: {}"
-
-#: cotton_toolkit/utils/file_utils.py:186
-msgid "错误: 不支持的文件格式 '{}'。请使用 '.csv' 或 '.xlsx'。"
-msgstr "错误: 不支持的文件格式 '{}'。请使用 '.csv' 或 '.xlsx'。"
-
-#: cotton_toolkit/utils/file_utils.py:191
-msgid "保存DataFrame到 {} 时发生错误: {}"
-msgstr "保存DataFrame到 {} 时发生错误: {}"
-
-#: cotton_toolkit/utils/gene_utils.py:64
+#: cotton_toolkit/utils/gene_utils.py:56
+#, python-brace-format
 msgid "Warning: Failed to apply regex for gene ID normalization. Reason: {}"
-msgstr "警告：基因 ID 标准化时未能应用正则表达式。原因：{}"
+msgstr "基因 ID 标准化正则表达式应用失败。原因：{}"
 
-#: cotton_toolkit/utils/logger.py:86
+#: cotton_toolkit/utils/gene_utils.py:107
+msgid "过滤后没有用于识别的有效基因ID。"
+msgstr "过滤后没有用于识别的有效基因ID。"
+
+#: cotton_toolkit/utils/gene_utils.py:113
+msgid "基因组自动识别任务被用户取消。"
+msgstr "基因组自动识别任务被用户取消。"
+
+#: cotton_toolkit/utils/gene_utils.py:131
+msgid ""
+"无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输"
+"入ID)。"
+msgstr ""
+"无法根据输入的基因ID可靠地自动识别基因组 (没有任何基因组的正则表达式匹配到输"
+"入ID)。"
+
+#: cotton_toolkit/utils/gene_utils.py:135
+msgid "基因组自动识别诊断分数:"
+msgstr "基因组自动识别诊断分数:"
+
+#: cotton_toolkit/utils/gene_utils.py:160
+msgid ""
+"检测到基因ID同时匹配 'UTX_v2.1(v3.1)' 和 'JGI_v1.1'。\n"
+"\n"
+"程序已自动优先选择 'UTX_v2.1'。\n"
+"\n"
+"请您注意甄别，如果需要使用 JGI 或 UTX_v3.1 版本，请手动判断或选择。"
+msgstr ""
+"检测到基因ID同时匹配 'UTX_v2.1(v3.1)' 和 'JGI_v1.1'。\n"
+"\n"
+"程序已自动优先选择 'UTX_v2.1'。\n"
+"\n"
+"请您注意甄别，如果需要使用 JGI 或 UTX_v3.1 版本，请手动判断或选择。"
+
+#: cotton_toolkit/utils/gene_utils.py:168
+#, python-brace-format
+msgid "最终自动识别基因为 '{}'，置信度: {:.2f}%."
+msgstr "最终自动识别基因为 '{}'，置信度: {:.2f}%。"
+
+#: cotton_toolkit/utils/gene_utils.py:171
+msgid "无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。"
+msgstr "无法根据输入的基因ID可靠地自动识别基因组 (最高匹配度未超过50%阈值)。"
+
+#: cotton_toolkit/utils/gene_utils.py:215
+#, python-brace-format
+msgid "错误: 找不到基因组 '{}' 的配置。"
+msgstr "错误: 找不到基因组 '{}' 的配置。"
+
+#: cotton_toolkit/utils/gene_utils.py:226
+#, python-brace-format
+msgid "错误: 在数据库中找不到表 '{}'。请先对CDS文件进行预处理。"
+msgstr "错误: 在数据库中找不到表 '{}'。请先对CDS文件进行预处理。"
+
+#: cotton_toolkit/utils/gene_utils.py:232
+#, python-brace-format
+msgid "智能解析：抽取了两个样本进行探测: {}"
+msgstr "智能解析：抽取了两个样本进行探测: {}"
+
+#: cotton_toolkit/utils/gene_utils.py:237
+#, python-brace-format
+msgid "智能解析：探测到数据库匹配转录本ID (例如: {})。"
+msgstr "智能解析：探测到数据库匹配转录本ID（例如：{}）。"
+
+#: cotton_toolkit/utils/gene_utils.py:242
+#, python-brace-format
+msgid "智能解析：探测到数据库匹配基础基因ID (例如: {})。"
+msgstr "智能解析：探测到数据库匹配基础基因ID（例如：{}）。"
+
+#: cotton_toolkit/utils/gene_utils.py:246
+msgid ""
+"错误：无法在数据库中匹配提供的基因ID样本。请检查基因组版本和ID格式是否正确。"
+msgstr ""
+"错误：无法在数据库中匹配提供的基因ID样本。请检查基因组版本和ID格式是否正确。"
+
+#: cotton_toolkit/utils/gene_utils.py:250
+#, python-brace-format
+msgid "智能解析：正在探测单个ID: {}"
+msgstr "智能解析：正在探测单个ID: {}"
+
+#: cotton_toolkit/utils/gene_utils.py:256
+#, python-brace-format
+msgid "错误：无法在数据库中匹配提供的基因ID '{}'。"
+msgstr "错误：无法在数据库中匹配提供的基因ID '{}'。"
+
+#: cotton_toolkit/utils/gene_utils.py:260
+msgid "应用 '转录本' 模式处理整个列表。"
+msgstr "应用 '转录本' 模式处理整个列表。"
+
+#: cotton_toolkit/utils/gene_utils.py:263
+msgid "应用 '基因' 模式处理整个列表。"
+msgstr "应用 '基因' 模式处理整个列表。"
+
+#: cotton_toolkit/utils/logger.py:137
+#, python-brace-format
 msgid "全局日志系统已初始化，级别设置为: {}"
 msgstr "全局日志系统已初始化，级别设置为: {}"
 
-#: cotton_toolkit/utils/logger.py:95 ui/gui_app.py:679
+#: cotton_toolkit/utils/logger.py:147 ui/gui_app.py:977
+#, python-brace-format
 msgid "全局日志级别已更新为: {}"
 msgstr "全局日志级别已更新为: {}"
 
-#: main.py:29
-msgid "程序发生致命错误 (Fatal Error)"
-msgstr "程序发生致命错误 (Fatal Error)"
-
-#: main.py:31
-msgid "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
-msgstr "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
-
-#: ui/dialogs.py:148
+#: ui/dialogs.py:189 ui/ui_manager.py:632
 msgid "正在准备任务..."
 msgstr "正在准备任务..."
 
-#: ui/dialogs.py:156 ui/event_handler.py:129 ui/event_handler.py:141
+#: ui/dialogs.py:197 ui/event_handler.py:121 ui/event_handler.py:132
 msgid "取消"
 msgstr "取消"
+
+#: ui/event_handler.py:75
+#, python-brace-format
+msgid "Invalid language name selected: {}"
+msgstr "选择了无效的语言名称：{}"
+
+#: ui/event_handler.py:78
+#, python-brace-format
+msgid "Language change requested to: {} ({})"
+msgstr "语言切换请求已提交至：{} ({})"
+
+#: ui/event_handler.py:89
+#, python-brace-format
+msgid "Main config file '{}' updated with language '{}'."
+msgstr "主配置文件'{}'已更新为语言'{}'。"
 
 #: ui/event_handler.py:91
 msgid "配置已保存"
 msgstr "配置已保存"
 
 #: ui/event_handler.py:92
+#, python-brace-format
 msgid "语言设置已同步到 {}。"
 msgstr "语言设置已同步到 {}。"
 
-#: ui/event_handler.py:97 ui/event_handler.py:267 ui/gui_app.py:410
+#: ui/event_handler.py:97 ui/event_handler.py:390 ui/gui_app.py:661
 msgid "保存失败"
 msgstr "保存失败"
 
@@ -2238,627 +2436,795 @@ msgstr "保存失败"
 msgid "无法将语言设置写入配置文件。"
 msgstr "无法将语言设置写入配置文件。"
 
-#: ui/event_handler.py:126 ui/event_handler.py:138
+#: ui/event_handler.py:101
+msgid "需要重启"
+msgstr "需要重启"
+
+#: ui/event_handler.py:102
+msgid "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
+msgstr "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
+
+#: ui/event_handler.py:103
+msgid "立即重启"
+msgstr "立即重启"
+
+#: ui/event_handler.py:104
+msgid "稍后重启"
+msgstr "稍后重启"
+
+#: ui/event_handler.py:118 ui/event_handler.py:129
 msgid "确认退出"
 msgstr "确认退出"
 
-#: ui/event_handler.py:127
+#: ui/event_handler.py:119
+#, python-brace-format
 msgid "任务'{}'正在运行中，确定要强制退出吗？"
 msgstr "任务'{}'正在运行中，确定要强制退出吗？"
 
-#: ui/event_handler.py:128
+#: ui/event_handler.py:120
 msgid "强制退出"
 msgstr "强制退出"
 
-#: ui/event_handler.py:139
+#: ui/event_handler.py:130
 msgid "您确定要退出吗？"
 msgstr "您确定要退出吗？"
 
-#: ui/event_handler.py:140
+#: ui/event_handler.py:131
 msgid "退出"
 msgstr "退出"
 
-#: ui/event_handler.py:149
+#: ui/event_handler.py:140
 msgid "图形界面启动中..."
 msgstr "图形界面启动中..."
 
-#: ui/event_handler.py:150
+#: ui/event_handler.py:141
 msgid "正在初始化应用程序和加载配置，请稍候..."
 msgstr "正在初始化应用程序和加载配置，请稍候..."
 
-#: ui/event_handler.py:160 ui/event_handler.py:409
+#: ui/event_handler.py:154 ui/event_handler.py:543
 msgid "正在加载配置文件..."
 msgstr "正在加载配置文件..."
 
-#: ui/event_handler.py:167
+#: ui/event_handler.py:162
+#, python-brace-format
+msgid "配置文件中的语言为 '{}'，将以此为准设置应用语言。"
+msgstr "配置文件中的语言为 '{}'，将以此为准设置应用语言。"
+
+#: ui/event_handler.py:175
+msgid "未找到 config.yml，将使用默认语言启动。"
+msgstr "未找到 config.yml，将使用默认语言启动。"
+
+#: ui/event_handler.py:177
 msgid "启动完成准备..."
 msgstr "启动完成准备..."
 
-#: ui/event_handler.py:172
+#: ui/event_handler.py:182
 msgid "应用启动失败"
 msgstr "应用启动失败"
 
-#: ui/event_handler.py:174
+#: ui/event_handler.py:184
 msgid "初始化完成。"
 msgstr "初始化完成。"
 
-#: ui/event_handler.py:181 ui/event_handler.py:745
-msgid "任务进行中"
-msgstr "任务进行中"
+#: ui/event_handler.py:192
+msgid "用户请求取消当前任务..."
+msgstr "用户请求取消当前任务..."
 
-#: ui/event_handler.py:182 ui/event_handler.py:746
-msgid "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
-msgstr "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
-
-#: ui/event_handler.py:188
-msgid "正在处理..."
-msgstr "正在处理..."
-
-#: ui/event_handler.py:226
-msgid "应用程序启动完成。"
-msgstr "应用程序启动完成。"
-
-#: ui/event_handler.py:230
-msgid "无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"
-msgstr "无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"
-
-#: ui/event_handler.py:237
-msgid "默认配置文件加载成功。"
-msgstr "默认配置文件加载成功。"
-
-#: ui/event_handler.py:239
-msgid "未找到或无法加载默认配置文件。"
-msgstr "未找到或无法加载默认配置文件。"
-
-#: ui/event_handler.py:246
-msgid "启动错误"
-msgstr "启动错误"
-
-#: ui/event_handler.py:254
-msgid "加载失败"
-msgstr "加载失败"
-
-#: ui/event_handler.py:261
-msgid "加载并覆盖成功"
-msgstr "加载并覆盖成功"
-
-#: ui/event_handler.py:261
-msgid "已将 '{}' 的内容加载并保存至 '{}'。"
-msgstr "已将 '{}' 的内容加载并保存至 '{}'。"
-
-#: ui/event_handler.py:266
-msgid ""
-"无法将加载的配置保存到根目录 'config.yml'。\n"
-"错误: {}"
-msgstr ""
-"无法将加载的配置保存到根目录 'config.yml'。\n"
-"错误: {}"
-
-#: ui/event_handler.py:283 ui/gui_app.py:54 ui/tabs/data_download_tab.py:269
-msgid "数据下载"
-msgstr "数据下载"
-
-#: ui/event_handler.py:283 ui/tabs/data_download_tab.py:59
-#: ui/tabs/data_download_tab.py:133 ui/tabs/data_download_tab.py:307
-msgid "预处理注释文件"
-msgstr "预处理注释文件"
-
-#: ui/event_handler.py:288
-msgid "数据下载选项卡状态已在任务完成后自动刷新。"
-msgstr "数据下载选项卡状态已在任务完成后自动刷新。"
-
-#: ui/event_handler.py:297
-msgid "任务执行出错"
-msgstr "任务执行出错"
-
-#: ui/event_handler.py:298
+#: ui/event_handler.py:198 ui/event_handler.py:425
 msgid "未知任务"
 msgstr "未知任务"
 
-#: ui/event_handler.py:325
+#: ui/event_handler.py:206
+#, python-brace-format
+msgid ""
+"任务 '{}' 已被强制取消。后台线程可能会在完成最后的IO操作后悄默声地终止。"
+msgstr ""
+"任务 '{}' 已被强制取消。后台线程可能会在完成最后的IO操作后悄默声地终止。"
+
+#: ui/event_handler.py:217 ui/event_handler.py:880
+msgid "任务进行中"
+msgstr "任务进行中"
+
+#: ui/event_handler.py:218 ui/event_handler.py:881
+#, python-brace-format
+msgid "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
+msgstr "任务 '{}' 正在运行中，请等待其完成后再开始新任务。"
+
+#: ui/event_handler.py:228
+msgid "正在处理..."
+msgstr "正在处理..."
+
+#: ui/event_handler.py:264
+#, python-brace-format
+msgid "任务 '{}' 发生错误: {}"
+msgstr "任务 '{}' 发生错误: {}"
+
+#: ui/event_handler.py:282
+msgid "应用程序启动完成。"
+msgstr "应用程序启动完成。"
+
+#: ui/event_handler.py:286
+msgid "无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"
+msgstr "无法在启动时更新UI配置：UIManager或config_path_display_var未就绪。"
+
+#: ui/event_handler.py:295
+msgid "默认配置文件加载成功。"
+msgstr "默认配置文件加载成功。"
+
+#: ui/event_handler.py:297
+msgid "未找到或无法加载默认配置文件。"
+msgstr "未找到或无法加载默认配置文件。"
+
+#: ui/event_handler.py:305
+#, python-brace-format
+msgid "启动时，语言下拉菜单已根据配置文件同步为: {}"
+msgstr "启动时，语言下拉菜单已根据配置文件同步为: {}"
+
+#: ui/event_handler.py:311
+msgid "正在刷新静态UI文本..."
+msgstr "正在刷新静态UI文本..."
+
+#: ui/event_handler.py:331
+msgid "启动错误"
+msgstr "启动错误"
+
+#: ui/event_handler.py:345
+msgid "加载失败"
+msgstr "加载失败"
+
+#: ui/event_handler.py:354
+msgid "配置文件不兼容"
+msgstr "配置文件不兼容"
+
+#: ui/event_handler.py:361
+msgid "兼容性警告"
+msgstr "兼容性警告"
+
+#: ui/event_handler.py:374
+msgid "加载并覆盖成功"
+msgstr "加载并覆盖成功"
+
+#: ui/event_handler.py:374
+#, python-brace-format
+msgid "已将 '{}' 的内容加载并保存至 '{}'。"
+msgstr "已将 '{}' 的内容加载并保存至 '{}'。"
+
+#: ui/event_handler.py:383
+msgid "配置文件已加载，正在刷新编辑器UI..."
+msgstr "配置文件已加载，正在刷新编辑器UI..."
+
+#: ui/event_handler.py:389
+#, python-brace-format
+msgid ""
+"无法将加载的配置保存到根目录 'config.yml'。\n"
+"错误: {}"
+msgstr ""
+"无法将加载的配置保存到根目录 'config.yml'。\n"
+"错误: {}"
+
+#: ui/event_handler.py:406
+#, python-brace-format
+msgid "默认配置已生成，将自动加载: {}"
+msgstr "默认配置已生成，将自动加载: {}"
+
+#: ui/event_handler.py:410
+msgid "默认配置生成成功并已自动加载。"
+msgstr "默认配置生成成功并已自动加载。"
+
+#: ui/event_handler.py:419
+#, python-brace-format
+msgid "数据下载选项卡状态已在任务 '{}' 完成后自动刷新。"
+msgstr "数据下载选项卡状态已在任务 '{}' 完成后自动刷新。"
+
+#: ui/event_handler.py:424
+msgid "任务执行出错"
+msgstr "任务执行出错"
+
+#: ui/event_handler.py:449
 msgid "刷新成功"
 msgstr "刷新成功"
 
-#: ui/event_handler.py:326
+#: ui/event_handler.py:450
+#, python-brace-format
 msgid "已成功获取并更新 {} 的模型列表。"
 msgstr "已成功获取并更新 {} 的模型列表。"
 
-#: ui/event_handler.py:329
+#: ui/event_handler.py:453
 msgid "刷新失败"
 msgstr "刷新失败"
 
-#: ui/event_handler.py:335
+#: ui/event_handler.py:458
 msgid "测试成功"
 msgstr "测试成功"
 
-#: ui/event_handler.py:337
+#: ui/event_handler.py:460
 msgid "测试失败"
 msgstr "测试失败"
 
-#: ui/event_handler.py:349
+#: ui/event_handler.py:477 ui/tabs/genome_identifier_tab.py:207
+msgid "注意：检测到歧义"
+msgstr "注意：检测到歧义"
+
+#: ui/event_handler.py:487
 msgid "代理测试成功"
 msgstr "代理测试成功"
 
-#: ui/event_handler.py:351
+#: ui/event_handler.py:489
 msgid "代理测试失败"
 msgstr "代理测试失败"
 
-#: ui/event_handler.py:357 ui/ui_manager.py:56 ui/ui_manager.py:344
+#: ui/event_handler.py:495 ui/ui_manager.py:80 ui/ui_manager.py:366
 msgid "浅色"
 msgstr "浅色"
 
-#: ui/event_handler.py:358 ui/ui_manager.py:56 ui/ui_manager.py:344
+#: ui/event_handler.py:496 ui/ui_manager.py:80 ui/ui_manager.py:366
 msgid "深色"
 msgstr "深色"
 
-#: ui/event_handler.py:359 ui/ui_manager.py:56 ui/ui_manager.py:344
+#: ui/event_handler.py:497 ui/ui_manager.py:80 ui/ui_manager.py:366
 msgid "跟随系统"
 msgstr "跟随系统"
 
-#: ui/event_handler.py:391
+#: ui/event_handler.py:531
 msgid "隐藏日志"
 msgstr "隐藏日志"
 
-#: ui/event_handler.py:391 ui/ui_manager.py:221
+#: ui/event_handler.py:531 ui/ui_manager.py:218
 msgid "显示日志"
 msgstr "显示日志"
 
-#: ui/event_handler.py:399
-msgid "操作日志已清除。"
-msgstr "操作日志已清除。"
-
-#: ui/event_handler.py:404
+#: ui/event_handler.py:538
 msgid "选择配置文件"
 msgstr "选择配置文件"
 
-#: ui/event_handler.py:409 ui/tabs/annotation_tab.py:48
-#: ui/tabs/annotation_tab.py:162 ui/tabs/enrichment_tab.py:68
-#: ui/tabs/enrichment_tab.py:261 ui/tabs/gff_query_tab.py:102
-#: ui/tabs/gff_query_tab.py:200 ui/tabs/homology_tab.py:55
-#: ui/tabs/homology_tab.py:61 ui/tabs/homology_tab.py:164
+#: ui/event_handler.py:543 ui/tabs/annotation_tab.py:48
+#: ui/tabs/annotation_tab.py:141 ui/tabs/arabidopsis_homology_tab.py:67
+#: ui/tabs/arabidopsis_homology_tab.py:293 ui/tabs/blast_tab.py:61
+#: ui/tabs/blast_tab.py:188 ui/tabs/enrichment_tab.py:67
+#: ui/tabs/enrichment_tab.py:215 ui/tabs/gff_query_tab.py:111
+#: ui/tabs/gff_query_tab.py:182 ui/tabs/homology_tab.py:64
+#: ui/tabs/homology_tab.py:70 ui/tabs/homology_tab.py:321
 #: ui/tabs/locus_conversion_tab.py:53 ui/tabs/locus_conversion_tab.py:59
-#: ui/tabs/locus_conversion_tab.py:130
+#: ui/tabs/locus_conversion_tab.py:131 ui/tabs/sequence_extraction_tab.py:66
+#: ui/tabs/sequence_extraction_tab.py:253
 msgid "加载中..."
 msgstr "加载中..."
 
-#: ui/event_handler.py:420
+#: ui/event_handler.py:554
 msgid "加载完成。"
 msgstr "加载完成。"
 
-#: ui/event_handler.py:434
+#: ui/event_handler.py:568
 msgid " 和 "
 msgstr " 和 "
 
-#: ui/event_handler.py:435
+#: ui/event_handler.py:569
 msgid "文件已存在"
 msgstr "文件已存在"
 
-#: ui/event_handler.py:436
+#: ui/event_handler.py:570
+#, python-brace-format
 msgid "文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?"
 msgstr "文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?"
 
-#: ui/event_handler.py:438
+#: ui/event_handler.py:572
 msgid "是，覆盖"
 msgstr "是，覆盖"
 
-#: ui/event_handler.py:438
+#: ui/event_handler.py:572
 msgid "否，取消"
 msgstr "否，取消"
 
-#: ui/event_handler.py:440
+#: ui/event_handler.py:575
 msgid "用户取消了生成默认配置文件的操作。"
 msgstr "用户取消了生成默认配置文件的操作。"
 
-#: ui/event_handler.py:442
+#: ui/event_handler.py:577
 msgid "生成配置文件中..."
 msgstr "生成配置文件中..."
 
-#: ui/event_handler.py:443
+#: ui/event_handler.py:578
 msgid "正在根目录生成默认配置文件，请稍候..."
 msgstr "正在根目录生成默认配置文件，请稍候..."
 
-#: ui/event_handler.py:450
+#: ui/event_handler.py:585
 msgid "正在生成主配置文件..."
 msgstr "正在生成主配置文件..."
 
-#: ui/event_handler.py:452
+#: ui/event_handler.py:587
 msgid "生成其他配置文件..."
 msgstr "生成其他配置文件..."
 
-#: ui/event_handler.py:454
+#: ui/event_handler.py:589
 msgid "配置文件生成完成。"
 msgstr "配置文件生成完成。"
 
-#: ui/event_handler.py:456
+#: ui/event_handler.py:591
 msgid "生成默认配置"
 msgstr "生成默认配置"
 
-#: ui/event_handler.py:458
+#: ui/event_handler.py:593
 msgid "生成默认配置文件失败。"
 msgstr "生成默认配置文件失败。"
 
-#: ui/event_handler.py:460
+#: ui/event_handler.py:595
 msgid "生成默认配置文件时发生错误:"
 msgstr "生成默认配置文件时发生错误:"
 
-#: ui/event_handler.py:469
+#: ui/event_handler.py:604
 msgid "生成成功"
 msgstr "生成成功"
 
-#: ui/event_handler.py:470
+#: ui/event_handler.py:605
 msgid "默认配置文件已成功生成。"
 msgstr "默认配置文件已成功生成。"
 
-#: ui/event_handler.py:470
+#: ui/event_handler.py:605
 msgid "是否立即加载?"
 msgstr "是否立即加载?"
 
-#: ui/event_handler.py:471
+#: ui/event_handler.py:606
 msgid "是"
 msgstr "是"
 
-#: ui/event_handler.py:471
+#: ui/event_handler.py:606
 msgid "否"
 msgstr "否"
 
-#: ui/event_handler.py:484
+#: ui/event_handler.py:616
 msgid "关于 FCGT"
 msgstr "关于 FCGT"
 
-#: ui/event_handler.py:548
+#: ui/event_handler.py:676
 msgid "程序名称"
 msgstr "程序名称"
 
-#: ui/event_handler.py:549
+#: ui/event_handler.py:677
 msgid "版本"
 msgstr "版本"
 
-#: ui/event_handler.py:550
+#: ui/event_handler.py:678
 msgid "项目地址"
 msgstr "项目地址"
 
-#: ui/event_handler.py:556
+#: ui/event_handler.py:682
 msgid "致谢与引用"
 msgstr "致谢与引用"
 
-#: ui/event_handler.py:559
+#: ui/event_handler.py:683
+msgid "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"
+msgstr "本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"
+
+#: ui/event_handler.py:685 ui/event_handler.py:693
 msgid "文章:"
 msgstr "文章:"
 
-#: ui/event_handler.py:585
+#: ui/event_handler.py:698
+msgid "基因组引用文献:"
+msgstr "基因组引用文献:"
+
+#: ui/event_handler.py:714
 msgid "许可证"
 msgstr "许可证"
 
-#: ui/event_handler.py:586
-msgid "本软件根据 Apache License 2.0 获得许可。"
-msgstr "本软件根据 Apache License 2.0 获得许可。"
+#: ui/event_handler.py:715
+msgid ""
+"本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者"
+"（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题"
+"承担责任。"
+msgstr ""
+"本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者"
+"（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题"
+"承担责任。"
 
-#: ui/event_handler.py:588
+#: ui/event_handler.py:717
 msgid "免责声明"
 msgstr "免责声明"
 
-#: ui/event_handler.py:589
+#: ui/event_handler.py:718
 msgid "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
 msgstr "上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。"
 
-#: ui/event_handler.py:611 ui/event_handler.py:642
+#: ui/event_handler.py:739 ui/event_handler.py:769
 msgid "确定"
 msgstr "确定"
 
-#: ui/event_handler.py:674 ui/gui_app.py:378 ui/tabs/ai_assistant_tab.py:383
-#: ui/tabs/annotation_tab.py:139 ui/tabs/data_download_tab.py:252
-#: ui/tabs/data_download_tab.py:275 ui/tabs/data_download_tab.py:284
-#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:100
-#: ui/tabs/genome_identifier_tab.py:103 ui/tabs/gff_query_tab.py:164
-#: ui/tabs/homology_tab.py:155 ui/tabs/locus_conversion_tab.py:122
+#: ui/event_handler.py:791 ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:343
+#: ui/tabs/annotation_tab.py:115 ui/tabs/arabidopsis_homology_tab.py:254
+#: ui/tabs/arabidopsis_homology_tab.py:301 ui/tabs/blast_tab.py:182
+#: ui/tabs/data_download_tab.py:274 ui/tabs/data_download_tab.py:283
+#: ui/tabs/data_download_tab.py:339 ui/tabs/data_download_tab.py:399
+#: ui/tabs/data_download_tab.py:408 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
+#: ui/tabs/homology_tab.py:297 ui/tabs/locus_conversion_tab.py:123
+#: ui/tabs/sequence_extraction_tab.py:222
+#: ui/tabs/sequence_extraction_tab.py:239
 msgid "错误"
 msgstr "错误"
 
-#: ui/event_handler.py:674
+#: ui/event_handler.py:791
+#, python-brace-format
 msgid "无法打开帮助链接: {}"
 msgstr "无法打开帮助链接: {}"
 
-#: ui/event_handler.py:678
+#: ui/event_handler.py:795
 msgid "选择文件"
 msgstr "选择文件"
 
-#: ui/event_handler.py:684
+#: ui/event_handler.py:801
 msgid "保存文件为"
 msgstr "保存文件为"
 
-#: ui/event_handler.py:691
+#: ui/event_handler.py:808
 msgid "选择目录"
 msgstr "选择目录"
 
-#: ui/event_handler.py:715
+#: ui/event_handler.py:849
 msgid "信息"
 msgstr "信息"
 
-#: ui/event_handler.py:715
+#: ui/event_handler.py:849
 msgid "请先填写HTTP或HTTPS代理地址。"
 msgstr "请先填写HTTP或HTTPS代理地址。"
 
-#: ui/event_handler.py:719
+#: ui/event_handler.py:853
 msgid "正在测试代理..."
 msgstr "正在测试代理..."
 
-#: ui/event_handler.py:719
+#: ui/event_handler.py:853
 msgid "尝试通过代理连接到测试站点..."
 msgstr "尝试通过代理连接到测试站点..."
 
-#: ui/event_handler.py:727
+#: ui/event_handler.py:861
 msgid "发送请求..."
 msgstr "发送请求..."
 
-#: ui/event_handler.py:731
+#: ui/event_handler.py:865
 msgid "连接成功！"
 msgstr "连接成功！"
 
-#: ui/event_handler.py:731
+#: ui/event_handler.py:865
 msgid "测试站点报告的IP地址是:"
 msgstr "测试站点报告的IP地址是:"
 
-#: ui/event_handler.py:733
+#: ui/event_handler.py:867
 msgid "测试完成。"
 msgstr "测试完成。"
 
-#: ui/event_handler.py:735
+#: ui/event_handler.py:869
 msgid "连接失败。"
 msgstr "连接失败。"
 
-#: ui/event_handler.py:735
+#: ui/event_handler.py:869
 msgid "错误详情:"
 msgstr "错误详情:"
 
-#: ui/event_handler.py:736
+#: ui/event_handler.py:870
 msgid "测试失败。"
 msgstr "测试失败。"
 
-#: ui/event_handler.py:754
+#: ui/event_handler.py:889
 msgid "UI错误"
 msgstr "UI错误"
 
-#: ui/event_handler.py:754
+#: ui/event_handler.py:889
 msgid "配置编辑器UI尚未完全加载。"
 msgstr "配置编辑器UI尚未完全加载。"
 
-#: ui/event_handler.py:757
+#: ui/event_handler.py:892
 msgid "缺少API Key"
 msgstr "缺少API Key"
 
-#: ui/event_handler.py:758
+#: ui/event_handler.py:893
+#, python-brace-format
 msgid "请先在编辑器中为 '{}' 填写有效的API Key。"
 msgstr "请先在编辑器中为 '{}' 填写有效的API Key。"
 
-#: ui/event_handler.py:764
+#: ui/event_handler.py:899
 msgid "刷新模型列表"
 msgstr "刷新模型列表"
 
-#: ui/event_handler.py:767
+#: ui/event_handler.py:902
 msgid "正在获取模型..."
 msgstr "正在获取模型..."
 
-#: ui/event_handler.py:767
+#: ui/event_handler.py:902
+#, python-brace-format
 msgid "连接到 {}..."
 msgstr "连接到 {}..."
 
-#: ui/event_handler.py:782
+#: ui/event_handler.py:917
 msgid "开始连接AI服务..."
 msgstr "开始连接AI服务..."
 
-#: ui/event_handler.py:790
+#: ui/event_handler.py:925
 msgid "数据处理中..."
 msgstr "数据处理中..."
 
-#: ui/event_handler.py:795 ui/gui_app.py:178
+#: ui/event_handler.py:930 ui/gui_app.py:326
 msgid "刷新完成。"
 msgstr "刷新完成。"
 
-#: ui/gui_app.py:44
+#: ui/gui_app.py:51
 msgid "通用OpenAI兼容接口"
 msgstr "通用OpenAI兼容接口"
 
-#: ui/gui_app.py:54 ui/tabs/annotation_tab.py:40 ui/tabs/annotation_tab.py:179
-msgid "功能注释"
-msgstr "功能注释"
-
-#: ui/gui_app.py:54 ui/tabs/enrichment_tab.py:58
+#: ui/gui_app.py:63 ui/tabs/enrichment_tab.py:57
 msgid "富集分析与绘图"
 msgstr "富集分析与绘图"
 
-#: ui/gui_app.py:55 ui/tabs/xlsx_converter_tab.py:113
-msgid "XLSX转CSV"
-msgstr "XLSX转CSV"
-
-#: ui/gui_app.py:55 ui/tabs/genome_identifier_tab.py:121
+#: ui/gui_app.py:64
 msgid "基因组鉴定"
 msgstr "基因组鉴定"
 
-#: ui/gui_app.py:55
-msgid "同源转换"
-msgstr "同源转换"
+#: ui/gui_app.py:64
+msgid "快速同源转换"
+msgstr "快速同源转换"
 
-#: ui/gui_app.py:56 ui/tabs/locus_conversion_tab.py:145
-msgid "位点转换"
-msgstr "位点转换"
+#: ui/gui_app.py:65
+msgid "棉花-拟南芥互转"
+msgstr "棉花-拟南芥同源基因转换"
 
-#: ui/gui_app.py:56
-msgid "GFF查询"
-msgstr "GFF查询"
+#: ui/gui_app.py:66
+msgid "本地BLAST"
+msgstr "本地BLAST"
 
-#: ui/gui_app.py:56
+#: ui/gui_app.py:67
 msgid "AI助手"
 msgstr "AI助手"
 
-#: ui/gui_app.py:191
-msgid "图片资源未找到: '{}'"
-msgstr "图片资源未找到: '{}'"
+#: ui/gui_app.py:86
+msgid "Friendly Cotton Genomes Toolkit - FCGT"
+msgstr "友好棉基因组工具包 - FCGT"
 
-#: ui/gui_app.py:193
-msgid "获取图片资源 '{}' 路径时发生错误: {}"
-msgstr "获取图片资源 '{}' 路径时发生错误: {}"
+#: ui/gui_app.py:94
+#, python-brace-format
+msgid "成功加载并设置应用图标: {}"
+msgstr "成功加载并设置应用图标: {}"
 
-#: ui/gui_app.py:206
+#: ui/gui_app.py:96
+#, python-brace-format
+msgid "应用图标文件未找到，请检查路径: {}"
+msgstr "应用图标文件未找到，请检查路径: {}"
+
+#: ui/gui_app.py:98
+#, python-brace-format
+msgid "加载主窗口图标失败: {}"
+msgstr "加载主窗口图标失败: {}"
+
+#: ui/gui_app.py:108 ui/gui_app.py:109
+msgid "粘贴基因ID，每行一个..."
+msgstr "粘贴基因ID，每行一个..."
+
+#: ui/gui_app.py:110
+msgid "例如: A01:1-100000"
+msgstr "例如: A01:1-100000"
+
+#: ui/gui_app.py:111
+msgid "在此处粘贴要注释的基因ID，每行一个"
+msgstr "在此处粘贴要注释的基因ID，每行一个"
+
+#: ui/gui_app.py:112
+msgid "输入单个基因ID, 例如: Ghir_D09G022830"
+msgstr "输入单个基因ID，例如：Ghir_D09G022830"
+
+#: ui/gui_app.py:113
+msgid ""
+"每行输入一个基因ID...\n"
+"Ghir_D09G022830\n"
+"Ghir_D11G011140"
+msgstr ""
+"每行输入一个基因ID...\n"
+"Ghir_D09G022830\n"
+"Ghir_D11G011140"
+
+#: ui/gui_app.py:115
+msgid ""
+"在此处粘贴用于富集分析的基因ID，每行一个。\n"
+"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"
+msgstr ""
+"在此处粘贴用于富集分析的基因ID，每行一个。\n"
+"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"
+
+#: ui/gui_app.py:116
+#, python-brace-format
+msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
+msgstr "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
+
+#: ui/gui_app.py:117 ui/tabs/ai_assistant_tab.py:225 ui/ui_manager.py:561
+msgid "Default prompt is empty, please set it in the configuration editor."
+msgstr "默认提示词为空，请在配置编辑器中设置。"
+
+#: ui/gui_app.py:118
+msgid "在此处键入您的FASTA(Q)格式序列"
+msgstr "在此处键入您的FASTA(Q)格式序列"
+
+#: ui/gui_app.py:282
+msgid "无法设置macOS标题栏外观 (当前Tcl/Tk版本可能过旧)。"
+msgstr "无法设置macOS标题栏外观 (当前Tcl/Tk版本可能过旧)。"
+
+#: ui/gui_app.py:289
+msgid "在Linux上，标题栏外观由您的桌面环境系统主题控制。"
+msgstr "在Linux上，标题栏外观由您的桌面环境系统主题控制。"
+
+#: ui/gui_app.py:293
+#, python-brace-format
+msgid "配置标题栏颜色时发生未知错误: {}"
+msgstr "配置标题栏颜色时发生未知错误: {}"
+
+#: ui/gui_app.py:315
+#, python-brace-format
+msgid "应用主题并刷新时出错: {}"
+msgstr "应用主题并刷新时出错: {}"
+
+#: ui/gui_app.py:318
+msgid "正在刷新窗口视觉效果..."
+msgstr "正在刷新窗口视觉效果..."
+
+#: ui/gui_app.py:341
 msgid "通用设置"
 msgstr "通用设置"
 
-#: ui/gui_app.py:211
+#: ui/gui_app.py:349
 msgid "日志级别"
 msgstr "日志级别"
 
-#: ui/gui_app.py:216
+#: ui/gui_app.py:356
 msgid "设置应用程序的日志详细程度。"
 msgstr "设置应用程序的日志详细程度。"
 
-#: ui/gui_app.py:220
+#: ui/gui_app.py:364
 msgid "HTTP代理"
 msgstr "HTTP代理"
 
-#: ui/gui_app.py:223
+#: ui/gui_app.py:369
 msgid "例如: http://127.0.0.1:7890"
 msgstr "例如: http://127.0.0.1:7890"
 
-#: ui/gui_app.py:227
+#: ui/gui_app.py:377
 msgid "HTTPS代理"
 msgstr "HTTPS代理"
 
-#: ui/gui_app.py:230
+#: ui/gui_app.py:382
 msgid "例如: https://127.0.0.1:7890"
 msgstr "例如: https://127.0.0.1:7890"
 
-#: ui/gui_app.py:234
+#: ui/gui_app.py:389
 msgid "测试代理连接"
 msgstr "测试代理连接"
 
-#: ui/gui_app.py:237
+#: ui/gui_app.py:395
 msgid "数据下载器配置"
 msgstr "数据下载器配置"
 
-#: ui/gui_app.py:242
+#: ui/gui_app.py:403
 msgid "基因组源文件"
 msgstr "基因组源文件"
 
-#: ui/gui_app.py:245
+#: ui/gui_app.py:408
 msgid "定义基因组下载链接的YAML文件。"
 msgstr "定义基因组下载链接的YAML文件。"
 
-#: ui/gui_app.py:249
+#: ui/gui_app.py:416
 msgid "下载输出根目录"
 msgstr "下载输出根目录"
 
-#: ui/gui_app.py:252
+#: ui/gui_app.py:421
 msgid "所有下载文件存放的基准目录。"
 msgstr "所有下载文件存放的基准目录。"
 
-#: ui/gui_app.py:256
+#: ui/gui_app.py:429
 msgid "强制重新下载"
 msgstr "强制重新下载"
 
-#: ui/gui_app.py:260
+#: ui/gui_app.py:436
 msgid "如果文件已存在，是否覆盖。"
 msgstr "如果文件已存在，是否覆盖。"
 
-#: ui/gui_app.py:264
+#: ui/gui_app.py:444
 msgid "最大下载线程数"
 msgstr "最大下载线程数"
 
-#: ui/gui_app.py:267
+#: ui/gui_app.py:449
 msgid "多线程下载时使用的最大线程数。"
 msgstr "多线程下载时使用的最大线程数。"
 
-#: ui/gui_app.py:271
+#: ui/gui_app.py:457
 msgid "为下载使用代理"
 msgstr "为下载使用代理"
 
-#: ui/gui_app.py:275
+#: ui/gui_app.py:464
 msgid "是否为数据下载启用代理。"
 msgstr "是否为数据下载启用代理。"
 
-#: ui/gui_app.py:278
+#: ui/gui_app.py:469
 msgid "AI 服务配置"
 msgstr "AI 服务配置"
 
-#: ui/gui_app.py:283
+#: ui/gui_app.py:477
 msgid "默认AI服务商"
 msgstr "默认AI服务商"
 
-#: ui/gui_app.py:289
+#: ui/gui_app.py:485
 msgid "选择默认使用的AI模型提供商。"
 msgstr "选择默认使用的AI模型提供商。"
 
-#: ui/gui_app.py:293
+#: ui/gui_app.py:493
 msgid "最大并行AI任务数"
 msgstr "最大并行AI任务数"
 
-#: ui/gui_app.py:296
+#: ui/gui_app.py:498
 msgid "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 msgstr "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 
-#: ui/gui_app.py:300
+#: ui/gui_app.py:506
 msgid "为AI服务使用代理"
 msgstr "为AI服务使用代理"
 
-#: ui/gui_app.py:304
+#: ui/gui_app.py:512
 msgid "是否为连接AI模型API启用代理。"
 msgstr "是否为连接AI模型API启用代理。"
 
-#: ui/gui_app.py:319 ui/ui_manager.py:574
+#: ui/gui_app.py:534 ui/ui_manager.py:585
 msgid "点击刷新获取列表"
 msgstr "点击刷新获取列表"
 
-#: ui/gui_app.py:320
+#: ui/gui_app.py:535
 msgid "点击刷新..."
 msgstr "点击刷新..."
 
-#: ui/gui_app.py:323
+#: ui/gui_app.py:541
 msgid "刷新"
 msgstr "刷新"
 
-#: ui/gui_app.py:325
+#: ui/gui_app.py:547
 msgid "代理刷新"
 msgstr "代理刷新"
 
-#: ui/gui_app.py:332
+#: ui/gui_app.py:560
 msgid "AI 提示词模板"
 msgstr "AI 提示词模板"
 
-#: ui/gui_app.py:337
+#: ui/gui_app.py:568
 msgid "翻译提示词"
 msgstr "翻译提示词"
 
-#: ui/gui_app.py:344
+#: ui/gui_app.py:580
 msgid "分析提示词"
 msgstr "分析提示词"
 
-#: ui/gui_app.py:374
+#: ui/gui_app.py:621
 msgid "配置已应用到编辑器UI。"
 msgstr "配置已应用到编辑器UI。"
 
-#: ui/gui_app.py:378
+#: ui/gui_app.py:625
 msgid "没有加载配置文件，无法保存。"
 msgstr "没有加载配置文件，无法保存。"
 
-#: ui/gui_app.py:396
+#: ui/gui_app.py:643
 msgid "无效的最大工作线程数值，已重置为默认值 4。"
 msgstr "无效的最大工作线程数值，已重置为默认值 4。"
 
-#: ui/gui_app.py:407
+#: ui/gui_app.py:658
 msgid "保存成功"
 msgstr "保存成功"
 
-#: ui/gui_app.py:407
+#: ui/gui_app.py:658
 msgid "配置文件已更新。"
 msgstr "配置文件已更新。"
 
-#: ui/gui_app.py:410
+#: ui/gui_app.py:661
 msgid "写入文件时发生未知错误。"
 msgstr "写入文件时发生未知错误。"
 
-#: ui/gui_app.py:412
+#: ui/gui_app.py:663
 msgid "保存错误"
 msgstr "保存错误"
 
-#: ui/gui_app.py:412
+#: ui/gui_app.py:664
+#, python-brace-format
 msgid ""
 "保存配置时发生错误:\n"
 "{}"
@@ -2866,53 +3232,69 @@ msgstr ""
 "保存配置时发生错误:\n"
 "{}"
 
-#: ui/gui_app.py:422
+#: ui/gui_app.py:676
 msgid "配置文件"
 msgstr "配置文件"
 
-#: ui/gui_app.py:424
+#: ui/gui_app.py:680
 msgid "加载配置文件..."
 msgstr "加载配置文件..."
 
-#: ui/gui_app.py:426
+#: ui/gui_app.py:684
 msgid "生成默认配置..."
 msgstr "生成默认配置..."
 
-#: ui/gui_app.py:428
+#: ui/gui_app.py:688
 msgid "帮助与支持"
 msgstr "帮助与支持"
 
-#: ui/gui_app.py:430
+#: ui/gui_app.py:692
 msgid "在线帮助文档"
 msgstr "在线帮助文档"
 
-#: ui/gui_app.py:432
+#: ui/gui_app.py:696
 msgid "关于本软件"
 msgstr "关于本软件"
 
-#: ui/gui_app.py:546
+#: ui/gui_app.py:783
+msgid "正在刷新所有工具选项卡以应用新配置..."
+msgstr "正在刷新所有工具选项卡以应用新配置..."
+
+#: ui/gui_app.py:791
+#, python-brace-format
+msgid "刷新选项卡 {key} 时失败: {}"
+msgstr "刷新选项卡 {key} 时失败: {}"
+
+#: ui/gui_app.py:808
 msgid "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 msgstr "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 
-#: ui/gui_app.py:551
+#: ui/gui_app.py:813
 msgid "应用并保存"
 msgstr "应用并保存"
 
-#: ui/gui_app.py:618
+#: ui/gui_app.py:871
 msgid "请先从“主页”加载或生成一个配置文件。"
 msgstr "请先从“主页”加载或生成一个配置文件。"
 
-#: ui/gui_app.py:643
+#: ui/gui_app.py:911
+#, python-brace-format
 msgid "UI font set to: {}, Monospace font to: {}"
-msgstr "UI 字体设置为：{}, 等宽字体设置为：{}"
+msgstr "界面字体设置为：{}，等宽字体设置为：{}"
 
-#: ui/gui_app.py:670
-msgid "处理消息队列时出错: {}"
-msgstr "处理消息队列时出错: {}"
-
-#: ui/gui_app.py:681
+#: ui/gui_app.py:980
+#, python-brace-format
 msgid "配置日志级别时出错: {}"
 msgstr "配置日志级别时出错: {}"
+
+#: ui/gui_app.py:983
+msgid "Application restart requested by user."
+msgstr "用户请求重新启动应用程序。"
+
+#: ui/gui_app.py:987
+#, python-brace-format
+msgid "Error during pre-restart cleanup: {}"
+msgstr "预重启清理过程中出错：{}"
 
 #: ui/tabs/ai_assistant_tab.py:42
 msgid "开始处理CSV文件"
@@ -2971,9 +3353,10 @@ msgid "CSV文件路径:"
 msgstr "CSV文件路径:"
 
 #: ui/tabs/ai_assistant_tab.py:127 ui/tabs/annotation_tab.py:92
-#: ui/tabs/enrichment_tab.py:182 ui/tabs/gff_query_tab.py:111
-#: ui/tabs/homology_tab.py:115 ui/tabs/locus_conversion_tab.py:77
-#: ui/tabs/xlsx_converter_tab.py:61
+#: ui/tabs/arabidopsis_homology_tab.py:106 ui/tabs/blast_tab.py:101
+#: ui/tabs/blast_tab.py:153 ui/tabs/enrichment_tab.py:182
+#: ui/tabs/gff_query_tab.py:121 ui/tabs/homology_tab.py:151
+#: ui/tabs/locus_conversion_tab.py:77
 msgid "浏览..."
 msgstr "浏览..."
 
@@ -2982,7 +3365,7 @@ msgid "待处理列:"
 msgstr "待处理列:"
 
 #: ui/tabs/ai_assistant_tab.py:133 ui/tabs/ai_assistant_tab.py:134
-#: ui/tabs/ai_assistant_tab.py:397
+#: ui/tabs/ai_assistant_tab.py:358
 msgid "请先选择CSV文件"
 msgstr "请先选择CSV文件"
 
@@ -2994,97 +3377,122 @@ msgstr "新列名称:"
 msgid "另存为新文件 (否则在原文件上修改)"
 msgstr "另存为新文件 (否则在原文件上修改)"
 
-#: ui/tabs/ai_assistant_tab.py:147
+#: ui/tabs/ai_assistant_tab.py:148
 msgid "为AI服务使用HTTP/HTTPS代理"
 msgstr "为AI服务使用HTTP/HTTPS代理"
 
-#: ui/tabs/ai_assistant_tab.py:224
-msgid "提示词已更新，正在后台保存配置..."
-msgstr "提示词已更新，正在后台保存配置..."
-
-#: ui/tabs/ai_assistant_tab.py:266 ui/ui_manager.py:132 ui/ui_manager.py:550
-msgid "Default prompt is empty, please set it in the configuration editor."
-msgstr "默认提示为空，请在配置编辑器中设置。"
-
-#: ui/tabs/ai_assistant_tab.py:291
+#: ui/tabs/ai_assistant_tab.py:249
 msgid "请先选择有效的CSV文件"
 msgstr "请先选择有效的CSV文件"
 
-#: ui/tabs/ai_assistant_tab.py:296 ui/tabs/ai_assistant_tab.py:397
+#: ui/tabs/ai_assistant_tab.py:254 ui/tabs/ai_assistant_tab.py:358
 msgid "读取中..."
 msgstr "读取中..."
 
-#: ui/tabs/ai_assistant_tab.py:308
+#: ui/tabs/ai_assistant_tab.py:266
 msgid "无法读取CSV列名"
 msgstr "无法读取CSV列名"
 
-#: ui/tabs/ai_assistant_tab.py:322 ui/tabs/ai_assistant_tab.py:324
-#: ui/tabs/ai_assistant_tab.py:397
+#: ui/tabs/ai_assistant_tab.py:280 ui/tabs/ai_assistant_tab.py:282
+#: ui/tabs/ai_assistant_tab.py:358
 msgid "读取失败"
 msgstr "读取失败"
 
-#: ui/tabs/ai_assistant_tab.py:327 ui/tabs/ai_assistant_tab.py:397
+#: ui/tabs/ai_assistant_tab.py:285 ui/tabs/ai_assistant_tab.py:358
 msgid "无可用列"
 msgstr "无可用列"
 
-#: ui/tabs/ai_assistant_tab.py:346
+#: ui/tabs/ai_assistant_tab.py:290 ui/tabs/ai_assistant_tab.py:397
+msgid "使用默认模型"
+msgstr "使用默认模型"
+
+#: ui/tabs/ai_assistant_tab.py:307
 msgid "无可用模型"
 msgstr "无可用模型"
 
-#: ui/tabs/ai_assistant_tab.py:384 ui/tabs/annotation_tab.py:139
-#: ui/tabs/data_download_tab.py:253 ui/tabs/data_download_tab.py:275
-#: ui/tabs/enrichment_tab.py:249 ui/tabs/genome_identifier_tab.py:100
-#: ui/tabs/gff_query_tab.py:164 ui/tabs/homology_tab.py:156
-#: ui/tabs/locus_conversion_tab.py:122
+#: ui/tabs/ai_assistant_tab.py:343 ui/tabs/annotation_tab.py:115
+#: ui/tabs/arabidopsis_homology_tab.py:254 ui/tabs/blast_tab.py:182
+#: ui/tabs/data_download_tab.py:275 ui/tabs/data_download_tab.py:339
+#: ui/tabs/data_download_tab.py:400 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
+#: ui/tabs/homology_tab.py:297 ui/tabs/locus_conversion_tab.py:123
+#: ui/tabs/sequence_extraction_tab.py:239
 msgid "请先加载配置文件。"
 msgstr "请先加载配置文件。"
 
-#: ui/tabs/ai_assistant_tab.py:395 ui/tabs/ai_assistant_tab.py:398
-#: ui/tabs/annotation_tab.py:160 ui/tabs/annotation_tab.py:163
-#: ui/tabs/annotation_tab.py:166 ui/tabs/enrichment_tab.py:257
-#: ui/tabs/enrichment_tab.py:262 ui/tabs/enrichment_tab.py:267
-#: ui/tabs/enrichment_tab.py:274 ui/tabs/enrichment_tab.py:306
-#: ui/tabs/genome_identifier_tab.py:108 ui/tabs/gff_query_tab.py:172
-#: ui/tabs/gff_query_tab.py:181 ui/tabs/gff_query_tab.py:201
-#: ui/tabs/homology_tab.py:159 ui/tabs/homology_tab.py:165
-#: ui/tabs/locus_conversion_tab.py:133
+#: ui/tabs/ai_assistant_tab.py:356 ui/tabs/ai_assistant_tab.py:359
+#: ui/tabs/annotation_tab.py:139 ui/tabs/annotation_tab.py:142
+#: ui/tabs/annotation_tab.py:145 ui/tabs/arabidopsis_homology_tab.py:259
+#: ui/tabs/arabidopsis_homology_tab.py:267
+#: ui/tabs/arabidopsis_homology_tab.py:283
+#: ui/tabs/arabidopsis_homology_tab.py:289
+#: ui/tabs/arabidopsis_homology_tab.py:295 ui/tabs/blast_tab.py:190
+#: ui/tabs/blast_tab.py:218 ui/tabs/blast_tab.py:222 ui/tabs/blast_tab.py:227
+#: ui/tabs/enrichment_tab.py:211 ui/tabs/enrichment_tab.py:216
+#: ui/tabs/enrichment_tab.py:221 ui/tabs/enrichment_tab.py:228
+#: ui/tabs/enrichment_tab.py:256 ui/tabs/genome_identifier_tab.py:119
+#: ui/tabs/gff_query_tab.py:155 ui/tabs/gff_query_tab.py:164
+#: ui/tabs/gff_query_tab.py:183 ui/tabs/homology_tab.py:303
+#: ui/tabs/homology_tab.py:310 ui/tabs/homology_tab.py:316
+#: ui/tabs/homology_tab.py:323 ui/tabs/locus_conversion_tab.py:134
+#: ui/tabs/sequence_extraction_tab.py:249
+#: ui/tabs/sequence_extraction_tab.py:254
+#: ui/tabs/sequence_extraction_tab.py:267
 msgid "输入缺失"
 msgstr "输入缺失"
 
-#: ui/tabs/ai_assistant_tab.py:395
+#: ui/tabs/ai_assistant_tab.py:356
 msgid "请确保所有必填项都已填写。"
 msgstr "请确保所有必填项都已填写。"
 
-#: ui/tabs/ai_assistant_tab.py:398
+#: ui/tabs/ai_assistant_tab.py:359
 msgid "请选择一个有效的“待处理列”。"
 msgstr "请选择一个有效的“待处理列”。"
 
-#: ui/tabs/ai_assistant_tab.py:401
+#: ui/tabs/ai_assistant_tab.py:362
 msgid "文件错误"
 msgstr "文件错误"
 
-#: ui/tabs/ai_assistant_tab.py:401
+#: ui/tabs/ai_assistant_tab.py:362
 msgid "指定的CSV文件不存在。"
 msgstr "指定的CSV文件不存在。"
 
-#: ui/tabs/ai_assistant_tab.py:404
+#: ui/tabs/ai_assistant_tab.py:365
 msgid "模板错误"
 msgstr "模板错误"
 
-#: ui/tabs/ai_assistant_tab.py:404
+#: ui/tabs/ai_assistant_tab.py:365
 #, python-brace-format
 msgid "提示词模板必须包含 {text} 占位符。"
 msgstr "提示词模板必须包含 {text} 占位符。"
+
+#: ui/tabs/ai_assistant_tab.py:375 ui/tabs/annotation_tab.py:154
+#: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/blast_tab.py:246
+#: ui/tabs/data_download_tab.py:308 ui/tabs/data_download_tab.py:356
+#: ui/tabs/data_download_tab.py:438 ui/tabs/enrichment_tab.py:263
+#: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
+#: ui/tabs/homology_tab.py:342 ui/tabs/locus_conversion_tab.py:150
+#: ui/tabs/sequence_extraction_tab.py:274
+msgid "操作取消"
+msgstr "操作取消"
+
+#: ui/tabs/ai_assistant_tab.py:375 ui/tabs/annotation_tab.py:154
+msgid "已发送取消请求，任务将在当前步骤完成后停止。"
+msgstr "已发送取消请求，任务将在当前步骤完成后停止。"
+
+#: ui/tabs/ai_assistant_tab.py:380
+msgid "AI 处理中"
+msgstr "AI 处理中"
 
 #: ui/tabs/ai_assistant_tab.py:417
 msgid "AI批量处理CSV"
 msgstr "AI批量处理CSV"
 
-#: ui/tabs/ai_assistant_tab.py:427
+#: ui/tabs/ai_assistant_tab.py:423 ui/tabs/data_download_tab.py:394
 msgid "任务启动失败"
 msgstr "任务启动失败"
 
-#: ui/tabs/ai_assistant_tab.py:428
+#: ui/tabs/ai_assistant_tab.py:424
 msgid "准备AI处理任务时发生错误:"
 msgstr "准备AI处理任务时发生错误:"
 
@@ -3092,16 +3500,18 @@ msgstr "准备AI处理任务时发生错误:"
 msgid "开始功能注释"
 msgstr "开始功能注释"
 
-#: ui/tabs/annotation_tab.py:43 ui/tabs/enrichment_tab.py:62
+#: ui/tabs/annotation_tab.py:43 ui/tabs/enrichment_tab.py:61
+#: ui/tabs/sequence_extraction_tab.py:60
 msgid "输入数据"
 msgstr "输入数据"
 
-#: ui/tabs/annotation_tab.py:46 ui/tabs/data_download_tab.py:79
-#: ui/tabs/data_download_tab.py:110 ui/tabs/enrichment_tab.py:66
+#: ui/tabs/annotation_tab.py:46 ui/tabs/data_download_tab.py:95
+#: ui/tabs/enrichment_tab.py:65 ui/tabs/sequence_extraction_tab.py:64
 msgid "基因组版本:"
 msgstr "基因组版本:"
 
-#: ui/tabs/annotation_tab.py:51 ui/tabs/homology_tab.py:64
+#: ui/tabs/annotation_tab.py:51 ui/tabs/arabidopsis_homology_tab.py:71
+#: ui/tabs/homology_tab.py:73 ui/tabs/sequence_extraction_tab.py:69
 msgid "基因ID列表:"
 msgstr "基因ID列表:"
 
@@ -3113,133 +3523,476 @@ msgstr "注释类型"
 msgid "输出文件 (可选):"
 msgstr "输出文件 (可选):"
 
-#: ui/tabs/annotation_tab.py:160
+#: ui/tabs/annotation_tab.py:139
 msgid "请输入要注释的基因ID。"
 msgstr "请输入要注释的基因ID。"
 
-#: ui/tabs/annotation_tab.py:162 ui/tabs/data_download_tab.py:124
-#: ui/tabs/data_download_tab.py:215 ui/tabs/data_download_tab.py:223
-#: ui/tabs/data_download_tab.py:255 ui/tabs/data_download_tab.py:278
-#: ui/tabs/enrichment_tab.py:236 ui/tabs/enrichment_tab.py:261
-#: ui/tabs/gff_query_tab.py:147 ui/tabs/gff_query_tab.py:200
-#: ui/tabs/homology_tab.py:165 ui/tabs/homology_tab.py:199
-#: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:132
-#: ui/ui_manager.py:555
+#: ui/tabs/annotation_tab.py:141 ui/tabs/blast_tab.py:188
+#: ui/tabs/blast_tab.py:337 ui/tabs/data_download_tab.py:230
+#: ui/tabs/data_download_tab.py:238 ui/tabs/data_download_tab.py:277
+#: ui/tabs/data_download_tab.py:343 ui/tabs/data_download_tab.py:402
+#: ui/tabs/enrichment_tab.py:197 ui/tabs/enrichment_tab.py:215
+#: ui/tabs/gff_query_tab.py:129 ui/tabs/gff_query_tab.py:182
+#: ui/tabs/homology_tab.py:322 ui/tabs/homology_tab.py:398
+#: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:133
+#: ui/tabs/sequence_extraction_tab.py:183
+#: ui/tabs/sequence_extraction_tab.py:253 ui/ui_manager.py:566
 msgid "无可用基因组"
 msgstr "无可用基因组"
 
-#: ui/tabs/annotation_tab.py:163 ui/tabs/enrichment_tab.py:262
-#: ui/tabs/gff_query_tab.py:201
+#: ui/tabs/annotation_tab.py:142 ui/tabs/enrichment_tab.py:216
+#: ui/tabs/gff_query_tab.py:183 ui/tabs/sequence_extraction_tab.py:254
 msgid "请选择一个基因组版本。"
 msgstr "请选择一个基因组版本。"
 
-#: ui/tabs/annotation_tab.py:166
+#: ui/tabs/annotation_tab.py:145
 msgid "请至少选择一种注释类型。"
 msgstr "请至少选择一种注释类型。"
 
-#: ui/tabs/base_tab.py:115
+#: ui/tabs/annotation_tab.py:159
+msgid "功能注释中"
+msgstr "功能注释中"
+
+#: ui/tabs/arabidopsis_homology_tab.py:35 ui/tabs/homology_tab.py:34
+#: ui/tabs/locus_conversion_tab.py:32
+msgid "开始转换"
+msgstr "开始转换"
+
+#: ui/tabs/arabidopsis_homology_tab.py:44
+msgid "棉花-拟南芥同源基因转换"
+msgstr "棉花-拟南芥同源基因转换"
+
+#: ui/tabs/arabidopsis_homology_tab.py:46
+msgid "基于预处理数据库中的同源注释表，快速进行ID批量转换。"
+msgstr "基于预处理数据库中的同源注释表，快速批量转换ID。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:50 ui/tabs/gff_query_tab.py:54
+#: ui/tabs/locus_conversion_tab.py:47
+msgid "输入参数"
+msgstr "输入参数"
+
+#: ui/tabs/arabidopsis_homology_tab.py:55 ui/tabs/homology_tab.py:99
+msgid "单基因模式"
+msgstr "单基因模式"
+
+#: ui/tabs/arabidopsis_homology_tab.py:60
+msgid "转换方向:"
+msgstr "转换方向:"
+
+#: ui/tabs/arabidopsis_homology_tab.py:65
+msgid "棉花基因组版本:"
+msgstr "棉花基因组版本："
+
+#: ui/tabs/arabidopsis_homology_tab.py:83
+msgid "输出文件"
+msgstr "输出文件"
+
+#: ui/tabs/arabidopsis_homology_tab.py:87 ui/tabs/homology_tab.py:129
+msgid "输出路径:"
+msgstr "输出路径:"
+
+#: ui/tabs/arabidopsis_homology_tab.py:110 ui/tabs/homology_tab.py:155
+msgid "复制"
+msgstr "复制"
+
+#: ui/tabs/arabidopsis_homology_tab.py:130
+#: ui/tabs/arabidopsis_homology_tab.py:277 ui/tabs/homology_tab.py:171
+#: ui/tabs/homology_tab.py:353
+msgid "正在查找..."
+msgstr "正在查找..."
+
+#: ui/tabs/arabidopsis_homology_tab.py:136 ui/tabs/homology_tab.py:177
+#: ui/tabs/sequence_extraction_tab.py:204
+msgid "复制成功!"
+msgstr "复制成功!"
+
+#: ui/tabs/arabidopsis_homology_tab.py:186
+#: ui/tabs/arabidopsis_homology_tab.py:236
+#: ui/tabs/arabidopsis_homology_tab.py:242
+#: ui/tabs/arabidopsis_homology_tab.py:245
+#: ui/tabs/arabidopsis_homology_tab.py:298
+msgid "棉花 -> 拟南芥"
+msgstr "棉花 -> 拟南芥"
+
+#: ui/tabs/arabidopsis_homology_tab.py:200 ui/tabs/homology_tab.py:277
+msgid "查找成功!"
+msgstr "查找成功!"
+
+#: ui/tabs/arabidopsis_homology_tab.py:204 ui/tabs/homology_tab.py:281
+msgid "未找到同源基因"
+msgstr "未找到同源基因"
+
+#: ui/tabs/arabidopsis_homology_tab.py:227
+#: ui/tabs/arabidopsis_homology_tab.py:242
+#: ui/tabs/arabidopsis_homology_tab.py:298
+msgid "拟南芥 -> 棉花"
+msgstr "拟南芥 -> 棉花"
+
+#: ui/tabs/arabidopsis_homology_tab.py:250 ui/tabs/blast_tab.py:177
+#: ui/tabs/gff_query_tab.py:123 ui/tabs/homology_tab.py:238
+msgid "CSV 文件"
+msgstr "CSV 文件"
+
+#: ui/tabs/arabidopsis_homology_tab.py:250 ui/tabs/blast_tab.py:168
+#: ui/tabs/homology_tab.py:239 ui/tabs/sequence_extraction_tab.py:190
+msgid "所有文件"
+msgstr "所有文件"
+
+#: ui/tabs/arabidopsis_homology_tab.py:259
+#: ui/tabs/arabidopsis_homology_tab.py:289
+msgid "请输入要转换的基因ID。"
+msgstr "请输入要转换的基因ID。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:267 ui/tabs/homology_tab.py:310
+msgid "请输入有效的基因ID。"
+msgstr "请输入有效的基因ID。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:271 ui/tabs/homology_tab.py:348
+msgid "正在查找同源基因..."
+msgstr "正在查找同源基因..."
+
+#: ui/tabs/arabidopsis_homology_tab.py:283 ui/tabs/blast_tab.py:227
+msgid "请指定输出文件路径。"
+msgstr "请指定输出文件路径。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:286 ui/tabs/homology_tab.py:358
+msgid "同源基因批量转换中"
+msgstr "同源基因批量转换中"
+
+#: ui/tabs/arabidopsis_homology_tab.py:294
+#: ui/tabs/arabidopsis_homology_tab.py:341 ui/tabs/blast_tab.py:189
+#: ui/tabs/blast_tab.py:345
+msgid "无可用棉花基因组"
+msgstr "无可用棉花基因组"
+
+#: ui/tabs/arabidopsis_homology_tab.py:295
+msgid "请选择一个有效的棉花基因组版本。"
+msgstr "请选择一个有效的棉花基因组版本。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:301
+msgid "无效的转换方向。"
+msgstr "无效的转换方向。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/data_download_tab.py:308
+#: ui/tabs/data_download_tab.py:438 ui/tabs/enrichment_tab.py:263
+#: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
+#: ui/tabs/homology_tab.py:342 ui/tabs/locus_conversion_tab.py:150
+#: ui/tabs/sequence_extraction_tab.py:274
+msgid "已发送取消请求，任务将尽快停止。"
+msgstr "已发送取消请求，任务将尽快停止。"
+
+#: ui/tabs/arabidopsis_homology_tab.py:330
+msgid "同源基因转换"
+msgstr "同源基因转换"
+
+#: ui/tabs/base_tab.py:106
 msgid "执行操作"
 msgstr "执行操作"
 
-#: ui/tabs/data_download_tab.py:37
+#: ui/tabs/base_tab.py:137
+#, python-brace-format
+msgid "后台任务发生严重错误: {}"
+msgstr "后台任务发生严重错误: {}"
+
+#: ui/tabs/base_tab.py:139
+msgid "严重错误"
+msgstr "严重错误"
+
+#: ui/tabs/base_tab.py:144
+msgid "任务已被用户取消。"
+msgstr "任务已被用户取消。"
+
+#: ui/tabs/base_tab.py:146
+msgid "任务成功完成！"
+msgstr "任务成功完成！"
+
+#: ui/tabs/base_tab.py:149
+msgid "成功"
+msgstr "成功"
+
+#: ui/tabs/base_tab.py:152
+msgid "任务执行完毕，但未返回成功状态或结果。"
+msgstr "任务执行完毕，但未返回成功状态或结果。"
+
+#: ui/tabs/blast_tab.py:36
+msgid "执行 BLAST"
+msgstr "执行 BLAST"
+
+#: ui/tabs/blast_tab.py:44 ui/tabs/blast_tab.py:274
+msgid "本地 BLAST"
+msgstr "本地 BLAST"
+
+#: ui/tabs/blast_tab.py:47
+msgid "输入与参数"
+msgstr "输入与参数"
+
+#: ui/tabs/blast_tab.py:51
+msgid "BLAST 类型:"
+msgstr "BLAST 类型:"
+
+#: ui/tabs/blast_tab.py:57
+msgid "目标棉花基因组:"
+msgstr "目标棉花基因组:"
+
+#: ui/tabs/blast_tab.py:66
+msgid "粘贴序列"
+msgstr "粘贴序列"
+
+#: ui/tabs/blast_tab.py:69
+msgid "文件输入"
+msgstr "文件输入"
+
+#: ui/tabs/blast_tab.py:111 ui/tabs/homology_tab.py:110
+msgid "E-value:"
+msgstr "E-value:"
+
+#: ui/tabs/blast_tab.py:118 ui/tabs/blast_tab.py:120
+msgid ""
+"期望值(E-value)衡量匹配的统计显著性。\n"
+"值越小，匹配结果越有意义，偶然匹配的可能性越低。\n"
+"例如: 1e-10 比 1e-5 更严格。"
+msgstr ""
+"期望值(E-value)衡量匹配的统计显著性。\n"
+"值越小，匹配结果越有意义，偶然匹配的可能性越低。\n"
+"例如: 1e-10 比 1e-5 更严格。"
+
+#: ui/tabs/blast_tab.py:123
+msgid "Word Size:"
+msgstr "Word Size:"
+
+#: ui/tabs/blast_tab.py:130 ui/tabs/blast_tab.py:132
+msgid ""
+"初始匹配的种子序列长度。\n"
+"对于核酸(blastn)，增大此值可加快速度但可能降低灵敏度。\n"
+"对于蛋白(blastp)，默认值通常为3。"
+msgstr ""
+"初始匹配的种子序列长度。\n"
+"对于核酸(blastn)，增大此值可加快速度但可能降低灵敏度。\n"
+"对于蛋白(blastp)，默认值通常为3。"
+
+#: ui/tabs/blast_tab.py:135
+msgid "Max Hits:"
+msgstr "Max Hits:"
+
+#: ui/tabs/blast_tab.py:142 ui/tabs/blast_tab.py:144
+msgid ""
+"在最终结果中显示的最大匹配序列数量。\n"
+"用于控制输出结果的大小，防止因匹配项过多而导致结果文件过大。"
+msgstr ""
+"在最终结果中显示的最大匹配序列数量。\n"
+"用于控制输出结果的大小，防止因匹配项过多而导致结果文件过大。"
+
+#: ui/tabs/blast_tab.py:147
+msgid "输出"
+msgstr "输出"
+
+#: ui/tabs/blast_tab.py:167
+msgid "序列文件"
+msgstr "序列文件"
+
+#: ui/tabs/blast_tab.py:170
+msgid "选择查询序列文件"
+msgstr "选择查询序列文件"
+
+#: ui/tabs/blast_tab.py:177 ui/tabs/homology_tab.py:238
+msgid "Excel 文件"
+msgstr "Excel 文件"
+
+#: ui/tabs/blast_tab.py:190
+msgid "请选择一个有效的目标棉花基因组。"
+msgstr "请选择一个有效的目标棉花基因组。"
+
+#: ui/tabs/blast_tab.py:199
+#, python-brace-format
+msgid "基因组版本 '{}' 不支持 '{}'，因为它缺少必需的 '{}' 数据源。"
+msgstr "基因组版本 '{}' 不支持 '{}'，因为它缺少必需的 '{}' 数据源。"
+
+#: ui/tabs/blast_tab.py:201
+msgid "数据不支持"
+msgstr "数据不支持"
+
+#: ui/tabs/blast_tab.py:206
+#, python-brace-format
+msgid ""
+"执行 '{}' 所需的文件 '{}' 尚未下载。\n"
+"\n"
+"请前往“数据下载”选项卡下载该文件。"
+msgstr ""
+"执行 '{}' 所需的文件 '{}' 尚未下载。\n"
+"\n"
+"请前往“数据下载”选项卡下载该文件。"
+
+#: ui/tabs/blast_tab.py:211 ui/tabs/data_download_tab.py:424
+msgid "缺少文件"
+msgstr "缺少文件"
+
+#: ui/tabs/blast_tab.py:218
+msgid "请选择一个查询文件。"
+msgstr "请选择一个查询文件。"
+
+#: ui/tabs/blast_tab.py:222
+msgid "请粘贴查询序列。"
+msgstr "请粘贴查询序列。"
+
+#: ui/tabs/blast_tab.py:237 ui/tabs/gff_query_tab.py:179
+#: ui/tabs/homology_tab.py:335 ui/tabs/locus_conversion_tab.py:143
+msgid "输入错误"
+msgstr "输入错误"
+
+#: ui/tabs/blast_tab.py:237
+msgid "参数设置中的值必须是有效的数字。"
+msgstr "参数设置中的值必须是有效的数字。"
+
+#: ui/tabs/blast_tab.py:246
+msgid "已发送取消请求，BLAST任务将在当前步骤完成后停止。"
+msgstr "已发送取消请求，BLAST任务将在当前步骤完成后停止。"
+
+#: ui/tabs/blast_tab.py:251
+msgid "本地 BLAST 运行中"
+msgstr "本地 BLAST 运行中"
+
+#: ui/tabs/data_download_tab.py:39
+msgid "Predicted CDS"
+msgstr "Predicted CDS"
+
+#: ui/tabs/data_download_tab.py:40
+msgid "Predicted Protein"
+msgstr "Predicted Protein"
+
+#: ui/tabs/data_download_tab.py:41
 msgid "注释 (gff3)"
 msgstr "注释 (gff3)"
 
-#: ui/tabs/data_download_tab.py:40
+#: ui/tabs/data_download_tab.py:44
 msgid "KEGG 通路"
 msgstr "KEGG 通路"
 
-#: ui/tabs/data_download_tab.py:41
+#: ui/tabs/data_download_tab.py:45
 msgid "KEGG 直系同源"
 msgstr "KEGG 直系同源"
 
-#: ui/tabs/data_download_tab.py:42
+#: ui/tabs/data_download_tab.py:46
 msgid "同源关系 (拟南芥)"
 msgstr "同源关系 (拟南芥)"
 
-#: ui/tabs/data_download_tab.py:55 ui/tabs/data_download_tab.py:131
+#: ui/tabs/data_download_tab.py:58 ui/tabs/data_download_tab.py:118
 msgid "开始下载"
 msgstr "开始下载"
 
-#: ui/tabs/data_download_tab.py:71 ui/tabs/data_download_tab.py:108
+#: ui/tabs/data_download_tab.py:61 ui/tabs/data_download_tab.py:312
+#: ui/tabs/data_download_tab.py:329
+msgid "预处理BLAST数据库"
+msgstr "预处理BLAST数据库"
+
+#: ui/tabs/data_download_tab.py:87
 msgid "数据下载与预处理"
 msgstr "数据下载与预处理"
 
-#: ui/tabs/data_download_tab.py:75 ui/tabs/data_download_tab.py:109
+#: ui/tabs/data_download_tab.py:91
 msgid "选择基因组"
 msgstr "选择基因组"
 
-#: ui/tabs/data_download_tab.py:83 ui/tabs/data_download_tab.py:255
-#: ui/tabs/data_download_tab.py:278
+#: ui/tabs/data_download_tab.py:99 ui/tabs/data_download_tab.py:277
+#: ui/tabs/data_download_tab.py:343 ui/tabs/data_download_tab.py:402
 msgid "配置未加载"
 msgstr "配置未加载"
 
-#: ui/tabs/data_download_tab.py:89 ui/tabs/data_download_tab.py:111
+#: ui/tabs/data_download_tab.py:105
 msgid "文件类型与状态"
 msgstr "文件类型与状态"
 
-#: ui/tabs/data_download_tab.py:93 ui/tabs/data_download_tab.py:112
+#: ui/tabs/data_download_tab.py:109
 msgid "下载选项"
 msgstr "下载选项"
 
-#: ui/tabs/data_download_tab.py:98 ui/tabs/data_download_tab.py:113
-msgid "强制重新下载 (覆盖本地已存在文件)"
-msgstr "强制重新下载 (覆盖本地已存在文件)"
-
-#: ui/tabs/data_download_tab.py:102 ui/tabs/data_download_tab.py:114
-msgid "对数据下载使用网络代理 (请在配置编辑器中设置)"
-msgstr "对数据下载使用网络代理 (请在配置编辑器中设置)"
-
-#: ui/tabs/data_download_tab.py:144
-msgid "选择文件类型"
-msgstr "选择文件类型"
-
-#: ui/tabs/data_download_tab.py:148
-msgid "文件状态"
-msgstr "文件状态"
-
-#: ui/tabs/data_download_tab.py:153
-msgid "刷新状态"
-msgstr "刷新状态"
-
-#: ui/tabs/data_download_tab.py:160
+#: ui/tabs/data_download_tab.py:145
 msgid "未下载"
 msgstr "未下载"
 
-#: ui/tabs/data_download_tab.py:161
+#: ui/tabs/data_download_tab.py:146
 msgid "已下载 (待处理)"
 msgstr "已下载 (待处理)"
 
-#: ui/tabs/data_download_tab.py:162
+#: ui/tabs/data_download_tab.py:147
+msgid "仅整理 (待建库)"
+msgstr "仅整理 (待建库)"
+
+#: ui/tabs/data_download_tab.py:148
+msgid "仅建库 (待整理)"
+msgstr "仅建库（待整理）"
+
+#: ui/tabs/data_download_tab.py:149 ui/tabs/data_download_tab.py:299
+#: ui/tabs/data_download_tab.py:430
 msgid "已就绪"
 msgstr "已就绪"
 
-#: ui/tabs/data_download_tab.py:204
+#: ui/tabs/data_download_tab.py:153
+msgid "选择文件类型"
+msgstr "选择文件类型"
+
+#: ui/tabs/data_download_tab.py:166
+msgid "文件状态"
+msgstr "文件状态"
+
+#: ui/tabs/data_download_tab.py:170
+msgid "刷新状态"
+msgstr "刷新状态"
+
+#: ui/tabs/data_download_tab.py:219
 msgid "当前基因组版本在配置文件中没有可供下载的URL链接。"
 msgstr "当前基因组版本在配置文件中没有可供下载的URL链接。"
 
-#: ui/tabs/data_download_tab.py:256 ui/tabs/data_download_tab.py:260
-#: ui/tabs/data_download_tab.py:279
+#: ui/tabs/data_download_tab.py:278 ui/tabs/data_download_tab.py:344
+#: ui/tabs/data_download_tab.py:349 ui/tabs/data_download_tab.py:403
 msgid "选择错误"
 msgstr "选择错误"
 
-#: ui/tabs/data_download_tab.py:256
-msgid "请选择一个有效的基因组进行下载。"
-msgstr "请选择一个有效的基因组进行下载。"
+#: ui/tabs/data_download_tab.py:278
+msgid "请选择一个有效的基因组。"
+msgstr "请选择一个有效的基因组。"
 
-#: ui/tabs/data_download_tab.py:260
-msgid "请至少选择一种要下载的文件类型。"
-msgstr "请至少选择一种要下载的文件类型。"
-
-#: ui/tabs/data_download_tab.py:279
-msgid "请选择一个有效的基因组进行预处理。"
-msgstr "请选择一个有效的基因组进行预处理。"
-
-#: ui/tabs/data_download_tab.py:283
+#: ui/tabs/data_download_tab.py:282 ui/tabs/data_download_tab.py:407
+#, python-brace-format
 msgid "找不到基因组 '{}' 的信息。"
 msgstr "找不到基因组 '{}' 的信息。"
 
+#: ui/tabs/data_download_tab.py:295
+msgid "无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。"
+msgstr "无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。"
+
+#: ui/tabs/data_download_tab.py:296
+msgid "缺少配置"
+msgstr "缺少配置"
+
 #: ui/tabs/data_download_tab.py:300
+msgid "所有适用的BLAST数据库均已预处理完成，无需再次运行。"
+msgstr "所有适用的BLAST数据库均已预处理完成，无需再次运行。"
+
+#: ui/tabs/data_download_tab.py:344
+msgid "请选择一个有效的基因组进行下载。"
+msgstr "请选择一个有效的基因组进行下载。"
+
+#: ui/tabs/data_download_tab.py:349
+msgid "请至少选择一种要下载的文件类型。"
+msgstr "请至少选择一种要下载的文件类型。"
+
+#: ui/tabs/data_download_tab.py:356
+msgid "已发送取消请求，下载任务将尽快停止。"
+msgstr "已发送取消请求，下载任务将尽快停止。"
+
+#: ui/tabs/data_download_tab.py:360
+msgid "数据下载中"
+msgstr "数据下载中"
+
+#: ui/tabs/data_download_tab.py:393
+msgid "启动下载任务时发生未知错误:"
+msgstr "启动下载任务时发生未知错误:"
+
+#: ui/tabs/data_download_tab.py:403
+msgid "请选择一个有效的基因组进行预处理。"
+msgstr "请选择一个有效的基因组进行预处理。"
+
+#: ui/tabs/data_download_tab.py:422
 #, python-brace-format
 msgid ""
 "无法开始预处理，以下必需的注释文件尚未下载：\n"
@@ -3254,79 +4007,71 @@ msgstr ""
 "\n"
 "请先下载它们。"
 
-#: ui/tabs/data_download_tab.py:303
-msgid "缺少文件"
-msgstr "缺少文件"
+#: ui/tabs/data_download_tab.py:430
+msgid "注释文件已全部预处理完成，无需再次运行。"
+msgstr "注释文件已全部预处理完成，无需再次运行。"
 
-#: ui/tabs/enrichment_tab.py:51
+#: ui/tabs/data_download_tab.py:459
+msgid "预处理文件"
+msgstr "预处理文件"
+
+#: ui/tabs/enrichment_tab.py:50
 msgid "开始富集分析"
 msgstr "开始富集分析"
 
-#: ui/tabs/enrichment_tab.py:72
+#: ui/tabs/enrichment_tab.py:71
 msgid "基因ID列表 (或基因ID,Log2FC):"
 msgstr "基因ID列表 (或基因ID,Log2FC):"
 
-#: ui/tabs/enrichment_tab.py:88
+#: ui/tabs/enrichment_tab.py:91
 msgid "输入格式与分析类型"
 msgstr "输入格式与分析类型"
 
-#: ui/tabs/enrichment_tab.py:92
+#: ui/tabs/enrichment_tab.py:95
 msgid "输入格式:"
 msgstr "输入格式:"
 
-#: ui/tabs/enrichment_tab.py:96
+#: ui/tabs/enrichment_tab.py:99
 msgid "包含表头"
 msgstr "包含表头"
 
-#: ui/tabs/enrichment_tab.py:99
+#: ui/tabs/enrichment_tab.py:102
 msgid "包含Log2FC"
 msgstr "包含Log2FC"
 
-#: ui/tabs/enrichment_tab.py:103
+#: ui/tabs/enrichment_tab.py:106
 msgid "分析类型:"
 msgstr "分析类型:"
 
-#: ui/tabs/enrichment_tab.py:114
-msgid "合并转录本到基因"
-msgstr "合并转录本到基因"
-
-#: ui/tabs/enrichment_tab.py:118
-msgid ""
-"开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n"
-"例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"
-msgstr ""
-"开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n"
-"例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"
-
-#: ui/tabs/enrichment_tab.py:122
+#: ui/tabs/enrichment_tab.py:117
 msgid "绘图设置"
 msgstr "绘图设置"
 
-#: ui/tabs/enrichment_tab.py:126
+#: ui/tabs/enrichment_tab.py:121
 msgid "绘图类型:"
 msgstr "绘图类型:"
 
-#: ui/tabs/enrichment_tab.py:130
+#: ui/tabs/enrichment_tab.py:125
 msgid "气泡图"
 msgstr "气泡图"
 
-#: ui/tabs/enrichment_tab.py:133
+#: ui/tabs/enrichment_tab.py:128
 msgid "条形图"
 msgstr "条形图"
 
-#: ui/tabs/enrichment_tab.py:136
+#: ui/tabs/enrichment_tab.py:131
 msgid "Upset图"
 msgstr "Upset图"
 
-#: ui/tabs/enrichment_tab.py:139
+#: ui/tabs/enrichment_tab.py:134
 msgid "网络图(Cnet)"
 msgstr "网络图(Cnet)"
 
-#: ui/tabs/enrichment_tab.py:143
+#: ui/tabs/enrichment_tab.py:138
 msgid "显示前N项:"
 msgstr "显示前N项:"
 
-#: ui/tabs/enrichment_tab.py:148
+#: ui/tabs/enrichment_tab.py:149
 msgid "排序依据:"
 msgstr "排序依据:"
 
@@ -3347,6 +4092,7 @@ msgid "文件格式:"
 msgstr "文件格式:"
 
 #: ui/tabs/enrichment_tab.py:174 ui/tabs/locus_conversion_tab.py:68
+#: ui/tabs/sequence_extraction_tab.py:87
 msgid "输出设置"
 msgstr "输出设置"
 
@@ -3354,35 +4100,36 @@ msgstr "输出设置"
 msgid "输出目录:"
 msgstr "输出目录:"
 
-#: ui/tabs/enrichment_tab.py:257
+#: ui/tabs/enrichment_tab.py:211
 msgid "请输入要分析的基因ID。"
 msgstr "请输入要分析的基因ID。"
 
-#: ui/tabs/enrichment_tab.py:267
+#: ui/tabs/enrichment_tab.py:221
 msgid "请选择图表的输出目录。"
 msgstr "请选择图表的输出目录。"
 
-#: ui/tabs/enrichment_tab.py:274
+#: ui/tabs/enrichment_tab.py:228
 msgid "请至少选择一种图表类型。"
 msgstr "请至少选择一种图表类型。"
 
-#: ui/tabs/enrichment_tab.py:292
-msgid "第 {i + 1} 行Log2FC值无效:"
-msgstr "第 {i + 1} 行Log2FC值无效:"
-
-#: ui/tabs/enrichment_tab.py:294
-msgid "第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):"
-msgstr "第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):"
-
-#: ui/tabs/enrichment_tab.py:301
+#: ui/tabs/enrichment_tab.py:251
 msgid "输入格式错误"
 msgstr "输入格式错误"
 
-#: ui/tabs/enrichment_tab.py:306
+#: ui/tabs/enrichment_tab.py:251
+msgid "解析基因列表时出错"
+msgstr "解析基因列表时出错"
+
+#: ui/tabs/enrichment_tab.py:256
 msgid "解析后未发现有效基因ID。"
 msgstr "解析后未发现有效基因ID。"
 
-#: ui/tabs/enrichment_tab.py:320
+#: ui/tabs/enrichment_tab.py:267
+msgid "富集分析运行中"
+msgstr "富集分析运行中"
+
+#: ui/tabs/enrichment_tab.py:290
+#, python-brace-format
 msgid "{} 富集分析"
 msgstr "{} 富集分析"
 
@@ -3390,65 +4137,58 @@ msgstr "{} 富集分析"
 msgid "开始鉴定"
 msgstr "开始鉴定"
 
-#: ui/tabs/genome_identifier_tab.py:35
-msgid "鉴定结果将显示在这里。"
-msgstr "鉴定结果将显示在这里。"
-
-#: ui/tabs/genome_identifier_tab.py:53
+#: ui/tabs/genome_identifier_tab.py:40
 msgid "基因组类别鉴定工具"
 msgstr "基因组类别鉴定工具"
 
-#: ui/tabs/genome_identifier_tab.py:57
+#: ui/tabs/genome_identifier_tab.py:45
+msgid ""
+"在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
+msgstr ""
+"在此处粘贴一个或多个基因ID（每行一个），工具将逐一鉴定它们的基因组类别。"
+
+#: ui/tabs/genome_identifier_tab.py:49
 msgid "输入基因列表"
 msgstr "输入基因列表"
 
-#: ui/tabs/genome_identifier_tab.py:63
-msgid "在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"
-msgstr "在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"
-
-#: ui/tabs/genome_identifier_tab.py:103
-msgid "基因组源数据未加载，无法进行鉴定。"
-msgstr "基因组源数据未加载，无法进行鉴定。"
-
-#: ui/tabs/genome_identifier_tab.py:108
-msgid "请输入至少一个基因ID进行鉴定。"
-msgstr "请输入至少一个基因ID进行鉴定。"
-
-#: ui/tabs/genome_identifier_tab.py:114
-msgid "正在鉴定中..."
-msgstr "正在鉴定中..."
-
-#: ui/tabs/genome_identifier_tab.py:135
+#: ui/tabs/genome_identifier_tab.py:54
 msgid "鉴定结果"
 msgstr "鉴定结果"
 
-#: ui/tabs/genome_identifier_tab.py:139
-#| msgid "基因组鉴定"
-msgid "基因组鉴定成功"
-msgstr "基因组鉴定成功"
+#: ui/tabs/genome_identifier_tab.py:97
+msgid "鉴定结果将显示在这里..."
+msgstr "鉴定结果将显示在这里..."
 
-#: ui/tabs/genome_identifier_tab.py:141
-msgid "未能识别到匹配的基因组。"
-msgstr "未能识别到匹配的基因组。"
+#: ui/tabs/genome_identifier_tab.py:119
+msgid "请输入至少一个基因ID进行鉴定。"
+msgstr "请输入至少一个基因ID进行鉴定。"
 
-#: ui/tabs/genome_identifier_tab.py:144
-#| msgid "未能识别到匹配的基因组。"
-msgid "基因组鉴定失败：未能识别到匹配的基因组。"
-msgstr "基因组鉴定失败：未能识别到匹配的基因组。"
+#: ui/tabs/genome_identifier_tab.py:132
+msgid "基因组鉴定中"
+msgstr "基因组鉴定中"
+
+#: ui/tabs/genome_identifier_tab.py:148
+msgid "基因组批量鉴定"
+msgstr "基因组批量鉴定"
+
+#: ui/tabs/genome_identifier_tab.py:171
+#, python-brace-format
+msgid "正在鉴定 {}/{}..."
+msgstr "正在鉴定 {}/{}..."
+
+#: ui/tabs/genome_identifier_tab.py:186 ui/tabs/genome_identifier_tab.py:197
+msgid "未能识别"
+msgstr "未能识别"
 
 #: ui/tabs/gff_query_tab.py:34
 msgid "开始基因查询"
 msgstr "开始基因查询"
 
-#: ui/tabs/gff_query_tab.py:47
+#: ui/tabs/gff_query_tab.py:45
 msgid "基因/区域位点查询"
 msgstr "基因/区域位点查询"
 
-#: ui/tabs/gff_query_tab.py:57 ui/tabs/locus_conversion_tab.py:47
-msgid "输入参数"
-msgstr "输入参数"
-
-#: ui/tabs/gff_query_tab.py:62
+#: ui/tabs/gff_query_tab.py:59
 msgid "输入基因ID (多行或逗号分隔):"
 msgstr "输入基因ID (多行或逗号分隔):"
 
@@ -3456,121 +4196,113 @@ msgstr "输入基因ID (多行或逗号分隔):"
 msgid "或 输入染色体区域:"
 msgstr "或 输入染色体区域:"
 
-#: ui/tabs/gff_query_tab.py:94
+#: ui/tabs/gff_query_tab.py:103
 msgid "配置与输出"
 msgstr "配置与输出"
 
-#: ui/tabs/gff_query_tab.py:98
+#: ui/tabs/gff_query_tab.py:107
 msgid "选择基因组版本:"
 msgstr "选择基因组版本:"
 
-#: ui/tabs/gff_query_tab.py:105 ui/tabs/locus_conversion_tab.py:72
+#: ui/tabs/gff_query_tab.py:114 ui/tabs/locus_conversion_tab.py:72
 msgid "结果输出CSV文件:"
 msgstr "结果输出CSV文件:"
 
-#: ui/tabs/gff_query_tab.py:113 ui/tabs/homology_tab.py:151
-msgid "CSV 文件"
-msgstr "CSV 文件"
-
-#: ui/tabs/gff_query_tab.py:172
+#: ui/tabs/gff_query_tab.py:155
 msgid "请指定结果文件的保存路径。"
 msgstr "请指定结果文件的保存路径。"
 
-#: ui/tabs/gff_query_tab.py:181
+#: ui/tabs/gff_query_tab.py:164
 msgid "必须输入基因ID列表或染色体区域之一。"
 msgstr "必须输入基因ID列表或染色体区域之一。"
 
-#: ui/tabs/gff_query_tab.py:184
+#: ui/tabs/gff_query_tab.py:167
 msgid "输入冲突"
 msgstr "输入冲突"
 
-#: ui/tabs/gff_query_tab.py:184
+#: ui/tabs/gff_query_tab.py:167
 msgid "将优先使用基因ID列表进行查询。"
 msgstr "将优先使用基因ID列表进行查询。"
 
-#: ui/tabs/gff_query_tab.py:197 ui/tabs/homology_tab.py:174
-#: ui/tabs/locus_conversion_tab.py:141 ui/tabs/xlsx_converter_tab.py:103
-msgid "输入错误"
-msgstr "输入错误"
-
-#: ui/tabs/gff_query_tab.py:197
+#: ui/tabs/gff_query_tab.py:179
 msgid "区域格式不正确。请使用 'Chr:Start-End' 格式。"
 msgstr "区域格式不正确。请使用 'Chr:Start-End' 格式。"
 
-#: ui/tabs/gff_query_tab.py:211
+#: ui/tabs/gff_query_tab.py:194
+msgid "GFF 基因查询中"
+msgstr "GFF 基因查询中"
+
+#: ui/tabs/gff_query_tab.py:214
 msgid "GFF基因查询"
 msgstr "GFF基因查询"
 
-#: ui/tabs/homology_tab.py:32 ui/tabs/locus_conversion_tab.py:32
-#: ui/tabs/xlsx_converter_tab.py:28
-msgid "开始转换"
-msgstr "开始转换"
+#: ui/tabs/homology_tab.py:46 ui/tabs/homology_tab.py:384
+msgid "快速基因同源转换"
+msgstr "快速基因同源转换"
 
-#: ui/tabs/homology_tab.py:44 ui/tabs/homology_tab.py:177
-msgid "基因同源转换"
-msgstr "基因同源转换"
+#: ui/tabs/homology_tab.py:51
+msgid ""
+"该工具通过动态BLASTN搜索，快速查找一个或多个源基因在目标基因组中的同源基"
+"因。\n"
+"此工具旨在快速批量获取，如需要更高的精准度，请使用 “本地BLAST” 工具"
+msgstr ""
+"该工具通过动态BLASTN搜索，快速查找一个或多个源基因在目标基因组中的同源基"
+"因。\n"
+"此工具旨在快速批量获取，如需要更高的精准度，请使用“本地BLAST”工具"
 
-#: ui/tabs/homology_tab.py:47
+#: ui/tabs/homology_tab.py:56
 msgid "输入"
 msgstr "输入"
 
-#: ui/tabs/homology_tab.py:52 ui/tabs/locus_conversion_tab.py:51
+#: ui/tabs/homology_tab.py:61 ui/tabs/locus_conversion_tab.py:51
 msgid "源基因组:"
 msgstr "源基因组:"
 
-#: ui/tabs/homology_tab.py:58 ui/tabs/locus_conversion_tab.py:57
+#: ui/tabs/homology_tab.py:67 ui/tabs/locus_conversion_tab.py:57
 msgid "目标基因组:"
 msgstr "目标基因组:"
 
-#: ui/tabs/homology_tab.py:82
+#: ui/tabs/homology_tab.py:95
 msgid "参数设置"
 msgstr "参数设置"
 
-#: ui/tabs/homology_tab.py:86
+#: ui/tabs/homology_tab.py:104
 msgid "严格匹配模式 (同源亚组内优先)"
 msgstr "严格匹配模式 (同源亚组内优先)"
 
-#: ui/tabs/homology_tab.py:90
+#: ui/tabs/homology_tab.py:108
 msgid "Top N:"
 msgstr "Top N:"
 
-#: ui/tabs/homology_tab.py:91
+#: ui/tabs/homology_tab.py:109
 msgid "PID (%):"
 msgstr "PID (%):"
 
-#: ui/tabs/homology_tab.py:92
-msgid "E-value:"
-msgstr "E-value:"
-
-#: ui/tabs/homology_tab.py:93
+#: ui/tabs/homology_tab.py:111
 msgid "Score:"
 msgstr "Score:"
 
-#: ui/tabs/homology_tab.py:107
+#: ui/tabs/homology_tab.py:125
 msgid "输出文件 (可选)"
 msgstr "输出文件 (可选)"
 
-#: ui/tabs/homology_tab.py:111
-msgid "输出路径:"
-msgstr "输出路径:"
+#: ui/tabs/homology_tab.py:285
+msgid "查询无结果"
+msgstr "查询无结果"
 
-#: ui/tabs/homology_tab.py:151
-msgid "Excel 文件"
-msgstr "Excel 文件"
+#: ui/tabs/homology_tab.py:286
+msgid "未能根据当前筛选条件找到任何匹配的同源基因。"
+msgstr "未能根据当前筛选条件找到任何匹配的同源基因。"
 
-#: ui/tabs/homology_tab.py:152
-msgid "所有文件"
-msgstr "所有文件"
-
-#: ui/tabs/homology_tab.py:160
+#: ui/tabs/homology_tab.py:303 ui/tabs/homology_tab.py:316
 msgid "请输入要映射的源基因ID。"
 msgstr "请输入要映射的源基因ID。"
 
-#: ui/tabs/homology_tab.py:166
+#: ui/tabs/homology_tab.py:323
 msgid "请选择有效的源和目标基因组。"
 msgstr "请选择有效的源和目标基因组。"
 
-#: ui/tabs/homology_tab.py:174
+#: ui/tabs/homology_tab.py:335
 msgid "参数设置中的阈值必须是有效的数字。"
 msgstr "参数设置中的阈值必须是有效的数字。"
 
@@ -3582,137 +4314,129 @@ msgstr "位点坐标转换"
 msgid "输入区域 (Chr:Start-End):"
 msgstr "输入区域 (Chr:Start-End):"
 
-#: ui/tabs/locus_conversion_tab.py:133
+#: ui/tabs/locus_conversion_tab.py:134
 msgid "请选择源/目标基因组、输入区域并指定输出文件路径。"
 msgstr "请选择源/目标基因组、输入区域并指定输出文件路径。"
 
-#: ui/tabs/locus_conversion_tab.py:141
+#: ui/tabs/locus_conversion_tab.py:143
 msgid "区域格式不正确，请使用 'Chr:Start-End' 格式。"
 msgstr "区域格式不正确，请使用 'Chr:Start-End' 格式。"
 
-#: ui/tabs/xlsx_converter_tab.py:40
-msgid "Excel (.xlsx) 转 CSV 工具"
-msgstr "Excel (.xlsx) 转 CSV 工具"
+#: ui/tabs/locus_conversion_tab.py:154
+msgid "位点转换中"
+msgstr "位点转换中"
 
-#: ui/tabs/xlsx_converter_tab.py:45
-msgid ""
-"此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
-"适用于所有工作表表头一致的情况。"
-msgstr ""
-"此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
-"适用于所有工作表表头一致的情况。"
+#: ui/tabs/sequence_extraction_tab.py:45
+msgid "开始提取序列"
+msgstr "开始提取序列"
 
-#: ui/tabs/xlsx_converter_tab.py:51
-msgid "文件路径"
-msgstr "文件路径"
+#: ui/tabs/sequence_extraction_tab.py:56
+msgid "基因CDS序列提取"
+msgstr "基因CDS序列提取"
 
-#: ui/tabs/xlsx_converter_tab.py:55
-msgid "输入Excel文件:"
-msgstr "输入Excel文件:"
+#: ui/tabs/sequence_extraction_tab.py:79
+msgid "模式选择"
+msgstr "模式选择"
 
-#: ui/tabs/xlsx_converter_tab.py:66
+#: ui/tabs/sequence_extraction_tab.py:81
+msgid "单基因模式 (直接显示FASTA结果)"
+msgstr "单基因模式（直接显示FASTA结果）"
+
+#: ui/tabs/sequence_extraction_tab.py:95
 msgid "输出CSV文件:"
 msgstr "输出CSV文件:"
 
-#: ui/tabs/xlsx_converter_tab.py:72
+#: ui/tabs/sequence_extraction_tab.py:99
 msgid "另存为..."
 msgstr "另存为..."
 
-#: ui/tabs/xlsx_converter_tab.py:103
-msgid "请输入一个有效的Excel文件路径。"
-msgstr "请输入一个有效的Excel文件路径。"
+#: ui/tabs/sequence_extraction_tab.py:136
+msgid "复制结果"
+msgstr "复制结果"
 
-#: ui/tabs/xlsx_converter_tab.py:110
-msgid "自动生成输出路径:"
-msgstr "自动生成输出路径:"
+#: ui/tabs/sequence_extraction_tab.py:188
+msgid "选择CSV文件保存位置"
+msgstr "选择CSV文件保存位置"
 
-#: ui/tabs/xlsx_converter_tab.py:118
-msgid "转换失败"
-msgstr "转换失败"
+#: ui/tabs/sequence_extraction_tab.py:190
+msgid "CSV文件"
+msgstr "CSV文件"
 
-#: ui/tabs/xlsx_converter_tab.py:118
-msgid "一个未预料的错误发生:"
-msgstr "一个未预料的错误发生:"
+#: ui/tabs/sequence_extraction_tab.py:224
+msgid "未提取到任何序列或发生未知错误。"
+msgstr "未能提取到任何序列或发生未知错误。"
 
-#: ui/ui_manager.py:118 ui/ui_manager.py:501
+#: ui/tabs/sequence_extraction_tab.py:249
+msgid "请输入至少一个基因ID。"
+msgstr "请输入至少一个基因ID。"
+
+#: ui/tabs/sequence_extraction_tab.py:261
+msgid "提示"
+msgstr "提示"
+
+#: ui/tabs/sequence_extraction_tab.py:261
+msgid "单基因模式下建议只输入一个基因ID，将只处理第一个ID。"
+msgstr "单基因模式下建议只输入一个基因ID，将只处理第一个ID。"
+
+#: ui/tabs/sequence_extraction_tab.py:267
+msgid "请指定输出CSV文件的路径。"
+msgstr "请指定输出CSV文件的路径。"
+
+#: ui/tabs/sequence_extraction_tab.py:278
+msgid "序列提取中"
+msgstr "序列提取中"
+
+#: ui/tabs/sequence_extraction_tab.py:301
+msgid "序列已成功提取并显示在输出框中。"
+msgstr "序列已成功提取并显示在输出框中。"
+
+#: ui/ui_manager.py:124 ui/ui_manager.py:506
+#, python-brace-format
 msgid "当前配置: {}"
 msgstr "当前配置: {}"
 
-#: ui/ui_manager.py:120 ui/ui_manager.py:502
+#: ui/ui_manager.py:126 ui/ui_manager.py:507
 msgid "未加载配置"
 msgstr "未加载配置"
 
-#: ui/ui_manager.py:125 ui/ui_manager.py:126
-msgid "粘贴基因ID，每行一个..."
-msgstr "粘贴基因ID，每行一个..."
-
-#: ui/ui_manager.py:127
-msgid "例如: A01:1-100000"
-msgstr "例如: A01:1-100000"
-
-#: ui/ui_manager.py:128
-msgid "在此处粘贴要注释的基因ID，每行一个。"
-msgstr "在此处粘贴要注释的基因ID，每行一个。"
-
-#: ui/ui_manager.py:130
-msgid ""
-"在此处粘贴用于富集分析的基因ID，每行一个。\n"
-"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
-"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
-msgstr ""
-"在此处粘贴用于富集分析的基因ID，每行一个。\n"
-"如果包含Log2FC，格式为：基因ID\tLog2FC\n"
-"（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
-
-#: ui/ui_manager.py:131
-#, python-brace-format
-msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
-msgstr "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
-
-#: ui/ui_manager.py:216
+#: ui/ui_manager.py:213
 msgid "操作日志"
 msgstr "操作日志"
 
-#: ui/ui_manager.py:225
+#: ui/ui_manager.py:222
 msgid "清空日志"
 msgstr "清空日志"
 
-#: ui/ui_manager.py:328
+#: ui/ui_manager.py:262
+msgid "日志面板已清空。"
+msgstr "日志面板已清空。"
+
+#: ui/ui_manager.py:353
 msgid "主页"
 msgstr "主页"
 
-#: ui/ui_manager.py:328
+#: ui/ui_manager.py:353
 msgid "配置编辑器"
 msgstr "配置编辑器"
 
-#: ui/ui_manager.py:329
+#: ui/ui_manager.py:354
 msgid "数据工具"
 msgstr "数据工具"
 
-#: ui/ui_manager.py:346
+#: ui/ui_manager.py:368
 msgid "语言"
 msgstr "语言"
 
-#: ui/ui_manager.py:348
+#: ui/ui_manager.py:370
 msgid "外观模式"
 msgstr "外观模式"
 
-#: ui/ui_manager.py:466
-#| msgid "任务已取消。"
-msgid "任务已取消"
-msgstr "任务已取消"
-
-#: ui/ui_manager.py:467
-#| msgid "{} 已被用户取消。"
-msgid "任务 '{}' 已被用户取消。"
-msgstr "任务 '{}' 已被用户取消。"
-
-#: ui/ui_manager.py:472
+#: ui/ui_manager.py:460 ui/ui_manager.py:475
 msgid "任务失败"
 msgstr "任务失败"
 
-#: ui/ui_manager.py:473
-#| msgid "处理文件 '{}' 时发生错误: {}"
+#: ui/ui_manager.py:461
+#, python-brace-format
 msgid ""
 "任务 '{}' 执行时发生错误:\n"
 "\n"
@@ -3722,27 +4446,33 @@ msgstr ""
 "\n"
 "{}"
 
-#: ui/ui_manager.py:478
-#| msgid "任务完成。"
+#: ui/ui_manager.py:470
 msgid "任务完成"
 msgstr "任务完成"
 
-#: ui/ui_manager.py:479
-#| msgid "AI任务流程成功完成。"
+#: ui/ui_manager.py:471
+#, python-brace-format
 msgid "任务 '{}' 已成功完成。"
 msgstr "任务 '{}' 已成功完成。"
 
+#: ui/ui_manager.py:476
+#, python-brace-format
+msgid "任务 '{}' 未能成功完成。"
+msgstr "任务 '{}' 未能成功完成。"
+
+#: ui/ui_manager.py:481
+msgid "已取消"
+msgstr "已取消"
+
 #: ui/ui_manager.py:483
-#| msgid "完成。"
 msgid "完成"
 msgstr "完成"
 
-#: ui/ui_manager.py:483
-#| msgid "失败。"
+#: ui/ui_manager.py:485
 msgid "失败"
 msgstr "失败"
 
-#: ui/ui_manager.py:505
+#: ui/ui_manager.py:510
 msgid ""
 "无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
 "动的早期阶段。"
@@ -3750,13 +4480,1040 @@ msgstr ""
 "无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启"
 "动的早期阶段。"
 
-#: ui/ui_manager.py:516
+#: ui/ui_manager.py:519
 msgid "UI已根据当前配置刷新。"
 msgstr "UI已根据当前配置刷新。"
 
-#: ui/ui_manager.py:566
+#: ui/ui_manager.py:577
 msgid "刷新失败或无可用模型"
 msgstr "刷新失败或无可用模型"
+
+#~ msgid "任务进度详情"
+#~ msgstr "任务进度详情"
+
+#~ msgid "强制重新下载 (覆盖本地已存在文件)"
+#~ msgstr "强制重新下载 (覆盖本地已存在文件)"
+
+#~ msgid "对数据下载使用网络代理 (请在配置编辑器中设置)"
+#~ msgstr "对数据下载使用网络代理 (请在配置编辑器中设置)"
+
+#~ msgid "操作日志已清除。"
+#~ msgstr "操作日志已清除。"
+
+#, python-brace-format
+#~ msgid "GUI日志处理时发生异常: {}"
+#~ msgstr "GUI日志处理时发生异常: {}"
+
+#~ msgid "BLAST结果解析过程被取消。"
+#~ msgstr "BLAST结果解析过程已取消。"
+
+#~ msgid "本软件根据 Apache License 2.0 获得许可。"
+#~ msgstr "本软件根据 Apache License 2.0 获得许可。"
+
+#~ msgid "同源基因转换中"
+#~ msgstr "同源基因转换中"
+
+#~ msgid "检测到文件输入和文本输入同时存在，请清除其中一个。"
+#~ msgstr "检测到文件输入和文本输入同时存在，请清除其中一个。"
+
+#~ msgid "第 {i + 1} 行Log2FC值无效:"
+#~ msgstr "第 {i + 1} 行Log2FC值无效:"
+
+#~ msgid "第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):"
+#~ msgstr "第 {i + 1} 行格式错误，需要两列 (基因, Log2FC):"
+
+#~ msgid "正在批量鉴定中，请稍候..."
+#~ msgstr "正在批量鉴定中，请稍候..."
+
+#~ msgid "警告: 配置文件中未指定基因组源文件。"
+#~ msgstr "警告: 配置文件中未指定基因组源文件。"
+
+#~ msgid ""
+#~ "加载基因组源文件时验证出错 '{}':\n"
+#~ "{}"
+#~ msgstr ""
+#~ "加载基因组源文件时验证出错 '{}':\n"
+#~ "{}"
+
+#~ msgid "Successfully decompressed '{}' to temporary file."
+#~ msgstr "成功将'{}'解压到临时文件。"
+
+#~ msgid "Failed to decompress file '{}': {}"
+#~ msgstr "解压文件'{}'失败：{}"
+
+#~ msgid "文件已存在: {} (跳过下载)"
+#~ msgstr "文件已存在: {} (跳过下载)"
+
+#~ msgid "已创建目录: {}"
+#~ msgstr "已创建目录: {}"
+
+#~ msgid "开始下载: {} -> {} (代理: {})"
+#~ msgstr "开始下载: {} -> {} (代理: {})"
+
+#~ msgid "系统默认/无"
+#~ msgstr "系统默认/无"
+
+#~ msgid "网络请求错误导致下载失败: {}. URL: {}"
+#~ msgstr "网络请求错误导致下载失败: {}. URL: {}"
+
+#~ msgid "已删除不完整的下载文件: {}"
+#~ msgstr "已删除不完整的下载文件: {}"
+
+#~ msgid "删除不完整文件 {} 失败: {}"
+#~ msgstr "删除不完整文件 {} 失败: {}"
+
+#~ msgid "Task cancelled before downloading {}."
+#~ msgstr "任务在下载 {} 前已取消"
+
+#~ msgid ""
+#~ "WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back "
+#~ "to species name for directory."
+#~ msgstr ""
+#~ "WARNING: GenomeSourceItem for '{}' is missing 'version_id'. Falling back "
+#~ "to species name for directory."
+
+#~ msgid "ERROR: Failed to create directory {}. Reason: {}"
+#~ msgstr "ERROR: Failed to create directory {}. Reason: {}"
+
+#~ msgid "INFO: 对应的CSV文件已存在，跳过转换: {}"
+#~ msgstr "INFO: 对应的CSV文件已存在，跳过转换: {}"
+
+#~ msgid "INFO: 尝试将 {} 转换为 CSV..."
+#~ msgstr "INFO: 尝试将 {} 转换为 CSV..."
+
+#~ msgid "ERROR: 转换Excel到CSV时发生错误: {}"
+#~ msgstr "ERROR: 转换Excel到CSV时发生错误: {}"
+
+#~ msgid "ERROR: 删除临时文件 {} 失败: {}"
+#~ msgstr "ERROR: 删除临时文件 {} 失败: {}"
+
+#~ msgid "Download for {} was cancelled by user."
+#~ msgstr "%s 的下载已被用户取消"
+
+#~ msgid ""
+#~ "Downloaded size for {} is less than expected. The file might be "
+#~ "incomplete."
+#~ msgstr "{}的下载大小小于预期，文件可能不完整。"
+
+#~ msgid "Download for {} was cancelled during request setup."
+#~ msgstr "{} 的下载在请求设置期间被取消"
+
+#~ msgid "Failed to download {} from {}. Network error: {}"
+#~ msgstr "从 {} 下载 {} 失败。网络错误：{}"
+
+#~ msgid "An unexpected error occurred while downloading {}: {}"
+#~ msgstr "下载 {} 时发生意外错误: {}"
+
+#~ msgid "数据库 '{}' 已存在且有效，直接使用。"
+#~ msgstr "数据库 '{}' 已存在且有效，直接使用。"
+
+#~ msgid "正在打开数据库..."
+#~ msgstr "正在打开数据库..."
+
+#~ msgid "正在根据 {} 个ID查询基因信息..."
+#~ msgstr "正在根据 {} 个ID查询基因信息..."
+
+#~ msgid "GFF ID查询失败的完整堆栈跟踪:"
+#~ msgstr "GFF ID查询失败的完整堆栈跟踪:"
+
+#~ msgid "正在映射: 源 -> 桥梁..."
+#~ msgstr "正在映射: 源 -> 桥梁..."
+
+#~ msgid "正在映射: 桥梁 -> 目标..."
+#~ msgstr "正在映射: 桥梁 -> 目标..."
+
+#~ msgid "正在合并映射结果..."
+#~ msgstr "正在合并映射结果..."
+
+#~ msgid "正在根据模式筛选和排序..."
+#~ msgstr "正在根据模式筛选和排序..."
+
+#~ msgid "严格模式已关闭，使用常规双分数排序规则。"
+#~ msgstr "严格模式已关闭，使用常规双分数排序规则。"
+
+#~ msgid "正在筛选 Top N 结果..."
+#~ msgstr "正在筛选 Top N 结果..."
+
+#~ msgid "信息: {} 个源基因未能找到符合条件的同源匹配。"
+#~ msgstr "信息: {} 个源基因未能找到符合条件的同源匹配。"
+
+#~ msgid "智能映射: 检测到 [源 -> 桥梁] 模式，构建虚拟流程..."
+#~ msgstr "智能映射: 检测到 [源 -> 桥梁] 模式，构建虚拟流程..."
+
+#~ msgid "智能映射: 检测到 [桥梁 -> 目标] 模式，构建虚拟流程..."
+#~ msgstr "智能映射: 检测到 [桥梁 -> 目标] 模式，构建虚拟流程..."
+
+#~ msgid "# 未找到任何成功的同源匹配。\n"
+#~ msgstr "# 未找到任何成功的同源匹配。\n"
+
+#~ msgid "# --- 匹配失败的源基因 ---\n"
+#~ msgstr "# --- 匹配失败的源基因 ---\n"
+
+#~ msgid "未能在目标基因组中找到满足所有筛选条件的同源基因。"
+#~ msgstr "未能在目标基因组中找到满足所有筛选条件的同源基因。"
+
+#~ msgid "未找到任何成功的同源匹配。"
+#~ msgstr "未找到任何成功的同源匹配。"
+
+#~ msgid "同源文件未找到: {}"
+#~ msgstr "同源文件未找到: {}"
+
+#~ msgid "正在打开文件: {}..."
+#~ msgstr "正在打开文件: {}..."
+
+#~ msgid "正在解析文件结构..."
+#~ msgstr "正在解析文件结构..."
+
+#~ msgid "正在处理工作表: {}..."
+#~ msgstr "正在处理工作表: {}..."
+
+#~ msgid "在Excel文件的任何工作表中都未能找到有效的表头或数据。"
+#~ msgstr "在Excel文件的任何工作表中都未能找到有效的表头或数据。"
+
+#~ msgid "正在合并所有工作表..."
+#~ msgstr "正在合并所有工作表..."
+
+#~ msgid "文件加载完成。"
+#~ msgstr "文件加载完成。"
+
+#~ msgid "步骤 1: 加载配置..."
+#~ msgstr "步骤 1: 加载配置..."
+
+#~ msgid "错误: 基因组名称无效。"
+#~ msgstr "错误: 基因组名称无效。"
+
+#~ msgid "步骤 2: 从染色体区域提取基因ID..."
+#~ msgstr "步骤 2: 从染色体区域提取基因ID..."
+
+#~ msgid "[简易模式] 执行 源 -> 桥梁 直接查找..."
+#~ msgstr "[简易模式] 执行 源 -> 桥梁 直接查找..."
+
+#~ msgid "正在加载同源文件..."
+#~ msgstr "正在加载同源文件..."
+
+#~ msgid "任务被取消或文件读取失败。"
+#~ msgstr "任务被取消或文件读取失败。"
+
+#~ msgid "正在标准化ID并查找匹配..."
+#~ msgstr "正在标准化ID并查找匹配..."
+
+#~ msgid "[简易模式] 执行 桥梁 -> 目标 直接查找..."
+#~ msgstr "[简易模式] 执行 桥梁 -> 目标 直接查找..."
+
+#~ msgid "[标准模式] 调用核心函数执行三步映射..."
+#~ msgstr "[标准模式] 调用核心函数执行三步映射..."
+
+#~ msgid "步骤 5: 保存映射结果..."
+#~ msgstr "步骤 5: 保存映射结果..."
+
+#~ msgid "步骤 5: 提取目标基因ID..."
+#~ msgstr "步骤 5: 提取目标基因ID..."
+
+#~ msgid "正在使用目标基因组的正则表达式 '{}' 清理ID..."
+#~ msgstr "正在使用目标基因组的正则表达式 '{}' 清理ID..."
+
+#~ msgid "成功提取到 {} 个唯一的同源目标基因。"
+#~ msgstr "成功提取到 {} 个唯一的同源目标基因。"
+
+#~ msgid "流程开始，正在加载基因组配置..."
+#~ msgstr "流程开始，正在加载基因组配置..."
+
+#~ msgid "步骤1: 加载配置..."
+#~ msgstr "步骤1: 加载配置..."
+
+#~ msgid "错误: 无法为 {}, {} 或 {} 找到配置。"
+#~ msgstr "错误: 无法为 {}, {} 或 {} 找到配置。"
+
+#~ msgid "提取基因: {}"
+#~ msgstr "提取基因: {}"
+
+#~ msgid "任务终止：区域内无基因。"
+#~ msgstr "任务终止：区域内无基因。"
+
+#~ msgid "错误: 缺少必要的同源文件。请先为相关基因组下载数据。"
+#~ msgstr "错误: 缺少必要的同源文件。请先为相关基因组下载数据。"
+
+#~ msgid "任务终止：缺少同源文件。"
+#~ msgstr "任务终止：缺少同源文件。"
+
+#~ msgid "正在解析源到桥梁的同源文件..."
+#~ msgstr "正在解析源到桥梁的同源文件..."
+
+#~ msgid "解析同源文件 (S->B): {}"
+#~ msgstr "解析同源文件 (S->B): {}"
+
+#~ msgid "正在解析桥梁到目标的同源文件..."
+#~ msgstr "正在解析桥梁到目标的同源文件..."
+
+#~ msgid "解析同源文件 (B->T): {}"
+#~ msgstr "解析同源文件 (B->T): {}"
+
+#~ msgid "配置错误: 在同源文件中找不到查询列 '{}'。可用列: {}"
+#~ msgstr "配置错误: 在同源文件中找不到查询列 '{}'。可用列: {}"
+
+#~ msgid "正在执行核心同源映射..."
+#~ msgstr "正在执行核心同源映射..."
+
+#~ msgid "任务在同源映射阶段被用户取消。"
+#~ msgstr "任务在同源映射阶段被用户取消。"
+
+#~ msgid "映射完成，正在整理并保存结果..."
+#~ msgstr "映射完成，正在整理并保存结果..."
+
+#~ msgid "# Failed to map {} genes: {}\n"
+#~ msgstr "# 未成功映射 {} 个基因：{}\n"
+
+#~ msgid ""
+#~ "#\n"
+#~ "# --- Detailed Mapping Results ---\n"
+#~ msgstr ""
+#~ "#\n"
+#~ "# --- 详细映射结果 ---\n"
+
+#~ msgid "全部完成！"
+#~ msgstr "全部完成！"
+
+#~ msgid "正在从文件 '{}' 中读取基因列表..."
+#~ msgstr "正在从文件 '{}' 中读取基因列表..."
+
+#~ msgid "任务终止：缺少基因输入。"
+#~ msgstr "任务终止：缺少基因输入。"
+
+#~ msgid "任务终止：基因列表为空。"
+#~ msgstr "任务终止：基因列表为空。"
+
+#~ msgid "检查是否需要同源映射..."
+#~ msgstr "检查是否需要同源映射..."
+
+#~ msgid "源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。"
+#~ msgstr "源基因组 ({}) 与目标基因组 ({}) 不同，准备进行同源转换。"
+
+#~ msgid "一个或多个基因组名称无效，无法找到配置信息。"
+#~ msgstr "一个或多个基因组名称无效，无法找到配置信息。"
+
+#~ msgid "加载同源数据文件..."
+#~ msgstr "加载同源数据文件..."
+
+#~ msgid "缺少必要的同源文件，无法进行转换。请先下载数据。"
+#~ msgstr "缺少必要的同源文件，无法进行转换。请先下载数据。"
+
+#~ msgid "加载同源数据: {}"
+#~ msgstr "加载同源数据: {}"
+
+#~ msgid "同源转换未能映射到任何基因，流程终止。"
+#~ msgstr "同源转换未能映射到任何基因，流程终止。"
+
+#~ msgid "任务终止：同源映射失败。"
+#~ msgstr "任务终止：同源映射失败。"
+
+#~ msgid "任务终止：目标基因组配置错误。"
+#~ msgstr "任务终止：目标基因组配置错误。"
+
+#~ msgid "错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"
+#~ msgstr "错误: 必须提供 output_dir 或 output_path 参数之一用于保存结果。"
+
+#~ msgid "任务终止：未提供输出路径。"
+#~ msgstr "任务终止：未提供输出路径。"
+
+#~ msgid "流程开始，正在初始化配置..."
+#~ msgstr "流程开始，正在初始化配置..."
+
+#~ msgid "开始GFF基因查询流程..."
+#~ msgstr "开始GFF基因查询流程..."
+
+#~ msgid "错误: 基因组 '{}' 未在基因组源列表中找到。"
+#~ msgstr "错误: 基因组 '{}' 未在基因组源列表中找到。"
+
+#~ msgid "错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。"
+#~ msgstr "错误: 未找到基因组 '{}' 的GFF文件。请先下载数据。"
+
+#~ msgid "任务已取消."
+#~ msgstr "任务已取消"
+
+#~ msgid "未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。"
+#~ msgstr "未找到 '{}' 的GO注释关联文件 (GAF)。请先下载数据。"
+
+#~ msgid "任务终止：缺少GO注释文件。"
+#~ msgstr "任务终止：缺少GO注释文件。"
+
+#~ msgid "GO富集: {}"
+#~ msgstr "GO富集: {}"
+
+#~ msgid "未找到 '{}' 的KEGG通路文件。请先下载数据。"
+#~ msgstr "未找到 '{}' 的KEGG通路文件。请先下载数据。"
+
+#~ msgid "任务终止：缺少KEGG通路文件。"
+#~ msgstr "任务终止：缺少KEGG通路文件。"
+
+#~ msgid "KEGG富集: {}"
+#~ msgstr "KEGG富集: {}"
+
+#~ msgid "找到 {} 个文件需要进行预处理。"
+#~ msgstr "找到 {} 个文件需要进行预处理。"
+
+#~ msgid "正在转换: {} ({}/{})"
+#~ msgstr "正在转换: {} ({}/{})"
+
+#~ msgid "Conversion failed for: {}"
+#~ msgstr "转换失败：{}"
+
+#~ msgid "预处理完成。成功转换 {}/{} 个文件。"
+#~ msgstr "预处理完成。成功转换 {}/{} 个文件。"
+
+#~ msgid "开始将 '{}' 转换为CSV..."
+#~ msgstr "开始将 '{}' 转换为CSV..."
+
+#~ msgid "成功将文件转换为CSV格式: {}"
+#~ msgstr "成功将文件转换为CSV格式: {}"
+
+#~ msgid "转换文件时失败。"
+#~ msgstr "转换文件时失败。"
+
+#~ msgid "执行Excel到CSV转换流水线时发生错误: {}"
+#~ msgstr "执行Excel到CSV转换流水线时发生错误: {}"
+
+#~ msgid "任务被用户取消。"
+#~ msgstr "任务被用户取消。"
+
+#~ msgid "正在处理: {} ({}/{})"
+#~ msgstr "正在处理: {} ({}/{})"
+
+#~ msgid "将优先使用自定义注释数据库目录: {}"
+#~ msgstr "将优先使用自定义注释数据库目录: {}"
+
+#~ msgid "警告: 在配置中未找到 {} 的下载信息。"
+#~ msgstr "警告: 在配置中未找到 {} 的下载信息。"
+
+#~ msgid "未知的文件类型: {}"
+#~ msgstr "未知的文件类型: {}"
+
+#~ msgid "未找到预处理好的注释文件 '{}'。"
+#~ msgstr "未找到预处理好的注释文件 '{}'。"
+
+#~ msgid "请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"
+#~ msgstr "请先运行 '数据下载' -> '预处理注释文件' 功能来生成它。"
+
+#~ msgid "正在加载预处理的注释文件: {}"
+#~ msgstr "正在加载预处理的注释文件: {}"
+
+#~ msgid "从CSV加载的原始列名: {}"
+#~ msgstr "从CSV加载的原始列名: {}"
+
+#~ msgid "强制重命名后的列名: {}"
+#~ msgstr "强制重命名后的列名: {}"
+
+#~ msgid "无法加载文件或文件为空: {}。"
+#~ msgstr "无法加载文件或文件为空: {}。"
+
+#~ msgid "No regex defined for genome"
+#~ msgstr "No regex defined for genome"
+
+#~ msgid "使用正则表达式进行匹配: {}"
+#~ msgstr "使用正则表达式进行匹配: {}"
+
+#~ msgid "输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。"
+#~ msgstr "输入的基因ID '{}' 不符合基因组 {} 的格式，将被忽略。"
+
+#~ msgid "准备GO富集分析..."
+#~ msgstr "准备GO富集分析..."
+
+#~ msgid "GO注释文件准备失败，富集分析终止。"
+#~ msgstr "GO注释文件准备失败，富集分析终止。"
+
+#~ msgid "任务终止：GO文件准备失败。"
+#~ msgstr "任务终止：GO文件准备失败。"
+
+#~ msgid "正在加载处理后的GO注释背景数据..."
+#~ msgstr "正在加载处理后的GO注释背景数据..."
+
+#~ msgid "读取或重命名GO背景文件失败: {}"
+#~ msgstr "读取或重命名GO背景文件失败: {}"
+
+#~ msgid "准备KEGG富集分析..."
+#~ msgstr "准备KEGG富集分析..."
+
+#~ msgid "KEGG注释文件准备失败。"
+#~ msgstr "KEGG注释文件准备失败。"
+
+#~ msgid "加载的KEGG注释文件为空或格式不正确。"
+#~ msgstr "加载的KEGG注释文件为空或格式不正确。"
+
+#~ msgid "准备KEGG背景文件时出错: {}"
+#~ msgstr "准备KEGG背景文件时出错: {}"
+
+#~ msgid "DataFrame 已成功保存为CSV文件: {}"
+#~ msgstr "DataFrame 已成功保存为CSV文件: {}"
+
+#~ msgid "DataFrame 已成功保存为Excel文件: {}"
+#~ msgstr "DataFrame 已成功保存为Excel文件: {}"
+
+#~ msgid "错误: 不支持的文件格式 '{}'。请使用 '.csv' 或 '.xlsx'。"
+#~ msgstr "错误: 不支持的文件格式 '{}'。请使用 '.csv' 或 '.xlsx'。"
+
+#~ msgid "保存DataFrame到 {} 时发生错误: {}"
+#~ msgstr "保存DataFrame到 {} 时发生错误: {}"
+
+#~ msgid "XLSX转CSV"
+#~ msgstr "XLSX转CSV"
+
+#~ msgid "提示词已更新，正在后台保存配置..."
+#~ msgstr "提示词已更新，正在后台保存配置..."
+
+#~ msgid ""
+#~ "无法开始预处理BLAST数据库，因为没有找到可用的预测CDS或蛋白质文件。\n"
+#~ "请先在下载选项中选择并下载这些文件。"
+#~ msgstr ""
+#~ "无法开始预处理BLAST数据库，因为没有找到可用的预测CDS或蛋白质文件。\n"
+#~ "请先在下载选项中选择并下载这些文件。"
+
+#~ msgid "合并转录本到基因"
+#~ msgstr "合并转录本到基因"
+
+#~ msgid ""
+#~ "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n"
+#~ "例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"
+#~ msgstr ""
+#~ "开启后，将忽略基因ID后的mRNA编号 (如 .1, .2)，统一视为基因ID。\n"
+#~ "例如: Ghir_D02G021470.1 / Ghir_D02G021470.2 将统一视为 Ghir_D02G021470。"
+
+#~ msgid ""
+#~ "该工具通过拟南芥作为桥梁将两种棉花基因组连接起来。\n"
+#~ "如需获取更加准确的结果，请使用BLAST"
+#~ msgstr ""
+#~ "该工具以拟南芥为媒介将两种棉花基因组关联起来。如需获取更精确的结果，请使用"
+#~ "BLAST"
+
+#~ msgid "桥梁物种"
+#~ msgstr "桥梁物种"
+
+#~ msgid "Excel (.xlsx) 转 CSV 工具"
+#~ msgstr "Excel (.xlsx) 转 CSV 工具"
+
+#~ msgid ""
+#~ "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
+#~ "适用于所有工作表表头一致的情况。"
+#~ msgstr ""
+#~ "此工具会将一个Excel文件中的所有工作表内容合并到一个CSV文件中。\n"
+#~ "适用于所有工作表表头一致的情况。"
+
+#~ msgid "文件路径"
+#~ msgstr "文件路径"
+
+#~ msgid "输入Excel文件:"
+#~ msgstr "输入Excel文件:"
+
+#~ msgid "请输入一个有效的Excel文件路径。"
+#~ msgstr "请输入一个有效的Excel文件路径。"
+
+#~ msgid "自动生成输出路径:"
+#~ msgstr "自动生成输出路径:"
+
+#~ msgid "转换失败"
+#~ msgstr "转换失败"
+
+#~ msgid "一个未预料的错误发生:"
+#~ msgstr "一个未预料的错误发生:"
+
+#~ msgid "错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。"
+#~ msgstr "错误: 无法从 '{}' 加载配置。文件可能为空或格式不正确。"
+
+#~ msgid "错误: 配置文件 '{}' 未找到。请检查路径或运行 'init' 命令。"
+#~ msgstr "错误: 配置文件 '{}' 未找到。请检查路径或运行 'init' 命令。"
+
+#~ msgid "错误: 加载配置文件时发生意外错误: {}"
+#~ msgstr "错误: 加载配置文件时发生意外错误: {}"
+
+#~ msgid ""
+#~ "\n"
+#~ "捕获到中断信号！正在尝试优雅地取消任务..."
+#~ msgstr ""
+#~ "\n"
+#~ "捕获到中断信号！正在尝试优雅地取消任务..."
+
+#~ msgid "配置文件路径。"
+#~ msgstr "配置文件路径。"
+
+#~ msgid "启用详细日志输出。"
+#~ msgstr "启用详细日志输出。"
+
+#~ msgid "生成配置文件的目录。"
+#~ msgstr "生成配置文件的目录。"
+
+#~ msgid "覆盖已存在的配置文件。"
+#~ msgstr "覆盖已存在的配置文件。"
+
+#~ msgid "正在于 '{}' 生成默认配置文件..."
+#~ msgstr "正在于 '{}' 生成默认配置文件..."
+
+#~ msgid ""
+#~ "默认文件生成成功:\n"
+#~ "- {}\n"
+#~ "- {}"
+#~ msgstr ""
+#~ "默认文件生成成功:\n"
+#~ "- {}\n"
+#~ "- {}"
+
+#~ msgid "生成部分或全部配置文件失败。"
+#~ msgstr "生成部分或全部配置文件失败。"
+
+#~ msgid "要下载的基因组版本列表，以逗号分隔。默认为全部。"
+#~ msgstr "要下载的基因组版本列表，以逗号分隔。默认为全部。"
+
+#~ msgid "即使文件已存在也强制重新下载。"
+#~ msgstr "即使文件已存在也强制重新下载。"
+
+#~ msgid "为本次下载强制使用代理（覆盖配置）。"
+#~ msgstr "为本次下载强制使用代理（覆盖配置）。"
+
+#~ msgid "准备下载..."
+#~ msgstr "准备下载..."
+
+#~ msgid "源基因ID列表，以逗号分隔。"
+#~ msgstr "源基因ID列表，以逗号分隔。"
+
+#~ msgid "源基因组区域, 格式如 'Chr01:1000-5000'。"
+#~ msgstr "源基因组区域, 格式如 'Chr01:1000-5000'。"
+
+#~ msgid "源基因组版本ID。"
+#~ msgstr "源基因组版本ID。"
+
+#~ msgid "目标基因组版本ID。"
+#~ msgstr "目标基因组版本ID。"
+
+#~ msgid "保存输出CSV文件的路径。"
+#~ msgstr "保存输出CSV文件的路径。"
+
+#~ msgid "为每个基因保留的最佳同源匹配数(0表示所有)。"
+#~ msgstr "为每个基因保留的最佳同源匹配数(0表示所有)。"
+
+#~ msgid "E-value阈值。"
+#~ msgstr "E-value阈值。"
+
+#~ msgid "序列一致性百分比(PID)阈值。"
+#~ msgstr "序列一致性百分比(PID)阈值。"
+
+#~ msgid "BLAST得分(Score)阈值。"
+#~ msgstr "BLAST得分(Score)阈值。"
+
+#~ msgid "禁用严格的同亚组/同源染色体匹配模式。"
+#~ msgstr "禁用严格的同亚组/同源染色体匹配模式。"
+
+#~ msgid "错误: 必须提供 --genes 或 --region 参数之一。"
+#~ msgstr "错误: 必须提供 --genes 或 --region 参数之一。"
+
+#~ msgid "区域格式无效。请使用 'chr:start-end' 格式。"
+#~ msgstr "区域格式无效。请使用 'chr:start-end' 格式。"
+
+#~ msgid "警告: 严格模式已关闭，可能导致不同染色体的基因发生错配。"
+#~ msgstr "警告: 严格模式已关闭，可能导致不同染色体的基因发生错配。"
+
+#~ msgid "准备同源映射..."
+#~ msgstr "准备同源映射..."
+
+#~ msgid "输入的CSV文件。"
+#~ msgstr "输入的CSV文件。"
+
+#~ msgid "要处理的源列名。"
+#~ msgstr "要处理的源列名。"
+
+#~ msgid "要创建的新列名。"
+#~ msgstr "要创建的新列名。"
+
+#~ msgid "指定输出CSV文件的完整路径。默认为自动生成。"
+#~ msgstr "指定输出CSV文件的完整路径。默认为自动生成。"
+
+#~ msgid "AI任务类型。"
+#~ msgstr "AI任务类型。"
+
+#, python-brace-format
+#~ msgid "自定义提示词模板。必须包含 {text}。"
+#~ msgstr "自定义提示词模板。必须包含 {text}。"
+
+#~ msgid "控制模型输出的随机性。"
+#~ msgstr "控制模型输出的随机性。"
+
+#~ msgid "为本次AI任务强制使用代理（覆盖配置）。"
+#~ msgstr "为本次AI任务强制使用代理（覆盖配置）。"
+
+#~ msgid "准备AI任务..."
+#~ msgstr "准备AI任务..."
+
+#~ msgid "要查询的基因组版本ID。"
+#~ msgstr "要查询的基因组版本ID。"
+
+#~ msgid "要查询的基因ID列表，以逗号分隔。"
+#~ msgstr "要查询的基因ID列表，以逗号分隔。"
+
+#~ msgid "要查询的染色体区域，格式如 'A01:10000-20000'。"
+#~ msgstr "要查询的染色体区域，格式如 'A01:10000-20000'。"
+
+#~ msgid "【可选】保存结果的CSV文件路径。不提供则自动命名。"
+#~ msgstr "【可选】保存结果的CSV文件路径。不提供则自动命名。"
+
+#~ msgid "警告: 同时提供了 --genes 和 --region，将优先使用 --genes。"
+#~ msgstr "警告: 同时提供了 --genes 和 --region，将优先使用 --genes。"
+
+#~ msgid "区域格式无效。请使用 'Chr:Start-End' 格式。"
+#~ msgstr "区域格式无效。请使用 'Chr:Start-End' 格式。"
+
+#~ msgid "准备GFF查询..."
+#~ msgstr "准备GFF查询..."
+
+#~ msgid "GFF查询任务成功完成。"
+#~ msgstr "GFF查询任务成功完成。"
+
+#~ msgid "GFF查询任务失败或无结果。"
+#~ msgstr "GFF查询任务失败或无结果。"
+
+#~ msgid "要转换的源基因组区域, 格式如 'Chr:Start-End' 或 'Chr:Start..End'。"
+#~ msgstr "要转换的源基因组区域, 格式如 'Chr:Start-End' 或 'Chr:Start..End'。"
+
+#~ msgid "准备位点转换..."
+#~ msgstr "准备位点转换..."
+
+#~ msgid "位点转换失败。请查看日志获取详情。"
+#~ msgstr "位点转换失败。请查看日志获取详情。"
+
+#~ msgid "输入的Excel (.xlsx) 文件路径。"
+#~ msgstr "输入的Excel (.xlsx) 文件路径。"
+
+#~ msgid "输出的CSV文件路径。"
+#~ msgstr "输出的CSV文件路径。"
+
+#~ msgid "准备转换Excel..."
+#~ msgstr "准备转换Excel..."
+
+#~ msgid "文件转换成功！"
+#~ msgstr "文件转换成功！"
+
+#~ msgid "文件转换失败。"
+#~ msgstr "文件转换失败。"
+
+#~ msgid "正在为 {} 个基因ID进行基因组鉴定..."
+#~ msgstr "正在为 {} 个基因ID进行基因组鉴定..."
+
+#~ msgid "错误: 未能加载基因组源数据，无法进行鉴定。"
+#~ msgstr "错误: 未能加载基因组源数据，无法进行鉴定。"
+
+#~ msgid "鉴定结果: {}"
+#~ msgstr "鉴定结果: {}"
+
+#~ msgid "未能识别到匹配的基因组版本。"
+#~ msgstr "未能识别到匹配的基因组版本。"
+
+#~ msgid "要注释的基因ID列表，以逗号分隔。或包含基因列表的文件路径。"
+#~ msgstr "要注释的基因ID列表，以逗号分隔。或包含基因列表的文件路径。"
+
+#~ msgid "基因ID所属的基因组版本。"
+#~ msgstr "基因ID所属的基因组版本。"
+
+#~ msgid "要执行的注释类型，以逗号分隔 (go,ipr,kegg_orthologs,kegg_pathways)。"
+#~ msgstr ""
+#~ "要执行的注释类型，以逗号分隔 (go,ipr,kegg_orthologs,kegg_pathways)。"
+
+#~ msgid "【可选】指定完整的输出CSV文件路径。"
+#~ msgstr "【可选】指定完整的输出CSV文件路径。"
+
+#~ msgid "从文件读取基因列表: {}"
+#~ msgstr "从文件读取基因列表: {}"
+
+#~ msgid "从命令行参数读取 {} 个基因ID。"
+#~ msgstr "从命令行参数读取 {} 个基因ID。"
+
+#~ msgid "错误: 'genes' 参数既不是有效的文件路径，也不是基因ID列表。"
+#~ msgstr "错误: 'genes' 参数既不是有效的文件路径，也不是基因ID列表。"
+
+#~ msgid "必须至少提供一种注释类型。"
+#~ msgstr "必须至少提供一种注释类型。"
+
+#~ msgid "准备功能注释..."
+#~ msgstr "准备功能注释..."
+
+#~ msgid "要进行富集分析的基因ID列表 (逗号分隔), 或包含基因列表的文件路径。"
+#~ msgstr "要进行富集分析的基因ID列表 (逗号分隔), 或包含基因列表的文件路径。"
+
+#~ msgid "富集分析的类型。"
+#~ msgstr "富集分析的类型。"
+
+#~ msgid "富集结果和图表的输出目录。"
+#~ msgstr "富集结果和图表的输出目录。"
+
+#~ msgid "要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"
+#~ msgstr "要生成的图表类型, 逗号分隔 (可选: bubble, bar, upset, cnet)。"
+
+#~ msgid "在图表中显示的前N个富集条目。"
+#~ msgstr "在图表中显示的前N个富集条目。"
+
+#~ msgid "将转录本ID合并为其父基因ID进行分析。"
+#~ msgstr "将转录本ID合并为其父基因ID进行分析。"
+
+#~ msgid "共找到 {} 个唯一基因ID用于分析。"
+#~ msgstr "共找到 {} 个唯一基因ID用于分析。"
+
+#~ msgid "准备富集分析..."
+#~ msgstr "准备富集分析..."
+
+#~ msgid "富集分析流程执行完毕。结果已保存至: {}"
+#~ msgstr "富集分析流程执行完毕。结果已保存至: {}"
+
+#~ msgid "错误: 未能加载基因组源数据。"
+#~ msgstr "错误: 未能加载基因组源数据。"
+
+#~ msgid "准备预处理..."
+#~ msgstr "准备预处理..."
+
+#~ msgid ""
+#~ "要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务"
+#~ "商。"
+#~ msgstr ""
+#~ "要测试的服务商密钥 (例如 'google', 'openai')。默认为配置文件中的默认服务"
+#~ "商。"
+
+#~ msgid "正在测试服务商: {}..."
+#~ msgstr "正在测试服务商: {}..."
+
+#~ msgid "错误: 在配置文件中未找到服务商 '{}' 的配置。"
+#~ msgstr "错误: 在配置文件中未找到服务商 '{}' 的配置。"
+
+#~ msgid "友好棉花基因组工具包 (FCGT)"
+#~ msgstr "友好棉花基因组工具包 (FCGT)"
+
+#~ msgid "本软件遵守 Apache-2.0 license 开源协议"
+#~ msgstr "本软件遵守 Apache-2.0 license 开源协议"
+
+#~ msgid "软件简介"
+#~ msgstr "软件简介"
+
+#~ msgid ""
+#~ "FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生"
+#~ "设计的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界"
+#~ "面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可"
+#~ "“开箱即用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间"
+#~ "的同源基因映射（Liftover）、功能注释、富集分析和AI助手等。"
+#~ msgstr ""
+#~ "FCGT 是一款专为棉花研究者，特别是那些没有生物信息专业背景的科研人员和学生"
+#~ "设计的基因组数据分析工具箱。它致力于将复杂的数据处理流程封装在简洁的图形界"
+#~ "面（GUI）和命令行（CLI）背后，让您无需进行繁琐的环境配置和代码编写，即可"
+#~ "“开箱即用”。本工具包提供了一系列强大的棉花基因组数据处理工具，包括多版本间"
+#~ "的同源基因映射（Liftover）、功能注释、富集分析和AI助手等。"
+
+#~ msgid "核心亮点"
+#~ msgstr "核心亮点"
+
+#, python-brace-format
+#~ msgid "  • {feature}: 图形界面优先，无需复杂配置，多语言支持。"
+#~ msgstr "  • {feature}: 图形界面优先，无需复杂配置，多语言支持。"
+
+#~ msgid "极致友好，开箱即用"
+#~ msgstr "极致友好，开箱即用"
+
+#, python-brace-format
+#~ msgid "  • {feature}: 多线程加速，支持复杂的批量任务。"
+#~ msgstr "  • {feature}: 多线程加速，支持复杂的批量任务。"
+
+#~ msgid "高效的自动化与批量处理"
+#~ msgstr "高效的自动化与批量处理"
+
+#, python-brace-format
+#~ msgid "  • {feature}: 棉花版 Liftover，一站式数据工具，标准化数据下载。"
+#~ msgstr "  • {feature}: 棉花版 Liftover，一站式数据工具，标准化数据下载。"
+
+#~ msgid "精准的基因组工具集"
+#~ msgstr "精准的基因组工具集"
+
+#, python-brace-format
+#~ msgid "  • {feature}: 为Windows/macOS提供预编译可执行文件，随处可用。"
+#~ msgstr "  • {feature}: 为Windows/macOS提供预编译可执行文件，随处可用。"
+
+#~ msgid "跨平台，易于分发"
+#~ msgstr "跨平台，易于分发"
+
+#~ msgid "获取更多信息"
+#~ msgstr "获取更多信息"
+
+#~ msgid "项目开源地址: "
+#~ msgstr "项目开源地址: "
+
+#~ msgid "数据来源与引文"
+#~ msgstr "数据来源与引文"
+
+#~ msgid "CottonGen 主要引文:"
+#~ msgstr "CottonGen 主要引文:"
+
+#~ msgid "致谢"
+#~ msgstr "致谢"
+
+#~ msgid ""
+#~ "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini "
+#~ "AI 协助开发，功能持续迭代，欢迎学术交流和贡献。"
+#~ msgstr ""
+#~ "感谢所有为本项目提供数据、算法和灵感的科研人员与开源社区。此软件由 Gemini "
+#~ "AI 协助开发，功能持续迭代，欢迎学术交流和贡献。"
+
+#~ msgid "INFO: 任务被取消。"
+#~ msgstr "INFO: 任务被取消。"
+
+#~ msgid "INFO: 下载流程开始..."
+#~ msgstr "INFO: 下载流程开始..."
+
+#~ msgid "ERROR: 输入文件不存在: {}"
+#~ msgstr "ERROR: 输入文件不存在: {}"
+
+#~ msgid "处理消息队列时出错: {}"
+#~ msgstr "处理消息队列时出错: {}"
+
+#~ msgid "任务在注释阶段被用户取消。"
+#~ msgstr "任务在注释阶段被用户取消。"
+
+#~ msgid "正在将RNA合并到基因..."
+#~ msgstr "正在将RNA合并到基因..."
+
+#~ msgid "INFO: 正在将RNA合并到基因..."
+#~ msgstr "INFO: 正在将RNA合并到基因..."
+
+#~ msgid "ERROR: 未知的分析类型 '{}'。"
+#~ msgstr "ERROR: 未知的分析类型 '{}'。"
+
+#~ msgid "任务终止：分析类型未知。"
+#~ msgstr "任务终止：分析类型未知。"
+
+#~ msgid "生成气泡图 ({})"
+#~ msgstr "生成气泡图 ({})"
+
+#~ msgid "生成条形图 ({})"
+#~ msgstr "生成条形图 ({})"
+
+#~ msgid "生成Upset图 ({})"
+#~ msgstr "生成Upset图 ({})"
+
+#~ msgid "生成网络图(Cnet) ({})"
+#~ msgstr "生成网络图(Cnet) ({})"
+
+#~ msgid "生成气泡图..."
+#~ msgstr "生成气泡图..."
+
+#~ msgid "生成条形图..."
+#~ msgstr "生成条形图..."
+
+#~ msgid "生成Upset图..."
+#~ msgstr "生成Upset图..."
+
+#~ msgid "生成网络图(Cnet)..."
+#~ msgstr "生成网络图(Cnet)..."
+
+#~ msgid "流程完成。在 '{}' 中成功生成 {} 个图表。"
+#~ msgstr "流程完成。在 '{}' 中成功生成 {} 个图表。"
+
+#~ msgid ""
+#~ "Error: Neither '{}' nor common alternatives found in DataFrame columns "
+#~ "for sorting. Available columns: {}"
+#~ msgstr ""
+#~ "Error: Neither '{}' nor common alternatives found in DataFrame columns "
+#~ "for sorting. Available columns: {}"
+
+#~ msgid ""
+#~ "Error: Missing required columns for bubble plot: {}. Available columns: {}"
+#~ msgstr ""
+#~ "Error: Missing required columns for bubble plot: {}. Available columns: {}"
+
+#~ msgid "Warning: DataFrame is empty after dropping NA for bubble plot."
+#~ msgstr "Warning: DataFrame is empty after dropping NA for bubble plot."
+
+#~ msgid "Warning: DataFrame is empty after sorting and head for bar plot."
+#~ msgstr "Warning: DataFrame is empty after sorting and head for bar plot."
+
+#~ msgid "Error: 'FDR' column is required for bar plot but not found."
+#~ msgstr "Error: 'FDR' column is required for bar plot but not found."
+
+#~ msgid "Warning: DataFrame is empty after dropping NA for bar plot."
+#~ msgstr "Warning: DataFrame is empty after dropping NA for bar plot."
+
+#~ msgid ""
+#~ "Error: Missing required columns for cnet plot: {}. Available columns: {}"
+#~ msgstr ""
+#~ "Error: Missing required columns for cnet plot: {}. Available columns: {}"
+
+#~ msgid "Error plotting cnet chart: {}"
+#~ msgstr "Error plotting cnet chart: {}"
+
+#~ msgid "程序发生致命错误 (Fatal Error)"
+#~ msgstr "程序发生致命错误 (Fatal Error)"
+
+#~ msgid "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
+#~ msgstr "一个未处理的异常导致程序意外终止，请将以下信息报告给开发者："
+
+#~ msgid "在此处粘贴要注释的基因ID，每行一个。"
+#~ msgstr "在此处粘贴要注释的基因ID，每行一个。"
+
+#~ msgid ""
+#~ "在此处粘贴用于富集分析的基因ID，每行一个。\n"
+#~ "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+#~ "（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
+#~ msgstr ""
+#~ "在此处粘贴用于富集分析的基因ID，每行一个。\n"
+#~ "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
+#~ "（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）。"
+
+#~ msgid "配置错误: 在同源文件中找不到匹配列 '{}'。可用列: {}"
+#~ msgstr "配置错误: 在同源文件中找不到匹配列 '{}'。可用列: {}"
+
+#~ msgid "不支持的同源文件格式: {}"
+#~ msgstr "不支持的同源文件格式: {}"
+
+#~ msgid "步骤 1: 加载配置和同源数据..."
+#~ msgstr "步骤 1: 加载配置和同源数据..."
+
+#~ msgid "步骤 3: 加载同源文件..."
+#~ msgstr "步骤 3: 加载同源文件..."
+
+#~ msgid "加载源到桥梁文件: {}"
+#~ msgstr "加载源到桥梁文件: {}"
+
+#~ msgid "加载桥梁到目标文件: {}"
+#~ msgstr "加载桥梁到目标文件: {}"
+
+#~ msgid "步骤 4: 通过桥梁物种执行基因映射..."
+#~ msgstr "步骤 4: 通过桥梁物种执行基因映射..."
+
+#~ msgid "INFO: 任务在基因映射阶段被用户取消。"
+#~ msgstr "信息: 任务在基因映射阶段被用户取消。"
+
+#~ msgid "正在计算目标概要位点..."
+#~ msgstr "正在计算目标概要位点..."
+
+#~ msgid "无具体位点信息"
+#~ msgstr "无具体位点信息"
+
+#~ msgid " | 无具体位点信息"
+#~ msgstr " | 无具体位点信息"
+
+#~ msgid "目标基因组的位点（即转换后的大体的位点）"
+#~ msgstr "目标基因组的位点（即转换后的大体的位点）"
+
+#~ msgid "未提供输出路径，跳过保存文件。"
+#~ msgstr "未提供输出路径，跳过保存文件。"
+
+#~ msgid "图片资源未找到: '{}'"
+#~ msgstr "图片资源未找到: '{}'"
+
+#~ msgid "获取图片资源 '{}' 路径时发生错误: {}"
+#~ msgstr "获取图片资源 '{}' 路径时发生错误: {}"
+
+#~ msgid "在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"
+#~ msgstr "在此处粘贴一个基因列表，工具将尝试识别它们属于哪个基因组版本。"
+
+#~ msgid "基因组源数据未加载，无法进行鉴定。"
+#~ msgstr "基因组源数据未加载，无法进行鉴定。"
+
+#~ msgid "基因组鉴定成功"
+#~ msgstr "基因组鉴定成功"
+
+#~ msgid "未能识别到匹配的基因组。"
+#~ msgstr "未能识别到匹配的基因组。"
+
+#~ msgid "基因组鉴定失败：未能识别到匹配的基因组。"
+#~ msgstr "基因组鉴定失败：未能识别到匹配的基因组。"
 
 #~ msgid "初始化AI客户端..."
 #~ msgstr "初始化AI客户端..."
@@ -3775,21 +5532,6 @@ msgstr "刷新失败或无可用模型"
 
 #~ msgid "转换成功"
 #~ msgstr "转换成功"
-
-#~ msgid "加载主窗口图标失败: {}。"
-#~ msgstr "加载主窗口图标失败: {}。"
-
-#~ msgid "需要重启"
-#~ msgstr "需要重启"
-
-#~ msgid "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
-#~ msgstr "语言设置已更改。为了使所有更改完全生效，建议您重启应用程序。"
-
-#~ msgid "立即重启"
-#~ msgstr "立即重启"
-
-#~ msgid "稍后重启"
-#~ msgstr "稍后重启"
 
 #~ msgid "退出程序"
 #~ msgstr "退出程序"
