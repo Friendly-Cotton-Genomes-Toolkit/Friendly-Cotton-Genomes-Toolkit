@@ -108,6 +108,8 @@ pixi run build
 
 <img src="assets\位点转换.png"  style="zoom:50%;"/>
 
+<img src="assets\GFF查询.png"  style="zoom:50%;"/>
+
 <img src="assets\本地BLAST.png"  style="zoom:50%;"/>
 
 <img src="assets\AI辅助.png"  style="zoom:50%;"/>
@@ -181,6 +183,7 @@ pixi run build
   - **CRI_v1**: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.
   - **WHU_v1**: Huang, G. *et al*., Genome sequence of *Gossypium herbaceum* and genome updates of *Gossypium arboreum* and *Gossypium hirsutum* provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4
   - **UTX_v2.1**: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, McGee K, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.
+  - **UTX_v3.1**: Chen et al. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement Nat Genet 20 April 2020.
 
 ---
 
@@ -189,7 +192,13 @@ pixi run build
 本程序使用`Apache-2.0`许可证。
 > **请注意**：使用者可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。
 
-> **免责声明**：上述基因组的数据下载与处理均由用户执行，本工具仅进行框架服务。
+> **免责声明**：
+>
+> **工具角色**：本软件仅提供技术框架服务，自身不托管或分发任何基因组数据。
+>
+> **用户责任**：所有基因组数据的下载、处理和分析均由用户独立执行。用户有责任确保其行为遵守原始数据提供方设定的所有许可、使用条款和发表限制。
+>
+> **无担保声明**：本工具及其生成的分析结果仅供科研目的“按原样”提供，我们对其准确性或特定用途的适用性不作任何保证。
 
 ------
 
