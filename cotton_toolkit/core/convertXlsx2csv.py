@@ -50,8 +50,8 @@ def convert_excel_to_standard_csv(
         logger.info(_("Starting intelligent conversion for: {}").format(os.path.basename(excel_path)))
 
         if cancel_event and cancel_event.is_set():
-            logger.info(_("Conversion cancelled before starting."))
-            return False
+            raise InterruptedError(_("Conversion cancelled before starting."))
+
 
         open_func = gzip.open if excel_path.lower().endswith('.gz') else open
         with open_func(excel_path, 'rb') as f:
@@ -60,8 +60,8 @@ def convert_excel_to_standard_csv(
         all_data_frames = []
         for sheet_name in xls.sheet_names:
             if cancel_event and cancel_event.is_set():
-                logger.info(_("Conversion cancelled while processing sheets."))
-                return False
+                raise InterruptedError(_("Conversion cancelled while processing sheets."))
+
 
             logger.debug(f"Processing sheet: '{sheet_name}'...")
             try:
@@ -79,20 +79,21 @@ def convert_excel_to_standard_csv(
                 logger.error(_("Failed to process sheet '{}'. Reason: {}").format(sheet_name, e))
 
         if not all_data_frames:
-            logger.error(_("No data could be extracted from any sheet in the Excel file."))
-            return False
+            raise ValueError(_("No data could be extracted from any sheet in the Excel file."))
+
 
         combined_df = pd.concat(all_data_frames, ignore_index=True)
         combined_df.dropna(how='all', inplace=True)
 
         if cancel_event and cancel_event.is_set():
-            logger.info(_("Conversion cancelled before writing file."))
-            return False
+            raise InterruptedError(_("Conversion cancelled before writing file."))
+
 
         combined_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
         logger.info(_("Successfully converted and saved to: {}").format(os.path.basename(output_csv_path)))
         return True
 
     except Exception as e:
-        logger.exception(_("A critical error occurred during Excel to CSV conversion. Reason: {}").format(e))
-        return False
+        error_msg = _("A critical error occurred during Excel to CSV conversion. Reason: {}").format(e)
+        logger.exception(error_msg)
+        raise RuntimeError(error_msg) from e

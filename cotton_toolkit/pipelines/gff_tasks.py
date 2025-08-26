@@ -37,9 +37,8 @@ def run_gff_lookup(
 
 
     if not gene_ids and not region:
-        logger.error(_("错误: 必须提供基因ID列表或染色体区域进行查询。"))
-        progress(100, _("任务终止：缺少查询参数。"))
-        return False
+        raise ValueError(_("错误: 必须提供基因ID列表或染色体区域进行查询。"))
+
 
     progress(0, "流程开始，正在初始化配置...")
     if check_cancel(): return False
@@ -52,32 +51,30 @@ def run_gff_lookup(
         genome_sources = get_genome_data_sources(config)
         selected_genome_info = genome_sources.get(assembly_id)
         if not selected_genome_info:
-            logger.error(f"错误: 基因组 '{assembly_id}' 未在基因组源列表中找到。")
-            progress(100, "任务终止：基因组配置错误。")
-            return False
+            raise ValueError(f"错误: 基因组 '{assembly_id}' 未在基因组源列表中找到。")
+
 
         gff_file_path = get_local_downloaded_file_path(config, selected_genome_info, 'gff3')
         if not gff_file_path or not os.path.exists(gff_file_path):
-            logger.error(f"错误: 未找到基因组 '{assembly_id}' 的GFF文件。请先下载数据。")
-            progress(100, "任务终止：GFF文件缺失。")
-            return False
+            raise FileNotFoundError(f"错误: 未找到基因组 '{assembly_id}' 的GFF文件。请先下载数据。")
+
 
         gff_db_dir = os.path.join(project_root, GFF3_DB_DIR)
         expected_db_path = os.path.join(gff_db_dir, f"{assembly_id}_genes.db")
 
         # 2. 检查预处理的数据库是否存在，不存在则报错
         if not os.path.exists(expected_db_path):
-            logger.error(f"错误: 未找到预处理的GFF数据库 '{expected_db_path}'。")
-            logger.error("请先运行GFF预处理流程来创建数据库，以加速查询。")
-            progress(100, "任务终止：GFF数据库缺失。")
-            return False
+            error_message = (
+                f"错误: 未找到预处理的GFF数据库 '{os.path.basename(expected_db_path)}'。\n\n"
+                "请先前往“数据下载”选项卡，找到对应的基因组，并点击“预处理”按钮来创建数据库，以加速查询。"
+            )
+            raise FileNotFoundError(error_message)
 
-        # 3. 确认不再强制创建数据库 (force_creation = False)
         force_creation = False
 
     except Exception as e:
         logger.error(f"在准备GFF查询时发生错误: {e}")
-        return False
+        raise e
 
     results_df = pd.DataFrame()
     progress(40, _("正在数据库中查询..."))
@@ -97,9 +94,8 @@ def run_gff_lookup(
                 progress_callback=lambda p, m: progress(40 + int(p * 0.4), _("查询基因ID: {}").format(m))
             )
         except (ValueError, FileNotFoundError) as e:
-            logger.error(e)
-            progress(100, _("任务终止：基因ID解析失败。"))
-            return False
+            raise e
+
 
     elif region:
         chrom, start, end = region

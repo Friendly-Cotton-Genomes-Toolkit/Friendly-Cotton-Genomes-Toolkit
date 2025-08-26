@@ -50,8 +50,9 @@ def download_genome_data(
     try:
         os.makedirs(version_output_dir, exist_ok=True)
     except OSError as e:
-        logger.error(_("错误: 创建目录 {} 失败。原因: {}").format(version_output_dir, e))
-        return False
+        error_msg = _("错误: 创建目录 {} 失败。原因: {}").format(version_output_dir, e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
     filename = os.path.basename(urlparse(url).path)
     local_path = os.path.join(version_output_dir, filename)
@@ -122,10 +123,14 @@ def _download_file_with_progress(
 
     except requests.exceptions.RequestException as e:
         if not (cancel_event and cancel_event.is_set()):
-            logger.error(_("下载 {} (来自 {}) 失败。网络错误: {}").format(description, url, e))
-        if os.path.exists(local_path): os.remove(local_path)
+            error_msg = _("下载 {} (来自 {}) 失败。网络错误: {}").format(description, url, e)
+            logger.error(error_msg)
+            if os.path.exists(local_path): os.remove(local_path)
+            raise IOError(error_msg) from e
         return False
+
     except Exception as e:
-        logger.error(_("下载 {} 时发生未知错误: {}").format(description, e))
+        error_msg = _("下载 {} 时发生未知错误: {}").format(description, e)
+        logger.error(error_msg)
         if os.path.exists(local_path): os.remove(local_path)
-        return False
+        raise RuntimeError(error_msg) from e

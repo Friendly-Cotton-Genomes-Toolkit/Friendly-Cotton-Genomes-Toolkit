@@ -51,8 +51,8 @@ def run_functional_annotation(
             resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids)
             logger.info(_("从参数智能解析了 {} 个唯一基因ID。").format(len(resolved_gene_ids)))
         except (ValueError, FileNotFoundError) as e:
-            logger.error(e)
-            return
+            raise e
+
     elif gene_list_path and os.path.exists(gene_list_path):
         try:
             progress(5, _("正在从文件读取基因列表..."))
@@ -61,15 +61,13 @@ def run_functional_annotation(
             resolved_gene_ids = resolve_gene_ids(config, assembly_id, raw_gene_ids)
             logger.info(_("从文件中读取并解析了 {} 个唯一基因ID。").format(len(resolved_gene_ids)))
         except Exception as e:
-            logger.error(_("读取或解析基因列表文件时出错: {}").format(e))
-            return
+            raise IOError(_("读取或解析基因列表文件时出错: {}").format(e))
+
     else:
-        logger.error(_("错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"))
-        return
+        raise ValueError(_("错误: 必须提供 'gene_ids' 或有效的 'gene_list_path' 参数之一。"))
 
     if not resolved_gene_ids:
-        logger.error(_("输入的基因列表为空或无法解析，流程终止。"))
-        return
+        raise ValueError(_("输入的基因列表为空或无法解析，流程终止。"))
 
     # 创建一个基础DataFrame，用于最后合并结果
     final_df_base = pd.DataFrame({'Gene_ID': resolved_gene_ids})
@@ -81,8 +79,7 @@ def run_functional_annotation(
     genome_sources = get_genome_data_sources(config)
     genome_info = genome_sources.get(assembly_id)
     if not genome_info:
-        logger.error(_("错误：无法为目标基因组 {} 找到配置信息。").format(assembly_id))
-        return
+        raise ValueError(_("错误：无法为目标基因组 {} 找到配置信息。").format(assembly_id))
 
     annotator = Annotator(
         main_config=config,
@@ -114,8 +111,8 @@ def run_functional_annotation(
             final_df.to_csv(output_path, index=False, encoding='utf-8-sig')
             logger.info(_("注释成功！结果已保存至: {}").format(output_path))
         except Exception as e:
-            logger.error(_("保存结果到 {} 时发生错误: {}").format(output_path, e))
-            return
+            raise IOError(_("保存结果到 {} 时发生错误: {}").format(output_path, e))
+
     else:
         logger.warning(_("注释完成，但没有生成任何结果。"))
 
@@ -140,7 +137,6 @@ def run_enrichment_pipeline(
         file_format: str = 'png',
         **kwargs
 ) -> Optional[str]:
-    # 修改: 移除 status_callback 参数
 
     progress = kwargs['progress_callback']
     check_cancel = kwargs['check_cancel']
@@ -165,10 +161,8 @@ def run_enrichment_pipeline(
         genome_sources = get_genome_data_sources(config)
         genome_info = genome_sources.get(assembly_id)
         if not genome_info:
-            logger.error(_("无法在配置中找到基因组 '{}'。").format(assembly_id))
-            progress(100, _("任务终止：基因组配置错误。"))
-            return None
-        gene_id_regex = genome_info.gene_id_regex if hasattr(genome_info, 'gene_id_regex') else None
+            raise ValueError(_("无法在配置中找到基因组 '{}'。").format(assembly_id))
+
     except Exception as e:
         logger.error(_("获取基因组源数据时失败: {}").format(e))
         progress(100, _("任务终止：获取基因组信息失败。"))

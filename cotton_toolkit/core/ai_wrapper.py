@@ -214,9 +214,9 @@ class AIWrapper:
     ) -> (bool, str):
         logger.info(_("正在测试AI连接..."))
         if not api_key or "YOUR_API_KEY" in api_key:
-            return False, _("API Key 未配置或无效。")
+            raise ValueError(_("API Key 未配置或无效。"))
         if not model:
-            return False, _("模型名称不能为空。")
+            raise ValueError(_("模型名称不能为空。"))
 
         try:
             with temp_proxies(proxies):
@@ -230,8 +230,8 @@ class AIWrapper:
                         logger.info(_("Google Gemini SDK 连接成功！"))
                         return True, _("Google Gemini SDK 连接成功！")
                     else:
-                        logger.warning(_("连接异常：收到了空响应。"))
-                        return False, _("连接异常：收到了空响应。")
+                        raise ConnectionError(_("连接异常：从服务商收到了空响应。"))
+
                 else:
                     wrapper = cls(provider=provider, api_key=api_key, model=model, base_url=base_url, proxies=proxies)
                     response_text = wrapper.process(text="Hi", temperature=0.1, timeout=timeout)
@@ -239,10 +239,10 @@ class AIWrapper:
                         logger.info(_("连接成功！配置有效。"))
                         return True, _("连接成功！配置有效。")
                     else:
-                        logger.warning(_("连接异常：收到了空响应。"))
-                        return False, _("连接异常：收到了空响应。")
+                        raise ConnectionError(_("连接异常：从服务商收到了空响应。"))
+
         except Exception as e:
             error_type = type(e).__name__
-            error_message = f"{_('连接失败:')} {error_type}\n{_('详情:')} {str(e)}"
+            error_message = f"{_('连接测试失败:')} {error_type}\n{_('详情:')} {str(e)}"
             logger.error(error_message)
-            return False, error_message
+            raise RuntimeError(error_message) from e

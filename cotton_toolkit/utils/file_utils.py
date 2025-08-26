@@ -30,9 +30,9 @@ def prepare_input_file(
     支持 .csv, .txt, .xlsx 及其 .gz 压缩版本。
     """
     if not os.path.exists(original_path):
-        # 修改: 使用 logger.error
-        logger.error(_("输入文件不存在: {}").format(original_path))
-        return None
+        error_msg = _("输入文件不存在: {}").format(original_path)
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
 
     os.makedirs(temp_dir, exist_ok=True)
 
@@ -65,23 +65,20 @@ def prepare_input_file(
             return result_path
 
         else:
-            # 修改: 使用 logger.error
-            logger.error(_("文件规范化失败: {}").format(base_name))
-            return None
-    except Exception as e:
-        # 修改: 使用 logger.error
-        logger.error(_("处理文件 {} 时发生严重错误: {}").format(base_name, e))
-        return None
+            raise RuntimeError(_("文件规范化失败: {}").format(os.path.basename(original_path)))
 
+    except Exception as e:
+        logger.error(_("处理文件 {} 时发生严重错误: {}").format(os.path.basename(original_path), e))
+        raise e
 
 def smart_load_file(file_path: str) -> Optional[pd.DataFrame]:
     """
     智能加载数据文件，能自动处理 .gz 压缩和多种表格格式 (Excel, CSV, TSV)。
     """
     if not file_path or not os.path.exists(file_path):
-        # 修改: 使用 logger.error
-        logger.error(_("错误: 文件不存在 -> {}").format(file_path))
-        return None
+        error_msg = _("错误: 文件不存在 -> {}").format(file_path)
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
 
     file_name_for_log = os.path.basename(file_path)
 
@@ -131,9 +128,9 @@ def smart_load_file(file_path: str) -> Optional[pd.DataFrame]:
         return df
 
     except Exception as e:
-        # 修改: 使用 logger.error
-        logger.error(_("加载或解析文件 {} 时发生严重错误: {}").format(file_name_for_log, e))
-        return None
+        error_msg = _("加载或解析文件 {} 时发生严重错误: {}").format(os.path.basename(file_path), e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
 
 

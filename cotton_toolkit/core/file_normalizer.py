@@ -30,8 +30,9 @@ def normalize_to_dataframe(input_path: str) -> Optional[pd.DataFrame]:
     :return: 包含文件数据的 pandas DataFrame，如果失败则返回 None。
     """
     if not os.path.exists(input_path):
-        logger.error(_("输入文件不存在: {}").format(input_path))
-        return None
+        error_msg = _("输入文件不存在: {}").format(input_path)
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
 
     filename = os.path.basename(input_path).lower()
     is_gzipped = filename.endswith('.gz')
@@ -130,8 +131,9 @@ def normalize_to_dataframe(input_path: str) -> Optional[pd.DataFrame]:
             return df
 
     except Exception as e:
-        logger.error(_("处理文件 '{}' 时发生错误: {}").format(filename, e))
-        return None
+        error_msg = _("处理文件 '{}' 时发生错误: {}").format(os.path.basename(input_path).lower(), e)
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def normalize_to_csv(input_path: str, output_path: str) -> Optional[str]:
@@ -157,6 +159,8 @@ def normalize_to_csv(input_path: str, output_path: str) -> Optional[str]:
             logger.info(_("已成功将文件转换为CSV格式: {}").format(output_path))
             return output_path
         except Exception as e:
-            logger.error(_("无法将DataFrame写入CSV文件 '{}': {}").format(output_path, e))
-            return None
+            error_msg = _("无法将DataFrame写入CSV文件 '{}': {}").format(output_path, e)
+            logger.error(error_msg)
+            raise IOError(error_msg) from e
+
     return None

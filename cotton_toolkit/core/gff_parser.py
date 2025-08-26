@@ -290,10 +290,11 @@ def get_genes_in_region(
         return results
 
     except Exception as e:
-        logger.error(_("查询GFF区域时发生错误: {}").format(e))
+        error_msg = _("查询GFF区域时发生错误: {}").format(e)
+        logger.error(error_msg)
         logger.exception(_("GFF区域查询失败的完整堆栈跟踪:"))
         progress(100, _("查询时发生错误。"))
-        return []
+        raise RuntimeError(error_msg) from e
 
 
 def get_gene_info_by_ids(
@@ -361,6 +362,7 @@ def get_gene_info_by_ids(
         return result_df
 
     except Exception as e:
-        logger.error(_("根据ID查询GFF时发生错误: {}").format(e))
+        error_msg = _("根据ID查询GFF时发生错误: {}").format(e)
+        logger.error(error_msg)
         progress(100, _("查询时发生错误。"))
-        return pd.DataFrame()
+        raise RuntimeError(error_msg) from e

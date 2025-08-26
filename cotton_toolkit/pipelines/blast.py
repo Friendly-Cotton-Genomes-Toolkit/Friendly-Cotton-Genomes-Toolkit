@@ -3,6 +3,7 @@ import os
 import subprocess
 import tempfile
 import threading
+import locale
 import traceback
 from typing import Optional, Callable
 import logging
@@ -56,8 +57,8 @@ def run_blast_pipeline(
         genome_sources = get_genome_data_sources(config)
         target_genome_info = genome_sources.get(target_assembly_id)
         if not target_genome_info:
-            logger.error(_("错误: 无法找到目标基因组 '{}' 的配置。").format(target_assembly_id))
-            return None
+            raise ValueError(_("错误: 无法找到目标基因组 '{}' 的配置。").format(target_assembly_id))
+
 
         db_type = 'prot' if blast_type in ['blastp', 'blastx'] else 'nucl'
         seq_file_key = 'predicted_protein' if db_type == 'prot' else 'predicted_cds'
@@ -66,8 +67,8 @@ def run_blast_pipeline(
 
         compressed_seq_file = get_local_downloaded_file_path(config, target_genome_info, seq_file_key)
         if not compressed_seq_file or not os.path.exists(compressed_seq_file):
-            logger.error(_("错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。").format(seq_file_key))
-            return None
+            raise FileNotFoundError(_("错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。").format(seq_file_key))
+
 
         db_fasta_path = compressed_seq_file
         logger.debug(_("BLAST 数据库序列源文件: {}").format(db_fasta_path))
@@ -90,8 +91,8 @@ def run_blast_pipeline(
                             f_out.write(chunk)
                     logger.info(_("解压成功。"))
                 except Exception as e:
-                    logger.error(_("解压文件时出错: {}").format(e))
-                    return None
+                    raise IOError(_("解压文件时出错: {}").format(e))
+
 
         if check_cancel(): return _("任务已取消。")
 
@@ -123,12 +124,10 @@ def run_blast_pipeline(
                 logger.info(_("BLAST数据库创建成功。"))
 
             except FileNotFoundError:
-                logger.error(_(
+                raise FileNotFoundError(_(
                     "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。\n\n官方下载地址:\nhttps://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"))
-                return False
             except subprocess.CalledProcessError as e:
-                logger.error(_("创建BLAST数据库失败: {} \nStderror: {}").format(e.stdout, e.stderr))
-                return None
+                raise RuntimeError(_("创建BLAST数据库失败: {} \nStderror: {}").format(e.stdout, e.stderr))
 
         if check_cancel(): return _("任务已取消。")
 
@@ -179,8 +178,7 @@ def run_blast_pipeline(
         if stderr:
             stderr_lower = stderr.lower()
             if "error:" in stderr_lower or "fatal:" in stderr_lower or "command not found" in stderr_lower:
-                logger.error(_("BLAST运行时发生致命错误: {}").format(stderr))
-                return None  # 中止流程
+                raise RuntimeError(_("BLAST运行时发生致命错误: {}").format(stderr))
             else:
                 logger.warning(_("BLAST运行时产生警告或提示信息: {}").format(stderr.strip()))
 
@@ -241,7 +239,7 @@ def run_blast_pipeline(
     except Exception as e:
         logger.error(_("BLAST流水线执行过程中发生意外错误: {}").format(e))
         logger.debug(traceback.format_exc())
-        return None  # 失败时返回 None
+        raise e
     finally:
         if tmp_query_file_to_clean and os.path.exists(tmp_query_file_to_clean):
             os.remove(tmp_query_file_to_clean)

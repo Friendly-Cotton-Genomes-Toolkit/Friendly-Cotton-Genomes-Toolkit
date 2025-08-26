@@ -63,8 +63,7 @@ def pipeline_task(task_name: str):
             except Exception as e:
                 logger.exception(_("流水线任务 '{}' 发生意外错误: {}").format(task_name, e))
                 progress(100, _("{} - 任务因错误而终止。").format(task_name))
-                # 可以在这里添加一个额外的回调来显示错误对话框
-                return None
+                raise e
 
         return wrapper
 

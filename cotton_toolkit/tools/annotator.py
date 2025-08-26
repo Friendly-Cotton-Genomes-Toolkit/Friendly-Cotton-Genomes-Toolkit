@@ -24,7 +24,7 @@ except (AttributeError, ImportError):
 
 class Annotator:
     """
-    【最终稳定版】一个用于处理基因功能注释的类。
+    一个用于处理基因功能注释的类。
     - 强制读取预处理后的CSV文件，不再回退读取原始Excel。
     - 使用基因组专属的正则表达式进行精确匹配。
     """
@@ -148,12 +148,16 @@ class Annotator:
                     final_df = pd.merge(final_df, aggregated_annos, on='Gene_ID', how='left')
 
                 except (sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
+                    error_msg = ""
                     if "no such table" in str(e):
-                        logger.error(
-                            _("错误: 数据库中未找到表 '{}'。请确保对应的原始文件已通过预处理脚本正确转换。").format(
-                                table_name))
+                        error_msg = _(
+                            "错误: 数据库中未找到表 '{}'。请确保对应的原始文件已通过预处理脚本正确转换。").format(
+                            table_name)
                     else:
-                        logger.error(_("查询表 '{}' 时发生数据库错误: {}").format(table_name, e))
+                        error_msg = _("查询表 '{}' 时发生数据库错误: {}").format(table_name, e)
+
+                    logger.error(error_msg)
+                    raise sqlite3.Error(error_msg) from e
 
         # 使用 'N/A' 填充所有未找到注释的单元格
         final_df.fillna("N/A", inplace=True)

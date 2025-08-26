@@ -96,19 +96,18 @@ def run_arabidopsis_homology_conversion(
             unique_gene_ids = sorted(list(set(gene_ids)))
             query_ids = resolve_gene_ids(config, assembly_id, unique_gene_ids)
         except (ValueError, FileNotFoundError) as e:
-            logger.error(e)
-            return None
+            raise e
+
     else:  # ath_to_cotton
         try:
             progress(5, _("正在智能解析拟南芥基因ID..."))
             query_ids, _c = resolve_arabidopsis_ids_from_homology_db(config, assembly_id, gene_ids)
         except (ValueError, FileNotFoundError) as e:
-            logger.error(e);
-            return None
+            raise e
 
     if not query_ids:
-        logger.error(_("解析后输入基因列表为空。"));
-        return None
+        raise ValueError(_("解析后输入基因列表为空。"))
+
 
     progress(20, _("正在从数据库获取同源关系..."))
     if check_cancel(): return None
@@ -160,8 +159,8 @@ def run_arabidopsis_homology_conversion(
             progress(100, _("转换完成。"))
             return final_message
         except Exception as e:
-            logger.error(_("保存结果文件时出错: {}").format(e));
-            return None
+            raise IOError(_("保存结果文件时出错: {}").format(e))
+
     else:
         # 如果没有输出路径，直接返回DataFrame
         progress(100, _("查询完成。"))
@@ -196,9 +195,7 @@ def run_homology_mapping(
                 source_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids)
                 progress(10, _("ID解析完成，准备执行BLAST。"))
             except (ValueError, FileNotFoundError) as e:
-                logger.error(e)
-                progress(100, _("任务终止：基因ID解析失败。"))
-                return None
+                raise e
 
         elif region:
             progress(10, _("正在从GFF数据库提取区域基因..."))
@@ -231,8 +228,7 @@ def run_homology_mapping(
                 _("规范化后得到 {} 个有效基因ID。前5个示例: {}").format(len(source_gene_ids), source_gene_ids[:5]))
 
         if not source_gene_ids:
-            logger.error(_("错误: 基因列表为空。"))
-            return pd.DataFrame()
+            raise ValueError(_("错误: 基因列表为空。"))
 
 
         criteria = HomologySelectionCriteria()
@@ -311,8 +307,8 @@ def run_homology_mapping(
         return results_df
 
     except Exception as e:
-        logger.exception(_("同源映射流水线发生意外错误: {}").format(e))
-        return None
+        logger.error(_("同源映射流水线发生意外错误: {}").format(e))
+        raise e
 
 
 @pipeline_task(_("位点转换"))
@@ -457,4 +453,4 @@ def run_locus_conversion(
         logger.error(_("位点转换流程出错: {}").format(e))
         logger.debug(traceback.format_exc())
         progress(100, _("任务因错误而终止。"))
-        return None
+        raise e

@@ -317,8 +317,9 @@ class FirstLaunchDialog(ttkb.Toplevel):
         config_frame = ttkb.LabelFrame(content_frame, text="Custom Configuration", bootstyle="info", padding=10)
         config_frame.pack(fill="x", pady=10)
         config_text = (
-            "You can configure custom download sources or modify the genome list in genome_sources_list.yml.\n"
-            "For information on the default data sources, please see the 'About' section."
+            "The default download data for this program is all from upland cotton (Gossypium hirsutum L.) TM-1.\n",
+            "If other species are needed, you can adjust the genome_sources_list.yml file yourself.\n"
+            "For more information, please visit the About page"
         )
         ttkb.Label(config_frame, text=config_text, wraplength=650, justify="left").pack(fill="x")
 

@@ -24,29 +24,43 @@ except ImportError:
 logger = logging.getLogger("cotton_toolkit.pipeline.data_access")
 
 
+# 文件路径: cotton_toolkit/core/data_access.py
+
 def get_sequences_for_gene_ids(
         config: MainConfig,
         source_assembly_id: str,
-        gene_ids: List[str]
+        gene_ids: List[str],
+        sequence_type: str = 'cds'  # 【修改】新增参数，默认为 'cds' 以保持向后兼容
 ) -> Tuple[Optional[str], List[str]]:
     """
-    Based on a list of gene IDs, retrieves FASTA-formatted CDS sequences from the
-    pre-processed SQLite database. It intelligently resolves user IDs to the
-    canonical IDs found in the database (preferring transcript IDs) and uses these
-    database-correct IDs in the FASTA headers.
+    根据基因ID列表，从预处理的SQLite数据库中检索FASTA格式的CDS或蛋白质序列。
+    它会智能地将用户ID解析为数据库中存在的规范ID（优先使用转录本ID），
+    并在FASTA头中使用这些数据库中正确的ID。
     """
     if not gene_ids:
         return "", []
 
-    # --- Database and table name preparation (logic is unchanged) ---
+    # --- 根据 sequence_type 动态确定要查询的文件和表名 ---
     project_root = os.path.dirname(config.config_file_abs_path_)
     db_path = os.path.join(project_root, "genomes", "genomes.db")
     if not os.path.exists(db_path):
         raise FileNotFoundError(_("错误: 预处理数据库 'genomes.db' 未找到。"))
+
     genome_sources = get_genome_data_sources(config)
     source_genome_info = genome_sources.get(source_assembly_id)
-    cds_file_path = get_local_downloaded_file_path(config, source_genome_info, 'predicted_cds')
-    table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=source_genome_info.version_id)
+
+    # 根据输入参数选择文件类型
+    file_key = 'predicted_protein' if sequence_type == 'protein' else 'predicted_cds'
+
+    seq_file_path = get_local_downloaded_file_path(config, source_genome_info, file_key)
+    if not seq_file_path or not os.path.exists(seq_file_path):
+        raise FileNotFoundError(
+            _("错误: 未找到基因组 '{}' 的 '{}' 序列文件。请先下载并预处理数据。").format(source_assembly_id, file_key)
+        )
+
+    table_name = _sanitize_table_name(os.path.basename(seq_file_path), version_id=source_genome_info.version_id)
+
+    # --- 后续的ID解析和序列提取逻辑无需修改，因为它们是通用的 ---
 
     # 1. Generate all possible ID variations for all unique user IDs.
     unique_user_ids = list(dict.fromkeys(gene_ids))
@@ -64,7 +78,7 @@ def get_sequences_for_gene_ids(
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
             if cursor.fetchone() is None:
-                raise ValueError(_("错误: 在数据库中找不到表 '{}'。").format(table_name))
+                raise ValueError(_("错误: 在数据库中找不到表 '{}'。请确保对应的文件已预处理。").format(table_name))
 
             batch_size = 500
             potential_list = list(all_potential_ids)
@@ -77,8 +91,9 @@ def get_sequences_for_gene_ids(
                     existing_db_ids.add(row[0])
 
     except (sqlite3.Error, ValueError) as e:
-        logger.error(_("查询序列时发生数据库错误: {}").format(e))
-        return None, gene_ids
+        error_msg = _("查询序列时发生数据库错误: {}").format(e)
+        logger.error(error_msg)
+        raise sqlite3.Error(error_msg) from e
 
     # 3. Resolve which user ID maps to which existing DB ID based on the preferred order.
     resolved_map = {}  # { user_id: db_id }
@@ -114,8 +129,9 @@ def get_sequences_for_gene_ids(
             for gene, seq in cursor.fetchall():
                 fasta_sequences[gene] = seq
     except sqlite3.Error as e:
-        logger.error(_("批量获取序列时发生数据库错误: {}").format(e))
-        return None, gene_ids
+        error_msg = _("批量获取序列时发生数据库错误: {}").format(e)
+        logger.error(error_msg)
+        raise sqlite3.Error(error_msg) from e
 
     # 5. Build the FASTA string, using the database ID for the header.
     # Iterate through the original gene_ids list to maintain user's order.
@@ -142,16 +158,14 @@ def load_annotation_data(
     """
     if not os.path.exists(file_path):
         # 修改: 使用 logger.error
-        logger.error(_("Annotation file not found at: {}").format(file_path))
-        return None
+        raise FileNotFoundError(_("Annotation file not found at: {}").format(file_path))
 
     try:
         df = pd.read_csv(file_path, header=0, sep=',')
 
         if df.empty:
-            # 修改: 使用 logger.warning
             logger.warning(_("Annotation file '{}' is empty.").format(os.path.basename(file_path)))
-            return None
+            return pd.DataFrame()
 
         df.dropna(subset=['GeneID', 'TermID'], inplace=True)
         df['GeneID'] = df['GeneID'].astype(str)
@@ -165,10 +179,9 @@ def load_annotation_data(
         return df
 
     except Exception as e:
-        # 修改: 使用 logger.error
-        logger.error(_("Failed to load and process standardized file {}. Reason: {}").format(file_path, e))
-        return None
-
+        error_msg = _("Failed to load and process standardized file {}. Reason: {}").format(file_path, e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
 def get_homology_by_gene_ids(
         config: MainConfig,
@@ -227,10 +240,9 @@ def get_homology_by_gene_ids(
             return df
 
     except Exception as e:
-        logger.error(_("查询同源数据库时出错: {}").format(e))
-        return pd.DataFrame()
-
-
+        error_msg = _("查询同源数据库时出错: {}").format(e)
+        logger.error(error_msg)
+        raise sqlite3.Error(error_msg) from e
 
 
 def resolve_arabidopsis_ids_from_homology_db(

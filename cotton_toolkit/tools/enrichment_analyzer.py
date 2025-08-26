@@ -183,7 +183,7 @@ def run_go_enrichment(
     except (ValueError, FileNotFoundError) as e:
         logger.error(e)
         progress(100, _("任务终止：基因ID解析失败。"))
-        return None
+        raise e
 
     progress(10, _("正在从数据库加载GO背景数据..."))
 
@@ -215,12 +215,14 @@ def run_go_enrichment(
             background_df['Namespace'] = 'GO'
 
     except (ValueError, sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
-        logger.error(_("加载GO背景数据失败: {}").format(e))
+        error_msg = _("加载GO背景数据失败: {}").format(e)
+        logger.error(error_msg)
         logger.error(
             _("请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。").format(locals().get('table_name', 'N/A'),
                                                                                      PREPROCESSED_DB_NAME))
         progress(100, _("任务终止：加载GO背景数据失败。"))
-        return None
+        raise IOError(error_msg) from e
+
 
     # 4. 调用核心统计函数
     return _perform_hypergeometric_test(
@@ -241,7 +243,7 @@ def run_kegg_enrichment(
         progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Optional[pd.DataFrame]:
     """
-    【最终数据库版】执行KEGG富集分析，直接从预处理的SQLite数据库高效加载背景数据。
+    执行KEGG富集分析，直接从预处理的SQLite数据库高效加载背景数据。
     """
     progress = progress_callback if progress_callback else lambda p, m: None
 
@@ -252,7 +254,7 @@ def run_kegg_enrichment(
     except (ValueError, FileNotFoundError) as e:
         logger.error(e)
         progress(100, _("任务终止：基因ID解析失败。"))
-        return None
+        raise e
 
     progress(10, _("正在从数据库加载KEGG背景数据..."))
 
@@ -285,12 +287,13 @@ def run_kegg_enrichment(
             background_df['Namespace'] = 'KEGG'
 
     except (ValueError, sqlite3.OperationalError, pd.io.sql.DatabaseError) as e:
-        logger.error(_("加载KEGG背景数据失败: {}").format(e))
+        error_msg = _("加载KEGG背景数据失败: {}").format(e)
+        logger.error(error_msg)
         logger.error(
             _("请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。").format(locals().get('table_name', 'N/A'),
                                                                                      PREPROCESSED_DB_NAME))
         progress(100, _("任务终止：加载KEGG背景数据失败。"))
-        return None
+        raise IOError(error_msg) from e
 
     # 4. 调用通用的核心统计函数
     return _perform_hypergeometric_test(
