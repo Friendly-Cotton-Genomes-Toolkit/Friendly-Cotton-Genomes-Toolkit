@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.1.3\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-26 11:56+0800\n"
-"PO-Revision-Date: 2025-08-26 11:56+0800\n"
+"POT-Creation-Date: 2025-08-26 16:37+0800\n"
+"PO-Revision-Date: 2025-08-26 16:37+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: Deepseek V3\n"
 "Language: en\n"
@@ -195,22 +195,118 @@ msgstr "Model name cannot be empty."
 msgid "Google Gemini SDK 连接成功！"
 msgstr "Google Gemini SDK connected successfully!"
 
-#: cotton_toolkit/core/ai_wrapper.py:233 cotton_toolkit/core/ai_wrapper.py:234
-#: cotton_toolkit/core/ai_wrapper.py:242 cotton_toolkit/core/ai_wrapper.py:243
-msgid "连接异常：收到了空响应。"
-msgstr "Connection exception: received an empty response."
+#: cotton_toolkit/core/ai_wrapper.py:233 cotton_toolkit/core/ai_wrapper.py:242
+msgid "连接异常：从服务商收到了空响应。"
+msgstr "Connection error: Received an empty response from the provider."
 
 #: cotton_toolkit/core/ai_wrapper.py:239 cotton_toolkit/core/ai_wrapper.py:240
 msgid "连接成功！配置有效。"
 msgstr "Connection successful! Configuration is valid."
 
 #: cotton_toolkit/core/ai_wrapper.py:246
-msgid "连接失败:"
-msgstr "Connection failed:"
+msgid "连接测试失败:"
+msgstr "Connection test failed:"
 
 #: cotton_toolkit/core/ai_wrapper.py:246
 msgid "详情:"
 msgstr "Details:"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:88
+#, python-brace-format
+msgid "处理注释文件 {} 失败；原因: {}"
+msgstr "Failed to process annotation file {}; reason: {}"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:137
+#, python-brace-format
+msgid "成功解析FASTA文件 '{}'，共找到 {} 个条目。"
+msgstr "Successfully parsed FASTA file '{}', found {} entries in total."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:140
+#, python-brace-format
+msgid "处理FASTA文件 '{}' 失败。原因: {}"
+msgstr "Failed to process FASTA file '{}'. Reason: {}"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:195
+#, python-brace-format
+msgid "处理Excel文件 '{}' 失败。原因: {}"
+msgstr "Failed to process Excel file '{}'. Reason: {}"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:219
+#, python-brace-format
+msgid "All parsing methods failed for '{}'. Final error: {}"
+msgstr "All parsing methods failed for '{}'. Final error: {}"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:333
+msgid "文件处理过程被取消。"
+msgstr "The file processing was canceled."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:339
+msgid "开始处理..."
+msgstr "Processing started..."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:342
+msgid "正在读取文件..."
+msgstr "Reading file..."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:359
+#, python-brace-format
+msgid "跳过文件 '{}'，因为未能读取到有效数据。"
+msgstr "Skip file '{}' as no valid data was read."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:362
+msgid "文件读取完毕, 正在清洗ID..."
+msgstr "File reading complete, cleaning IDs..."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:368
+#, python-brace-format
+msgid "正在对 {} 的 '{}' 列应用正则表达式..."
+msgstr "Applying regex to column '{}' of {}..."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:371
+#, python-brace-format
+msgid "成功清洗了 '{}' 列。"
+msgstr "Successfully cleaned the '{}' column."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:377
+msgid "正在写入数据库..."
+msgstr "Writing to database..."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:388
+#, python-brace-format
+msgid "成功将 '{}' 转换到表 '{}'。"
+msgstr "Successfully converted '{}' to table '{}'."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:389
+msgid "处理完成"
+msgstr "Processing complete"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:393
+#, python-brace-format
+msgid "文件 '{}' 的处理过程被取消。"
+msgstr "Processing of file '{}' was canceled."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:394 ui/ui_manager.py:465
+msgid "任务已取消"
+msgstr "Task canceled"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:402
+#, python-brace-format
+msgid "成功清理表 '{}'。"
+msgstr "Successfully cleaned up table '{}'."
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:404
+#, python-brace-format
+msgid "清理表 '{}' 时发生错误: {}"
+msgstr "An error occurred while cleaning table '{}': {}"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:407
+msgid "处理失败"
+msgstr "Processing failed"
+
+#: cotton_toolkit/core/convertFiles2sqlite.py:408
+#, python-brace-format
+msgid "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
+msgstr "Error occurred while processing file '{}' to table '{}'. Reason: {}"
 
 #: cotton_toolkit/core/convertXlsx2csv.py:50
 #, python-brace-format
@@ -258,7 +354,7 @@ msgstr "Successfully converted and saved to: {}"
 msgid "A critical error occurred during Excel to CSV conversion. Reason: {}"
 msgstr "A critical error occurred during Excel to CSV conversion. Reason: {}"
 
-#: cotton_toolkit/core/data_access.py:47 cotton_toolkit/core/data_access.py:202
+#: cotton_toolkit/core/data_access.py:47 cotton_toolkit/core/data_access.py:201
 #: cotton_toolkit/core/data_access.py:264
 #: cotton_toolkit/utils/gene_utils.py:210
 msgid "错误: 预处理数据库 'genomes.db' 未找到。"
@@ -283,17 +379,17 @@ msgstr ""
 msgid "查询序列时发生数据库错误: {}"
 msgstr "A database error occurred while querying the sequence: {}"
 
-#: cotton_toolkit/core/data_access.py:111
+#: cotton_toolkit/core/data_access.py:112
 #, python-brace-format
 msgid "警告: 在数据库中未能找到 {} 个基因的序列: {}"
 msgstr "Warning: Sequences for {} genes were not found in the database: {}"
 
-#: cotton_toolkit/core/data_access.py:131
+#: cotton_toolkit/core/data_access.py:132
 #, python-brace-format
 msgid "批量获取序列时发生数据库错误: {}"
 msgstr "Database error occurred while batch fetching sequences: {}"
 
-#: cotton_toolkit/core/data_access.py:159
+#: cotton_toolkit/core/data_access.py:161
 #, python-brace-format
 msgid "Annotation file not found at: {}"
 msgstr "Annotation file not found at: {}"
@@ -303,12 +399,12 @@ msgstr "Annotation file not found at: {}"
 msgid "Annotation file '{}' is empty."
 msgstr "Annotation file '{}' is empty."
 
-#: cotton_toolkit/core/data_access.py:183
+#: cotton_toolkit/core/data_access.py:182
 #, python-brace-format
 msgid "Failed to load and process standardized file {}. Reason: {}"
 msgstr "Failed to load and process standardized file {}. Reason: {}"
 
-#: cotton_toolkit/core/data_access.py:208
+#: cotton_toolkit/core/data_access.py:207
 #: cotton_toolkit/core/data_access.py:270
 #, python-brace-format
 msgid "错误: 基因组 '{}' 的配置中未定义 'homology_ath_url'。"
@@ -316,13 +412,13 @@ msgstr ""
 "Error: 'homology_ath_url' is not defined in the configuration for genome "
 "'{}'."
 
-#: cotton_toolkit/core/data_access.py:218
+#: cotton_toolkit/core/data_access.py:217
 #: cotton_toolkit/core/data_access.py:280
 #, python-brace-format
 msgid "错误: 在数据库中找不到表 '{}'。"
 msgstr "Error: Table '{}' not found in the database."
 
-#: cotton_toolkit/core/data_access.py:244
+#: cotton_toolkit/core/data_access.py:243
 #, python-brace-format
 msgid "查询同源数据库时出错: {}"
 msgstr "Error querying homologous database: {}"
@@ -353,113 +449,113 @@ msgstr "Task was canceled before downloading {}."
 msgid "错误: 创建目录 {} 失败。原因: {}"
 msgstr "Error: Failed to create directory {}. Reason: {}"
 
-#: cotton_toolkit/core/downloader.py:61
+#: cotton_toolkit/core/downloader.py:62
 #, python-brace-format
 msgid "文件已存在，跳过下载: {}"
 msgstr "File already exists, skipping download: {}"
 
-#: cotton_toolkit/core/downloader.py:66
+#: cotton_toolkit/core/downloader.py:67
 #, python-brace-format
 msgid "开始下载: {}..."
 msgstr "Downloading: {}..."
 
-#: cotton_toolkit/core/downloader.py:107
+#: cotton_toolkit/core/downloader.py:108
 #, python-brace-format
 msgid "下载 {} 的任务被用户取消。"
 msgstr "The download task for {} was canceled by the user."
 
-#: cotton_toolkit/core/downloader.py:117
+#: cotton_toolkit/core/downloader.py:118
 #, python-brace-format
 msgid "下载的文件 {} 大小小于预期，可能不完整。"
 msgstr "The downloaded file {} is smaller than expected and may be incomplete."
 
-#: cotton_toolkit/core/downloader.py:120
+#: cotton_toolkit/core/downloader.py:121
 #, python-brace-format
 msgid "文件 {} 下载成功。"
 msgstr "File {} downloaded successfully."
 
-#: cotton_toolkit/core/downloader.py:125
+#: cotton_toolkit/core/downloader.py:126
 #, python-brace-format
 msgid "下载 {} (来自 {}) 失败。网络错误: {}"
 msgstr "Download {} (from {}) failed. Network error: {}"
 
-#: cotton_toolkit/core/downloader.py:129
+#: cotton_toolkit/core/downloader.py:133
 #, python-brace-format
 msgid "下载 {} 时发生未知错误: {}"
 msgstr "An unknown error occurred while downloading {}: {}"
 
 #: cotton_toolkit/core/file_normalizer.py:33
-#: cotton_toolkit/utils/file_utils.py:34
+#: cotton_toolkit/utils/file_utils.py:33
 #, python-brace-format
 msgid "输入文件不存在: {}"
 msgstr "Input file does not exist: {}"
 
-#: cotton_toolkit/core/file_normalizer.py:40
+#: cotton_toolkit/core/file_normalizer.py:41
 #, python-brace-format
 msgid "正在尝试将 '{}' 标准化为DataFrame..."
 msgstr "Attempting to normalize '{}' into a DataFrame..."
 
-#: cotton_toolkit/core/file_normalizer.py:66
-#: cotton_toolkit/core/file_normalizer.py:70
-#: cotton_toolkit/core/file_normalizer.py:74
+#: cotton_toolkit/core/file_normalizer.py:67
+#: cotton_toolkit/core/file_normalizer.py:71
+#: cotton_toolkit/core/file_normalizer.py:75
 #, python-brace-format
 msgid "检测到 TXT 文件的分隔符为: '{}'"
 msgstr "Detected delimiter for TXT file is: '{}'"
 
-#: cotton_toolkit/core/file_normalizer.py:77
+#: cotton_toolkit/core/file_normalizer.py:78
 msgid "无法自动检测 TXT 文件的分隔符，尝试使用默认空格。"
 msgstr ""
 "Unable to automatically detect the delimiter for the TXT file, attempting to "
 "use the default space."
 
-#: cotton_toolkit/core/file_normalizer.py:87
+#: cotton_toolkit/core/file_normalizer.py:88
 #, python-brace-format
 msgid "不支持的文件格式或无法识别的文件: {}"
 msgstr "Unsupported or unrecognized file format: {}"
 
-#: cotton_toolkit/core/file_normalizer.py:114
+#: cotton_toolkit/core/file_normalizer.py:115
 msgid "检测到无表头，已使用预设表头 'Query', 'Match', 'Description'。"
 msgstr ""
 "No header detected, preset headers 'Query', 'Match', 'Description' have been "
 "applied."
 
-#: cotton_toolkit/core/file_normalizer.py:116
+#: cotton_toolkit/core/file_normalizer.py:117
 #, python-brace-format
 msgid "成功将 '{}' 加载到DataFrame。"
 msgstr "Successfully loaded '{}' into a DataFrame."
 
-#: cotton_toolkit/core/file_normalizer.py:119
+#: cotton_toolkit/core/file_normalizer.py:120
 msgid "正在检查并拆分包含 '|' 的单元格..."
 msgstr "Checking and splitting cells containing '|'..."
 
-#: cotton_toolkit/core/file_normalizer.py:122
+#: cotton_toolkit/core/file_normalizer.py:123
 #, python-brace-format
 msgid "发现列 '{}' 包含 '|' 分隔符，正在执行拆分..."
 msgstr ""
 "Found column '{}' contains '|' delimiter, performing split operation..."
 
-#: cotton_toolkit/core/file_normalizer.py:126
+#: cotton_toolkit/core/file_normalizer.py:127
 #, python-brace-format
 msgid "列 '{}' 拆分成功，DataFrame已更新。"
 msgstr "Column '{}' split successfully, DataFrame updated.escription'."
 
-#: cotton_toolkit/core/file_normalizer.py:128
+#: cotton_toolkit/core/file_normalizer.py:129
 #, python-brace-format
 msgid "处理列 '{}' 时拆分失败: {}"
 msgstr "Failed to split column '{}': {}"
 
-#: cotton_toolkit/core/file_normalizer.py:133
-#: cotton_toolkit/pipelines/preprocessing.py:484
+#: cotton_toolkit/core/file_normalizer.py:134
+#: cotton_toolkit/pipelines/preprocessing.py:387
 #, python-brace-format
 msgid "处理文件 '{}' 时发生错误: {}"
 msgstr "Error processing file '{}': {}"
 
-#: cotton_toolkit/core/file_normalizer.py:157
+#: cotton_toolkit/core/file_normalizer.py:159
 #, python-brace-format
 msgid "已成功将文件转换为CSV格式: {}"
 msgstr "Successfully converted file to CSV format: {}"
 
-#: cotton_toolkit/core/file_normalizer.py:160
+#: cotton_toolkit/core/file_normalizer.py:162
 #, python-brace-format
 msgid "无法将DataFrame写入CSV文件 '{}': {}"
 msgstr "Failed to write DataFrame to CSV file '{}': {}"
@@ -549,7 +645,7 @@ msgstr "Error: Failed to create GFF database '{}': {}"
 msgid "创建GFF数据库失败。"
 msgstr "Failed to create GFF database."
 
-#: cotton_toolkit/core/gff_parser.py:269 cotton_toolkit/core/gff_parser.py:320
+#: cotton_toolkit/core/gff_parser.py:269 cotton_toolkit/core/gff_parser.py:321
 msgid "正在准备GFF数据库..."
 msgstr "Preparing GFF database..."
 
@@ -588,50 +684,50 @@ msgstr "Region gene extraction complete."
 msgid "查询GFF区域时发生错误: {}"
 msgstr "Error querying GFF region: {}"
 
-#: cotton_toolkit/core/gff_parser.py:294
+#: cotton_toolkit/core/gff_parser.py:295
 msgid "GFF区域查询失败的完整堆栈跟踪:"
 msgstr "Full stack trace for GFF region query failure:"
 
-#: cotton_toolkit/core/gff_parser.py:295 cotton_toolkit/core/gff_parser.py:365
+#: cotton_toolkit/core/gff_parser.py:296 cotton_toolkit/core/gff_parser.py:367
 msgid "查询时发生错误。"
 msgstr "An error occurred during the query."
 
-#: cotton_toolkit/core/gff_parser.py:323
+#: cotton_toolkit/core/gff_parser.py:324
 msgid "无法获取或创建GFF数据库，无法查询基因ID。"
 msgstr "Cannot get or create GFF database, unable to query gene IDs."
 
-#: cotton_toolkit/core/gff_parser.py:325
+#: cotton_toolkit/core/gff_parser.py:326
 #, python-brace-format
 msgid "正在并行查询 {} 个基因..."
 msgstr "Querying {} genes in parallel..."
 
-#: cotton_toolkit/core/gff_parser.py:340
+#: cotton_toolkit/core/gff_parser.py:341
 msgid "已完成"
 msgstr "Completed"
 
-#: cotton_toolkit/core/gff_parser.py:340
+#: cotton_toolkit/core/gff_parser.py:341
 msgid "个查询批次"
 msgstr "query batches"
 
-#: cotton_toolkit/core/gff_parser.py:351
+#: cotton_toolkit/core/gff_parser.py:352
 #, python-brace-format
 msgid "警告: {} 个基因ID未在GFF数据库中找到: {}{}"
 msgstr "Warning: {} gene IDs not found in GFF database: {}{}"
 
-#: cotton_toolkit/core/gff_parser.py:355
+#: cotton_toolkit/core/gff_parser.py:356
 msgid "查询完成，未找到任何基因。"
 msgstr "Query complete, no genes found."
 
-#: cotton_toolkit/core/gff_parser.py:359
+#: cotton_toolkit/core/gff_parser.py:360
 #, python-brace-format
 msgid "成功并行查询到 {} 个基因的详细信息。"
 msgstr "Successfully queried details of {} genes in parallel."
 
-#: cotton_toolkit/core/gff_parser.py:360
+#: cotton_toolkit/core/gff_parser.py:361
 msgid "基因查询完成。"
 msgstr "Gene query complete."
 
-#: cotton_toolkit/core/gff_parser.py:364
+#: cotton_toolkit/core/gff_parser.py:365
 #, python-brace-format
 msgid "根据ID查询GFF时发生错误: {}"
 msgstr "Error querying GFF by ID: {}"
@@ -709,7 +805,7 @@ msgstr "Preparing input gene list..."
 #: cotton_toolkit/pipelines/annotation.py:50
 #: cotton_toolkit/pipelines/homology.py:194
 #: cotton_toolkit/tools/enrichment_analyzer.py:180
-#: cotton_toolkit/tools/enrichment_analyzer.py:249
+#: cotton_toolkit/tools/enrichment_analyzer.py:251
 msgid "正在智能解析输入基因ID..."
 msgstr "Intelligently parsing input gene IDs..."
 
@@ -890,7 +986,7 @@ msgstr "BLAST process starting..."
 #: cotton_toolkit/pipelines/blast.py:132 cotton_toolkit/pipelines/blast.py:140
 #: cotton_toolkit/pipelines/blast.py:156 cotton_toolkit/pipelines/blast.py:162
 #: cotton_toolkit/pipelines/blast.py:185 cotton_toolkit/pipelines/blast.py:214
-#: cotton_toolkit/pipelines/preprocessing.py:341
+#: cotton_toolkit/pipelines/preprocessing.py:244
 #: ui/tabs/genome_identifier_tab.py:166
 msgid "任务已取消。"
 msgstr "Task cancelled."
@@ -1444,7 +1540,7 @@ msgid "位点转换流程出错: {}"
 msgstr "Locus conversion process failed: {}"
 
 #: cotton_toolkit/pipelines/homology.py:455
-#: cotton_toolkit/pipelines/preprocessing.py:498
+#: cotton_toolkit/pipelines/preprocessing.py:401
 msgid "任务因错误而终止。"
 msgstr "Task terminated due to an error."
 
@@ -1524,266 +1620,194 @@ msgstr "An error occurred while saving the result file: {}"
 msgid "同源转换完成。"
 msgstr "Homologous conversion completed."
 
-#: cotton_toolkit/pipelines/preprocessing.py:70
-msgid "文件处理过程被取消。"
-msgstr "The file processing was canceled."
-
-#: cotton_toolkit/pipelines/preprocessing.py:76
-msgid "开始处理..."
-msgstr "Processing started..."
-
-#: cotton_toolkit/pipelines/preprocessing.py:79
-msgid "正在读取文件..."
-msgstr "Reading file..."
-
-#: cotton_toolkit/pipelines/preprocessing.py:96
-#, python-brace-format
-msgid "跳过文件 '{}'，因为未能读取到有效数据。"
-msgstr "Skip file '{}' as no valid data was read."
-
-#: cotton_toolkit/pipelines/preprocessing.py:99
-msgid "文件读取完毕, 正在清洗ID..."
-msgstr "File reading complete, cleaning IDs..."
-
-#: cotton_toolkit/pipelines/preprocessing.py:105
-#, python-brace-format
-msgid "正在对 {} 的 '{}' 列应用正则表达式..."
-msgstr "Applying regex to column '{}' of {}..."
-
-#: cotton_toolkit/pipelines/preprocessing.py:108
-#, python-brace-format
-msgid "成功清洗了 '{}' 列。"
-msgstr "Successfully cleaned the '{}' column."
-
-#: cotton_toolkit/pipelines/preprocessing.py:114
-msgid "正在写入数据库..."
-msgstr "Writing to database..."
-
-#: cotton_toolkit/pipelines/preprocessing.py:125
-#, python-brace-format
-msgid "成功将 '{}' 转换到表 '{}'。"
-msgstr "Successfully converted '{}' to table '{}'."
-
-#: cotton_toolkit/pipelines/preprocessing.py:126
-msgid "处理完成"
-msgstr "Processing complete"
-
-#: cotton_toolkit/pipelines/preprocessing.py:130
-#, python-brace-format
-msgid "文件 '{}' 的处理过程被取消。"
-msgstr "Processing of file '{}' was canceled."
-
-#: cotton_toolkit/pipelines/preprocessing.py:131 ui/ui_manager.py:465
-msgid "任务已取消"
-msgstr "Task canceled"
-
-#: cotton_toolkit/pipelines/preprocessing.py:139
-#, python-brace-format
-msgid "成功清理表 '{}'。"
-msgstr "Successfully cleaned up table '{}'."
-
-#: cotton_toolkit/pipelines/preprocessing.py:141
-#, python-brace-format
-msgid "清理表 '{}' 时发生错误: {}"
-msgstr "An error occurred while cleaning table '{}': {}"
-
-#: cotton_toolkit/pipelines/preprocessing.py:145
-msgid "处理失败"
-msgstr "Processing failed"
-
-#: cotton_toolkit/pipelines/preprocessing.py:147
-#, python-brace-format
-msgid "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
-msgstr "Error occurred while processing file '{}' to table '{}'. Reason: {}"
-
-#: cotton_toolkit/pipelines/preprocessing.py:242 ui/gui_app.py:62
+#: cotton_toolkit/pipelines/preprocessing.py:145 ui/gui_app.py:62
 #: ui/tabs/data_download_tab.py:384
 msgid "数据下载"
 msgstr "Data Download"
 
-#: cotton_toolkit/pipelines/preprocessing.py:252
-#: cotton_toolkit/pipelines/preprocessing.py:254
+#: cotton_toolkit/pipelines/preprocessing.py:155
+#: cotton_toolkit/pipelines/preprocessing.py:157
 msgid "下载流程开始..."
 msgstr "Download process started..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:253
+#: cotton_toolkit/pipelines/preprocessing.py:156
 msgid "任务在启动时被取消。"
 msgstr "Task was canceled on startup."
 
-#: cotton_toolkit/pipelines/preprocessing.py:272
+#: cotton_toolkit/pipelines/preprocessing.py:175
 #, python-brace-format
 msgid "本次下载将使用代理: {}"
 msgstr "This download will use a proxy: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:274
+#: cotton_toolkit/pipelines/preprocessing.py:177
 msgid "下载代理开关已打开，但配置文件中未设置代理地址。"
 msgstr ""
 "The download proxy is enabled, but no proxy address is set in the "
 "configuration file."
 
-#: cotton_toolkit/pipelines/preprocessing.py:276
+#: cotton_toolkit/pipelines/preprocessing.py:179
 msgid "正在准备下载任务列表..."
 msgstr "Preparing download task list..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:277
-#: cotton_toolkit/pipelines/preprocessing.py:317
-#: cotton_toolkit/pipelines/preprocessing.py:564
-#: cotton_toolkit/pipelines/preprocessing.py:568
-#: cotton_toolkit/pipelines/preprocessing.py:579
+#: cotton_toolkit/pipelines/preprocessing.py:180
+#: cotton_toolkit/pipelines/preprocessing.py:220
+#: cotton_toolkit/pipelines/preprocessing.py:467
+#: cotton_toolkit/pipelines/preprocessing.py:471
+#: cotton_toolkit/pipelines/preprocessing.py:482
 msgid "任务被取消。"
 msgstr "Task was canceled."
 
-#: cotton_toolkit/pipelines/preprocessing.py:279
+#: cotton_toolkit/pipelines/preprocessing.py:182
 #, python-brace-format
 msgid "将尝试下载的基因组版本: {}"
 msgstr "Attempting to download genome version: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:285
+#: cotton_toolkit/pipelines/preprocessing.py:188
 #, python-brace-format
 msgid "未从UI指定文件类型，将尝试检查所有可能的类型: {}"
 msgstr ""
 "No file type specified from the UI, will attempt to check all possible "
 "types: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:288
+#: cotton_toolkit/pipelines/preprocessing.py:191
 #, python-brace-format
 msgid "将根据UI的选择，精确下载以下文件类型: {}"
 msgstr ""
 "The following file types will be precisely downloaded based on UI selection: "
 "{}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:294
+#: cotton_toolkit/pipelines/preprocessing.py:197
 #, python-brace-format
 msgid "在基因组源中未找到版本 '{}'，已跳过。"
 msgstr "Version '{}' not found in genome source, skipped."
 
-#: cotton_toolkit/pipelines/preprocessing.py:309
+#: cotton_toolkit/pipelines/preprocessing.py:212
 msgid "任务在任务列表创建期间被取消。"
 msgstr "Task was canceled during task list creation."
 
-#: cotton_toolkit/pipelines/preprocessing.py:312
+#: cotton_toolkit/pipelines/preprocessing.py:215
 msgid "根据您的选择，没有找到任何有效的URL可供下载。"
 msgstr "Based on your selection, no valid URLs were found for download."
 
-#: cotton_toolkit/pipelines/preprocessing.py:313
+#: cotton_toolkit/pipelines/preprocessing.py:216
 msgid "任务完成：无文件可下载。"
 msgstr "Task complete: No files to download."
 
-#: cotton_toolkit/pipelines/preprocessing.py:316
+#: cotton_toolkit/pipelines/preprocessing.py:219
 #, python-brace-format
 msgid "找到 {} 个文件需要下载。"
 msgstr "Found {} files to download."
 
-#: cotton_toolkit/pipelines/preprocessing.py:318
+#: cotton_toolkit/pipelines/preprocessing.py:221
 #, python-brace-format
 msgid "准备下载 {} 个文件..."
 msgstr "Preparing to download {} files..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:340
+#: cotton_toolkit/pipelines/preprocessing.py:243
 msgid "下载任务已被用户取消。"
 msgstr "Download task was canceled by the user."
 
-#: cotton_toolkit/pipelines/preprocessing.py:354
+#: cotton_toolkit/pipelines/preprocessing.py:257
 #, python-brace-format
 msgid "下载 {} 的 {} 文件时发生严重错误: {}"
 msgstr "A critical error occurred while downloading the {} file for {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:361
+#: cotton_toolkit/pipelines/preprocessing.py:264
 msgid "总体下载进度"
 msgstr "Overall Download Progress"
 
-#: cotton_toolkit/pipelines/preprocessing.py:363
+#: cotton_toolkit/pipelines/preprocessing.py:266
 #, python-brace-format
 msgid "所有指定的下载任务已完成。成功: {}, 失败: {}。"
 msgstr ""
 "All specified download tasks have been completed. Success: {}, failure: {}."
 
-#: cotton_toolkit/pipelines/preprocessing.py:364
+#: cotton_toolkit/pipelines/preprocessing.py:267
 msgid "下载流程完成。"
 msgstr "Download process complete."
 
-#: cotton_toolkit/pipelines/preprocessing.py:367
+#: cotton_toolkit/pipelines/preprocessing.py:270
 #: ui/tabs/data_download_tab.py:65 ui/tabs/data_download_tab.py:120
 #: ui/tabs/data_download_tab.py:442
 msgid "预处理注释文件"
 msgstr "Preprocess Annotation Files"
 
-#: cotton_toolkit/pipelines/preprocessing.py:383
+#: cotton_toolkit/pipelines/preprocessing.py:286
 msgid "开始预处理所有注释文件..."
 msgstr "Starting preprocessing of all annotation files..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:384
+#: cotton_toolkit/pipelines/preprocessing.py:287
 msgid "开始预处理所有注释文件 (包括GFF)..."
 msgstr "Start preprocessing all annotation files (including GFF)..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:386
-#: cotton_toolkit/pipelines/preprocessing.py:567 ui/event_handler.py:172
+#: cotton_toolkit/pipelines/preprocessing.py:289
+#: cotton_toolkit/pipelines/preprocessing.py:470 ui/event_handler.py:172
 msgid "正在加载基因组源数据..."
 msgstr "Loading genome source data..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:391
+#: cotton_toolkit/pipelines/preprocessing.py:294
 msgid "错误：预处理需要从UI明确选择一个基因组版本。"
 msgstr ""
 "Error: Preprocessing requires explicitly selecting a genome version from the "
 "UI."
 
-#: cotton_toolkit/pipelines/preprocessing.py:394
+#: cotton_toolkit/pipelines/preprocessing.py:297
 msgid "正在检查所有文件状态..."
 msgstr "Checking all file statuses..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:409
+#: cotton_toolkit/pipelines/preprocessing.py:312
 msgid "所有注释文件均已处理完毕，无需再次运行。"
 msgstr "All comment files have been processed; no need to run again."
 
-#: cotton_toolkit/pipelines/preprocessing.py:410
+#: cotton_toolkit/pipelines/preprocessing.py:313
 msgid "所有文件均已是最新状态。"
 msgstr "All files are up to date."
 
-#: cotton_toolkit/pipelines/preprocessing.py:442
+#: cotton_toolkit/pipelines/preprocessing.py:345
 msgid "未找到有效文件进行处理。"
 msgstr "No valid files found for processing."
 
-#: cotton_toolkit/pipelines/preprocessing.py:446
+#: cotton_toolkit/pipelines/preprocessing.py:349
 #, python-brace-format
 msgid "检测到以下待处理文件: {}"
 msgstr "The following pending files were detected: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:447
+#: cotton_toolkit/pipelines/preprocessing.py:350
 #, python-brace-format
 msgid "找到 {} 个待处理文件..."
 msgstr "Found {} pending files..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:461
-#: cotton_toolkit/pipelines/preprocessing.py:619
+#: cotton_toolkit/pipelines/preprocessing.py:364
+#: cotton_toolkit/pipelines/preprocessing.py:522
 msgid "处理中..."
 msgstr "Processing..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:472
-#: cotton_toolkit/pipelines/preprocessing.py:626 ui/ui_manager.py:483
+#: cotton_toolkit/pipelines/preprocessing.py:375
+#: cotton_toolkit/pipelines/preprocessing.py:529 ui/ui_manager.py:483
 msgid "完成"
 msgstr "Done"
 
-#: cotton_toolkit/pipelines/preprocessing.py:476 ui/ui_manager.py:481
+#: cotton_toolkit/pipelines/preprocessing.py:379 ui/ui_manager.py:481
 msgid "已取消"
 msgstr "Canceled"
 
-#: cotton_toolkit/pipelines/preprocessing.py:477
+#: cotton_toolkit/pipelines/preprocessing.py:380
 #, python-brace-format
 msgid "文件 '{}' 的处理被取消。"
 msgstr "Processing of file '{}' was canceled."
 
-#: cotton_toolkit/pipelines/preprocessing.py:479 ui/ui_manager.py:485
+#: cotton_toolkit/pipelines/preprocessing.py:382 ui/ui_manager.py:485
 msgid "失败"
 msgstr "Failed"
 
-#: cotton_toolkit/pipelines/preprocessing.py:480
+#: cotton_toolkit/pipelines/preprocessing.py:383
 #, python-brace-format
 msgid "文件 '{}' 处理失败，但未提供具体错误原因。"
 msgstr ""
 "File '{}' processing failed, but no specific error reason was provided."
 
-#: cotton_toolkit/pipelines/preprocessing.py:483
-#: cotton_toolkit/pipelines/preprocessing.py:638 ui/event_handler.py:798
+#: cotton_toolkit/pipelines/preprocessing.py:386
+#: cotton_toolkit/pipelines/preprocessing.py:541 ui/event_handler.py:798
 #: ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:343
 #: ui/tabs/annotation_tab.py:115 ui/tabs/arabidopsis_homology_tab.py:254
 #: ui/tabs/arabidopsis_homology_tab.py:301 ui/tabs/blast_tab.py:182
@@ -1797,7 +1821,7 @@ msgstr ""
 msgid "错误"
 msgstr "Error"
 
-#: cotton_toolkit/pipelines/preprocessing.py:489
+#: cotton_toolkit/pipelines/preprocessing.py:392
 msgid ""
 "部分文件在预处理过程中失败或被取消:\n"
 "\n"
@@ -1805,41 +1829,41 @@ msgstr ""
 "Some files failed or were canceled during the preprocessing stage:\n"
 "\n"
 
-#: cotton_toolkit/pipelines/preprocessing.py:494
+#: cotton_toolkit/pipelines/preprocessing.py:397
 msgid "所有待处理的注释文件均已成功预处理。"
 msgstr "All pending comment files have been successfully preprocessed."
 
-#: cotton_toolkit/pipelines/preprocessing.py:495
-#: cotton_toolkit/pipelines/preprocessing.py:650
+#: cotton_toolkit/pipelines/preprocessing.py:398
+#: cotton_toolkit/pipelines/preprocessing.py:553
 msgid "预处理完成。"
 msgstr "Preprocessing complete."
 
-#: cotton_toolkit/pipelines/preprocessing.py:497
+#: cotton_toolkit/pipelines/preprocessing.py:400
 msgid "部分文件在预处理过程中失败，请检查日志。"
 msgstr "Some files failed during preprocessing, please check the logs."
 
-#: cotton_toolkit/pipelines/preprocessing.py:521
+#: cotton_toolkit/pipelines/preprocessing.py:424
 #, python-brace-format
 msgid "正在解压 {}..."
 msgstr "Extracting {}..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:531
+#: cotton_toolkit/pipelines/preprocessing.py:434
 #, python-brace-format
 msgid "正在为 {} 创建 {} 数据库..."
 msgstr "Creating {} database for {}..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:535
+#: cotton_toolkit/pipelines/preprocessing.py:438
 #, python-brace-format
 msgid "数据库 {} 创建成功。"
 msgstr "Database {} created successfully."
 
-#: cotton_toolkit/pipelines/preprocessing.py:538
+#: cotton_toolkit/pipelines/preprocessing.py:441
 #, python-brace-format
 msgid "任务在解压时被取消: {}"
 msgstr "Task canceled during extraction: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:540
-#: cotton_toolkit/pipelines/preprocessing.py:633
+#: cotton_toolkit/pipelines/preprocessing.py:443
+#: cotton_toolkit/pipelines/preprocessing.py:536
 msgid ""
 "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
 "PATH 环境变量中。"
@@ -1847,69 +1871,69 @@ msgstr ""
 "Error: 'makeblastdb' command not found. Please ensure BLAST+ is properly "
 "installed and added to the system's PATH environment variable."
 
-#: cotton_toolkit/pipelines/preprocessing.py:544
+#: cotton_toolkit/pipelines/preprocessing.py:447
 #, python-brace-format
 msgid "创建数据库 {} 失败: {}"
 msgstr "Failed to create database {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:546
+#: cotton_toolkit/pipelines/preprocessing.py:449
 #, python-brace-format
 msgid "处理文件 {} 时发生未知错误: {}"
 msgstr "An unknown error occurred while processing file {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:549
+#: cotton_toolkit/pipelines/preprocessing.py:452
 msgid "构建BLAST数据库"
 msgstr "Building a BLAST database"
 
-#: cotton_toolkit/pipelines/preprocessing.py:563
+#: cotton_toolkit/pipelines/preprocessing.py:466
 msgid "开始预处理BLAST数据库..."
 msgstr "Starting preprocessing of BLAST database..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:565
+#: cotton_toolkit/pipelines/preprocessing.py:468
 msgid "开始批量创建BLAST数据库..."
 msgstr "Starting batch creation of BLAST databases..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:571
+#: cotton_toolkit/pipelines/preprocessing.py:474
 msgid "任务终止：未能加载基因组源数据。"
 msgstr "任务终止：未能加载基因组源数据。"
 
-#: cotton_toolkit/pipelines/preprocessing.py:578
+#: cotton_toolkit/pipelines/preprocessing.py:481
 msgid "正在检查需要预处理的文件..."
 msgstr "Checking for files that need preprocessing..."
 
-#: cotton_toolkit/pipelines/preprocessing.py:599
+#: cotton_toolkit/pipelines/preprocessing.py:502
 msgid "任务在文件检查后被取消。"
 msgstr "Task was canceled after file inspection."
 
-#: cotton_toolkit/pipelines/preprocessing.py:602
+#: cotton_toolkit/pipelines/preprocessing.py:505
 msgid "所有BLAST数据库均已是最新状态，无需预处理。"
 msgstr "All BLAST databases are up to date and require no preprocessing."
 
-#: cotton_toolkit/pipelines/preprocessing.py:603
+#: cotton_toolkit/pipelines/preprocessing.py:506
 msgid "无需处理，所有文件已是最新。"
 msgstr "No processing needed, all files are up-to-date."
 
-#: cotton_toolkit/pipelines/preprocessing.py:607
-#: cotton_toolkit/pipelines/preprocessing.py:608
+#: cotton_toolkit/pipelines/preprocessing.py:510
+#: cotton_toolkit/pipelines/preprocessing.py:511
 #, python-brace-format
 msgid "找到 {} 个BLAST数据库需要创建。"
 msgstr "Found {} BLAST databases to be created."
 
-#: cotton_toolkit/pipelines/preprocessing.py:628
+#: cotton_toolkit/pipelines/preprocessing.py:531
 msgid "警告"
 msgstr "Warning"
 
-#: cotton_toolkit/pipelines/preprocessing.py:636
+#: cotton_toolkit/pipelines/preprocessing.py:539
 #, python-brace-format
 msgid "处理 {} 时发生未知异常: {}"
 msgstr "An unknown exception occurred while processing {}: {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:643
+#: cotton_toolkit/pipelines/preprocessing.py:546
 #, python-brace-format
 msgid "进度 ({}/{}) - {}"
 msgstr "Progress ({}/{}) - {}"
 
-#: cotton_toolkit/pipelines/preprocessing.py:646
+#: cotton_toolkit/pipelines/preprocessing.py:549
 msgid ""
 "部分BLAST数据库在创建过程中失败或被取消:\n"
 "\n"
@@ -1917,13 +1941,13 @@ msgstr ""
 "Some BLAST databases failed or were canceled during creation\n"
 "\n"
 
-#: cotton_toolkit/pipelines/preprocessing.py:649
+#: cotton_toolkit/pipelines/preprocessing.py:552
 #, python-brace-format
 msgid "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
 msgstr ""
 "BLAST database preprocessing completed. Successfully created {}/{} databases."
 
-#: cotton_toolkit/pipelines/preprocessing.py:654 ui/gui_app.py:66
+#: cotton_toolkit/pipelines/preprocessing.py:557 ui/gui_app.py:66
 msgid "GFF查询"
 msgstr "GFF Query"
 
@@ -2003,7 +2027,7 @@ msgstr ""
 msgid "在表 '{}' 中未找到任何匹配的注释信息。"
 msgstr "No matching comment information was found in table '{}'."
 
-#: cotton_toolkit/tools/annotator.py:153
+#: cotton_toolkit/tools/annotator.py:154
 #, python-brace-format
 msgid ""
 "错误: 数据库中未找到表 '{}'。请确保对应的原始文件已通过预处理脚本正确转换。"
@@ -2011,12 +2035,12 @@ msgstr ""
 "Error: Table '{}' not found in the database. Please ensure the corresponding "
 "raw file has been properly converted via the preprocessing script."
 
-#: cotton_toolkit/tools/annotator.py:156
+#: cotton_toolkit/tools/annotator.py:157
 #, python-brace-format
 msgid "查询表 '{}' 时发生数据库错误: {}"
 msgstr "Database error occurred while querying table '{}': {}"
 
-#: cotton_toolkit/tools/annotator.py:160
+#: cotton_toolkit/tools/annotator.py:164
 msgid "所有注释处理完成。"
 msgstr "All annotation processing complete."
 
@@ -2082,7 +2106,7 @@ msgid "文件 {} 已处理并保存到: {}"
 msgstr "File {} has been processed and saved to: {}"
 
 #: cotton_toolkit/tools/batch_ai_processor.py:217
-#: cotton_toolkit/utils/file_utils.py:73
+#: cotton_toolkit/utils/file_utils.py:71
 #, python-brace-format
 msgid "处理文件 {} 时发生严重错误: {}"
 msgstr "A critical error occurred while processing file {}: {}"
@@ -2208,7 +2232,7 @@ msgid "富集分析完成。"
 msgstr "Enrichment analysis complete."
 
 #: cotton_toolkit/tools/enrichment_analyzer.py:182
-#: cotton_toolkit/tools/enrichment_analyzer.py:251
+#: cotton_toolkit/tools/enrichment_analyzer.py:253
 #, python-brace-format
 msgid "ID智能解析完成，得到 {} 个标准化的ID用于富集分析。"
 msgstr ""
@@ -2216,7 +2240,7 @@ msgstr ""
 "enrichment analysis."
 
 #: cotton_toolkit/tools/enrichment_analyzer.py:185
-#: cotton_toolkit/tools/enrichment_analyzer.py:254
+#: cotton_toolkit/tools/enrichment_analyzer.py:256
 msgid "任务终止：基因ID解析失败。"
 msgstr "Task terminated: Gene ID resolution failed."
 
@@ -2244,38 +2268,38 @@ msgstr ""
 msgid "加载GO背景数据失败: {}"
 msgstr "Failed to load GO background data: {}"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:220
-#: cotton_toolkit/tools/enrichment_analyzer.py:290
+#: cotton_toolkit/tools/enrichment_analyzer.py:221
+#: cotton_toolkit/tools/enrichment_analyzer.py:293
 #, python-brace-format
 msgid "请确认预处理脚本已成功运行，并且表 '{}' 已在 '{}' 中正确创建。"
 msgstr ""
 "Please confirm that the preprocessing script has been successfully executed "
 "and the table '{}' has been correctly created in '{}'."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:222
+#: cotton_toolkit/tools/enrichment_analyzer.py:223
 msgid "任务终止：加载GO背景数据失败。"
 msgstr "Task terminated: Failed to load GO background data."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:257
+#: cotton_toolkit/tools/enrichment_analyzer.py:259
 msgid "正在从数据库加载KEGG背景数据..."
 msgstr "Loading KEGG background data from the database..."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:267
+#: cotton_toolkit/tools/enrichment_analyzer.py:269
 #, python-brace-format
 msgid "基因组 '{}' 配置中缺少 'KEGG_pathways_url'。"
 msgstr "Genome '{}' configuration is missing 'KEGG_pathways_url'."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:272
+#: cotton_toolkit/tools/enrichment_analyzer.py:274
 #, python-brace-format
 msgid "正在从数据库表 '{}' 加载KEGG背景注释..."
 msgstr "Loading KEGG background annotations from database table '{}'..."
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:288
+#: cotton_toolkit/tools/enrichment_analyzer.py:290
 #, python-brace-format
 msgid "加载KEGG背景数据失败: {}"
 msgstr "Failed to load KEGG background data: {}"
 
-#: cotton_toolkit/tools/enrichment_analyzer.py:292
+#: cotton_toolkit/tools/enrichment_analyzer.py:295
 msgid "任务终止：加载KEGG背景数据失败。"
 msgstr "Task terminated: Failed to load KEGG background data."
 
@@ -2342,47 +2366,47 @@ msgstr "Processing new or updated file: {}"
 msgid "文件已成功转换为标准CSV并缓存: {}"
 msgstr "File successfully converted to standard CSV and cached: {}"
 
-#: cotton_toolkit/utils/file_utils.py:69
+#: cotton_toolkit/utils/file_utils.py:68
 #, python-brace-format
 msgid "文件规范化失败: {}"
 msgstr "File normalization failed: {}"
 
-#: cotton_toolkit/utils/file_utils.py:83
+#: cotton_toolkit/utils/file_utils.py:79
 #, python-brace-format
 msgid "错误: 文件不存在 -> {}"
 msgstr "Error: File does not exist -> {}"
 
-#: cotton_toolkit/utils/file_utils.py:95
+#: cotton_toolkit/utils/file_utils.py:92
 #, python-brace-format
 msgid "正在读取文件: {} (类型: {}, 压缩: {})"
 msgstr "Reading file: {} (Type: {}, Compressed: {})"
 
-#: cotton_toolkit/utils/file_utils.py:109
+#: cotton_toolkit/utils/file_utils.py:106
 #, python-brace-format
 msgid "文件 {} 使用UTF-8解码失败，尝试latin-1编码。"
 msgstr "File {} failed to decode with UTF-8, trying latin-1 encoding."
 
-#: cotton_toolkit/utils/file_utils.py:116
+#: cotton_toolkit/utils/file_utils.py:113
 #, python-brace-format
 msgid "检测到制表符(Tab)分隔符: {}"
 msgstr "Detected Tab separator: {}"
 
-#: cotton_toolkit/utils/file_utils.py:120
+#: cotton_toolkit/utils/file_utils.py:117
 #, python-brace-format
 msgid "默认使用逗号(Comma)分隔符: {}"
 msgstr "Defaulting to Comma separator: {}"
 
-#: cotton_toolkit/utils/file_utils.py:126
+#: cotton_toolkit/utils/file_utils.py:123
 #, python-brace-format
 msgid "警告: 不支持的文件扩展名 '{}' 来自文件: {}"
 msgstr "Warning: Unsupported file extension '{}' from file: {}"
 
-#: cotton_toolkit/utils/file_utils.py:130
+#: cotton_toolkit/utils/file_utils.py:127
 #, python-brace-format
 msgid "文件 {} 加载成功，共 {} 行。"
 msgstr "File {} loaded successfully, {} lines in total."
 
-#: cotton_toolkit/utils/file_utils.py:135
+#: cotton_toolkit/utils/file_utils.py:131
 #, python-brace-format
 msgid "加载或解析文件 {} 时发生严重错误: {}"
 msgstr "A critical error occurred while loading or parsing file {}: {}"
@@ -3438,38 +3462,38 @@ msgstr "UI font set to: {}, Monospace font to: {}"
 msgid "配置日志级别时出错: {}"
 msgstr "Error configuring log level: {}"
 
-#: ui/gui_app.py:983
+#: ui/gui_app.py:985
 msgid "用户请求重启应用程序。"
 msgstr "The user requested to restart the application."
 
-#: ui/gui_app.py:990
+#: ui/gui_app.py:992
 msgid "检测到在Nuitka环境中运行。"
 msgstr "Detected running in a Nuitka environment."
 
-#: ui/gui_app.py:994
+#: ui/gui_app.py:996
 msgid "检测到在标准Python脚本环境中运行。"
 msgstr "Running in a standard Python script environment detected."
 
-#: ui/gui_app.py:998
+#: ui/gui_app.py:1000
 #, python-brace-format
 msgid "准备重启命令: {}"
 msgstr "Prepare to restart command: {}"
 
-#: ui/gui_app.py:999
+#: ui/gui_app.py:1001
 #, python-brace-format
 msgid "设置工作目录为: {}"
 msgstr "Set working directory to: {}"
 
-#: ui/gui_app.py:1018
+#: ui/gui_app.py:1020
 msgid "正在关闭当前实例。"
 msgstr "Closing the current instance."
 
-#: ui/gui_app.py:1022
+#: ui/gui_app.py:1024
 #, python-brace-format
 msgid "重启过程中发生错误: {}"
 msgstr "An error occurred during the restart: {}"
 
-#: ui/gui_app.py:1024
+#: ui/gui_app.py:1026
 msgid "重启失败"
 msgstr "Failed to restart"
 
@@ -4712,6 +4736,9 @@ msgstr "UI has been refreshed according to the current configuration."
 msgid "刷新失败或无可用模型"
 msgstr "Refresh failed or no available model"
 
+#~ msgid "连接失败:"
+#~ msgstr "Connection failed:"
+
 #, python-brace-format
 #~ msgid "正在启动新进程: {}"
 #~ msgstr "Starting new process: {}"
@@ -4834,9 +4861,6 @@ msgstr "Refresh failed or no available model"
 
 #~ msgid "已删除不完整的下载文件: {}"
 #~ msgstr "Deleted incomplete downloaded file: {}"
-
-#~ msgid "删除不完整文件 {} 失败: {}"
-#~ msgstr "Failed to delete incomplete file {}: {}"
 
 #~ msgid "Task cancelled before downloading {}."
 #~ msgstr "Task canceled before downloading {}"
