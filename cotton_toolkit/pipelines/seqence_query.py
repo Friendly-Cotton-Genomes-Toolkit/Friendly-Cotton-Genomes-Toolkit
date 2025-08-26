@@ -51,7 +51,7 @@ def run_sequence_extraction(
         logger.info(_("基因ID解析完成，共 {} 个有效ID。").format(len(resolved_gene_ids)))
     except (ValueError, FileNotFoundError) as e:
         logger.error(_("基因ID解析失败: {}").format(e))
-        return str(e) # 将错误信息返回给UI线程
+        raise e
 
     if check_cancel(): return None
 
@@ -64,8 +64,10 @@ def run_sequence_extraction(
     if check_cancel(): return None
 
     if not fasta_str:
-        logger.error(_("未能获取任何查询序列，任务终止。"))
-        return {} if not output_path else _("未能获取任何查询序列。")
+        error_message = _("未能获取任何查询序列，任务终止。")
+        if not_found_genes:
+            error_message += "\n" + _("未找到序列的基因列表: {}").format(", ".join(not_found_genes))
+        raise FileNotFoundError(error_message)
 
     if not_found_genes:
         logger.warning(
@@ -105,4 +107,4 @@ def run_sequence_extraction(
         except Exception as e:
             err_msg = _("保存CSV文件失败: {}").format(e)
             logger.error(err_msg)
-            return err_msg
+            raise IOError(_("保存CSV文件失败: {}").format(e))

@@ -43,10 +43,10 @@ def run_homology_mapping(
     query_fasta_str, not_found_genes = get_sequences_for_gene_ids(config, source_assembly_id, gene_ids)
 
     if not query_fasta_str:
-        logger.error(_("未能获取任何查询序列，任务终止。"))
-        progress(100, _("错误：无法获取序列。"))
-        # 可以通过MessageDialog等方式通知用户 not_found_genes
-        return None
+        error_message = _("未能获取任何查询序列，任务终止。")
+        if not_found_genes:
+            error_message += "\n" + _("未找到序列的基因列表: {}").format(", ".join(not_found_genes))
+        raise ValueError(error_message)
 
     logger.debug(_("--- BLAST Query Sequence (first 1000 chars) ---\n{}\n-------------------------------------------------").format(query_fasta_str[:1000]))
     if not_found_genes:
@@ -104,12 +104,15 @@ def run_homology_mapping(
     # 此处可以添加严格模式的筛选逻辑，类似于旧版 homology_mapper 中的代码
 
     # 保存最终结果到用户指定路径
-    if output_csv_path:
-        logger.info(_("正在将最终结果保存到: {}").format(output_csv_path))
-        if output_csv_path.lower().endswith('.csv'):
-            results_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
-        else:
-            results_df.to_excel(output_csv_path, index=False, engine='openpyxl')
+    try:
+        if output_csv_path:
+            logger.info(_("正在将最终结果保存到: {}").format(output_csv_path))
+            if output_csv_path.lower().endswith('.csv'):
+                results_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
+            else:
+                results_df.to_excel(output_csv_path, index=False, engine='openpyxl')
+    except Exception as e:
+        raise IOError(_("保存结果文件时发生错误: {}").format(e))
 
     if os.path.exists(temp_output_path):
         os.remove(temp_output_path)

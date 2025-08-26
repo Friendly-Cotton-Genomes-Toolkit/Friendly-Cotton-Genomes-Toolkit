@@ -29,6 +29,8 @@
 
 This toolkit provides a series of powerful tools for cotton genome data processing, including homologous gene mapping between different versions (Liftover), gene function annotation, gene locus query, enrichment analysis, BLAST, and batch data processing with an AI assistant. It aims to be an indispensable, **stable, and reliable** assistant in your daily research work.
 
+The default download data for this program is **upland cotton (*Gossypium hirsutum* L.) TM-1**. If other species are needed, you can adjust `genome_sources_list.yml` accordingly.
+
 ------
 
 

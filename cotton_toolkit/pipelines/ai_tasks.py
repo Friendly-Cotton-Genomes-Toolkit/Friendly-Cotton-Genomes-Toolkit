@@ -45,14 +45,14 @@ def run_ai_task(
     model_name = cli_overrides.get('ai_model') if cli_overrides else None
     provider_cfg_obj = ai_cfg.providers.get(provider_name)
     if not provider_cfg_obj:
-        logger.error(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name))
-        return
+        raise ValueError(_("错误: 在配置中未找到AI服务商 '{}' 的设置。").format(provider_name))
+
     if not model_name: model_name = provider_cfg_obj.model
     api_key = provider_cfg_obj.api_key
     base_url = provider_cfg_obj.base_url
     if not api_key or "YOUR_API_KEY" in api_key:
-        logger.error(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name))
-        return
+        raise ValueError(_("错误: 请在配置文件中为服务商 '{}' 设置一个有效的API Key。").format(provider_name))
+
 
     proxies_to_use = config.proxies.model_dump(
         exclude_none=True) if ai_cfg.use_proxy_for_ai and config.proxies else None
@@ -81,7 +81,6 @@ def run_ai_task(
     progress(15, _("正在处理CSV文件并调用AI服务..."))
     if check_cancel(): return
 
-    # 修改: process_single_csv_file 不再需要 status_callback
     process_single_csv_file(
         client=ai_client,
         input_csv_path=input_file,

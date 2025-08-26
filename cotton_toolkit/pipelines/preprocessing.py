@@ -389,9 +389,8 @@ def run_preprocess_annotation_files(
 
     genome_sources = get_genome_data_sources(config)
     if not selected_assembly_id or selected_assembly_id not in genome_sources:
-        logger.error(_("预处理需要从UI明确选择一个基因组版本。"))
-        progress(100, _("错误：未选择有效基因组。"))
-        return False
+        raise ValueError(_("错误：预处理需要从UI明确选择一个基因组版本。"))
+
 
     genome_info = genome_sources[selected_assembly_id]
     progress(10, _("正在检查所有文件状态..."))
@@ -450,6 +449,7 @@ def run_preprocess_annotation_files(
 
     # 2. 串行执行所有任务
     overall_success = True
+    errors_found = []
     total_tasks = len(tasks_to_run)
     task_weight = 80 / total_tasks if total_tasks > 0 else 0
 
@@ -470,14 +470,26 @@ def run_preprocess_annotation_files(
             # 直接调用目标函数
             result = task['target_func'](**task['args'])
             if result:
-                status_update(key, _("✅ 完成"))
+                status_update(key, _("完成"))
             else:
-                overall_success = False
-                status_update(key, _("🚫 已取消" if cancel_event and cancel_event.is_set() else "❌ 失败"))
+                # 如果任务被取消，也记录下来
+                if cancel_event and cancel_event.is_set():
+                    status_update(key, _("已取消"))
+                    errors_found.append(_("文件 '{}' 的处理被取消。").format(key))
+                else:
+                    status_update(key, _("失败"))
+                    errors_found.append(_("文件 '{}' 处理失败，但未提供具体错误原因。").format(key))
+
         except Exception as e:
-            overall_success = False
-            status_update(key, _("❌ 错误"))
-            logger.error(f"An exception occurred while processing {key}: {e}", exc_info=True)
+            status_update(key, _("错误"))
+            error_msg = _("处理文件 '{}' 时发生错误: {}").format(key, e)
+            errors_found.append(error_msg)
+            logger.error(error_msg, exc_info=True)
+
+
+    if errors_found:
+        summary_error = _("部分文件在预处理过程中失败或被取消:\n\n") + "\n".join(f"- {e}" for e in errors_found)
+        raise RuntimeError(summary_error)
 
     # 3. 最终总结
     if overall_success:
@@ -558,9 +570,7 @@ def run_build_blast_db_pipeline(
     if check_cancel(): logger.info(_("任务被取消。")); return False
     genome_sources = get_genome_data_sources(config)
     if not genome_sources:
-        logger.error(_("未能加载基因组源数据。"))
-        progress(100, _("任务终止：未能加载基因组源。"))
-        return False
+        raise ValueError(_("任务终止：未能加载基因组源数据。"))
 
     genomes_to_process = [genome_sources[
                               selected_assembly_id]] if selected_assembly_id and selected_assembly_id in genome_sources else genome_sources.values()
@@ -598,6 +608,8 @@ def run_build_blast_db_pipeline(
     total_tasks = len(tasks_to_run)
     progress(20, _("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
     logger.info(_("找到 {} 个BLAST数据库需要创建。").format(total_tasks))
+
+    errors_found = []
     success_count = 0
     completed_count = 0
 
@@ -613,21 +625,29 @@ def run_build_blast_db_pipeline(
             logger.info(f"Task {file_key}: {result_msg}")
             if "成功" in result_msg:
                 success_count += 1
-                status_update(file_key, _("✅ 完成"))
+                status_update(file_key, _("完成"))
             else:
-                status_update(file_key, _("⚠️ 警告"))
-        except FileNotFoundError as e:
-            logger.error(e)
-            if cancel_event: cancel_event.set()
-            progress(100, _("错误: makeblastdb 未找到!"))
-            return False
+                status_update(file_key, _("警告"))
+                errors_found.append(result_msg)
+
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                _("错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 PATH 环境变量中。"))
+
         except Exception as e:
-            logger.error(f"An exception occurred while processing {file_key}: {e}")
-            status_update(file_key, _("❌ 错误"))
+            error_msg = _("处理 {} 时发生未知异常: {}").format(file_key, e)
+            logger.error(error_msg, exc_info=True)
+            status_update(file_key, _("错误"))
+            errors_found.append(error_msg)
         finally:
             completed_count += 1
             task_progress = 20 + int((completed_count / total_tasks) * 75)
             progress(task_progress, _("进度 ({}/{}) - {}").format(completed_count, total_tasks, file_key))
+
+
+    if errors_found:
+        summary_error = _("部分BLAST数据库在创建过程中失败或被取消:\n\n") + "\n".join(f"- {e}" for e in errors_found)
+        raise RuntimeError(summary_error)
 
     logger.info(_("BLAST数据库预处理完成。成功创建 {}/{} 个数据库。").format(success_count, total_tasks))
     progress(100, _("预处理完成。"))
@@ -699,4 +719,4 @@ def run_gff_preprocessing(
     except Exception as e:
         logger.exception(f"A critical error occurred during GFF pre-processing: {e}")
         progress(100, "GFF预处理因错误终止。")
-        return False
+        raise e
