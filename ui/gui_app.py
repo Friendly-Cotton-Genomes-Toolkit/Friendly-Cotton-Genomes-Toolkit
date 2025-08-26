@@ -980,6 +980,8 @@ class CottonToolkitApp(ttkb.Window):
             self.logger.error(self._("配置日志级别时出错: {}").format(e))
 
     def restart_app(self):
+        sys.exit(0)
+
         self.logger.info(_("用户请求重启应用程序。"))
         try:
             # 1. 准备命令列表和工作目录 (这部分逻辑是正确的，无需修改)
