@@ -981,16 +981,44 @@ class CottonToolkitApp(ttkb.Window):
 
     def restart_app(self):
         self.logger.info(_("用户请求重启应用程序。"))
-        command = [sys.executable] + sys.argv
         try:
-            # 启动一个新的、分离的进程
-            self.logger.info(_("正在启动新进程: {}").format(' '.join(command)))
-            subprocess.Popen(command)
+            # 1. 准备命令列表和工作目录 (这部分逻辑是正确的，无需修改)
+            command = []
+            working_dir = ""
 
-            # 平稳地退出当前应用程序
+            if hasattr(sys, '__compiled__'):
+                self.logger.info(_("检测到在Nuitka环境中运行。"))
+                command = [sys.executable] + sys.argv[1:]
+                working_dir = os.path.dirname(sys.executable)
+            else:
+                self.logger.info(_("检测到在标准Python脚本环境中运行。"))
+                command = [sys.executable] + sys.argv
+                working_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+            self.logger.info(_("准备重启命令: {}").format(' '.join(command)))
+            self.logger.info(_("设置工作目录为: {}").format(working_dir))
+
+            # 2. 准备 Popen 的跨平台参数
+            kwargs = {
+                'cwd': working_dir,
+                'stdin': subprocess.DEVNULL,
+                'stdout': subprocess.DEVNULL,
+                'stderr': subprocess.DEVNULL,
+            }
+
+            if sys.platform == "win32":
+                # 在Windows上，DETACHED_PROCESS 标志提供了额外的独立性保证。
+                DETACHED_PROCESS = 0x00000008
+                kwargs['creationflags'] = DETACHED_PROCESS
+
+            # 3. 执行重启
+            subprocess.Popen(command, **kwargs)
+
+            # 4. 平稳地退出当前实例
             self.logger.info(_("正在关闭当前实例。"))
-            self.destroy()  # 如果是图形界面应用，调用destroy()
-            # 如果是非图形界面应用，可以使用 sys.exit(0)
+            self.destroy()
 
         except Exception as e:
             self.logger.error(_("重启过程中发生错误: {}").format(e))
+            if hasattr(self, 'ui_manager'):
+                self.ui_manager.show_error_message(_("重启失败"), str(e))
