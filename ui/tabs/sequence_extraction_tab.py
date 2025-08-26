@@ -36,6 +36,7 @@ class SequenceExtractionTab(BaseTab):
         self.app = app
         self.assembly_id_var = tk.StringVar()
         self.single_gene_mode_var = tk.BooleanVar(value=True)  # 默认设置为单基因模式
+        self.sequence_type_var = tk.StringVar(value='cds')
 
         # 步骤2：调用父类构造函数
         super().__init__(parent, app, translator=translator)
@@ -53,7 +54,7 @@ class SequenceExtractionTab(BaseTab):
         parent_frame.grid_columnconfigure(0, weight=1)
 
         # --- 标题 ---
-        ttkb.Label(parent_frame, text=_("基因CDS序列提取"), font=self.app.app_title_font, bootstyle="primary").grid(
+        ttkb.Label(parent_frame, text=_("序列提取"), font=self.app.app_title_font, bootstyle="primary").grid(
             row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 
         # --- 输入卡片 ---
@@ -66,8 +67,19 @@ class SequenceExtractionTab(BaseTab):
         self.assembly_dropdown = ttkb.OptionMenu(input_card, self.assembly_id_var, _("加载中..."), bootstyle="info")
         self.assembly_dropdown.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
 
+        ttkb.Label(input_card, text=_("序列类型:"), font=self.app.app_font_bold).grid(
+            row=1, column=0, sticky="w", padx=(10, 5), pady=10)
+
+        seq_type_frame = ttkb.Frame(input_card)
+        seq_type_frame.grid(row=1, column=1, sticky="w", padx=10, pady=5)
+        cds_radio = ttkb.Radiobutton(seq_type_frame, text="CDS", variable=self.sequence_type_var, value='cds',
+                                     bootstyle="primary")
+        cds_radio.pack(side="left", padx=(0, 15))
+        protein_radio = ttkb.Radiobutton(seq_type_frame, text=_("蛋白质"), variable=self.sequence_type_var,
+                                         value='protein', bootstyle="primary")
+        protein_radio.pack(side="left")
         ttkb.Label(input_card, text=_("基因ID列表:"), font=self.app.app_font_bold).grid(
-            row=1, column=0, sticky="nw", padx=(10, 5), pady=10)
+            row=2, column=0, sticky="nw", padx=(10, 5), pady=10)
 
         text_bg = self.app.style.lookup('TFrame', 'background')
         text_fg = self.app.style.lookup('TLabel', 'foreground')
@@ -267,6 +279,9 @@ class SequenceExtractionTab(BaseTab):
                 self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出CSV文件的路径。"))
                 return
 
+        # 获取用户选择的序列类型
+        sequence_type_selected = self.sequence_type_var.get()
+
         # --- 创建通信工具和对话框 ---
         cancel_event = threading.Event()
 
@@ -274,8 +289,9 @@ class SequenceExtractionTab(BaseTab):
             self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
             cancel_event.set()
 
+        dialog_title = self._("{}序列提取中").format(sequence_type_selected.upper())
         progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("序列提取中"),
+            title=dialog_title,
             on_cancel=on_cancel_action
         )
 
@@ -288,6 +304,7 @@ class SequenceExtractionTab(BaseTab):
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids,
+            'sequence_type': sequence_type_selected,
             'output_path': output_path,
             'cancel_event': cancel_event,
             'progress_callback': ui_progress_updater
@@ -303,8 +320,9 @@ class SequenceExtractionTab(BaseTab):
                     return result
             return result
 
+        task_name_str = self._("{}序列提取").format(sequence_type_selected.upper())
         self.app.event_handler.start_task(
-            task_name=_("CDS序列提取"),
+            task_name=task_name_str,
             target_func=task_wrapper,
             kwargs=task_kwargs
         )

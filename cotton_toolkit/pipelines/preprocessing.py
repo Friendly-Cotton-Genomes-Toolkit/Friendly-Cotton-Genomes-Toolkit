@@ -81,7 +81,7 @@ def _process_single_file_to_sqlite(
         dataframe = None
         filename_lower = source_path.lower()
 
-        if file_key == 'predicted_cds':
+        if file_key in ['predicted_cds', 'predicted_protein']:
             dataframe = _read_fasta_to_dataframe(source_path, id_regex=id_regex)
         elif filename_lower.endswith(('.xlsx', '.xlsx.gz')):
             dataframe = _read_excel_to_dataframe(source_path)
@@ -98,7 +98,7 @@ def _process_single_file_to_sqlite(
 
         progress(50, _("文件读取完毕, 正在清洗ID..."))
 
-        if id_regex and file_key != 'predicted_cds':
+        if id_regex and file_key not in ['predicted_cds', 'predicted_protein']:
             target_column = 'Query'
             if target_column in dataframe.columns:
                 logger.debug(
@@ -185,7 +185,7 @@ def check_preprocessing_status(config: MainConfig, genome_info: GenomeSourceItem
                 status = 'downloaded'
 
                 # --- 核心状态判断逻辑 ---
-                if key == 'predicted_cds':
+                if key in ['predicted_cds', 'predicted_protein']:
                     # 检查1: BLAST数据库是否存在
                     db_fasta_path = local_path.removesuffix('.gz')
                     db_type = 'prot' if key == 'predicted_protein' else 'nucl'
@@ -245,7 +245,6 @@ def run_download_pipeline(
         cli_overrides: Optional[Dict[str, Any]] = None,
         **kwargs
 ):
-
     progress = kwargs.get('progress_callback')
     cancel_event = kwargs.get('cancel_event')
     check_cancel = kwargs.get('check_cancel')
@@ -391,7 +390,6 @@ def run_preprocess_annotation_files(
     if not selected_assembly_id or selected_assembly_id not in genome_sources:
         raise ValueError(_("错误：预处理需要从UI明确选择一个基因组版本。"))
 
-
     genome_info = genome_sources[selected_assembly_id]
     progress(10, _("正在检查所有文件状态..."))
     all_statuses = check_preprocessing_status(config, genome_info)
@@ -400,7 +398,8 @@ def run_preprocess_annotation_files(
     tasks_to_run = []
     project_root = os.path.dirname(config.config_file_abs_path_)
 
-    ALL_ANNOTATION_KEYS = ['predicted_cds', 'gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+    ALL_ANNOTATION_KEYS = ['predicted_cds', 'predicted_protein', 'gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs',
+                           'homology_ath']
     files_to_process_keys = [
         key for key in ALL_ANNOTATION_KEYS
         if all_statuses.get(key, 'not_downloaded') not in ['processed', 'not_downloaded']
@@ -429,7 +428,7 @@ def run_preprocess_annotation_files(
             }
         else:
             db_path = os.path.join(project_root, PREPROCESSED_DB_NAME)
-            KEYS_NEEDING_REGEX = ['predicted_cds', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
+            KEYS_NEEDING_REGEX = ['predicted_cds', 'predicted_protein', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']
             regex_to_use = genome_info.gene_id_regex if key in KEYS_NEEDING_REGEX else None
             task_info["target_func"] = _process_single_file_to_sqlite
             task_info["args"] = {
@@ -485,7 +484,6 @@ def run_preprocess_annotation_files(
             error_msg = _("处理文件 '{}' 时发生错误: {}").format(key, e)
             errors_found.append(error_msg)
             logger.error(error_msg, exc_info=True)
-
 
     if errors_found:
         summary_error = _("部分文件在预处理过程中失败或被取消:\n\n") + "\n".join(f"- {e}" for e in errors_found)
@@ -643,7 +641,6 @@ def run_build_blast_db_pipeline(
             completed_count += 1
             task_progress = 20 + int((completed_count / total_tasks) * 75)
             progress(task_progress, _("进度 ({}/{}) - {}").format(completed_count, total_tasks, file_key))
-
 
     if errors_found:
         summary_error = _("部分BLAST数据库在创建过程中失败或被取消:\n\n") + "\n".join(f"- {e}" for e in errors_found)

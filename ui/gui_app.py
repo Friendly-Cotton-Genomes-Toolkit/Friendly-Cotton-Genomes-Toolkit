@@ -59,7 +59,7 @@ class CottonToolkitApp(ttkb.Window):
     @property
     def TAB_TITLE_KEYS(self):
         return {
-            "download": _("数据下载"), "annotation": _("功能注释"), "sequence_extraction": _("CDS序列提取"),
+            "download": _("数据下载"), "annotation": _("功能注释"), "sequence_extraction": _("序列提取"),
             "enrichment": _("富集分析与绘图"),
             "genome_identifier": _("基因组鉴定"), "homology": _("快速同源转换"),
             "arabidopsis_conversion": _("棉花-拟南芥互转"),

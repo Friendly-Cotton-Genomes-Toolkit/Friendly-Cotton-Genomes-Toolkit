@@ -1,5 +1,4 @@
-﻿
-import os
+﻿import os
 import threading
 import traceback
 from typing import Optional, List, Dict, Callable, Union
@@ -26,11 +25,12 @@ def run_sequence_extraction(
         config: MainConfig,
         assembly_id: str,
         gene_ids: List[str],
+        sequence_type: str = 'cds',
         output_path: Optional[str] = None,
         **kwargs
 ) -> Optional[Union[Dict[str, str], str]]:
     """
-    从数据库中提取一个或多个基因/转录本的CDS序列。
+    从数据库中提取一个或多个基因/转录本的CDS或蛋白质序列。
 
     此函数通过调用 get_sequences_for_gene_ids 来复用与其他流程相同的核心数据提取逻辑。
 
@@ -45,9 +45,8 @@ def run_sequence_extraction(
     try:
         resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids)
         if not resolved_gene_ids:
-            msg = _("输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。")
-            logger.error(msg)
-            return msg
+            raise ValueError(_("输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。"))
+
         logger.info(_("基因ID解析完成，共 {} 个有效ID。").format(len(resolved_gene_ids)))
     except (ValueError, FileNotFoundError) as e:
         logger.error(_("基因ID解析失败: {}").format(e))
@@ -55,11 +54,12 @@ def run_sequence_extraction(
 
     if check_cancel(): return None
 
-
     # 步骤 1: 调用可复用的核心函数获取序列
     # 这与 run_homology_mapping 的第一步完全相同
     progress(10, _("正在从数据库提取基因序列..."))
-    fasta_str, not_found_genes = get_sequences_for_gene_ids(config, assembly_id, gene_ids)
+    fasta_str, not_found_genes = get_sequences_for_gene_ids(
+        config, assembly_id, resolved_gene_ids, sequence_type=sequence_type
+    )
 
     if check_cancel(): return None
 
@@ -101,7 +101,7 @@ def run_sequence_extraction(
         try:
             df = pd.DataFrame(list(sequences_dict.items()), columns=['GeneID', 'Sequence'])
             df.to_csv(output_path, index=False, encoding='utf-8-sig')
-            success_msg = _("CDS序列已成功保存到: {}").format(output_path)
+            success_msg = _("序列已成功保存到: {}").format(output_path)
             logger.info(success_msg)
             return success_msg
         except Exception as e:

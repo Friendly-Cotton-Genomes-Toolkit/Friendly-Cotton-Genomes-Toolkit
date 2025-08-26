@@ -409,7 +409,7 @@ class DataDownloadTab(BaseTab):
             return
 
         all_statuses = check_preprocessing_status(self.app.current_config, genome_info)
-        annotation_keys_to_check = ['predicted_cds', 'gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs',
+        annotation_keys_to_check = ['predicted_cds', 'predicted_protein', 'gff3', 'GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs',
                                     'homology_ath']
         missing_files_display_names = []
         for key in annotation_keys_to_check:
