@@ -91,8 +91,9 @@ def get_sequences_for_gene_ids(
                     existing_db_ids.add(row[0])
 
     except (sqlite3.Error, ValueError) as e:
-        logger.error(_("查询序列时发生数据库错误: {}").format(e))
-        return None, gene_ids
+        error_msg = _("查询序列时发生数据库错误: {}").format(e)
+        logger.error(error_msg)
+        raise sqlite3.Error(error_msg) from e
 
     # 3. Resolve which user ID maps to which existing DB ID based on the preferred order.
     resolved_map = {}  # { user_id: db_id }
@@ -128,8 +129,9 @@ def get_sequences_for_gene_ids(
             for gene, seq in cursor.fetchall():
                 fasta_sequences[gene] = seq
     except sqlite3.Error as e:
-        logger.error(_("批量获取序列时发生数据库错误: {}").format(e))
-        return None, gene_ids
+        error_msg = _("批量获取序列时发生数据库错误: {}").format(e)
+        logger.error(error_msg)
+        raise sqlite3.Error(error_msg) from e
 
     # 5. Build the FASTA string, using the database ID for the header.
     # Iterate through the original gene_ids list to maintain user's order.
@@ -156,16 +158,14 @@ def load_annotation_data(
     """
     if not os.path.exists(file_path):
         # 修改: 使用 logger.error
-        logger.error(_("Annotation file not found at: {}").format(file_path))
-        return None
+        raise FileNotFoundError(_("Annotation file not found at: {}").format(file_path))
 
     try:
         df = pd.read_csv(file_path, header=0, sep=',')
 
         if df.empty:
-            # 修改: 使用 logger.warning
             logger.warning(_("Annotation file '{}' is empty.").format(os.path.basename(file_path)))
-            return None
+            return pd.DataFrame()
 
         df.dropna(subset=['GeneID', 'TermID'], inplace=True)
         df['GeneID'] = df['GeneID'].astype(str)
@@ -179,10 +179,9 @@ def load_annotation_data(
         return df
 
     except Exception as e:
-        # 修改: 使用 logger.error
-        logger.error(_("Failed to load and process standardized file {}. Reason: {}").format(file_path, e))
-        return None
-
+        error_msg = _("Failed to load and process standardized file {}. Reason: {}").format(file_path, e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
 def get_homology_by_gene_ids(
         config: MainConfig,
@@ -241,8 +240,9 @@ def get_homology_by_gene_ids(
             return df
 
     except Exception as e:
-        logger.error(_("查询同源数据库时出错: {}").format(e))
-        return pd.DataFrame()
+        error_msg = _("查询同源数据库时出错: {}").format(e)
+        logger.error(error_msg)
+        raise sqlite3.Error(error_msg) from e
 
 
 def resolve_arabidopsis_ids_from_homology_db(

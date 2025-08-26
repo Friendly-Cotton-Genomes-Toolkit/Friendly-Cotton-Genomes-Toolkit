@@ -8,7 +8,7 @@ import threading
 import gzip
 import io
 import re
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Callable
 
 from cotton_toolkit.config.loader import get_genome_data_sources
 from cotton_toolkit.config.models import MainConfig
@@ -85,14 +85,15 @@ def _read_annotation_text_file(file_path: str, cancel_event: Optional[threading.
         return df
 
     except Exception as e:
-        logger.error(f"Failed to process annotation file '{os.path.basename(file_path)}'. Reason: {e}")
+        error_msg = _("处理注释文件 {} 失败；原因: {}").format(os.path.basename(file_path),e)
+        logger.error(error_msg)
         logger.debug(traceback.format_exc())
-        return None
+        raise IOError(error_msg) from e
 
 
 def _read_fasta_to_dataframe(file_path: str, id_regex: Optional[str] = None, cancel_event: Optional[threading.Event] = None) -> Optional[pd.DataFrame]:
     """
-    【已修改】将FASTA文件解析为DataFrame，并强制使用传入的正则表达式清理ID。
+    将FASTA文件解析为DataFrame，并强制使用传入的正则表达式清理ID。
     """
     logger.debug(f"正在为文件: {os.path.basename(file_path)} 使用专用的FASTA解析器 (Regex: {id_regex})")
     fasta_data = []
@@ -133,12 +134,12 @@ def _read_fasta_to_dataframe(file_path: str, id_regex: Optional[str] = None, can
         if not fasta_data:
             return None
         df = pd.DataFrame(fasta_data, columns=['Gene', 'Seq'])
-        logger.info(f"成功解析FASTA文件 '{os.path.basename(file_path)}'，共找到 {len(df)} 个条目。")
+        logger.info(_("成功解析FASTA文件 '{}'，共找到 {} 个条目。").format(os.path.basename(file_path),len(df)))
         return df
     except Exception as e:
-        logger.error(f"处理FASTA文件 '{os.path.basename(file_path)}' 失败。原因: {e}")
-        return None
-
+        error_msg = _("处理FASTA文件 '{}' 失败。原因: {}").format(os.path.basename(file_path),e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
 def _find_header_row_excel(sheet_df: pd.DataFrame, keywords: List[str]) -> Optional[int]:
     """在一个Excel工作表中寻找包含指定关键字的表头行，检查前5行。"""
@@ -184,20 +185,21 @@ def _read_excel_to_dataframe(file_path: str, cancel_event: Optional[threading.Ev
 
         if not all_data_frames:
             logger.error(f"No data could be extracted from any sheet in Excel file: {os.path.basename(file_path)}")
-            return None
+            return pd.DataFrame()
 
         combined_df = pd.concat(all_data_frames, ignore_index=True)
         combined_df.dropna(how='all', inplace=True)
         return combined_df
 
     except Exception as e:
-        logger.error(f"Failed to process Excel file '{os.path.basename(file_path)}'. Reason: {e}")
-        return None
+        error_msg = _("处理Excel文件 '{}' 失败。原因: {}").formatg(os.path.basename(file_path),e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
 
 def _read_text_to_dataframe(file_path: str) -> Optional[pd.DataFrame]:
     """
-    【最终版】读取文本文件，兼容多种格式，强制添加三列表头，并处理“|”多值行。
+    读取文本文件，兼容多种格式，强制添加三列表头，并处理“|”多值行。
     1. 依次尝试用Tab、逗号、任意空白作为分隔符读取文件。
     2. 使用严格的判断(必须解析出多于一列)，防止“假成功”。
     3. 在解析后，为DataFrame强制指定['Query', 'Match', 'Description']三列，不足则补为空列。
@@ -214,8 +216,9 @@ def _read_text_to_dataframe(file_path: str) -> Optional[pd.DataFrame]:
             content_bytes = f.read()
         content_str = content_bytes.decode('utf-8', errors='ignore')
     except Exception as e:
-        logger.error(f"Failed to read file content for '{os.path.basename(file_path)}'. Reason: {e}")
-        return None
+        error_msg = _("All parsing methods failed for '{}'. Final error: {}").format(os.path.basename(file_path),e)
+        logger.error(error_msg)
+        raise IOError(error_msg) from e
 
     # --- 步骤 1: 使用多种后备策略尝试解析文件 ---
     # 策略1: 尝试用Tab分隔符
@@ -308,6 +311,101 @@ def _read_text_to_dataframe(file_path: str) -> Optional[pd.DataFrame]:
         logger.info(f"Successfully expanded rows based on '|' delimiter for '{os.path.basename(file_path)}'.")
 
     return df
+
+
+def process_single_file_to_sqlite(
+        file_key: str,
+        source_path: str,
+        db_path: str,
+        version_id: str,
+        id_regex: Optional[str] = None,
+        cancel_event: Optional[threading.Event] = None,
+        progress_callback: Optional[Callable[[int, str], None]] = None
+) -> bool:
+    """
+    Worker function to process a single annotation file and write it to a SQLite table.
+    Now supports detailed progress reporting.
+    """
+    progress = progress_callback if progress_callback else lambda p, m: None
+
+    def check_cancel():
+        if cancel_event and cancel_event.is_set():
+            raise InterruptedError(_("文件处理过程被取消。"))
+
+    table_name = _sanitize_table_name(os.path.basename(source_path), version_id=version_id)
+    conn = None
+
+    try:
+        progress(0, _("开始处理..."))
+        # Step 1: File reading and parsing
+        check_cancel()
+        progress(10, _("正在读取文件..."))
+
+        dataframe = None
+        filename_lower = source_path.lower()
+
+        if file_key in ['predicted_cds', 'predicted_protein']:
+            dataframe = _read_fasta_to_dataframe(source_path, id_regex=id_regex)
+        elif filename_lower.endswith(('.xlsx', '.xlsx.gz')):
+            dataframe = _read_excel_to_dataframe(source_path)
+        elif file_key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']:
+            dataframe = _read_annotation_text_file(source_path)
+        else:
+            dataframe = _read_text_to_dataframe(source_path)
+
+        check_cancel()
+
+        if dataframe is None or dataframe.empty:
+            logger.warning(_("跳过文件 '{}'，因为未能读取到有效数据。").format(os.path.basename(source_path)))
+            return False
+
+        progress(50, _("文件读取完毕, 正在清洗ID..."))
+
+        if id_regex and file_key not in ['predicted_cds', 'predicted_protein']:
+            target_column = 'Query'
+            if target_column in dataframe.columns:
+                logger.debug(
+                    _("正在对 {} 的 '{}' 列应用正则表达式...").format(os.path.basename(source_path), target_column))
+                cleaned_ids = dataframe[target_column].astype(str).str.extract(id_regex).iloc[:, 0]
+                dataframe[target_column] = cleaned_ids.fillna(dataframe[target_column])
+                logger.info(_("成功清洗了 '{}' 列。").format(target_column))
+            else:
+                logger.warning(
+                    f"文件 {os.path.basename(source_path)} 中未找到预期的 '{target_column}' 列，跳过清洗。")
+
+        # Step 2: Database writing
+        progress(75, _("正在写入数据库..."))
+        try:
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
+            conn.close()
+            conn = None
+        finally:
+            if conn:
+                conn.close()
+
+        check_cancel()
+        logger.info(_("成功将 '{}' 转换到表 '{}'。").format(os.path.basename(source_path), table_name))
+        progress(100, _("处理完成"))
+        return True
+
+    except InterruptedError:
+        logger.warning(_("文件 '{}' 的处理过程被取消。").format(os.path.basename(source_path)))
+        progress(100, _("任务已取消"))
+        # Cleanup logic for cancelled tasks
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+            conn.commit()
+            conn.close()
+            logger.info(_("成功清理表 '{}'。").format(table_name))
+        except Exception as cleanup_e:
+            return _("清理表 '{}' 时发生错误: {}").format(table_name, cleanup_e)
+
+    except Exception as e:
+        progress(100, _("处理失败"))
+        return _("处理文件 '{}' 到表 '{}' 时发生错误。原因: {}").format(os.path.basename(source_path), table_name, e)
 
 
 def convert_files_to_sqlite(
