@@ -74,7 +74,7 @@ The default download data for this program is **upland cotton (*Gossypium hirsut
 - **Enrichment Analysis Plotting**: Quickly generate bubble charts, bar charts, cnet plots, and upset plots. It also provides R scripts and data for users to customize the graphics.
 - **Locus Conversion**: Convert genes within a genomic locus region from one genome to another specified cotton genome.
 - **GFF Query**: Batch query GFF annotation information for genes.
-- **CDS Sequence Extraction**: Input gene (or transcript) IDs to query their coding sequence information, supporting both single gene and multiple gene batch queries.
+- **Sequence Extraction**: Input gene (or transcript) IDs to query their coding sequence (CDs) and protein sequence information, supporting both single gene and multiple gene batch queries.
 - **AI Batch Processing**: Use AI to batch process a specific column in a CSV table (e.g., interpreting the biological function of the content in that column) for rapid pre-processing in research.
 
 ### 4. Cross-platform, Usable Anywhere

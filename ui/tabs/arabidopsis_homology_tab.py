@@ -7,7 +7,7 @@ import threading
 import pandas as pd
 import ttkbootstrap as ttkb
 
-from cotton_toolkit.pipelines.homology import run_arabidopsis_homology_conversion
+from cotton_toolkit.pipelines import run_arabidopsis_homology_conversion
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:

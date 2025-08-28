@@ -1,7 +1,7 @@
 ﻿import os
 import threading
 import traceback
-from typing import Optional, List, Dict, Callable, Union
+from typing import Optional, List, Dict, Callable, Union, Any
 
 import pandas as pd
 import logging
@@ -10,6 +10,8 @@ from .decorators import pipeline_task
 from ..config.models import MainConfig
 from ..core.data_access import get_sequences_for_gene_ids
 from ..utils.gene_utils import resolve_gene_ids
+# --- NEW: Import the analysis function ---
+from .sequence_analysis import run_analyze_sequences
 
 try:
     from builtins import _
@@ -17,25 +19,26 @@ except ImportError:
     def _(text: str) -> str:
         return text
 
-logger = logging.getLogger("cotton_toolkit.pipelines.data_query")
+logger = logging.getLogger("cotton_toolkit.pipelines.sequence_query")
 
 
-@pipeline_task(_("CDS序列提取"))
+@pipeline_task(_("序列提取"))
 def run_sequence_extraction(
         config: MainConfig,
         assembly_id: str,
         gene_ids: List[str],
         sequence_type: str = 'cds',
         output_path: Optional[str] = None,
+        perform_analysis: bool = False,
+        organelle_type: str = 'nucleus',
         **kwargs
-) -> Optional[Union[Dict[str, str], str]]:
+) -> Optional[Union[Dict[str, Any], str]]: # <-- Update return type hint
     """
     从数据库中提取一个或多个基因/转录本的CDS或蛋白质序列。
-
-    此函数通过调用 get_sequences_for_gene_ids 来复用与其他流程相同的核心数据提取逻辑。
+    如果 perform_analysis 为 True，则对CDS序列进行附加分析。
 
     - 如果提供了 output_path (多基因模式)，则将结果保存为CSV文件。
-    - 如果未提供 output_path (单基因模式)，则返回一个包含序列的字典。
+    - 如果未提供 output_path (单基因模式)，则返回一个包含序列和分析结果的字典。
     """
 
     progress = kwargs['progress_callback']
@@ -54,8 +57,6 @@ def run_sequence_extraction(
 
     if check_cancel(): return None
 
-    # 步骤 1: 调用可复用的核心函数获取序列
-    # 这与 run_homology_mapping 的第一步完全相同
     progress(10, _("正在从数据库提取基因序列..."))
     fasta_str, not_found_genes = get_sequences_for_gene_ids(
         config, assembly_id, resolved_gene_ids, sequence_type=sequence_type
@@ -91,20 +92,56 @@ def run_sequence_extraction(
         for gene_id, seq_parts in sequences_dict.items():
             sequences_dict[gene_id] = "".join(seq_parts)
 
-    # 步骤 2: 根据模式处理输出 (这是此函数独有的部分)
+    analysis_df = None
+    if perform_analysis and sequences_dict:
+        progress(85, _("正在进行序列分析..."))
+        try:
+            # 将 sequence_type 传递给分析函数
+            analysis_df = run_analyze_sequences(
+                sequences_dict=sequences_dict,
+                organelle_type=organelle_type,
+                input_sequence_type=sequence_type,
+                **kwargs
+            )
+
+            if check_cancel(): return None
+
+        except Exception as e:
+            logger.error(_("序列分析过程中发生错误: {}").format(e))
+            analysis_df = None
+            raise e
+
+
     if not output_path:
-        # 单基因/GUI模式: 直接返回序列字典
+        # 单基因/GUI模式:
         logger.info(_("成功为查询ID提取了 {} 条CDS序列。").format(len(sequences_dict)))
-        return sequences_dict
+        if analysis_df is not None and not analysis_df.empty:
+            # Combine sequence and analysis results for GUI display
+            analysis_dict = analysis_df.set_index('GeneID').to_dict('index')
+            combined_results = {}
+            for gene_id, sequence in sequences_dict.items():
+                # Start with the sequence
+                result_item = {'Sequence': sequence}
+                # Add analysis data if it exists
+                if gene_id in analysis_dict:
+                    result_item.update(analysis_dict[gene_id])
+                combined_results[gene_id] = result_item
+            return combined_results
+        else:
+            return sequences_dict
     else:
-        # 多基因/文件输出模式: 保存为CSV
+        # 多基因/文件输出模式:
         try:
             df = pd.DataFrame(list(sequences_dict.items()), columns=['GeneID', 'Sequence'])
+            # Merge with analysis results if available
+            if analysis_df is not None and not analysis_df.empty:
+                df = pd.merge(df, analysis_df, on='GeneID', how='left')
+
             df.to_csv(output_path, index=False, encoding='utf-8-sig')
-            success_msg = _("序列已成功保存到: {}").format(output_path)
+            success_msg = _("序列及分析结果已成功保存到: {}").format(output_path)
             logger.info(success_msg)
             return success_msg
         except Exception as e:
             err_msg = _("保存CSV文件失败: {}").format(e)
             logger.error(err_msg)
-            raise IOError(_("保存CSV文件失败: {}").format(e))
+            raise IOError(err_msg)

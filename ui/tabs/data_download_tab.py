@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING, Dict, Callable, Any
 import threading
 import ttkbootstrap as ttkb
 
-from cotton_toolkit.config.loader import get_local_downloaded_file_path
 from cotton_toolkit.pipelines import run_download_pipeline, run_preprocess_annotation_files, run_build_blast_db_pipeline
-from cotton_toolkit.pipelines.preprocessing import check_preprocessing_status
+from cotton_toolkit.pipelines import check_preprocessing_status
 from .base_tab import BaseTab
 
 if TYPE_CHECKING:
