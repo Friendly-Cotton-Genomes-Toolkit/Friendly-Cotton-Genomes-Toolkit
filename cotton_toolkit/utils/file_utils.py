@@ -109,11 +109,9 @@ def smart_load_file(file_path: str) -> Optional[pd.DataFrame]:
             first_line = content_str.splitlines()[0] if content_str else ""
             if '\t' in first_line:
                 separator = '\t'
-                # 修改: 使用 logger.debug
                 logger.debug(_("检测到制表符(Tab)分隔符: {}").format(file_name_for_log))
             else:
                 separator = ','
-                # 修改: 使用 logger.debug
                 logger.debug(_("默认使用逗号(Comma)分隔符: {}").format(file_name_for_log))
 
             df = pd.read_csv(io.StringIO(content_str), sep=separator, engine='python')

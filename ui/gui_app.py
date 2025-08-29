@@ -27,10 +27,7 @@ from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
 from ui.ui_manager import UIManager, determine_initial_theme
-from ui.tabs import (
-    AIAssistantTab, DataDownloadTab, AnnotationTab, EnrichmentTab, SequenceExtractionTab, SeqAnalysisTab,
-    GenomeIdentifierTab, GFFQueryTab, HomologyTab, LocusConversionTab, BlastTab, ArabidopsisHomologyConversionTab
-)
+from ui.tabs import *
 
 try:
     from builtins import _
@@ -52,9 +49,10 @@ class CottonToolkitApp(ttkb.Window):
 
     TOOL_TAB_ORDER = [
         "download", "annotation", "enrichment", "sequence_extraction", "seq_analysis",
-        "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion", "gff_query",
-        "blast", "ai_assistant",
+        "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion",
+        "gff_query","quantification","blast", "ai_assistant",
     ]
+
 
     @property
     def TAB_TITLE_KEYS(self):
@@ -63,7 +61,8 @@ class CottonToolkitApp(ttkb.Window):
             "seq_analysis": _("序列分析"), "enrichment": _("富集分析与绘图"),
             "genome_identifier": _("基因组鉴定"), "homology": _("快速同源转换"),
             "arabidopsis_conversion": _("棉花-拟南芥互转"),
-            "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"), "blast": _("本地BLAST"),
+            "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"),
+            "quantification":_("表达量标准化"),"blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
         }
 
@@ -112,7 +111,7 @@ class CottonToolkitApp(ttkb.Window):
             "genes_input": self._("在此处粘贴要注释的基因ID，每行一个"),
             "extract_seq_single": self._("输入单个基因ID, 例如: Ghir_D09G022830"),
             "extract_seq_multi": self._("每行输入一个基因ID...\nGhir_D09G022830\nGhir_D11G011140"),
-            "seq_analysis_placeholder": self._("> Seq1_Header\nACGTACGTACGT...\n\n> Seq2_Header\nTTGGCCAA..."),
+            "seq_analysis_placeholder": "> Seq1_Header\nACGTACGTACGT...\n\n> Seq2_Header\nTTGGCCAA...",
             "enrichment_genes_input": self._(
                 "在此处粘贴用于富集分析的基因ID，每行一个。\n如果包含Log2FC，格式为：基因ID\tLog2FC\n（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"),
             "custom_prompt": self._("在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."),
@@ -734,6 +733,7 @@ class CottonToolkitApp(ttkb.Window):
             "arabidopsis_conversion": ArabidopsisHomologyConversionTab,
             "locus_conversion": LocusConversionTab,
             "gff_query": GFFQueryTab,
+            "quantification": QuantificationTab,
             "blast": BlastTab,
             "ai_assistant": AIAssistantTab,
         }

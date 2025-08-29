@@ -366,3 +366,71 @@ class FirstLaunchDialog(ttkb.Toplevel):
 
     def _on_close(self):
         self.destroy()
+
+
+# 在 dialogs.py 文件末尾添加这个新类
+
+class HelpDialog(tk.Toplevel):
+    """
+    一个专门用于显示帮助信息和数据格式示例的对话框。
+    """
+
+    def __init__(self, parent, title: str, message: str, headers: List[str], data: List[List[str]]):
+        super().__init__(parent)
+        self.title(title)
+        self.transient(parent)
+        self.grab_set()
+        self.resizable(False, False)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.bind("<Escape>", lambda event: self.destroy())
+
+        main_frame = ttkb.Frame(self, padding=(20, 20))
+        main_frame.pack(expand=True, fill="both")
+
+        # 1. 添加说明文本
+        message_label = ttkb.Label(main_frame, text=message, wraplength=450, justify="left")
+        message_label.pack(pady=(0, 15), fill="x")
+
+        # 2. 创建 Treeview 作为表格
+        table_frame = ttkb.Frame(main_frame)
+        table_frame.pack(fill="x", expand=True)
+
+        tree = ttkb.Treeview(
+            master=table_frame,
+            columns=headers,
+            show="headings",
+            bootstyle="primary"  # 使用主题颜色
+        )
+
+        # 设置表头
+        for header in headers:
+            tree.heading(header, text=header)
+            tree.column(header, anchor="w", width=120)  # 设置默认列宽
+
+        # 插入数据行
+        for row_data in data:
+            tree.insert("", "end", values=row_data)
+
+        tree.pack(side="left", fill="x", expand=True)
+
+        # 添加垂直滚动条
+        scrollbar = ttkb.Scrollbar(table_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        # 3. 添加确定按钮
+        button_frame = ttkb.Frame(main_frame)
+        button_frame.pack(fill="x", pady=(20, 0))
+        ok_button = ttkb.Button(button_frame, text=_("确定"), command=self.destroy, bootstyle="primary")
+        ok_button.pack()
+
+        # 居中显示窗口
+        self.update_idletasks()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        dialog_width = self.winfo_width()
+        dialog_height = self.winfo_height()
+        x = (screen_width - dialog_width) // 2
+        y = (screen_height - dialog_height) // 2
+        self.geometry(f"+{x}+{y}")
+        self.wait_window(self)
