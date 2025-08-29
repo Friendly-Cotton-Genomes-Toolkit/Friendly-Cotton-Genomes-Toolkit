@@ -128,7 +128,7 @@ class QuantificationTab(BaseTab):
         title = _("原始计数文件格式说明")
         message = _("""这是一个CSV或制表符分隔的文本文件。\n
         •\u00A0第一列必须是基因ID。
-        •\u00A0第一行必须是表头，包含基因ID列名和每个样本的名称。
+        •\u00A0第一行必须是表头，包含 gene_id 和每个样本的名称。
         •\u00A0文件的分隔符（如逗号、制表符等）会被自动识别。""")
 
         headers = ["gene_id", "Sample_A", "Sample_B", "Sample_C"]
@@ -143,11 +143,12 @@ class QuantificationTab(BaseTab):
     # 显示基因长度文件帮助的函数
     def _show_lengths_help(self):
         title = _("基因长度文件格式说明")
-        message = _("""这是一个包含两列的CSV或制表符分隔的文本文件，没有表头。\n
+        message = _("""这是一个包含两列的CSV或制表符分隔的文本文件，\n
+        •\u00A0第一行是表头，固定为 gene_id 和 length。
         •\u00A0第一列是基因ID，必须与计数文件中的ID格式完全对应。
         •\u00A0第二列是该基因的长度，单位为碱基对(bp)。""")
 
-        headers = [_("基因ID"), _("长度 (bp)")]
+        headers = ["gene_id", "length"]
         data = [
             ["Gohir.A01G000100", "2500"],
             ["Gohir.A01G000200", "1350"],
@@ -182,33 +183,29 @@ class QuantificationTab(BaseTab):
         """
         启动后端表达量标准化任务的函数。
         """
-        # --- 1. 参数验证 ---
-        # 检查主配置文件是否已加载
+        # 1. 参数验证
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("请先加载配置文件。"))
             return
 
-        # 从UI获取用户输入的文件路径和参数
         counts_path = self.counts_file_path.get().strip()
         lengths_path = self.lengths_file_path.get().strip()
         output_path = self.output_file_path.get().strip()
+
+        # 从UI的StringVar变量中获取用户当前选择的方法
         method = self.selected_normalization_method.get()
 
-        # 检查所有路径是否都已填写
         if not all([counts_path, lengths_path, output_path]):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请提供所有必需的文件路径。"))
             return
 
-        # --- 2. 创建通信工具和对话框 ---
-        # 创建一个线程事件，用于在用户点击取消时通知后台任务
+        # 2. 创建通信工具和对话框
         cancel_event = threading.Event()
 
-        # 定义当用户在进度条上点击“取消”时执行的操作
         def on_cancel_action():
             self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
             cancel_event.set()
 
-        # 显示一个带进度条和取消按钮的模态对话框
         progress_dialog = self.app.ui_manager.show_progress_dialog(
             title=_("正在进行表达量标准化..."),
             on_cancel=on_cancel_action
@@ -218,19 +215,18 @@ class QuantificationTab(BaseTab):
             if progress_dialog and progress_dialog.winfo_exists():
                 self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
 
-        # --- 3. 准备传递给后台任务的参数 ---
+        # 3. 准备传递给后台任务的参数
         task_kwargs = {
             'counts_file_path': counts_path,
             'gene_lengths_file_path': lengths_path,
             'output_path': output_path,
             'normalization_method': method,
-            'max_workers': self.app.current_config.downloader.max_workers,  # 复用下载器的线程数设置
+            'max_workers': self.app.current_config.downloader.max_workers,
             'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater  # 传入UI更新器
+            'progress_callback': ui_progress_updater
         }
 
-        # --- 4. 使用 event_handler 启动后台任务 ---
-        # event_handler.start_task 会在一个新线程中运行 target_func
+        # 4. 使用 event_handler 启动后台任务
         self.app.event_handler.start_task(
             task_name=_("表达量标准化"),
             target_func=run_expression_normalization,
