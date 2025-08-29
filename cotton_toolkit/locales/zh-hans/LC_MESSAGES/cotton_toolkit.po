@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: friendly-cotton-genomes-toolkit 1.1.33\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-26 16:37+0800\n"
-"PO-Revision-Date: 2025-08-26 16:37+0800\n"
+"POT-Creation-Date: 2025-08-29 09:33+0800\n"
+"PO-Revision-Date: 2025-08-29 09:33+0800\n"
 "Last-Translator: PureAmaya <gkoishi0514@gmail.com>\n"
 "Language-Team: gkoishi0514@gmail.com\n"
 "Language: zh\n"
@@ -196,7 +196,6 @@ msgid "Google Gemini SDK 连接成功！"
 msgstr "Google Gemini SDK 连接成功！"
 
 #: cotton_toolkit/core/ai_wrapper.py:233 cotton_toolkit/core/ai_wrapper.py:242
-#| msgid "连接异常：收到了空响应。"
 msgid "连接异常：从服务商收到了空响应。"
 msgstr "连接异常：从服务商收到了空响应。"
 
@@ -205,7 +204,6 @@ msgid "连接成功！配置有效。"
 msgstr "连接成功！配置有效。"
 
 #: cotton_toolkit/core/ai_wrapper.py:246
-#| msgid "测试失败"
 msgid "连接测试失败:"
 msgstr "连接测试失败:"
 
@@ -215,7 +213,6 @@ msgstr "详情:"
 
 #: cotton_toolkit/core/convertFiles2sqlite.py:88
 #, python-brace-format
-#| msgid "删除不完整文件 {} 失败: {}"
 msgid "处理注释文件 {} 失败；原因: {}"
 msgstr "处理注释文件 {} 失败；原因: {}"
 
@@ -226,13 +223,11 @@ msgstr "成功解析FASTA文件 '{}'，共找到 {} 个条目。"
 
 #: cotton_toolkit/core/convertFiles2sqlite.py:140
 #, python-brace-format
-#| msgid "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
 msgid "处理FASTA文件 '{}' 失败。原因: {}"
 msgstr "处理FASTA文件 '{}' 失败。原因: {}"
 
 #: cotton_toolkit/core/convertFiles2sqlite.py:195
 #, python-brace-format
-#| msgid "处理文件 '{}' 到表 '{}' 时发生错误。原因: {}"
 msgid "处理Excel文件 '{}' 失败。原因: {}"
 msgstr "处理Excel文件 '{}' 失败。原因: {}"
 
@@ -961,89 +956,88 @@ msgstr ""
 "✨ 提示：我们已为您额外生成了配套的 .R 脚本和 .csv 数据文件，并统一存放在 "
 "'{}' 子文件夹中。"
 
-#: cotton_toolkit/pipelines/blast.py:50
+#: cotton_toolkit/pipelines/blast.py:51
 msgid "BLAST 流程启动..."
 msgstr "BLAST 流程启动..."
 
-#: cotton_toolkit/pipelines/blast.py:51 cotton_toolkit/pipelines/blast.py:97
-#: cotton_toolkit/pipelines/blast.py:132 cotton_toolkit/pipelines/blast.py:140
-#: cotton_toolkit/pipelines/blast.py:156 cotton_toolkit/pipelines/blast.py:162
-#: cotton_toolkit/pipelines/blast.py:185 cotton_toolkit/pipelines/blast.py:214
+#: cotton_toolkit/pipelines/blast.py:52 cotton_toolkit/pipelines/blast.py:98
+#: cotton_toolkit/pipelines/blast.py:133 cotton_toolkit/pipelines/blast.py:147
+#: cotton_toolkit/pipelines/blast.py:170 cotton_toolkit/pipelines/blast.py:199
 #: cotton_toolkit/pipelines/preprocessing.py:244
 #: ui/tabs/genome_identifier_tab.py:166
 msgid "任务已取消。"
 msgstr "任务已取消。"
 
-#: cotton_toolkit/pipelines/blast.py:53
+#: cotton_toolkit/pipelines/blast.py:54
 msgid "正在验证目标基因组数据库..."
 msgstr "正在验证目标基因组数据库..."
 
-#: cotton_toolkit/pipelines/blast.py:54
+#: cotton_toolkit/pipelines/blast.py:55
 #, python-brace-format
 msgid "步骤 1: 准备目标数据库 '{}'..."
 msgstr "步骤 1: 准备目标数据库 '{}'..."
 
-#: cotton_toolkit/pipelines/blast.py:60
+#: cotton_toolkit/pipelines/blast.py:61
 #, python-brace-format
 msgid "错误: 无法找到目标基因组 '{}' 的配置。"
 msgstr "错误: 无法找到目标基因组 '{}' 的配置。"
 
-#: cotton_toolkit/pipelines/blast.py:66
+#: cotton_toolkit/pipelines/blast.py:67
 #, python-brace-format
 msgid "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
 msgstr "为 {} 需要 {} 类型的数据库，将使用 '{}' 文件。"
 
-#: cotton_toolkit/pipelines/blast.py:70
+#: cotton_toolkit/pipelines/blast.py:71
 #, python-brace-format
 msgid "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
 msgstr "错误: 未找到目标基因组的 '{}' 序列文件。请先下载数据。"
 
-#: cotton_toolkit/pipelines/blast.py:74
+#: cotton_toolkit/pipelines/blast.py:75
 #, python-brace-format
 msgid "BLAST 数据库序列源文件: {}"
 msgstr "BLAST 数据库序列源文件: {}"
 
-#: cotton_toolkit/pipelines/blast.py:81
+#: cotton_toolkit/pipelines/blast.py:82
 msgid "文件为gz压缩格式，正在解压..."
 msgstr "文件为gz压缩格式，正在解压..."
 
-#: cotton_toolkit/pipelines/blast.py:82
+#: cotton_toolkit/pipelines/blast.py:83
 #, python-brace-format
 msgid "正在解压 {} 到 {}..."
 msgstr "正在解压 {} 到 {}..."
 
-#: cotton_toolkit/pipelines/blast.py:87
+#: cotton_toolkit/pipelines/blast.py:88
 msgid "解压过程被取消。"
 msgstr "解压过程已取消。"
 
-#: cotton_toolkit/pipelines/blast.py:92
+#: cotton_toolkit/pipelines/blast.py:93
 msgid "解压成功。"
 msgstr "解压成功。"
 
-#: cotton_toolkit/pipelines/blast.py:94
+#: cotton_toolkit/pipelines/blast.py:95
 #, python-brace-format
 msgid "解压文件时出错: {}"
 msgstr "解压文件时出错: {}"
 
-#: cotton_toolkit/pipelines/blast.py:100
+#: cotton_toolkit/pipelines/blast.py:101
 #, python-brace-format
 msgid "检查是否存在BLAST索引文件，例如: {}"
 msgstr "检查是否存在BLAST索引文件，例如: {}"
 
-#: cotton_toolkit/pipelines/blast.py:102
+#: cotton_toolkit/pipelines/blast.py:103
 msgid "正在创建BLAST数据库... (可能需要一些时间)"
 msgstr "正在创建BLAST数据库... (可能需要一些时间)"
 
-#: cotton_toolkit/pipelines/blast.py:104
+#: cotton_toolkit/pipelines/blast.py:105
 #, python-brace-format
 msgid "未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库..."
 msgstr "未找到现有的BLAST数据库，正在为 '{}' 创建一个新的 {} 库..."
 
-#: cotton_toolkit/pipelines/blast.py:110
+#: cotton_toolkit/pipelines/blast.py:111
 msgid "数据库创建过程在开始前被取消。"
 msgstr "数据库创建过程在开始前被取消。"
 
-#: cotton_toolkit/pipelines/blast.py:116 cotton_toolkit/pipelines/blast.py:130
+#: cotton_toolkit/pipelines/blast.py:117 cotton_toolkit/pipelines/blast.py:131
 #, python-brace-format
 msgid ""
 "创建BLAST数据库失败: {} \n"
@@ -1052,17 +1046,17 @@ msgstr ""
 "创建BLAST数据库失败: {} \n"
 "Stderror: {}"
 
-#: cotton_toolkit/pipelines/blast.py:120
+#: cotton_toolkit/pipelines/blast.py:121
 msgid ""
 "makeblastdb命令返回了非零退出码，但数据库索引文件已成功创建。将继续执行..."
 msgstr ""
 "makeblastdb命令返回了非零退出码，但数据库索引文件已成功创建。将继续执行..."
 
-#: cotton_toolkit/pipelines/blast.py:124
+#: cotton_toolkit/pipelines/blast.py:125
 msgid "BLAST数据库创建成功。"
 msgstr "BLAST数据库创建成功。"
 
-#: cotton_toolkit/pipelines/blast.py:128
+#: cotton_toolkit/pipelines/blast.py:129
 msgid ""
 "错误: 'makeblastdb' 命令未找到。请确保 BLAST+ 已被正确安装并添加到了系统的 "
 "PATH 环境变量中。\n"
@@ -1076,108 +1070,85 @@ msgstr ""
 "官方下载地址:\n"
 "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/"
 
-#: cotton_toolkit/pipelines/blast.py:134
+#: cotton_toolkit/pipelines/blast.py:135
 msgid "正在准备查询序列..."
 msgstr "正在准备查询序列..."
 
 #: cotton_toolkit/pipelines/blast.py:141
 #, python-brace-format
-msgid "正在处理输入文件: {}"
-msgstr "正在处理输入文件: {}"
+msgid "查询序列已成功准备到临时文件: {}"
+msgstr "查询序列已成功准备到临时文件: {}"
 
-#: cotton_toolkit/pipelines/blast.py:149
-msgid "检测到FASTQ格式，正在转换为FASTA..."
-msgstr "检测到FASTQ格式，正在转换为FASTA..."
-
-#: cotton_toolkit/pipelines/blast.py:152
-msgid "将输入文件作为FASTA格式处理..."
-msgstr "将输入文件作为FASTA格式处理..."
-
-#: cotton_toolkit/pipelines/blast.py:157
-msgid "正在处理文本输入..."
-msgstr "正在处理文本输入..."
-
-#: cotton_toolkit/pipelines/blast.py:158
-#, python-brace-format
-msgid ""
-"--- Received query_text in pipeline (first 1000 chars) ---\n"
-"{}\n"
-"-------------------------------------------------"
-msgstr ""
-"在流水线中收到的query_text（前1000个字符）---\n"
-"{}\n"
-"-------------------------------------------------"
-
-#: cotton_toolkit/pipelines/blast.py:161
+#: cotton_toolkit/pipelines/blast.py:146
 #, python-brace-format
 msgid "查询序列已写入临时文件: {}"
 msgstr "查询序列已写入临时文件: {}"
 
-#: cotton_toolkit/pipelines/blast.py:164
+#: cotton_toolkit/pipelines/blast.py:149
 #, python-brace-format
 msgid "正在执行 {} ..."
 msgstr "正在执行 {} ..."
 
-#: cotton_toolkit/pipelines/blast.py:165
+#: cotton_toolkit/pipelines/blast.py:150
 #, python-brace-format
 msgid "步骤 2: 执行 {} ..."
 msgstr "步骤 2: 执行 {} ..."
 
-#: cotton_toolkit/pipelines/blast.py:175
+#: cotton_toolkit/pipelines/blast.py:160
 #, python-brace-format
 msgid "BLAST命令: {}"
 msgstr "BLAST命令: {}"
 
-#: cotton_toolkit/pipelines/blast.py:176
+#: cotton_toolkit/pipelines/blast.py:161
 msgid "BLAST在执行前被取消。"
 msgstr "BLAST在执行前被取消。"
 
-#: cotton_toolkit/pipelines/blast.py:181
+#: cotton_toolkit/pipelines/blast.py:166
 #, python-brace-format
 msgid "BLAST运行时发生致命错误: {}"
 msgstr "BLAST运行时发生致命错误: {}"
 
-#: cotton_toolkit/pipelines/blast.py:183
+#: cotton_toolkit/pipelines/blast.py:168
 #, python-brace-format
 msgid "BLAST运行时产生警告或提示信息: {}"
 msgstr "BLAST运行时产生警告或提示信息: {}"
 
-#: cotton_toolkit/pipelines/blast.py:187
+#: cotton_toolkit/pipelines/blast.py:172
 msgid "正在解析BLAST结果..."
 msgstr "正在解析BLAST结果..."
 
-#: cotton_toolkit/pipelines/blast.py:188
+#: cotton_toolkit/pipelines/blast.py:173
 #, python-brace-format
 msgid "步骤 3: 解析结果并保存到 {} ..."
 msgstr "步骤 3: 解析结果并保存到 {} ..."
 
-#: cotton_toolkit/pipelines/blast.py:192
+#: cotton_toolkit/pipelines/blast.py:177
 msgid "BLAST运行完毕，但未产生任何结果。"
 msgstr "BLAST运行完毕，但未产生任何结果。"
 
-#: cotton_toolkit/pipelines/blast.py:217 cotton_toolkit/pipelines/blast.py:221
+#: cotton_toolkit/pipelines/blast.py:202 cotton_toolkit/pipelines/blast.py:206
 msgid "未找到任何显著的BLAST匹配项。"
 msgstr "未找到任何显著的BLAST匹配项。"
 
-#: cotton_toolkit/pipelines/blast.py:226
+#: cotton_toolkit/pipelines/blast.py:211
 #, python-brace-format
 msgid "成功找到 {} 条匹配记录。"
 msgstr "成功找到 {} 条匹配记录。"
 
-#: cotton_toolkit/pipelines/blast.py:229
+#: cotton_toolkit/pipelines/blast.py:214
 msgid "正在保存到文件..."
 msgstr "正在保存到文件..."
 
-#: cotton_toolkit/pipelines/blast.py:234
+#: cotton_toolkit/pipelines/blast.py:219
 #, python-brace-format
 msgid "BLAST 任务完成！结果已保存到 {}"
 msgstr "BLAST 任务完成！结果已保存到 {}"
 
-#: cotton_toolkit/pipelines/blast.py:236
+#: cotton_toolkit/pipelines/blast.py:221
 msgid "BLAST流程完成。"
 msgstr "BLAST流程完成。"
 
-#: cotton_toolkit/pipelines/blast.py:240
+#: cotton_toolkit/pipelines/blast.py:225
 #, python-brace-format
 msgid "BLAST流水线执行过程中发生意外错误: {}"
 msgstr "BLAST流水线执行过程中发生意外错误: {}"
@@ -1530,12 +1501,12 @@ msgid "步骤 1/3: 正在为 {} 个基因提取序列..."
 msgstr "步骤 1/3: 正在为 {} 个基因提取序列..."
 
 #: cotton_toolkit/pipelines/mapping.py:46
-#: cotton_toolkit/pipelines/seqence_query.py:67
+#: cotton_toolkit/pipelines/sequence_query.py:68
 msgid "未能获取任何查询序列，任务终止。"
 msgstr "未能获取任何查询序列，任务终止。"
 
 #: cotton_toolkit/pipelines/mapping.py:48
-#: cotton_toolkit/pipelines/seqence_query.py:69
+#: cotton_toolkit/pipelines/sequence_query.py:70
 #, python-brace-format
 msgid "未找到序列的基因列表: {}"
 msgstr "未找到序列的基因列表: {}"
@@ -1552,7 +1523,7 @@ msgstr ""
 "-------------------------------------------------"
 
 #: cotton_toolkit/pipelines/mapping.py:54
-#: cotton_toolkit/pipelines/seqence_query.py:74
+#: cotton_toolkit/pipelines/sequence_query.py:75
 #, python-brace-format
 msgid "以下 {} 个基因未找到序列，将被忽略: {}"
 msgstr "以下 {} 个基因未找到序列，将被忽略: {}"
@@ -1593,7 +1564,7 @@ msgid "同源转换完成。"
 msgstr "同源转换完成。"
 
 #: cotton_toolkit/pipelines/preprocessing.py:145 ui/gui_app.py:62
-#: ui/tabs/data_download_tab.py:384
+#: ui/tabs/data_download_tab.py:383
 msgid "数据下载"
 msgstr "数据下载"
 
@@ -1692,8 +1663,8 @@ msgid "下载流程完成。"
 msgstr "下载流程完成。"
 
 #: cotton_toolkit/pipelines/preprocessing.py:270
-#: ui/tabs/data_download_tab.py:65 ui/tabs/data_download_tab.py:120
-#: ui/tabs/data_download_tab.py:442
+#: ui/tabs/data_download_tab.py:64 ui/tabs/data_download_tab.py:119
+#: ui/tabs/data_download_tab.py:441
 msgid "预处理注释文件"
 msgstr "预处理注释文件"
 
@@ -1770,16 +1741,16 @@ msgstr "文件 '{}' 处理失败，但未提供具体错误原因。"
 
 #: cotton_toolkit/pipelines/preprocessing.py:386
 #: cotton_toolkit/pipelines/preprocessing.py:541 ui/event_handler.py:798
-#: ui/gui_app.py:625 ui/tabs/ai_assistant_tab.py:343
+#: ui/gui_app.py:627 ui/tabs/ai_assistant_tab.py:343
 #: ui/tabs/annotation_tab.py:115 ui/tabs/arabidopsis_homology_tab.py:254
 #: ui/tabs/arabidopsis_homology_tab.py:301 ui/tabs/blast_tab.py:182
-#: ui/tabs/data_download_tab.py:274 ui/tabs/data_download_tab.py:283
-#: ui/tabs/data_download_tab.py:339 ui/tabs/data_download_tab.py:399
-#: ui/tabs/data_download_tab.py:408 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/data_download_tab.py:273 ui/tabs/data_download_tab.py:282
+#: ui/tabs/data_download_tab.py:338 ui/tabs/data_download_tab.py:398
+#: ui/tabs/data_download_tab.py:407 ui/tabs/enrichment_tab.py:202
 #: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
 #: ui/tabs/homology_tab.py:297 ui/tabs/locus_conversion_tab.py:123
-#: ui/tabs/sequence_extraction_tab.py:234
-#: ui/tabs/sequence_extraction_tab.py:251
+#: ui/tabs/sequence_analysis_tab.py:231 ui/tabs/sequence_extraction_tab.py:366
+#: ui/tabs/sequence_extraction_tab.py:397
 msgid "错误"
 msgstr "错误"
 
@@ -1912,48 +1883,120 @@ msgstr "BLAST数据库预处理完成。成功创建 {}/{} 个数据库。"
 msgid "GFF查询"
 msgstr "GFF查询"
 
-#: cotton_toolkit/pipelines/seqence_query.py:23
-msgid "CDS序列提取"
-msgstr "CDS序列提取"
+#: cotton_toolkit/pipelines/sequence_analysis.py:70 ui/gui_app.py:63
+#: ui/tabs/sequence_analysis_tab.py:119
+msgid "序列分析"
+msgstr "序列分析"
 
-#: cotton_toolkit/pipelines/seqence_query.py:44
+#: cotton_toolkit/pipelines/sequence_analysis.py:102
+#, python-brace-format
+msgid "正在分析 {} ({}/{})"
+msgstr "正在分析 {} ({}/{})"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:105
+#, python-brace-format
+msgid "Skipping analysis for '{}' due to empty sequence."
+msgstr "跳过对'{}'的分析，因为序列为空"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:124
+#, python-brace-format
+msgid "CDS for '{}' is not a multiple of 3; skipping RSCU analysis."
+msgstr "'{}'的CDS长度不是3的倍数；跳过RSCU分析。"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:132
+#, python-brace-format
+msgid "Could not translate CDS for '{}': {}"
+msgstr "无法为“{}”转换CDS：{}"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:156
+#, python-brace-format
+msgid "分析基因 '{}' 时发生错误: {}"
+msgstr "分析基因 '{}' 时发生错误: {}"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:167
+msgid "直接序列分析"
+msgstr "直接序列分析"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:184
+msgid "正在准备输入序列..."
+msgstr "Preparing input sequence..."
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:188
+msgid "正在读取文件，大文件可能需要一些时间..."
+msgstr "正在读取文件，大文件可能需要一些时间..."
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:191
+msgid "文件读取完毕，正在解析序列..."
+msgstr "文件读取完毕，正在解析序列..."
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:193
+#, python-brace-format
+msgid "无法读取输入的FASTA文件: {}"
+msgstr "无法读取输入的FASTA文件: {}"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:196
+msgid "输入序列为空，请粘贴序列或选择有效的文件。"
+msgstr "输入序列为空，请粘贴序列或选择有效的文件。"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:202
+msgid "正在解析粘贴的序列..."
+msgstr "正在解析粘贴的序列..."
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:206
+msgid "未能从输入中解析出任何有效的FASTA序列。"
+msgstr "未能从输入中解析出任何有效的FASTA序列。"
+
+#: cotton_toolkit/pipelines/sequence_analysis.py:233
+#: cotton_toolkit/pipelines/sequence_query.py:141
+#, python-brace-format
+msgid "序列及分析结果已成功保存到: {}"
+msgstr "序列及分析结果已成功保存到: {}"
+
+#: cotton_toolkit/pipelines/sequence_query.py:25 ui/gui_app.py:62
+msgid "序列提取"
+msgstr "序列提取"
+
+#: cotton_toolkit/pipelines/sequence_query.py:47
 msgid "正在解析基因/转录本ID..."
 msgstr "正在解析基因/转录本ID..."
 
-#: cotton_toolkit/pipelines/seqence_query.py:48
+#: cotton_toolkit/pipelines/sequence_query.py:51
 msgid "输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。"
 msgstr "输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。"
 
-#: cotton_toolkit/pipelines/seqence_query.py:50
+#: cotton_toolkit/pipelines/sequence_query.py:53
 #, python-brace-format
 msgid "基因ID解析完成，共 {} 个有效ID。"
 msgstr "基因ID解析完成，共 {} 个有效ID。"
 
-#: cotton_toolkit/pipelines/seqence_query.py:52
+#: cotton_toolkit/pipelines/sequence_query.py:55
 #, python-brace-format
 msgid "基因ID解析失败: {}"
 msgstr "基因ID解析失败: {}"
 
-#: cotton_toolkit/pipelines/seqence_query.py:59
+#: cotton_toolkit/pipelines/sequence_query.py:60
 msgid "正在从数据库提取基因序列..."
 msgstr "正在从数据库提取基因序列..."
 
-#: cotton_toolkit/pipelines/seqence_query.py:76
+#: cotton_toolkit/pipelines/sequence_query.py:77
 msgid "序列提取完成，正在整理输出..."
 msgstr "序列提取完成，正在整理输出..."
 
-#: cotton_toolkit/pipelines/seqence_query.py:97
+#: cotton_toolkit/pipelines/sequence_query.py:97
+msgid "正在进行序列分析..."
+msgstr "正在分析序列..."
+
+#: cotton_toolkit/pipelines/sequence_query.py:110
+#, python-brace-format
+msgid "序列分析过程中发生错误: {}"
+msgstr "序列分析过程中发生错误: {}"
+
+#: cotton_toolkit/pipelines/sequence_query.py:117
 #, python-brace-format
 msgid "成功为查询ID提取了 {} 条CDS序列。"
 msgstr "成功为查询ID提取了 {} 条CDS序列。"
 
-#: cotton_toolkit/pipelines/seqence_query.py:104
-#, python-brace-format
-msgid "序列已成功保存到: {}"
-msgstr "序列已成功保存到: {}"
-
-#: cotton_toolkit/pipelines/seqence_query.py:108
-#: cotton_toolkit/pipelines/seqence_query.py:110
+#: cotton_toolkit/pipelines/sequence_query.py:145
 #, python-brace-format
 msgid "保存CSV文件失败: {}"
 msgstr "保存CSV文件失败: {}"
@@ -2249,6 +2292,15 @@ msgstr "加载KEGG背景数据失败: {}"
 msgid "任务终止：加载KEGG背景数据失败。"
 msgstr "任务终止：加载KEGG背景数据失败。"
 
+#: cotton_toolkit/tools/fa_loader.py:88
+msgid "必须提供查询序列文本或文件路径之一。"
+msgstr "必须提供查询序列文本或文件路径之一。"
+
+#: cotton_toolkit/tools/fa_loader.py:93
+#, python-brace-format
+msgid "准备查询序列临时文件时出错: {}"
+msgstr "准备查询序列临时文件时出错: {}"
+
 #: cotton_toolkit/tools/visualizer.py:43
 msgid "Enrichment DataFrame is empty for bubble plot."
 msgstr "气泡图的数据框为空。"
@@ -2458,7 +2510,7 @@ msgstr "应用 '基因' 模式处理整个列表。"
 msgid "全局日志系统已初始化，级别设置为: {}"
 msgstr "全局日志系统已初始化，级别设置为: {}"
 
-#: cotton_toolkit/utils/logger.py:147 ui/gui_app.py:977
+#: cotton_toolkit/utils/logger.py:147 ui/gui_app.py:980
 #, python-brace-format
 msgid "全局日志级别已更新为: {}"
 msgstr "全局日志级别已更新为: {}"
@@ -2495,7 +2547,7 @@ msgstr "配置已保存"
 msgid "语言设置已同步到 {}。"
 msgstr "语言设置已同步到 {}。"
 
-#: ui/event_handler.py:97 ui/event_handler.py:390 ui/gui_app.py:661
+#: ui/event_handler.py:97 ui/event_handler.py:390 ui/gui_app.py:663
 msgid "保存失败"
 msgstr "保存失败"
 
@@ -2752,8 +2804,8 @@ msgstr "选择配置文件"
 #: ui/tabs/gff_query_tab.py:182 ui/tabs/homology_tab.py:64
 #: ui/tabs/homology_tab.py:70 ui/tabs/homology_tab.py:321
 #: ui/tabs/locus_conversion_tab.py:53 ui/tabs/locus_conversion_tab.py:59
-#: ui/tabs/locus_conversion_tab.py:131 ui/tabs/sequence_extraction_tab.py:67
-#: ui/tabs/sequence_extraction_tab.py:265
+#: ui/tabs/locus_conversion_tab.py:131 ui/tabs/sequence_extraction_tab.py:83
+#: ui/tabs/sequence_extraction_tab.py:411
 msgid "加载中..."
 msgstr "加载中..."
 
@@ -3011,17 +3063,13 @@ msgstr "开始连接AI服务..."
 msgid "数据处理中..."
 msgstr "数据处理中..."
 
-#: ui/event_handler.py:937 ui/gui_app.py:326
+#: ui/event_handler.py:937 ui/gui_app.py:328
 msgid "刷新完成。"
 msgstr "刷新完成。"
 
 #: ui/gui_app.py:51
 msgid "通用OpenAI兼容接口"
 msgstr "通用OpenAI兼容接口"
-
-#: ui/gui_app.py:62 ui/tabs/sequence_extraction_tab.py:57
-msgid "序列提取"
-msgstr "序列提取"
 
 #: ui/gui_app.py:63 ui/tabs/enrichment_tab.py:57
 msgid "富集分析与绘图"
@@ -3066,23 +3114,23 @@ msgstr "应用图标文件未找到，请检查路径: {}"
 msgid "加载主窗口图标失败: {}"
 msgstr "加载主窗口图标失败: {}"
 
-#: ui/gui_app.py:108 ui/gui_app.py:109
+#: ui/gui_app.py:109 ui/gui_app.py:110
 msgid "粘贴基因ID，每行一个..."
 msgstr "粘贴基因ID，每行一个..."
 
-#: ui/gui_app.py:110
+#: ui/gui_app.py:111
 msgid "例如: A01:1-100000"
 msgstr "例如: A01:1-100000"
 
-#: ui/gui_app.py:111
+#: ui/gui_app.py:112
 msgid "在此处粘贴要注释的基因ID，每行一个"
 msgstr "在此处粘贴要注释的基因ID，每行一个"
 
-#: ui/gui_app.py:112
+#: ui/gui_app.py:113
 msgid "输入单个基因ID, 例如: Ghir_D09G022830"
 msgstr "输入单个基因ID，例如：Ghir_D09G022830"
 
-#: ui/gui_app.py:113
+#: ui/gui_app.py:114
 msgid ""
 "每行输入一个基因ID...\n"
 "Ghir_D09G022830\n"
@@ -3094,6 +3142,18 @@ msgstr ""
 
 #: ui/gui_app.py:115
 msgid ""
+">Seq1_Header\n"
+"ACGTACGTACGT...\n"
+">Seq2_Header\n"
+"TTGGCCAA..."
+msgstr ""
+"序列1_标题\n"
+"ACGTACGTACGT...\n"
+"序列2_标题\n"
+"TTGGCCAA..."
+
+#: ui/gui_app.py:117
+msgid ""
 "在此处粘贴用于富集分析的基因ID，每行一个。\n"
 "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
 "（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"
@@ -3102,202 +3162,202 @@ msgstr ""
 "如果包含Log2FC，格式为：基因ID\tLog2FC\n"
 "（注意：使用制表符分隔，从Excel直接复制的列即为制表符分隔）"
 
-#: ui/gui_app.py:116
+#: ui/gui_app.py:118
 #, python-brace-format
 msgid "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
 msgstr "在此处输入您的自定义提示词模板，必须包含 {text} 占位符..."
 
-#: ui/gui_app.py:117 ui/tabs/ai_assistant_tab.py:225 ui/ui_manager.py:561
+#: ui/gui_app.py:119 ui/tabs/ai_assistant_tab.py:225 ui/ui_manager.py:561
 msgid "Default prompt is empty, please set it in the configuration editor."
 msgstr "默认提示词为空，请在配置编辑器中设置。"
 
-#: ui/gui_app.py:118
+#: ui/gui_app.py:120
 msgid "在此处键入您的FASTA(Q)格式序列"
 msgstr "在此处键入您的FASTA(Q)格式序列"
 
-#: ui/gui_app.py:282
+#: ui/gui_app.py:284
 msgid "无法设置macOS标题栏外观 (当前Tcl/Tk版本可能过旧)。"
 msgstr "无法设置macOS标题栏外观 (当前Tcl/Tk版本可能过旧)。"
 
-#: ui/gui_app.py:289
+#: ui/gui_app.py:291
 msgid "在Linux上，标题栏外观由您的桌面环境系统主题控制。"
 msgstr "在Linux上，标题栏外观由您的桌面环境系统主题控制。"
 
-#: ui/gui_app.py:293
+#: ui/gui_app.py:295
 #, python-brace-format
 msgid "配置标题栏颜色时发生未知错误: {}"
 msgstr "配置标题栏颜色时发生未知错误: {}"
 
-#: ui/gui_app.py:315
+#: ui/gui_app.py:317
 #, python-brace-format
 msgid "应用主题并刷新时出错: {}"
 msgstr "应用主题并刷新时出错: {}"
 
-#: ui/gui_app.py:318
+#: ui/gui_app.py:320
 msgid "正在刷新窗口视觉效果..."
 msgstr "正在刷新窗口视觉效果..."
 
-#: ui/gui_app.py:341
+#: ui/gui_app.py:343
 msgid "通用设置"
 msgstr "通用设置"
 
-#: ui/gui_app.py:349
+#: ui/gui_app.py:351
 msgid "日志级别"
 msgstr "日志级别"
 
-#: ui/gui_app.py:356
+#: ui/gui_app.py:358
 msgid "设置应用程序的日志详细程度。"
 msgstr "设置应用程序的日志详细程度。"
 
-#: ui/gui_app.py:364
+#: ui/gui_app.py:366
 msgid "HTTP代理"
 msgstr "HTTP代理"
 
-#: ui/gui_app.py:369
+#: ui/gui_app.py:371
 msgid "例如: http://127.0.0.1:7890"
 msgstr "例如: http://127.0.0.1:7890"
 
-#: ui/gui_app.py:377
+#: ui/gui_app.py:379
 msgid "HTTPS代理"
 msgstr "HTTPS代理"
 
-#: ui/gui_app.py:382
+#: ui/gui_app.py:384
 msgid "例如: https://127.0.0.1:7890"
 msgstr "例如: https://127.0.0.1:7890"
 
-#: ui/gui_app.py:389
+#: ui/gui_app.py:391
 msgid "测试代理连接"
 msgstr "测试代理连接"
 
-#: ui/gui_app.py:395
+#: ui/gui_app.py:397
 msgid "数据下载器配置"
 msgstr "数据下载器配置"
 
-#: ui/gui_app.py:403
+#: ui/gui_app.py:405
 msgid "基因组源文件"
 msgstr "基因组源文件"
 
-#: ui/gui_app.py:408
+#: ui/gui_app.py:410
 msgid "定义基因组下载链接的YAML文件。"
 msgstr "定义基因组下载链接的YAML文件。"
 
-#: ui/gui_app.py:416
+#: ui/gui_app.py:418
 msgid "下载输出根目录"
 msgstr "下载输出根目录"
 
-#: ui/gui_app.py:421
+#: ui/gui_app.py:423
 msgid "所有下载文件存放的基准目录。"
 msgstr "所有下载文件存放的基准目录。"
 
-#: ui/gui_app.py:429
+#: ui/gui_app.py:431
 msgid "强制重新下载"
 msgstr "强制重新下载"
 
-#: ui/gui_app.py:436
+#: ui/gui_app.py:438
 msgid "如果文件已存在，是否覆盖。"
 msgstr "如果文件已存在，是否覆盖。"
 
-#: ui/gui_app.py:444
+#: ui/gui_app.py:446
 msgid "最大下载线程数"
 msgstr "最大下载线程数"
 
-#: ui/gui_app.py:449
+#: ui/gui_app.py:451
 msgid "多线程下载时使用的最大线程数。"
 msgstr "多线程下载时使用的最大线程数。"
 
-#: ui/gui_app.py:457
+#: ui/gui_app.py:459
 msgid "为下载使用代理"
 msgstr "为下载使用代理"
 
-#: ui/gui_app.py:464
+#: ui/gui_app.py:466
 msgid "是否为数据下载启用代理。"
 msgstr "是否为数据下载启用代理。"
 
-#: ui/gui_app.py:469
+#: ui/gui_app.py:471
 msgid "AI 服务配置"
 msgstr "AI 服务配置"
 
-#: ui/gui_app.py:477
+#: ui/gui_app.py:479
 msgid "默认AI服务商"
 msgstr "默认AI服务商"
 
-#: ui/gui_app.py:485
+#: ui/gui_app.py:487
 msgid "选择默认使用的AI模型提供商。"
 msgstr "选择默认使用的AI模型提供商。"
 
-#: ui/gui_app.py:493
+#: ui/gui_app.py:495
 msgid "最大并行AI任务数"
 msgstr "最大并行AI任务数"
 
-#: ui/gui_app.py:498
+#: ui/gui_app.py:500
 msgid "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 msgstr "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
 
-#: ui/gui_app.py:506
+#: ui/gui_app.py:508
 msgid "为AI服务使用代理"
 msgstr "为AI服务使用代理"
 
-#: ui/gui_app.py:512
+#: ui/gui_app.py:514
 msgid "是否为连接AI模型API启用代理。"
 msgstr "是否为连接AI模型API启用代理。"
 
-#: ui/gui_app.py:534 ui/ui_manager.py:585
+#: ui/gui_app.py:536 ui/ui_manager.py:585
 msgid "点击刷新获取列表"
 msgstr "点击刷新获取列表"
 
-#: ui/gui_app.py:535
+#: ui/gui_app.py:537
 msgid "点击刷新..."
 msgstr "点击刷新..."
 
-#: ui/gui_app.py:541
+#: ui/gui_app.py:543
 msgid "刷新"
 msgstr "刷新"
 
-#: ui/gui_app.py:547
+#: ui/gui_app.py:549
 msgid "代理刷新"
 msgstr "代理刷新"
 
-#: ui/gui_app.py:560
+#: ui/gui_app.py:562
 msgid "AI 提示词模板"
 msgstr "AI 提示词模板"
 
-#: ui/gui_app.py:568
+#: ui/gui_app.py:570
 msgid "翻译提示词"
 msgstr "翻译提示词"
 
-#: ui/gui_app.py:580
+#: ui/gui_app.py:582
 msgid "分析提示词"
 msgstr "分析提示词"
 
-#: ui/gui_app.py:621
+#: ui/gui_app.py:623
 msgid "配置已应用到编辑器UI。"
 msgstr "配置已应用到编辑器UI。"
 
-#: ui/gui_app.py:625
+#: ui/gui_app.py:627
 msgid "没有加载配置文件，无法保存。"
 msgstr "没有加载配置文件，无法保存。"
 
-#: ui/gui_app.py:643
+#: ui/gui_app.py:645
 msgid "无效的最大工作线程数值，已重置为默认值 4。"
 msgstr "无效的最大工作线程数值，已重置为默认值 4。"
 
-#: ui/gui_app.py:658
+#: ui/gui_app.py:660
 msgid "保存成功"
 msgstr "保存成功"
 
-#: ui/gui_app.py:658
+#: ui/gui_app.py:660
 msgid "配置文件已更新。"
 msgstr "配置文件已更新。"
 
-#: ui/gui_app.py:661
+#: ui/gui_app.py:663
 msgid "写入文件时发生未知错误。"
 msgstr "写入文件时发生未知错误。"
 
-#: ui/gui_app.py:663
+#: ui/gui_app.py:665
 msgid "保存错误"
 msgstr "保存错误"
 
-#: ui/gui_app.py:664
+#: ui/gui_app.py:666
 #, python-brace-format
 msgid ""
 "保存配置时发生错误:\n"
@@ -3306,93 +3366,93 @@ msgstr ""
 "保存配置时发生错误:\n"
 "{}"
 
-#: ui/gui_app.py:676
+#: ui/gui_app.py:678
 msgid "配置文件"
 msgstr "配置文件"
 
-#: ui/gui_app.py:680
+#: ui/gui_app.py:682
 msgid "加载配置文件..."
 msgstr "加载配置文件..."
 
-#: ui/gui_app.py:684
+#: ui/gui_app.py:686
 msgid "生成默认配置..."
 msgstr "生成默认配置..."
 
-#: ui/gui_app.py:688
+#: ui/gui_app.py:690
 msgid "帮助与支持"
 msgstr "帮助与支持"
 
-#: ui/gui_app.py:692
+#: ui/gui_app.py:694
 msgid "在线帮助文档"
 msgstr "在线帮助文档"
 
-#: ui/gui_app.py:696
+#: ui/gui_app.py:698
 msgid "关于本软件"
 msgstr "关于本软件"
 
-#: ui/gui_app.py:783
+#: ui/gui_app.py:786
 msgid "正在刷新所有工具选项卡以应用新配置..."
 msgstr "正在刷新所有工具选项卡以应用新配置..."
 
-#: ui/gui_app.py:791
+#: ui/gui_app.py:794
 #, python-brace-format
 msgid "刷新选项卡 {key} 时失败: {}"
 msgstr "刷新选项卡 {key} 时失败: {}"
 
-#: ui/gui_app.py:808
+#: ui/gui_app.py:811
 msgid "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 msgstr "!! 警告: 配置文件可能包含敏感信息，请勿轻易分享。"
 
-#: ui/gui_app.py:813
+#: ui/gui_app.py:816
 msgid "应用并保存"
 msgstr "应用并保存"
 
-#: ui/gui_app.py:871
+#: ui/gui_app.py:874
 msgid "请先从“主页”加载或生成一个配置文件。"
 msgstr "请先从“主页”加载或生成一个配置文件。"
 
-#: ui/gui_app.py:911
+#: ui/gui_app.py:914
 #, python-brace-format
 msgid "UI font set to: {}, Monospace font to: {}"
 msgstr "界面字体设置为：{}，等宽字体设置为：{}"
 
-#: ui/gui_app.py:980
+#: ui/gui_app.py:983
 #, python-brace-format
 msgid "配置日志级别时出错: {}"
 msgstr "配置日志级别时出错: {}"
 
-#: ui/gui_app.py:985
+#: ui/gui_app.py:988
 msgid "用户请求重启应用程序。"
 msgstr "用户请求重启应用程序。"
 
-#: ui/gui_app.py:992
+#: ui/gui_app.py:995
 msgid "检测到在Nuitka环境中运行。"
 msgstr "检测到在Nuitka环境中运行。"
 
-#: ui/gui_app.py:996
+#: ui/gui_app.py:999
 msgid "检测到在标准Python脚本环境中运行。"
 msgstr "检测到在标准Python脚本环境中运行。"
 
-#: ui/gui_app.py:1000
+#: ui/gui_app.py:1003
 #, python-brace-format
 msgid "准备重启命令: {}"
 msgstr "准备重启命令: {}"
 
-#: ui/gui_app.py:1001
+#: ui/gui_app.py:1004
 #, python-brace-format
 msgid "设置工作目录为: {}"
 msgstr "设置工作目录为: {}"
 
-#: ui/gui_app.py:1020
+#: ui/gui_app.py:1023
 msgid "正在关闭当前实例。"
 msgstr "正在关闭当前实例。"
 
-#: ui/gui_app.py:1024
+#: ui/gui_app.py:1027
 #, python-brace-format
 msgid "重启过程中发生错误: {}"
 msgstr "重启过程中发生错误: {}"
 
-#: ui/gui_app.py:1026
+#: ui/gui_app.py:1029
 msgid "重启失败"
 msgstr "重启失败"
 
@@ -3456,7 +3516,7 @@ msgstr "CSV文件路径:"
 #: ui/tabs/arabidopsis_homology_tab.py:106 ui/tabs/blast_tab.py:101
 #: ui/tabs/blast_tab.py:153 ui/tabs/enrichment_tab.py:182
 #: ui/tabs/gff_query_tab.py:121 ui/tabs/homology_tab.py:151
-#: ui/tabs/locus_conversion_tab.py:77
+#: ui/tabs/locus_conversion_tab.py:77 ui/tabs/sequence_analysis_tab.py:152
 msgid "浏览..."
 msgstr "浏览..."
 
@@ -3512,11 +3572,11 @@ msgstr "无可用模型"
 
 #: ui/tabs/ai_assistant_tab.py:343 ui/tabs/annotation_tab.py:115
 #: ui/tabs/arabidopsis_homology_tab.py:254 ui/tabs/blast_tab.py:182
-#: ui/tabs/data_download_tab.py:275 ui/tabs/data_download_tab.py:339
-#: ui/tabs/data_download_tab.py:400 ui/tabs/enrichment_tab.py:202
+#: ui/tabs/data_download_tab.py:274 ui/tabs/data_download_tab.py:338
+#: ui/tabs/data_download_tab.py:399 ui/tabs/enrichment_tab.py:202
 #: ui/tabs/genome_identifier_tab.py:114 ui/tabs/gff_query_tab.py:147
 #: ui/tabs/homology_tab.py:297 ui/tabs/locus_conversion_tab.py:123
-#: ui/tabs/sequence_extraction_tab.py:251
+#: ui/tabs/sequence_extraction_tab.py:397
 msgid "请先加载配置文件。"
 msgstr "请先加载配置文件。"
 
@@ -3535,9 +3595,10 @@ msgstr "请先加载配置文件。"
 #: ui/tabs/gff_query_tab.py:183 ui/tabs/homology_tab.py:303
 #: ui/tabs/homology_tab.py:310 ui/tabs/homology_tab.py:316
 #: ui/tabs/homology_tab.py:323 ui/tabs/locus_conversion_tab.py:134
-#: ui/tabs/sequence_extraction_tab.py:261
-#: ui/tabs/sequence_extraction_tab.py:266
-#: ui/tabs/sequence_extraction_tab.py:279
+#: ui/tabs/sequence_analysis_tab.py:242 ui/tabs/sequence_analysis_tab.py:247
+#: ui/tabs/sequence_extraction_tab.py:407
+#: ui/tabs/sequence_extraction_tab.py:412
+#: ui/tabs/sequence_extraction_tab.py:425
 msgid "输入缺失"
 msgstr "输入缺失"
 
@@ -3568,11 +3629,11 @@ msgstr "提示词模板必须包含 {text} 占位符。"
 
 #: ui/tabs/ai_assistant_tab.py:375 ui/tabs/annotation_tab.py:154
 #: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/blast_tab.py:246
-#: ui/tabs/data_download_tab.py:308 ui/tabs/data_download_tab.py:356
-#: ui/tabs/data_download_tab.py:438 ui/tabs/enrichment_tab.py:263
+#: ui/tabs/data_download_tab.py:307 ui/tabs/data_download_tab.py:355
+#: ui/tabs/data_download_tab.py:437 ui/tabs/enrichment_tab.py:263
 #: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
 #: ui/tabs/homology_tab.py:342 ui/tabs/locus_conversion_tab.py:150
-#: ui/tabs/sequence_extraction_tab.py:289
+#: ui/tabs/sequence_extraction_tab.py:437
 msgid "操作取消"
 msgstr "操作取消"
 
@@ -3588,7 +3649,7 @@ msgstr "AI 处理中"
 msgid "AI批量处理CSV"
 msgstr "AI批量处理CSV"
 
-#: ui/tabs/ai_assistant_tab.py:423 ui/tabs/data_download_tab.py:394
+#: ui/tabs/ai_assistant_tab.py:423 ui/tabs/data_download_tab.py:393
 msgid "任务启动失败"
 msgstr "任务启动失败"
 
@@ -3601,17 +3662,17 @@ msgid "开始功能注释"
 msgstr "开始功能注释"
 
 #: ui/tabs/annotation_tab.py:43 ui/tabs/enrichment_tab.py:61
-#: ui/tabs/sequence_extraction_tab.py:61
+#: ui/tabs/sequence_analysis_tab.py:123 ui/tabs/sequence_extraction_tab.py:77
 msgid "输入数据"
 msgstr "输入数据"
 
-#: ui/tabs/annotation_tab.py:46 ui/tabs/data_download_tab.py:95
-#: ui/tabs/enrichment_tab.py:65 ui/tabs/sequence_extraction_tab.py:65
+#: ui/tabs/annotation_tab.py:46 ui/tabs/data_download_tab.py:94
+#: ui/tabs/enrichment_tab.py:65 ui/tabs/sequence_extraction_tab.py:81
 msgid "基因组版本:"
 msgstr "基因组版本:"
 
 #: ui/tabs/annotation_tab.py:51 ui/tabs/arabidopsis_homology_tab.py:71
-#: ui/tabs/homology_tab.py:73 ui/tabs/sequence_extraction_tab.py:81
+#: ui/tabs/homology_tab.py:73 ui/tabs/sequence_extraction_tab.py:99
 msgid "基因ID列表:"
 msgstr "基因ID列表:"
 
@@ -3628,20 +3689,20 @@ msgid "请输入要注释的基因ID。"
 msgstr "请输入要注释的基因ID。"
 
 #: ui/tabs/annotation_tab.py:141 ui/tabs/blast_tab.py:188
-#: ui/tabs/blast_tab.py:337 ui/tabs/data_download_tab.py:230
-#: ui/tabs/data_download_tab.py:238 ui/tabs/data_download_tab.py:277
-#: ui/tabs/data_download_tab.py:343 ui/tabs/data_download_tab.py:402
+#: ui/tabs/blast_tab.py:337 ui/tabs/data_download_tab.py:229
+#: ui/tabs/data_download_tab.py:237 ui/tabs/data_download_tab.py:276
+#: ui/tabs/data_download_tab.py:342 ui/tabs/data_download_tab.py:401
 #: ui/tabs/enrichment_tab.py:197 ui/tabs/enrichment_tab.py:215
 #: ui/tabs/gff_query_tab.py:129 ui/tabs/gff_query_tab.py:182
 #: ui/tabs/homology_tab.py:322 ui/tabs/homology_tab.py:398
 #: ui/tabs/locus_conversion_tab.py:106 ui/tabs/locus_conversion_tab.py:133
-#: ui/tabs/sequence_extraction_tab.py:195
-#: ui/tabs/sequence_extraction_tab.py:265 ui/ui_manager.py:566
+#: ui/tabs/sequence_extraction_tab.py:295
+#: ui/tabs/sequence_extraction_tab.py:411 ui/ui_manager.py:566
 msgid "无可用基因组"
 msgstr "无可用基因组"
 
 #: ui/tabs/annotation_tab.py:142 ui/tabs/enrichment_tab.py:216
-#: ui/tabs/gff_query_tab.py:183 ui/tabs/sequence_extraction_tab.py:266
+#: ui/tabs/gff_query_tab.py:183 ui/tabs/sequence_extraction_tab.py:412
 msgid "请选择一个基因组版本。"
 msgstr "请选择一个基因组版本。"
 
@@ -3683,7 +3744,7 @@ msgstr "转换方向:"
 msgid "棉花基因组版本:"
 msgstr "棉花基因组版本："
 
-#: ui/tabs/arabidopsis_homology_tab.py:83
+#: ui/tabs/arabidopsis_homology_tab.py:83 ui/tabs/sequence_analysis_tab.py:190
 msgid "输出文件"
 msgstr "输出文件"
 
@@ -3702,7 +3763,7 @@ msgid "正在查找..."
 msgstr "正在查找..."
 
 #: ui/tabs/arabidopsis_homology_tab.py:136 ui/tabs/homology_tab.py:177
-#: ui/tabs/sequence_extraction_tab.py:216
+#: ui/tabs/sequence_extraction_tab.py:314
 msgid "复制成功!"
 msgstr "复制成功!"
 
@@ -3730,11 +3791,12 @@ msgstr "拟南芥 -> 棉花"
 
 #: ui/tabs/arabidopsis_homology_tab.py:250 ui/tabs/blast_tab.py:177
 #: ui/tabs/gff_query_tab.py:123 ui/tabs/homology_tab.py:238
+#: ui/tabs/sequence_analysis_tab.py:202
 msgid "CSV 文件"
 msgstr "CSV 文件"
 
 #: ui/tabs/arabidopsis_homology_tab.py:250 ui/tabs/blast_tab.py:168
-#: ui/tabs/homology_tab.py:239 ui/tabs/sequence_extraction_tab.py:202
+#: ui/tabs/homology_tab.py:239 ui/tabs/sequence_extraction_tab.py:302
 msgid "所有文件"
 msgstr "所有文件"
 
@@ -3773,11 +3835,11 @@ msgstr "请选择一个有效的棉花基因组版本。"
 msgid "无效的转换方向。"
 msgstr "无效的转换方向。"
 
-#: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/data_download_tab.py:308
-#: ui/tabs/data_download_tab.py:438 ui/tabs/enrichment_tab.py:263
+#: ui/tabs/arabidopsis_homology_tab.py:307 ui/tabs/data_download_tab.py:307
+#: ui/tabs/data_download_tab.py:437 ui/tabs/enrichment_tab.py:263
 #: ui/tabs/genome_identifier_tab.py:128 ui/tabs/gff_query_tab.py:190
 #: ui/tabs/homology_tab.py:342 ui/tabs/locus_conversion_tab.py:150
-#: ui/tabs/sequence_extraction_tab.py:289
+#: ui/tabs/sequence_extraction_tab.py:437
 msgid "已发送取消请求，任务将尽快停止。"
 msgstr "已发送取消请求，任务将尽快停止。"
 
@@ -3834,11 +3896,11 @@ msgstr "BLAST 类型:"
 msgid "目标棉花基因组:"
 msgstr "目标棉花基因组:"
 
-#: ui/tabs/blast_tab.py:66
+#: ui/tabs/blast_tab.py:66 ui/tabs/sequence_analysis_tab.py:129
 msgid "粘贴序列"
 msgstr "粘贴序列"
 
-#: ui/tabs/blast_tab.py:69
+#: ui/tabs/blast_tab.py:69 ui/tabs/sequence_analysis_tab.py:131
 msgid "文件输入"
 msgstr "文件输入"
 
@@ -3922,7 +3984,7 @@ msgstr ""
 "\n"
 "请前往“数据下载”选项卡下载该文件。"
 
-#: ui/tabs/blast_tab.py:211 ui/tabs/data_download_tab.py:424
+#: ui/tabs/blast_tab.py:211 ui/tabs/data_download_tab.py:423
 msgid "缺少文件"
 msgstr "缺少文件"
 
@@ -3951,148 +4013,148 @@ msgstr "已发送取消请求，BLAST任务将在当前步骤完成后停止。"
 msgid "本地 BLAST 运行中"
 msgstr "本地 BLAST 运行中"
 
-#: ui/tabs/data_download_tab.py:39
+#: ui/tabs/data_download_tab.py:38
 msgid "Predicted CDS"
 msgstr "Predicted CDS"
 
-#: ui/tabs/data_download_tab.py:40
+#: ui/tabs/data_download_tab.py:39
 msgid "Predicted Protein"
 msgstr "Predicted Protein"
 
-#: ui/tabs/data_download_tab.py:41
+#: ui/tabs/data_download_tab.py:40
 msgid "注释 (gff3)"
 msgstr "注释 (gff3)"
 
-#: ui/tabs/data_download_tab.py:44
+#: ui/tabs/data_download_tab.py:43
 msgid "KEGG 通路"
 msgstr "KEGG 通路"
 
-#: ui/tabs/data_download_tab.py:45
+#: ui/tabs/data_download_tab.py:44
 msgid "KEGG 直系同源"
 msgstr "KEGG 直系同源"
 
-#: ui/tabs/data_download_tab.py:46
+#: ui/tabs/data_download_tab.py:45
 msgid "同源关系 (拟南芥)"
 msgstr "同源关系 (拟南芥)"
 
-#: ui/tabs/data_download_tab.py:58 ui/tabs/data_download_tab.py:118
+#: ui/tabs/data_download_tab.py:57 ui/tabs/data_download_tab.py:117
 msgid "开始下载"
 msgstr "开始下载"
 
-#: ui/tabs/data_download_tab.py:61 ui/tabs/data_download_tab.py:312
-#: ui/tabs/data_download_tab.py:329
+#: ui/tabs/data_download_tab.py:60 ui/tabs/data_download_tab.py:311
+#: ui/tabs/data_download_tab.py:328
 msgid "预处理BLAST数据库"
 msgstr "预处理BLAST数据库"
 
-#: ui/tabs/data_download_tab.py:87
+#: ui/tabs/data_download_tab.py:86
 msgid "数据下载与预处理"
 msgstr "数据下载与预处理"
 
-#: ui/tabs/data_download_tab.py:91
+#: ui/tabs/data_download_tab.py:90
 msgid "选择基因组"
 msgstr "选择基因组"
 
-#: ui/tabs/data_download_tab.py:99 ui/tabs/data_download_tab.py:277
-#: ui/tabs/data_download_tab.py:343 ui/tabs/data_download_tab.py:402
+#: ui/tabs/data_download_tab.py:98 ui/tabs/data_download_tab.py:276
+#: ui/tabs/data_download_tab.py:342 ui/tabs/data_download_tab.py:401
 msgid "配置未加载"
 msgstr "配置未加载"
 
-#: ui/tabs/data_download_tab.py:105
+#: ui/tabs/data_download_tab.py:104
 msgid "文件类型与状态"
 msgstr "文件类型与状态"
 
-#: ui/tabs/data_download_tab.py:109
+#: ui/tabs/data_download_tab.py:108
 msgid "下载选项"
 msgstr "下载选项"
 
-#: ui/tabs/data_download_tab.py:145
+#: ui/tabs/data_download_tab.py:144
 msgid "未下载"
 msgstr "未下载"
 
-#: ui/tabs/data_download_tab.py:146
+#: ui/tabs/data_download_tab.py:145
 msgid "已下载 (待处理)"
 msgstr "已下载 (待处理)"
 
-#: ui/tabs/data_download_tab.py:147
+#: ui/tabs/data_download_tab.py:146
 msgid "仅整理 (待建库)"
 msgstr "仅整理 (待建库)"
 
-#: ui/tabs/data_download_tab.py:148
+#: ui/tabs/data_download_tab.py:147
 msgid "仅建库 (待整理)"
 msgstr "仅建库（待整理）"
 
-#: ui/tabs/data_download_tab.py:149 ui/tabs/data_download_tab.py:299
-#: ui/tabs/data_download_tab.py:430
+#: ui/tabs/data_download_tab.py:148 ui/tabs/data_download_tab.py:298
+#: ui/tabs/data_download_tab.py:429
 msgid "已就绪"
 msgstr "已就绪"
 
-#: ui/tabs/data_download_tab.py:153
+#: ui/tabs/data_download_tab.py:152
 msgid "选择文件类型"
 msgstr "选择文件类型"
 
-#: ui/tabs/data_download_tab.py:166
+#: ui/tabs/data_download_tab.py:165
 msgid "文件状态"
 msgstr "文件状态"
 
-#: ui/tabs/data_download_tab.py:170
+#: ui/tabs/data_download_tab.py:169
 msgid "刷新状态"
 msgstr "刷新状态"
 
-#: ui/tabs/data_download_tab.py:219
+#: ui/tabs/data_download_tab.py:218
 msgid "当前基因组版本在配置文件中没有可供下载的URL链接。"
 msgstr "当前基因组版本在配置文件中没有可供下载的URL链接。"
 
-#: ui/tabs/data_download_tab.py:278 ui/tabs/data_download_tab.py:344
-#: ui/tabs/data_download_tab.py:349 ui/tabs/data_download_tab.py:403
+#: ui/tabs/data_download_tab.py:277 ui/tabs/data_download_tab.py:343
+#: ui/tabs/data_download_tab.py:348 ui/tabs/data_download_tab.py:402
 msgid "选择错误"
 msgstr "选择错误"
 
-#: ui/tabs/data_download_tab.py:278
+#: ui/tabs/data_download_tab.py:277
 msgid "请选择一个有效的基因组。"
 msgstr "请选择一个有效的基因组。"
 
-#: ui/tabs/data_download_tab.py:282 ui/tabs/data_download_tab.py:407
+#: ui/tabs/data_download_tab.py:281 ui/tabs/data_download_tab.py:406
 #, python-brace-format
 msgid "找不到基因组 '{}' 的信息。"
 msgstr "找不到基因组 '{}' 的信息。"
 
-#: ui/tabs/data_download_tab.py:295
+#: ui/tabs/data_download_tab.py:294
 msgid "无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。"
 msgstr "无法开始预处理，因为当前基因组版本未配置预测CDS或蛋白质文件的URL。"
 
-#: ui/tabs/data_download_tab.py:296
+#: ui/tabs/data_download_tab.py:295
 msgid "缺少配置"
 msgstr "缺少配置"
 
-#: ui/tabs/data_download_tab.py:300
+#: ui/tabs/data_download_tab.py:299
 msgid "所有适用的BLAST数据库均已预处理完成，无需再次运行。"
 msgstr "所有适用的BLAST数据库均已预处理完成，无需再次运行。"
 
-#: ui/tabs/data_download_tab.py:344
+#: ui/tabs/data_download_tab.py:343
 msgid "请选择一个有效的基因组进行下载。"
 msgstr "请选择一个有效的基因组进行下载。"
 
-#: ui/tabs/data_download_tab.py:349
+#: ui/tabs/data_download_tab.py:348
 msgid "请至少选择一种要下载的文件类型。"
 msgstr "请至少选择一种要下载的文件类型。"
 
-#: ui/tabs/data_download_tab.py:356
+#: ui/tabs/data_download_tab.py:355
 msgid "已发送取消请求，下载任务将尽快停止。"
 msgstr "已发送取消请求，下载任务将尽快停止。"
 
-#: ui/tabs/data_download_tab.py:360
+#: ui/tabs/data_download_tab.py:359
 msgid "数据下载中"
 msgstr "数据下载中"
 
-#: ui/tabs/data_download_tab.py:393
+#: ui/tabs/data_download_tab.py:392
 msgid "启动下载任务时发生未知错误:"
 msgstr "启动下载任务时发生未知错误:"
 
-#: ui/tabs/data_download_tab.py:403
+#: ui/tabs/data_download_tab.py:402
 msgid "请选择一个有效的基因组进行预处理。"
 msgstr "请选择一个有效的基因组进行预处理。"
 
-#: ui/tabs/data_download_tab.py:422
+#: ui/tabs/data_download_tab.py:421
 #, python-brace-format
 msgid ""
 "无法开始预处理，以下必需的注释文件尚未下载：\n"
@@ -4107,11 +4169,11 @@ msgstr ""
 "\n"
 "请先下载它们。"
 
-#: ui/tabs/data_download_tab.py:430
+#: ui/tabs/data_download_tab.py:429
 msgid "注释文件已全部预处理完成，无需再次运行。"
 msgstr "注释文件已全部预处理完成，无需再次运行。"
 
-#: ui/tabs/data_download_tab.py:459
+#: ui/tabs/data_download_tab.py:458
 msgid "预处理文件"
 msgstr "预处理文件"
 
@@ -4192,7 +4254,6 @@ msgid "文件格式:"
 msgstr "文件格式:"
 
 #: ui/tabs/enrichment_tab.py:174 ui/tabs/locus_conversion_tab.py:68
-#: ui/tabs/sequence_extraction_tab.py:99
 msgid "输出设置"
 msgstr "输出设置"
 
@@ -4426,79 +4487,256 @@ msgstr "区域格式不正确，请使用 'Chr:Start-End' 格式。"
 msgid "位点转换中"
 msgstr "位点转换中"
 
-#: ui/tabs/sequence_extraction_tab.py:46
-msgid "开始提取序列"
-msgstr "开始提取序列"
+#: ui/tabs/sequence_analysis_tab.py:24
+msgid "分析参数说明"
+msgstr "分析参数说明"
 
-#: ui/tabs/sequence_extraction_tab.py:70
+#: ui/tabs/sequence_analysis_tab.py:40
+msgid "GC含量"
+msgstr "GC含量"
+
+#: ui/tabs/sequence_analysis_tab.py:40
+msgid "指序列中G和C碱基所占的百分比。"
+msgstr "序列中G和C碱基所占的百分比。"
+
+#: ui/tabs/sequence_analysis_tab.py:41 ui/tabs/sequence_analysis_tab.py:56
+msgid "【注】仅当序列类型为 CDS 时可用。"
+msgstr "【注】仅当序列类型为 CDS 时可用。"
+
+#: ui/tabs/sequence_analysis_tab.py:42
+msgid "分子量"
+msgstr "分子量"
+
+#: ui/tabs/sequence_analysis_tab.py:42
+msgid "蛋白质的分子质量，单位为道尔顿(Dalton)。"
+msgstr "蛋白质的分子质量，单位为道尔顿(Dalton)。"
+
+#: ui/tabs/sequence_analysis_tab.py:43 ui/tabs/sequence_analysis_tab.py:45
+#: ui/tabs/sequence_analysis_tab.py:47 ui/tabs/sequence_analysis_tab.py:50
+#: ui/tabs/sequence_analysis_tab.py:53
+msgid "【注】CDS序列会先翻译成蛋白质再计算。"
+msgstr "【注】CDS序列会先翻译成蛋白质再计算。"
+
+#: ui/tabs/sequence_analysis_tab.py:44
+msgid "等电点"
+msgstr "等电点"
+
+#: ui/tabs/sequence_analysis_tab.py:44
+msgid "指蛋白质在特定pH值下净电荷为零的点。"
+msgstr "蛋白质在特定pH值下净电荷为零的点。"
+
+#: ui/tabs/sequence_analysis_tab.py:46
+msgid "芳香性"
+msgstr "芳香性"
+
+#: ui/tabs/sequence_analysis_tab.py:46
+msgid "蛋白质中芳香族氨基酸（Phe, Trp, Tyr）的相对频率。"
+msgstr "蛋白质中芳香族氨基酸（Phe、Trp、Tyr）的相对频率。"
+
+#: ui/tabs/sequence_analysis_tab.py:48
+msgid "不稳定性指数"
+msgstr "不稳定性指数"
+
+#: ui/tabs/sequence_analysis_tab.py:49
+msgid "预测蛋白质在体外的稳定性。值 > 40 通常被认为是不稳定的。"
+msgstr "预测蛋白质在体外的稳定性。值 > 40 通常被认为是不稳定的。"
+
+#: ui/tabs/sequence_analysis_tab.py:51
+msgid "亲疏水性总平均值"
+msgstr "亲疏水性总平均值"
+
+#: ui/tabs/sequence_analysis_tab.py:52
+msgid ""
+"蛋白质中所有氨基酸残基的疏水性值的总和除以序列长度。正值表示疏水，负值表示亲"
+"水。"
+msgstr ""
+"蛋白质中所有氨基酸残基的疏水性值的总和除以序列长度。正值表示疏水，负值表示亲"
+"水。"
+
+#: ui/tabs/sequence_analysis_tab.py:54
+msgid "相对同义密码子使用度"
+msgstr "相对同义密码子使用度"
+
+#: ui/tabs/sequence_analysis_tab.py:55
+msgid ""
+"指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性。"
+msgstr ""
+"指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性。"
+
+#: ui/tabs/sequence_analysis_tab.py:104
+msgid "开始分析"
+msgstr "开始分析"
+
+#: ui/tabs/sequence_analysis_tab.py:157 ui/tabs/sequence_extraction_tab.py:117
+#: ui/tabs/sequence_extraction_tab.py:231
+msgid "分析设置"
+msgstr "分析设置"
+
+#: ui/tabs/sequence_analysis_tab.py:168 ui/tabs/sequence_extraction_tab.py:86
 msgid "序列类型:"
 msgstr "序列类型:"
 
-#: ui/tabs/sequence_extraction_tab.py:78
+#: ui/tabs/sequence_analysis_tab.py:171 ui/tabs/sequence_extraction_tab.py:94
 msgid "蛋白质"
 msgstr "蛋白质"
 
-#: ui/tabs/sequence_extraction_tab.py:91
-msgid "模式选择"
-msgstr "模式选择"
+#: ui/tabs/sequence_analysis_tab.py:177 ui/tabs/sequence_extraction_tab.py:131
+msgid "密码子表:"
+msgstr "密码子表:"
 
-#: ui/tabs/sequence_extraction_tab.py:93
-msgid "单基因模式 (直接显示FASTA结果)"
-msgstr "单基因模式（直接显示FASTA结果）"
+#: ui/tabs/sequence_analysis_tab.py:179 ui/tabs/sequence_extraction_tab.py:132
+msgid "细胞核 (标准)"
+msgstr "细胞核（标准）"
 
-#: ui/tabs/sequence_extraction_tab.py:107
-msgid "输出CSV文件:"
-msgstr "输出CSV文件:"
+#: ui/tabs/sequence_analysis_tab.py:182 ui/tabs/sequence_extraction_tab.py:135
+msgid "叶绿体 (质体)"
+msgstr "叶绿体（质体）"
 
-#: ui/tabs/sequence_extraction_tab.py:111
+#: ui/tabs/sequence_analysis_tab.py:185 ui/tabs/sequence_extraction_tab.py:138
+msgid "线粒体 (标准)"
+msgstr "线粒体（标准）"
+
+#: ui/tabs/sequence_analysis_tab.py:197
+msgid "输出文件路径:"
+msgstr "输出文件路径:"
+
+#: ui/tabs/sequence_analysis_tab.py:200 ui/tabs/sequence_extraction_tab.py:155
 msgid "另存为..."
 msgstr "另存为..."
 
-#: ui/tabs/sequence_extraction_tab.py:148
-msgid "复制结果"
-msgstr "复制结果"
+#: ui/tabs/sequence_analysis_tab.py:215
+msgid "选择FASTA文件"
+msgstr "选择FASTA文件"
 
-#: ui/tabs/sequence_extraction_tab.py:200
+#: ui/tabs/sequence_analysis_tab.py:231
+msgid "配置文件未加载。"
+msgstr "配置文件未加载。"
+
+#: ui/tabs/sequence_analysis_tab.py:242
+msgid "请粘贴FASTA序列或选择一个文件。"
+msgstr "请粘贴FASTA序列或选择一个文件。"
+
+#: ui/tabs/sequence_analysis_tab.py:247
+msgid "请指定输出文件的路径。"
+msgstr "请指定输出文件的路径。"
+
+#: ui/tabs/sequence_analysis_tab.py:253
+msgid "序列分析中"
+msgstr "序列分析中"
+
+#: ui/tabs/sequence_analysis_tab.py:278
+msgid "FASTA序列分析"
+msgstr "FASTA序列分析"
+
+#: ui/tabs/sequence_extraction_tab.py:56
+msgid "开始提取序列"
+msgstr "开始提取序列"
+
+#: ui/tabs/sequence_extraction_tab.py:73
+msgid "序列提取与分析"
+msgstr "序列提取与分析"
+
+#: ui/tabs/sequence_extraction_tab.py:109
+msgid "模式选择"
+msgstr "模式选择"
+
+#: ui/tabs/sequence_extraction_tab.py:111
+msgid "单基因模式 (直接显示结果)"
+msgstr "单基因模式（直接显示结果）"
+
+#: ui/tabs/sequence_extraction_tab.py:122
+msgid "开启序列分析"
+msgstr "开启序列分析"
+
+#: ui/tabs/sequence_extraction_tab.py:143
+msgid "输出结果"
+msgstr "输出结果"
+
+#: ui/tabs/sequence_extraction_tab.py:151
+msgid "输出CSV文件:"
+msgstr "输出CSV文件:"
+
+#: ui/tabs/sequence_extraction_tab.py:164
+msgid "序列"
+msgstr "序列"
+
+#: ui/tabs/sequence_extraction_tab.py:181
+msgid "复制序列"
+msgstr "复制序列"
+
+#: ui/tabs/sequence_extraction_tab.py:186
+msgid "分析结果"
+msgstr "分析结果"
+
+#: ui/tabs/sequence_extraction_tab.py:205
+msgid "参数帮助"
+msgstr "参数帮助"
+
+#: ui/tabs/sequence_extraction_tab.py:209
+msgid "复制分析"
+msgstr "复制分析"
+
+#: ui/tabs/sequence_extraction_tab.py:238
+msgid "分析设置 (仅理化性质分析)"
+msgstr "分析设置（仅理化性质分析）"
+
+#: ui/tabs/sequence_extraction_tab.py:300
 msgid "选择CSV文件保存位置"
 msgstr "选择CSV文件保存位置"
 
-#: ui/tabs/sequence_extraction_tab.py:202
+#: ui/tabs/sequence_extraction_tab.py:302
 msgid "CSV文件"
 msgstr "CSV文件"
 
-#: ui/tabs/sequence_extraction_tab.py:236
+#: ui/tabs/sequence_extraction_tab.py:356
+msgid "未执行分析或无分析结果。"
+msgstr "未执行分析或无分析结果。"
+
+#: ui/tabs/sequence_extraction_tab.py:363
+msgid "分析功能未开启。"
+msgstr "分析功能未开启。"
+
+#: ui/tabs/sequence_extraction_tab.py:368
 msgid "未提取到任何序列或发生未知错误。"
 msgstr "未能提取到任何序列或发生未知错误。"
 
-#: ui/tabs/sequence_extraction_tab.py:261
+#: ui/tabs/sequence_extraction_tab.py:407
 msgid "请输入至少一个基因ID。"
 msgstr "请输入至少一个基因ID。"
 
-#: ui/tabs/sequence_extraction_tab.py:273
+#: ui/tabs/sequence_extraction_tab.py:419
 msgid "提示"
 msgstr "提示"
 
-#: ui/tabs/sequence_extraction_tab.py:273
+#: ui/tabs/sequence_extraction_tab.py:419
 msgid "单基因模式下建议只输入一个基因ID，将只处理第一个ID。"
 msgstr "单基因模式下建议只输入一个基因ID，将只处理第一个ID。"
 
-#: ui/tabs/sequence_extraction_tab.py:279
+#: ui/tabs/sequence_extraction_tab.py:425
 msgid "请指定输出CSV文件的路径。"
 msgstr "请指定输出CSV文件的路径。"
 
-#: ui/tabs/sequence_extraction_tab.py:292
+#: ui/tabs/sequence_extraction_tab.py:440
 #, python-brace-format
 msgid "{}序列提取中"
 msgstr "{}序列提取中"
 
-#: ui/tabs/sequence_extraction_tab.py:318
+#: ui/tabs/sequence_extraction_tab.py:476
+msgid "序列提取与分析已成功完成，结果已显示。"
+msgstr "序列提取与分析已成功完成，结果已显示。"
+
+#: ui/tabs/sequence_extraction_tab.py:478
 msgid "序列已成功提取并显示在输出框中。"
 msgstr "序列已成功提取并显示在输出框中。"
 
-#: ui/tabs/sequence_extraction_tab.py:323
+#: ui/tabs/sequence_extraction_tab.py:485
 #, python-brace-format
 msgid "{}序列提取"
 msgstr "{}序列提取"
+
+#: ui/tabs/sequence_extraction_tab.py:487
+msgid "与分析"
+msgstr "与分析"
 
 #: ui/ui_manager.py:124 ui/ui_manager.py:506
 #, python-brace-format
@@ -4585,6 +4823,35 @@ msgstr "UI已根据当前配置刷新。"
 #: ui/ui_manager.py:577
 msgid "刷新失败或无可用模型"
 msgstr "刷新失败或无可用模型"
+
+#, python-brace-format
+#~ msgid "正在处理输入文件: {}"
+#~ msgstr "正在处理输入文件: {}"
+
+#~ msgid "检测到FASTQ格式，正在转换为FASTA..."
+#~ msgstr "检测到FASTQ格式，正在转换为FASTA..."
+
+#~ msgid "将输入文件作为FASTA格式处理..."
+#~ msgstr "将输入文件作为FASTA格式处理..."
+
+#~ msgid "正在处理文本输入..."
+#~ msgstr "正在处理文本输入..."
+
+#, python-brace-format
+#~ msgid ""
+#~ "--- Received query_text in pipeline (first 1000 chars) ---\n"
+#~ "{}\n"
+#~ "-------------------------------------------------"
+#~ msgstr ""
+#~ "在流水线中收到的query_text（前1000个字符）---\n"
+#~ "{}\n"
+#~ "-------------------------------------------------"
+
+#~ msgid "CDS序列提取"
+#~ msgstr "CDS序列提取"
+
+#~ msgid "复制结果"
+#~ msgstr "复制结果"
 
 #~ msgid "连接失败:"
 #~ msgstr "连接失败:"
@@ -5020,9 +5287,6 @@ msgstr "刷新失败或无可用模型"
 #~ msgid "任务被用户取消。"
 #~ msgstr "任务被用户取消。"
 
-#~ msgid "正在处理: {} ({}/{})"
-#~ msgstr "正在处理: {} ({}/{})"
-
 #~ msgid "将优先使用自定义注释数据库目录: {}"
 #~ msgstr "将优先使用自定义注释数据库目录: {}"
 
@@ -5322,9 +5586,6 @@ msgstr "刷新失败或无可用模型"
 
 #~ msgid "输入的Excel (.xlsx) 文件路径。"
 #~ msgstr "输入的Excel (.xlsx) 文件路径。"
-
-#~ msgid "输出的CSV文件路径。"
-#~ msgstr "输出的CSV文件路径。"
 
 #~ msgid "准备转换Excel..."
 #~ msgstr "准备转换Excel..."
@@ -5718,9 +5979,6 @@ msgstr "刷新失败或无可用模型"
 
 #~ msgid "Warning: Locales directory not found at '{}'. Using fallback."
 #~ msgstr "警告：未在 '{}' 处找到语言包目录。将使用默认语言包。"
-
-#~ msgid "Warning: Could not set up language translation for '{}'. Reason: {}"
-#~ msgstr "警告：无法为 '{}' 设置语言翻译。原因：{}"
 
 #~ msgid "加载完成"
 #~ msgstr "加载完成"

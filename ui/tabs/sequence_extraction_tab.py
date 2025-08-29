@@ -8,6 +8,7 @@ import ttkbootstrap as ttkb
 from cotton_toolkit.pipelines import run_sequence_extraction
 from .base_tab import BaseTab
 from ..dialogs import MessageDialog
+from .sequence_analysis_tab import show_parameter_help
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -52,12 +53,16 @@ class SequenceExtractionTab(BaseTab):
 
         # 步骤3：配置按钮
         if self.action_button:
-            self.action_button.configure(text=self._("开始提取序列"), command=self.start_extraction_task)
+            self.action_button.configure(text=_("开始提取序列"), command=self.start_extraction_task)
 
         # --- 步骤4：刷新初始状态 ---
         self.update_from_config()
         self._toggle_analysis_options_state()
         self._toggle_analysis_output_visibility()  # 确保分析框初始状态正确
+
+
+    def _show_parameter_help(self):
+        return show_parameter_help(self.app)
 
     def _create_widgets(self):
         """创建此选项卡独有的所有UI控件。"""
@@ -147,7 +152,7 @@ class SequenceExtractionTab(BaseTab):
             row=0, column=0, padx=(10, 5), pady=5, sticky="w")
         self.output_file_entry = ttk.Entry(self.multi_gene_output_frame)
         self.output_file_entry.grid(row=0, column=1, sticky="ew", padx=(0, 5), pady=5)
-        ttkb.Button(self.multi_gene_output_frame, text=_("另存为..."), width=12,
+        ttkb.Button(self.multi_gene_output_frame, text=_("浏览..."), width=12,
                     command=self._browse_save_file, bootstyle="info-outline").grid(
             row=0, column=2, padx=(0, 5), pady=5)
 
@@ -213,72 +218,6 @@ class SequenceExtractionTab(BaseTab):
                                                                                                 self._get_current_placeholder_key()))
         self._toggle_mode()
 
-    def _show_parameter_help(self):
-        """ 显示分析参数的帮助信息弹窗。 """
-        help_dialog = tk.Toplevel(self.app)
-        help_dialog.title(_("分析参数说明"))
-        help_dialog.transient(self.app)
-        help_dialog.grab_set()
-        help_dialog.resizable(False, False)
-
-        main_frame = ttkb.Frame(help_dialog, padding=20)
-        main_frame.pack(expand=True, fill="both")
-
-        # 创建左右两个容器
-        left_column = ttkb.Frame(main_frame)
-        left_column.pack(side="left", fill="y", expand=True, padx=(0, 15), anchor="n")
-        right_column = ttkb.Frame(main_frame)
-        right_column.pack(side="left", fill="y", expand=True, padx=(15, 0), anchor="n")
-
-        # 定义所有参数信息
-        params = [
-            ("GC Content (%)", self._('GC含量'), self._('指序列中G和C碱基所占的百分比。'),
-             self._('【注】仅当序列类型为 CDS 时可用。')),
-            ("Molecular Weight (Da)", self._('分子量'), self._('蛋白质的分子质量，单位为道尔顿(Dalton)。'),
-             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("Isoelectric Point (pI)", self._('等电点'), self._('指蛋白质在特定pH值下净电荷为零的点。'),
-             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("Aromaticity", self._('芳香性'), self._('蛋白质中芳香族氨基酸（Phe, Trp, Tyr）的相对频率。'),
-             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("Instability Index", self._('不稳定性指数'),
-             self._('预测蛋白质在体外的稳定性。值 > 40 通常被认为是不稳定的。'),
-             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("GRAVY", self._('亲疏水性总平均值'),
-             self._('蛋白质中所有氨基酸残基的疏水性值的总和除以序列长度。正值表示疏水，负值表示亲水。'),
-             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("RSCU_Values", self._('相对同义密码子使用度'),
-             self._('指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性。'),
-             self._('【注】仅当序列类型为 CDS 时可用。'))
-        ]
-
-        # 动态将参数分配到左右两列
-        num_left = (len(params) + 1) // 2  # 计算左侧应放置的数量
-        for i, (title_en, title_local, desc, note) in enumerate(params):
-            target_column = left_column if i < num_left else right_column
-
-            # 使用LabelFrame作为每个参数的容器，标题更清晰
-            lf = ttkb.LabelFrame(target_column, text=f"{title_en}: {title_local}", bootstyle="info", padding=10)
-            lf.pack(fill="x", pady=(0, 15), expand=True)
-
-            # 将描述和注释合并，并设置自动换行
-            full_text = f"{desc}\n{note}"
-            lbl = ttkb.Label(lf, text=full_text, wraplength=320)  # 设置一个合适的换行宽度
-            lbl.pack(fill="x", expand=True)
-
-        # OK 按钮
-        button_frame = ttkb.Frame(main_frame)
-        button_frame.pack(fill="x", side="bottom", pady=(20, 0))
-        ok_button = ttkb.Button(button_frame, text="OK", command=help_dialog.destroy, bootstyle="primary")
-        ok_button.pack()
-
-        # 居中显示窗口
-        help_dialog.update_idletasks()
-        screen_width = help_dialog.winfo_screenwidth()
-        screen_height = help_dialog.winfo_screenheight()
-        w, h = help_dialog.winfo_width(), help_dialog.winfo_height()
-        x = (screen_width - w) // 2
-        y = (screen_height - h) // 2
-        help_dialog.geometry(f"+{x}+{y}")
 
 
     def _toggle_analysis_options_state(self):
@@ -498,7 +437,7 @@ class SequenceExtractionTab(BaseTab):
             self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
             cancel_event.set()
 
-        dialog_title = self._("{}序列提取中").format(sequence_type_selected.upper())
+        dialog_title = _("{}序列提取中").format(sequence_type_selected.upper())
         progress_dialog = self.app.ui_manager.show_progress_dialog(
             title=dialog_title,
             on_cancel=on_cancel_action
@@ -543,9 +482,9 @@ class SequenceExtractionTab(BaseTab):
             # 对于多基因模式，直接返回后端的消息字符串
             return result
 
-        task_name_str = self._("{}序列提取").format(sequence_type_selected.upper())
+        task_name_str = _("{}序列提取").format(sequence_type_selected.upper())
         if perform_analysis_selected:
-            task_name_str += self._("与分析")
+            task_name_str += _("与分析")
 
         self.app.event_handler.start_task(
             task_name=task_name_str,

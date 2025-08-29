@@ -1,21 +1,22 @@
 ﻿import itertools
 
 import pandas as pd
-from typing import Dict
+from typing import Dict, Optional
 import logging
 
-# Biopython imports for sequence analysis
 from Bio.Seq import Seq
 from Bio.Data import CodonTable
 from Bio.SeqUtils import gc_fraction
 from Bio.SeqUtils.ProtParam import ProteinAnalysis, ProtParamData
 
+from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.pipelines.decorators import pipeline_task
+from cotton_toolkit.tools.fa_loader import parse_fasta_text
 
 # Setup logger
 logger = logging.getLogger("cotton_toolkit.pipelines.sequence_analysis")
 
-# Internationalization placeholder
+
 try:
     from builtins import _
 except ImportError:
@@ -23,7 +24,7 @@ except ImportError:
         return text
 
 
-# 找到并替换这个函数
+
 def _calculate_rscu(sequence: Seq, codon_table_id: int) -> Dict[str, float]:
     """
     Calculates the Relative Synonymous Codon Usage (RSCU) for a sequence.
@@ -161,3 +162,72 @@ def run_analyze_sequences(
         return pd.DataFrame()
 
     return pd.DataFrame(analysis_results)
+
+
+@pipeline_task(_("直接序列分析"))
+def run_seq_direct_analysis(
+        config: MainConfig,
+        sequence_type: str,
+        organelle_type: str,
+        output_path: str,
+        perform_analysis: bool,
+        fasta_text: Optional[str] = None,
+        fasta_file_path: Optional[str] = None,
+        **kwargs
+) -> Optional[str]:
+    """
+    直接分析FASTA格式的文本，并根据模式返回结果。
+    """
+    progress = kwargs.get('progress_callback', lambda p, m: None)
+    check_cancel = kwargs.get('check_cancel', lambda: False)
+
+    progress(5, _("正在准备输入序列..."))
+
+    if fasta_file_path:
+        try:
+            progress(8, _("正在读取文件，大文件可能需要一些时间..."))
+            with open(fasta_file_path, 'r', encoding='utf-8') as f:
+                fasta_text = f.read()
+            progress(10, _("文件读取完毕，正在解析序列..."))
+        except Exception as e:
+            raise IOError(_("无法读取输入的FASTA文件: {}").format(e))
+
+    if not fasta_text:
+        raise ValueError(_("输入序列为空，请粘贴序列或选择有效的文件。"))
+
+    if check_cancel(): return None
+
+    # 如果是粘贴文本，也更新一下进度
+    if not fasta_file_path:
+        progress(10, _("正在解析粘贴的序列..."))
+
+    sequences_dict = parse_fasta_text(fasta_text)
+    if not sequences_dict:
+        raise ValueError(_("未能从输入中解析出任何有效的FASTA序列。"))
+
+    if check_cancel(): return None
+
+    # 调用核心分析模块
+    analysis_df = run_analyze_sequences(
+        sequences_dict=sequences_dict,
+        organelle_type=organelle_type,
+        input_sequence_type=sequence_type,
+        **kwargs
+    )
+
+    if check_cancel(): return None
+
+    # 准备原始数据
+    source_df = pd.DataFrame(sequences_dict.items(), columns=['Header', 'Sequence'])
+
+    # 合并分析结果
+    if analysis_df is not None and not analysis_df.empty:
+        final_df = pd.merge(source_df, analysis_df, left_on='Header', right_on='GeneID', how='left')
+        if 'GeneID' in final_df.columns:
+            final_df = final_df.drop(columns=['GeneID'])
+    else:
+        final_df = source_df
+
+    # 保存文件
+    final_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+    return _("序列及分析结果已成功保存到: {}").format(output_path)

@@ -16,6 +16,7 @@ from Bio.SearchIO import parse as blast_parse
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.pipelines.decorators import pipeline_task
+from cotton_toolkit.tools.fa_loader import prepare_fasta_query_file
 
 # 国际化函数占位符
 try:
@@ -132,31 +133,15 @@ def run_blast_pipeline(
         if check_cancel(): return _("任务已取消。")
 
         progress(25, _("正在准备查询序列..."))
-        tmp_query_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".fasta")
-        tmp_query_file_to_clean = tmp_query_file.name
-        with tmp_query_file:
-            query_fasta_path = tmp_query_file.name
-            if query_file_path:
-                if check_cancel(): return _("任务已取消。")
-                logger.info(_("正在处理输入文件: {}").format(query_file_path))
-                file_format = "fasta"
-                try:
-                    with open(query_file_path, "r") as f:
-                        if f.read(1) == '@': file_format = "fastq"
-                except:
-                    pass
-                if file_format == "fastq":
-                    logger.info(_("检测到FASTQ格式，正在转换为FASTA..."))
-                    SeqIO.convert(query_file_path, "fastq", query_fasta_path, "fasta")
-                else:
-                    logger.info(_("将输入文件作为FASTA格式处理..."))
-                    with open(query_file_path, 'r') as infile:
-                        tmp_query_file.write(infile.read())
-            elif query_text:
-                if check_cancel(): return _("任务已取消。")
-                logger.info(_("正在处理文本输入..."))
-                logger.debug(_("--- Received query_text in pipeline (first 1000 chars) ---\n{}\n-------------------------------------------------").format(query_text[:1000]))
-                tmp_query_file.write(query_text)
+        try:
+            # 调用新的辅助函数，一步到位地处理文本、文件和格式转换
+            query_fasta_path = prepare_fasta_query_file(query_text, query_file_path)
+            # 将返回的临时文件路径记录下来，以便最后清理
+            tmp_query_file_to_clean = query_fasta_path
+            logger.info(_("查询序列已成功准备到临时文件: {}").format(query_fasta_path))
+        except Exception as e:
+            # 如果准备文件时出错，向上抛出异常
+            raise e
 
         logger.debug(_("查询序列已写入临时文件: {}").format(query_fasta_path))
         if check_cancel(): return _("任务已取消。")

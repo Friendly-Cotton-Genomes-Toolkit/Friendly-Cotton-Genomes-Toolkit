@@ -42,7 +42,7 @@ class GFFQueryTab(BaseTab):
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_rowconfigure(1, weight=1)
 
-        self.title_label = ttkb.Label(parent, text=_("基因/区域位点查询"), font=self.app.app_title_font,
+        self.title_label = ttkb.Label(parent, text=_("GFF查询"), font=self.app.app_title_font,
                                       bootstyle="primary")
         self.title_label.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 

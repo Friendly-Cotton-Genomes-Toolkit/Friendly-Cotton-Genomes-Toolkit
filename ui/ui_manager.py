@@ -634,4 +634,5 @@ class UIManager:
         }
 
         # 调用已有的内部方法，并返回创建的对话框实例
-        return self._show_progress_dialog(dialog_data)
+        self._show_progress_dialog(dialog_data)
+        return self.progress_dialog
