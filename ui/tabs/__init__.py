@@ -14,6 +14,7 @@ from .sequence_extraction_tab import SequenceExtractionTab
 from .arabidopsis_homology_tab import ArabidopsisHomologyConversionTab
 from .sequence_analysis_tab import SeqAnalysisTab
 from .quantification_tab import QuantificationTab
+from .phylogenetics_tab import PhylogeneticsTab
 
 # 定义此包的公共API，当使用 from ui.tabs import * 时会导入这些
 __all__ = [
@@ -30,5 +31,6 @@ __all__ = [
     "SequenceExtractionTab",
     "ArabidopsisHomologyConversionTab",
     "SeqAnalysisTab",
-    "QuantificationTab"
+    "QuantificationTab",
+    "PhylogeneticsTab"
 ]

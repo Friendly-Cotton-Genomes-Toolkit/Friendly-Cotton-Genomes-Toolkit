@@ -16,10 +16,11 @@ from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUB
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
+from cotton_toolkit.pipelines.phylogenetics import run_iqtree_inference, run_trimal_trimming
 from cotton_toolkit.utils.advanced_tools_test import check_muscle_executable, check_iqtree_executable, \
     check_trimal_executable
 from cotton_toolkit.utils.localization import setup_localization
-from .dialogs import MessageDialog, ConfirmationDialog
+from .dialogs import MessageDialog, ConfirmationDialog, TrimmingDecisionDialog
 from cotton_toolkit.utils.gene_utils import identify_genome_from_gene_ids
 
 if TYPE_CHECKING:
@@ -50,6 +51,9 @@ class EventHandler:
         handlers = {
             "startup_complete": self._handle_startup_complete,
             "startup_failed": self._handle_startup_failed,
+            "phylo_step_muscle_done": self._handle_phylo_step_muscle_done,
+            "phylo_step_trim_done": self._handle_phylo_step_trim_done,
+            "phylo_step_iqtree_done": self._handle_phylo_step_iqtree_done,
             "config_load_task_done": self._handle_config_load_task_done,
             "task_done": self._handle_task_done,
             "error": self._handle_error,
@@ -210,7 +214,8 @@ class EventHandler:
         )
 
     def start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
-                   on_success: Optional[Callable] = None, task_key: Optional[str] = None):
+                   on_success: Optional[Callable] = None, task_key: Optional[str] = None,
+                   is_workflow_step: bool = False):
         """
         启动一个后台任务，并确保所有必要的回调函数（包括自定义的 status_callback）都被正确传递。
         """
@@ -244,11 +249,12 @@ class EventHandler:
         })
 
         # 3. 启动线程，并将这个构建好的 thread_kwargs 字典传递给包装器。
-        threading.Thread(target=self._task_wrapper, args=(target_func, thread_kwargs, task_name, task_key, on_success),
+        threading.Thread(target=self._task_wrapper,
+                         args=(target_func, thread_kwargs, task_name, task_key, on_success, is_workflow_step),
                          daemon=True).start()
 
-
-    def _task_wrapper(self, target_func: Callable, kwargs: Dict[str, Any], task_name: str, task_key: str, on_success: Optional[Callable] = None):
+    def _task_wrapper(self, target_func: Callable, kwargs: Dict[str, Any], task_name: str, task_key: str,
+                      on_success: Optional[Callable] = None, is_workflow_step: bool = False):
         """
         在后台线程中执行任务的包装器。
         (此方法无需修改，它会正确地将接收到的 kwargs 解包并传递给目标函数)
@@ -266,17 +272,19 @@ class EventHandler:
             e = exc
             logger.error(_("任务 '{}' 发生错误: {}").format(task_name, exc))
         finally:
-            final_data = None
-            if self.app.cancel_current_task_event.is_set():
-                final_data = (False, task_name, "CANCELLED", task_key)
-            elif e:
-                final_data = (False, task_name, e, task_key)
-            else:
-                final_data = (True, task_name, result, task_key)
+            # 只有在不是工作流中间步骤时，才发送通用的 "task_done" 消息
+            if not is_workflow_step:
+                final_data = None
+                if self.app.cancel_current_task_event.is_set():
+                    final_data = (False, task_name, "CANCELLED", task_key)
+                elif e:
+                    final_data = (False, task_name, e, task_key)
+                else:
+                    final_data = (True, task_name, result, task_key)
 
-            if final_data:
-                self.app.message_queue.put(("task_done", final_data))
-
+                if final_data:
+                    self.app.message_queue.put(("task_done", final_data))
+            # 如果是工作流步骤，则不执行任何操作，完全依赖 on_success 回调
 
     def _handle_startup_complete(self, data: dict):
         app = self.app
@@ -326,13 +334,27 @@ class EventHandler:
         app.ui_manager.update_ui_from_config()
         app.ui_manager.update_button_states()
 
-
-
     def _handle_startup_failed(self, data: str):
         _ = self.app._
         self.app.ui_manager._hide_progress_dialog()
         self.app.ui_manager.show_error_message(_("启动错误"), str(data))
         self.app.ui_manager.update_button_states()
+
+    def _handle_phylo_step_muscle_done(self, workflow_instance: Any):
+        """委托：将MUSCLE完成事件转发给对应的工作流实例。"""
+        if workflow_instance:
+            workflow_instance._handle_muscle_done()
+
+    def _handle_phylo_step_trim_done(self, workflow_instance: Any):
+        """委托：将trimAl完成事件转发给对应的工作流实例。"""
+        if workflow_instance:
+            workflow_instance._handle_trim_done()
+
+    def _handle_phylo_step_iqtree_done(self, workflow_instance: Any):
+        """委托：将IQ-TREE完成事件转发给对应的工作流实例。"""
+        # 为了保持接口一致，我们直接调用最终处理方法。
+        if workflow_instance:
+            workflow_instance._handle_iqtree_done()
 
     def _handle_config_load_task_done(self, data: tuple):
         """
@@ -347,7 +369,6 @@ class EventHandler:
         if not success:
             app.ui_manager.show_error_message(_("加载失败"), str(loaded_config))
             return
-
 
         # 成功路径 (level 为 'info' 或 'warning' 时会执行这里)
         root_config_path = os.path.abspath("config.yml")
@@ -404,7 +425,6 @@ class EventHandler:
                     selected_genome = download_tab.selected_genome_var.get()
                     app.after(50, lambda: download_tab._update_dynamic_widgets(selected_genome))
                     logger.info(_("数据下载选项卡状态已在任务 '{}' 完成后自动刷新。").format(task_display_name))
-
 
     def _handle_error(self, data: str):
         _ = self.app._
@@ -489,8 +509,6 @@ class EventHandler:
         app.ui_manager.save_ui_settings()
         app.ui_manager._update_log_tag_colors()
 
-
-
     def toggle_log_viewer(self):
         app = self.app
         _ = self.app._
@@ -501,8 +519,6 @@ class EventHandler:
             else:
                 app.log_text_container.grid_remove()
         app.toggle_log_button.configure(text=_("隐藏日志") if app.log_viewer_visible else _("显示日志"))
-
-
 
     def load_config_file(self, filepath: Optional[str] = None):
         _ = self.app._
@@ -550,7 +566,6 @@ class EventHandler:
                                                              "on_cancel": None}))
         threading.Thread(target=self._generate_default_configs_thread, args=(root_dir,), daemon=True).start()
 
-
     def _generate_default_configs_thread(self, output_dir: str):
         _ = self.app._
         try:
@@ -560,7 +575,8 @@ class EventHandler:
             if success:
                 self.app.message_queue.put(("progress", (100, _("配置文件生成完成。"))))
                 self.app.message_queue.put(
-                    ("task_done", (True, _("生成默认配置"), {'action': 'load_new_config', 'path': new_cfg_path}, "generate_config")))
+                    ("task_done",
+                     (True, _("生成默认配置"), {'action': 'load_new_config', 'path': new_cfg_path}, "generate_config")))
             else:
                 self.app.message_queue.put(("error", _("生成默认配置文件失败。")))
         except Exception as e:
@@ -685,7 +701,9 @@ class EventHandler:
             for cit in citations: add_label(cit, content_font)
             add_separator()
             add_label(_("许可证"), header_font)
-            add_label(_("本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。"), content_font)
+            add_label(
+                _("本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。"),
+                content_font)
             add_separator()
             add_label(_("免责声明"), header_font)
             add_label(
@@ -693,11 +711,13 @@ class EventHandler:
                 content_font
             )
             add_label(
-                "2.\u00A0" + _("用户责任：所有基因组数据的下载、处理和分析均由用户独立执行。用户有责任确保其行为遵守原始数据提供方设定的所有许可、使用条款和发表限制。"),
+                "2.\u00A0" + _(
+                    "用户责任：所有基因组数据的下载、处理和分析均由用户独立执行。用户有责任确保其行为遵守原始数据提供方设定的所有许可、使用条款和发表限制。"),
                 content_font
             )
             add_label(
-                "3.\u00A0" + _("无担保声明：本工具及其生成的分析结果仅供科研目的“按原样”提供，我们对其准确性或特定用途的适用性不作任何保证。"),
+                "3.\u00A0" + _(
+                    "无担保声明：本工具及其生成的分析结果仅供科研目的“按原样”提供，我们对其准确性或特定用途的适用性不作任何保证。"),
                 content_font
             )
 
@@ -1028,7 +1048,6 @@ class EventHandler:
                          'cancel_event': app.cancel_current_task_event, 'progress_callback': self.gui_progress_callback}
         threading.Thread(target=self._fetch_models_thread, kwargs=thread_kwargs, daemon=True).start()
 
-
     def _fetch_models_thread(self, **kwargs):
         provider = kwargs.get('provider')
         _ = self.app._
@@ -1054,7 +1073,6 @@ class EventHandler:
             self.app.message_queue.put(("progress", (100, _("刷新完成。"))))
             self.app.message_queue.put(("hide_progress_dialog", None))
             self.app.active_task_name = None
-
 
     def gui_progress_callback(self, percentage: float, message: str):
         self.app.message_queue.put(("progress", (percentage, message)))

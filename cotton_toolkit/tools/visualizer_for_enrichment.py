@@ -1,4 +1,4 @@
-﻿# cotton_toolkit/tools/visualizer.py
+﻿# cotton_toolkit/tools/visualizer_for_enrichment.py
 import traceback
 
 import pandas as pd

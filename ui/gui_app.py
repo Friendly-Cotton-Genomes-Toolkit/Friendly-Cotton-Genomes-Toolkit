@@ -126,13 +126,13 @@ class CottonToolkitApp(ttkb.Window):
             "arabidopsis_conversion": _("棉花-拟南芥互转"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"),
             "quantification":_("表达量标准化"),"blast": _("本地BLAST"),
-            "ai_assistant": _("AI助手"),
+            "ai_assistant": _("AI助手"),"phylogenetics": _("系统发育"),
         }
 
     TOOL_TAB_ORDER = [
         "download", "annotation", "enrichment", "sequence_extraction", "seq_analysis",
         "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion",
-        "gff_query","quantification","blast", "ai_assistant",
+        "gff_query","quantification","blast","phylogenetics", "ai_assistant",
     ]
 
 
@@ -845,6 +845,7 @@ class CottonToolkitApp(ttkb.Window):
             "gff_query": GFFQueryTab,
             "quantification": QuantificationTab,
             "blast": BlastTab,
+            "phylogenetics": PhylogeneticsTab,
             "ai_assistant": AIAssistantTab,
         }
 

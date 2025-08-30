@@ -76,7 +76,6 @@ class ConfirmationDialog(tk.Toplevel):
         self.destroy()
 
 
-# 升级 MessageDialog 类以支持超链接
 class MessageDialog(ttkb.Toplevel):
     """
     一个通用的、带主题的消息对话框。
@@ -368,8 +367,6 @@ class FirstLaunchDialog(ttkb.Toplevel):
         self.destroy()
 
 
-# 在 dialogs.py 文件末尾添加这个新类
-
 class HelpDialog(tk.Toplevel):
     """
     一个专门用于显示帮助信息和数据格式示例的对话框。
@@ -433,4 +430,139 @@ class HelpDialog(tk.Toplevel):
         x = (screen_width - dialog_width) // 2
         y = (screen_height - dialog_height) // 2
         self.geometry(f"+{x}+{y}")
+        self.wait_window(self)
+
+
+class TrimmingDecisionDialog(ttkb.Toplevel):
+    """一个用于决定是否执行trimAl的交互式对话框。"""
+
+    def __init__(self, parent, title: str, stats: dict, translator: callable):
+        super().__init__(parent)
+        self.title(title)
+        self.transient(parent)
+        self.grab_set()
+
+        self._ = translator
+        self.result = "cancel"  # 默认结果为取消
+
+        main_frame = ttkb.Frame(self, padding=20)
+        main_frame.pack(expand=True, fill="both")
+
+        # --- 显示统计信息 ---
+        stats_frame = ttkb.LabelFrame(main_frame, text=self._("比对结果统计"), bootstyle="primary")
+        stats_frame.pack(fill="x", pady=(0, 15))
+
+        stats_text = (
+            f"{self._('序列数量')}: {stats.get('sequences', 'N/A')}\n"
+            f"{self._('比对长度')}: {stats.get('length', 'N/A')}\n"
+            f"{self._('总缺口(Gaps)比例')}: {stats.get('gap_percentage', 0.0):.2f}%"
+        )
+        ttkb.Label(stats_frame, text=stats_text, justify="left").pack(padx=10, pady=10, anchor="w")
+
+        # --- 显示程序建议 ---
+        reco_frame = ttkb.LabelFrame(main_frame, text=self._("程序建议"), bootstyle="info")
+        reco_frame.pack(fill="x", pady=(0, 20))
+
+        reco_label = ttkb.Label(reco_frame, text=stats.get('recommendation', self._("无建议")), wraplength=450,
+                                justify="left")
+        reco_label.pack(padx=10, pady=10, anchor="w")
+
+        # --- 创建按钮 ---
+        button_frame = ttkb.Frame(main_frame)
+        button_frame.pack(fill="x")
+        button_frame.columnconfigure((0, 1, 2), weight=1)
+
+        self.trim_button = ttkb.Button(button_frame, text=self._("执行修建 (推荐)"), command=self._on_trim,
+                                       bootstyle="success")
+        self.trim_button.grid(row=0, column=0, padx=5, sticky="ew")
+
+        self.skip_button = ttkb.Button(button_frame, text=self._("跳过修建"), command=self._on_skip,
+                                       bootstyle="warning-outline")
+        self.skip_button.grid(row=0, column=1, padx=5, sticky="ew")
+
+        self.cancel_button = ttkb.Button(button_frame, text=self._("取消任务"), command=self._on_cancel,
+                                         bootstyle="danger")
+        self.cancel_button.grid(row=0, column=2, padx=5, sticky="ew")
+
+        # 居中显示
+        self.update_idletasks()
+        parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
+        parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
+        w, h = self.winfo_width(), self.winfo_height()
+        x = parent_x + (parent_w - w) // 2
+        y = parent_y + (parent_h - h) // 2
+        self.geometry(f"+{x}+{y}")
+
+        self.wait_window()
+
+    def _on_trim(self):
+        self.result = "trim"
+        self.destroy()
+
+    def _on_skip(self):
+        self.result = "skip"
+        self.destroy()
+
+    def _on_cancel(self):
+        self.result = "cancel"
+        self.destroy()
+
+
+class CopyrightDialog(tk.Toplevel):
+    """
+    一个通用的对话框，用于显示版权、所用软件和免责声明。
+    """
+
+    def __init__(self, parent, title: str, software_list: List[str], translator: Callable):
+        super().__init__(parent)
+        self.title(title)
+        self.transient(parent)
+        self.grab_set()
+        self.resizable(False, False)
+        self._ = translator
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.bind("<Escape>", lambda event: self.destroy())
+
+        main_frame = ttkb.Frame(self, padding=(30, 25))
+        main_frame.pack(expand=True, fill="both")
+
+        # --- Message Section ---
+        message_frame = ttkb.LabelFrame(main_frame, text=self._("使用的核心工具"), bootstyle="info", padding=15)
+        message_frame.pack(fill="x", pady=(0, 15))
+
+        software_text = "\n".join([f"  • {name}" for name in software_list])
+        main_message = self._(
+            "本分析流程依赖以下核心开源软件：\n\n"
+            "{software_list}\n\n"
+            "请在发表学术成果时恰当引用这些工具。\n"
+            "详细的引用信息和许可证请参阅主程序的“关于”页面。"
+        ).format(software_list=software_text)
+
+        ttkb.Label(message_frame, text=main_message, wraplength=450, justify="left").pack(fill="x")
+
+        # --- Disclaimer Section ---
+        disclaimer_frame = ttkb.LabelFrame(main_frame, text=self._("免责声明"), bootstyle="warning", padding=15)
+        disclaimer_frame.pack(fill="x", pady=(0, 20))
+
+        disclaimer_text = self._(
+            "上述工具均为用户自行下载、安装与使用，本程序不涉及分发、修改等内容。 "
+            "本程序遵循 Apache-2.0 许可证，旨在合法调用和使用上述工具，用户需自行确保对各工具许可证的遵循。"
+        )
+        ttkb.Label(disclaimer_frame, text=disclaimer_text, wraplength=450, justify="left").pack(fill="x")
+
+        # --- Button ---
+        button_frame = ttkb.Frame(main_frame)
+        button_frame.pack(fill="x")
+        ok_button = ttkb.Button(button_frame, text=self._("确定"), command=self.destroy, bootstyle="primary")
+        ok_button.pack()
+
+        # --- Center Window ---
+        self.update_idletasks()
+        parent_x, parent_y = parent.winfo_x(), parent.winfo_y()
+        parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
+        w, h = self.winfo_width(), self.winfo_height()
+        x = parent_x + (parent_w - w) // 2
+        y = parent_y + (parent_h - h) // 2
+        self.geometry(f"+{x}+{y}")
+
         self.wait_window(self)

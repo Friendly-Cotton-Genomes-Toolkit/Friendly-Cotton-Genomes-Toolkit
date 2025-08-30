@@ -14,5 +14,6 @@ from .preprocessing import (
 )
 from .blast import run_blast_pipeline
 from .sequence_query import run_sequence_extraction
-from .sequence_analysis import run_analyze_sequences, run_seq_direct_analysis
+from .sequence_analysis import run_seq_analysis
 from .quantification import run_expression_normalization
+from .phylogenetics import run_trimal_trimming,run_iqtree_inference,run_muscle_alignment,get_alignment_statistics,visualize_tree

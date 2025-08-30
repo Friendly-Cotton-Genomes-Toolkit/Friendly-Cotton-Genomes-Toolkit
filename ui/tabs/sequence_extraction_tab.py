@@ -8,7 +8,6 @@ import ttkbootstrap as ttkb
 from cotton_toolkit.pipelines import run_sequence_extraction
 from .base_tab import BaseTab
 from ..dialogs import MessageDialog
-from .sequence_analysis_tab import show_parameter_help
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -39,15 +38,6 @@ class SequenceExtractionTab(BaseTab):
         self.single_gene_mode_var = tk.BooleanVar(value=True)  # 默认设置为单基因模式
         self.sequence_type_var = tk.StringVar(value='cds')
 
-        # --- 为序列分析功能定义变量 ---
-        self.perform_analysis_var = tk.BooleanVar(value=False)
-        self.organelle_type_var = tk.StringVar(value='nucleus')
-
-        self.analysis_output_frame = None
-        self.analysis_output_text = None
-        self.copy_analysis_button = None
-        self.copy_analysis_status_label = None
-
         # 步骤2：调用父类构造函数
         super().__init__(parent, app, translator=translator)
 
@@ -57,12 +47,7 @@ class SequenceExtractionTab(BaseTab):
 
         # --- 步骤4：刷新初始状态 ---
         self.update_from_config()
-        self._toggle_analysis_options_state()
-        self._toggle_analysis_output_visibility()  # 确保分析框初始状态正确
 
-
-    def _show_parameter_help(self):
-        return show_parameter_help(self.app)
 
     def _create_widgets(self):
         """创建此选项卡独有的所有UI控件。"""
@@ -70,7 +55,7 @@ class SequenceExtractionTab(BaseTab):
         parent_frame.grid_columnconfigure(0, weight=1)
 
         # --- 标题 ---
-        ttkb.Label(parent_frame, text=_("序列提取与分析"), font=self.app.app_title_font, bootstyle="primary").grid(
+        ttkb.Label(parent_frame, text=_("序列提取"), font=self.app.app_title_font, bootstyle="primary").grid(
             row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 
         # --- 输入卡片 ---
@@ -89,11 +74,10 @@ class SequenceExtractionTab(BaseTab):
         seq_type_frame = ttkb.Frame(input_card)
         seq_type_frame.grid(row=1, column=1, sticky="w", padx=10, pady=5)
         cds_radio = ttkb.Radiobutton(seq_type_frame, text="CDS", variable=self.sequence_type_var, value='cds',
-                                     bootstyle="primary", command=self._toggle_analysis_options_state)
+                                     bootstyle="primary")
         cds_radio.pack(side="left", padx=(0, 15))
         protein_radio = ttkb.Radiobutton(seq_type_frame, text=_("蛋白质"), variable=self.sequence_type_var,
-                                         value='protein', bootstyle="primary",
-                                         command=self._toggle_analysis_options_state)
+                                         value='protein', bootstyle="primary")
         protein_radio.pack(side="left")
 
         ttkb.Label(input_card, text=_("基因ID列表:"), font=self.app.app_font_bold).grid(
@@ -113,31 +97,6 @@ class SequenceExtractionTab(BaseTab):
                                                   command=self._toggle_mode)
         self.single_gene_check.pack(side="left", padx=15, pady=10)
 
-        # --- 分析设置卡片 ---
-        self.analysis_card = ttkb.LabelFrame(parent_frame, text=_("分析设置"), bootstyle="secondary")
-        self.analysis_card.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
-        self.analysis_card.grid_columnconfigure(1, weight=1)
-
-        self.analysis_check = ttkb.Checkbutton(
-            self.analysis_card, text=_("开启序列分析"),
-            variable=self.perform_analysis_var,
-            bootstyle="success-round-toggle",
-            command=self._toggle_analysis_output_visibility
-        )
-        self.analysis_check.grid(row=0, column=0, padx=15, pady=10, sticky="w")
-
-        organelle_frame = ttkb.Frame(self.analysis_card)
-        organelle_frame.grid(row=0, column=1, sticky="e", padx=10, pady=5)
-        ttkb.Label(organelle_frame, text=_("密码子表:")).pack(side="left", padx=(0, 10))
-        self.radio_nucleus = ttkb.Radiobutton(organelle_frame, text=_("细胞核 (标准)"),
-                                              variable=self.organelle_type_var, value='nucleus', bootstyle="info")
-        self.radio_nucleus.pack(side="left", padx=5)
-        self.radio_chloro = ttkb.Radiobutton(organelle_frame, text=_("叶绿体 (质体)"), variable=self.organelle_type_var,
-                                             value='chloroplast', bootstyle="info")
-        self.radio_chloro.pack(side="left", padx=5)
-        self.radio_mito = ttkb.Radiobutton(organelle_frame, text=_("线粒体 (标准)"), variable=self.organelle_type_var,
-                                           value='mitochondria', bootstyle="info")
-        self.radio_mito.pack(side="left", padx=5)
 
         # --- 输出卡片 ---
         self.output_card = ttkb.LabelFrame(parent_frame, text=_("输出结果"), bootstyle="secondary")
@@ -148,7 +107,7 @@ class SequenceExtractionTab(BaseTab):
         self.multi_gene_output_frame = ttk.Frame(self.output_card)
         self.multi_gene_output_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
         self.multi_gene_output_frame.grid_columnconfigure(1, weight=1)
-        ttkb.Label(self.multi_gene_output_frame, text=_("输出CSV文件:"), font=self.app.app_font_bold).grid(
+        ttkb.Label(self.multi_gene_output_frame, text=_("输出FASTA文件:"), font=self.app.app_font_bold).grid(
             row=0, column=0, padx=(10, 5), pady=5, sticky="w")
         self.output_file_entry = ttk.Entry(self.multi_gene_output_frame)
         self.output_file_entry.grid(row=0, column=1, sticky="ew", padx=(0, 5), pady=5)
@@ -156,7 +115,7 @@ class SequenceExtractionTab(BaseTab):
                     command=self._browse_save_file, bootstyle="info-outline").grid(
             row=0, column=2, padx=(0, 5), pady=5)
 
-        # --- 单基因模式的输出控件 (分为序列和分析两个部分) ---
+        # --- 单基因模式的输出控件 ---
         self.single_gene_output_frame = ttk.Frame(self.output_card)
         self.single_gene_output_frame.grid_columnconfigure(0, weight=1)
 
@@ -182,33 +141,6 @@ class SequenceExtractionTab(BaseTab):
                                        bootstyle="success-outline")
         self.copy_button.pack(side="left")
 
-        # --- 2. 分析结果框 ---
-        self.analysis_output_frame = ttkb.LabelFrame(self.single_gene_output_frame, text=_("分析结果"),
-                                                     bootstyle="info")
-        self.analysis_output_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
-        self.analysis_output_frame.grid_columnconfigure(0, weight=1)
-
-        self.analysis_output_text = tk.Text(self.analysis_output_frame, height=10, font=self.app.app_font_mono,
-                                            wrap="word", state="disabled", relief="solid", bd=1,
-                                            background=output_text_bg)
-        self.analysis_output_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        analysis_scrollbar = ttkb.Scrollbar(self.analysis_output_frame, orient="vertical",
-                                            command=self.analysis_output_text.yview, bootstyle="round-secondary")
-        analysis_scrollbar.grid(row=0, column=1, sticky="ns")
-        self.analysis_output_text.configure(yscrollcommand=analysis_scrollbar.set)
-
-        copy_analysis_frame = ttk.Frame(self.analysis_output_frame)
-        copy_analysis_frame.grid(row=1, column=0, columnspan=2, sticky="e", padx=5, pady=(0, 5))
-        self.copy_analysis_status_label = ttkb.Label(copy_analysis_frame, text="", bootstyle="success")
-        self.copy_analysis_status_label.pack(side="left", padx=(0, 10))
-
-        help_button = ttkb.Button(copy_analysis_frame, text=_("参数帮助"), command=self._show_parameter_help,
-                                  bootstyle="info-outline")
-        help_button.pack(side="left", padx=(0, 5))
-
-        self.copy_analysis_button = ttkb.Button(copy_analysis_frame, text=_("复制分析"),
-                                                command=self._copy_analysis_to_clipboard, bootstyle="success-outline")
-        self.copy_analysis_button.pack(side="left")
 
         # --- 绑定事件和设置初始状态 ---
         self.gene_input_text.bind("<KeyRelease>", self._on_gene_input_change)
@@ -217,7 +149,6 @@ class SequenceExtractionTab(BaseTab):
         self.gene_input_text.bind("<FocusOut>", lambda e: self.app.ui_manager._handle_focus_out(e, self.gene_input_text,
                                                                                                 self._get_current_placeholder_key()))
         self._toggle_mode()
-
 
 
     def _toggle_analysis_options_state(self):
@@ -253,14 +184,12 @@ class SequenceExtractionTab(BaseTab):
     def _toggle_mode(self):
         """根据模式切换UI，并更新占位符。"""
         # 清空所有输出
-        for widget, label in [(self.output_text, self.copy_status_label),
-                              (self.analysis_output_text, self.copy_analysis_status_label)]:
-            if widget:
-                widget.configure(state="normal")
-                widget.delete("1.0", tk.END)
-                widget.configure(state="disabled")
-            if label:
-                label.configure(text="")
+        if self.output_text:
+            self.output_text.configure(state="normal")
+            self.output_text.delete("1.0", tk.END)
+            self.output_text.configure(state="disabled")
+        if self.copy_status_label:
+            self.copy_status_label.configure(text="")
 
         self.gene_input_text.delete("1.0", tk.END)
 
@@ -273,11 +202,10 @@ class SequenceExtractionTab(BaseTab):
             self.multi_gene_output_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
             self.gene_input_text.configure(height=10, wrap="word")
 
-        # 联动更新分析结果框的可见性
-        self._toggle_analysis_output_visibility()
         key = self._get_current_placeholder_key()
         self.app.ui_manager._handle_focus_out(None, self.gene_input_text, key)
         self.app.update_idletasks()
+
 
     def _get_current_placeholder_key(self) -> str:
         """根据当前模式返回正确的占位符键。"""
@@ -295,15 +223,16 @@ class SequenceExtractionTab(BaseTab):
                                                _("无可用基因组"))
 
     def _browse_save_file(self):
-        """打开文件对话框以选择CSV保存位置。"""
+        """打开文件对话框以选择FASTA保存位置。"""
         filepath = filedialog.asksaveasfilename(
-            title=_("选择CSV文件保存位置"),
-            defaultextension=".csv",
-            filetypes=[(_("CSV文件"), "*.csv"), (_("所有文件"), "*.*")]
+            title=_("选择FASTA文件保存位置"),
+            defaultextension=".fasta",
+            filetypes=[(_("FASTA文件"), "*.fasta *.fa"), (_("所有文件"), "*.*")]
         )
         if filepath:
             self.output_file_entry.delete(0, tk.END)
             self.output_file_entry.insert(0, filepath)
+
 
     def _copy_to_clipboard(self, text_widget: tk.Text, status_label: ttk.Label):
         """ 通用的复制函数。"""
@@ -316,51 +245,20 @@ class SequenceExtractionTab(BaseTab):
 
     def _display_single_gene_result(self, result: Any):
         """
-        在单基因模式下，将提取和分析结果显示在UI的文本框中。
-        能够处理包含分析数据的新字典结构。
+        在单基因模式下，将提取的序列结果显示在UI的文本框中。
         """
         # 清空
         self.output_text.configure(state="normal")
-        self.analysis_output_text.configure(state="normal")
         self.output_text.delete("1.0", tk.END)
-        self.analysis_output_text.delete("1.0", tk.END)
         self.copy_status_label.configure(text="")
-        self.copy_analysis_status_label.configure(text="")
 
         sequence_content = ""
-        analysis_content = ""
 
         if isinstance(result, dict) and result:
             gene_id = list(result.keys())[0]
-            data = result[gene_id]
-
-            # Case 1: 结果是包含分析的复杂字典
-            if isinstance(data, dict) and 'Sequence' in data:
-                # 填充序列内容
-                sequence = data['Sequence']
-                sequence_content += f"> {gene_id}\n"
-                sequence_content += "\n".join([sequence[i:i + 80] for i in range(0, len(sequence), 80)])
-
-                # 填充分析内容
-                has_analysis = False
-                for key, value in data.items():
-                    if key not in ['Sequence', 'GeneID']:
-                        has_analysis = True
-                        if key != 'RSCU_Values':
-                            analysis_content += f"{key}: {value}\n"
-                # 单独处理RSCU，放在最后
-                if 'RSCU_Values' in data and data['RSCU_Values']:
-                    analysis_content += f"RSCU_Values: {data['RSCU_Values']}\n"
-
-                if not has_analysis:
-                    analysis_content = _("未执行分析或无分析结果。")
-
-            # Case 2: 结果是只包含序列的简单字典 (未开启分析)
-            elif isinstance(data, str):
-                sequence = data
-                sequence_content += f"> {gene_id}\n"
-                sequence_content += "\n".join([sequence[i:i + 80] for i in range(0, len(sequence), 80)])
-                analysis_content = _("分析功能未开启。")
+            sequence = result[gene_id]
+            sequence_content += f"> {gene_id}\n"
+            sequence_content += "\n".join([sequence[i:i + 80] for i in range(0, len(sequence), 80)])
 
         elif isinstance(result, str):
             sequence_content = f"{_('错误')}:\n\n{result}"
@@ -369,11 +267,10 @@ class SequenceExtractionTab(BaseTab):
 
         # 插入内容
         self.output_text.insert(tk.END, sequence_content.strip())
-        self.analysis_output_text.insert(tk.END, analysis_content.strip())
 
         # 设为只读
         self.output_text.configure(state="disabled")
-        self.analysis_output_text.configure(state="disabled")
+
 
     def _copy_sequence_to_clipboard(self):
         """ 只复制序列结果。"""
@@ -422,13 +319,11 @@ class SequenceExtractionTab(BaseTab):
         if not is_single_mode:
             output_path = self.output_file_entry.get().strip()
             if not output_path:
-                self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出CSV文件的路径。"))
+                self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出FASTA文件的路径。"))
                 return
 
-        # --- 获取用户选择的序列类型和分析选项 ---
+        # --- 获取用户选择的序列类型 ---
         sequence_type_selected = self.sequence_type_var.get()
-        perform_analysis_selected = self.perform_analysis_var.get()
-        organelle_type_selected = self.organelle_type_var.get()
 
         # --- 创建通信工具和对话框 ---
         cancel_event = threading.Event()
@@ -454,8 +349,6 @@ class SequenceExtractionTab(BaseTab):
             'gene_ids': gene_ids,
             'sequence_type': sequence_type_selected,
             'output_path': output_path,
-            'perform_analysis': perform_analysis_selected,
-            'organelle_type': organelle_type_selected,
             'cancel_event': cancel_event,
             'progress_callback': ui_progress_updater
         }
@@ -472,10 +365,7 @@ class SequenceExtractionTab(BaseTab):
 
                 # 根据结果类型判断并返回最终消息给任务处理器
                 if isinstance(result, dict) and result:
-                    if perform_analysis_selected:
-                        return _("序列提取与分析已成功完成，结果已显示。")
-                    else:
-                        return _("序列已成功提取并显示在输出框中。")
+                    return _("序列已成功提取并显示在输出框中。")
                 elif isinstance(result, str):  # 可能是错误消息
                     return result
 
@@ -483,8 +373,6 @@ class SequenceExtractionTab(BaseTab):
             return result
 
         task_name_str = _("{}序列提取").format(sequence_type_selected.upper())
-        if perform_analysis_selected:
-            task_name_str += _("与分析")
 
         self.app.event_handler.start_task(
             task_name=task_name_str,

@@ -11,7 +11,7 @@ from cotton_toolkit.config.models import MainConfig, HomologySelectionCriteria
 from cotton_toolkit.pipelines.decorators import pipeline_task
 from cotton_toolkit.tools.annotator import Annotator
 from cotton_toolkit.tools.enrichment_analyzer import run_go_enrichment, run_kegg_enrichment
-from cotton_toolkit.tools.visualizer import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, \
+from cotton_toolkit.tools.visualizer_for_enrichment import plot_enrichment_bubble, plot_enrichment_bar, plot_enrichment_upset, \
     plot_enrichment_cnet, _generate_r_script_and_data
 from cotton_toolkit.utils.gene_utils import resolve_gene_ids, map_transcripts_to_genes
 
