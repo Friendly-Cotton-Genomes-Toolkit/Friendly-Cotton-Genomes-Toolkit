@@ -163,7 +163,7 @@ def run_expression_normalization(
     normalized_results.sort(key=lambda s: original_order.index(s.name.split('_')[0]))
     normalized_df = pd.concat(normalized_results, axis=1)
 
-    final_df = pd.concat([counts, normalized_df], axis=1)
+    final_df = normalized_df
 
     try:
         output_dir = os.path.dirname(output_path)

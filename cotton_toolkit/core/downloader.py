@@ -91,7 +91,7 @@ def _download_file_with_progress(
         cancel_event: Optional[threading.Event] = None
 ) -> bool:
     """
-    一个带有tqdm进度条和取消功能的文件下载辅助函数 (此函数保持不变)。
+    一个带有tqdm进度条和取消功能的文件下载辅助函数
     """
     target_dir = os.path.dirname(local_path)
     if target_dir:

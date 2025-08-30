@@ -250,11 +250,7 @@ def resolve_arabidopsis_ids_from_homology_db(
         assembly_id: str,
         gene_ids: List[str]
 ) -> Tuple[List[str], Optional[str]]:
-    """
-    【新增】模仿 resolve_gene_ids 的逻辑，但专门用于从同源表中智能解析拟南芥ID。
 
-    返回一个元组: (用于查询的ID列表, 探测到的处理模式)
-    """
     if not gene_ids:
         return [], None
 
