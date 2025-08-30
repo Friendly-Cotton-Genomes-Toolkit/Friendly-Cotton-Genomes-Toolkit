@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 import threading
 import traceback
 import webbrowser
@@ -15,6 +16,8 @@ from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUB
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
+from cotton_toolkit.utils.advanced_tools_test import check_muscle_executable, check_iqtree_executable, \
+    check_trimal_executable
 from cotton_toolkit.utils.localization import setup_localization
 from .dialogs import MessageDialog, ConfirmationDialog
 from cotton_toolkit.utils.gene_utils import identify_genome_from_gene_ids
@@ -42,7 +45,7 @@ class EventHandler:
 
     def _initialize_message_handlers(self) -> Dict[str, Callable]:
         """
-        【修改】增加对新消息类型的处理。
+        增加对新消息类型的处理。
         """
         handlers = {
             "startup_complete": self._handle_startup_complete,
@@ -54,6 +57,7 @@ class EventHandler:
             "progress": self._handle_progress,
             "ai_models_fetched": self._handle_ai_models_fetched,
             "ai_test_result": self._handle_ai_test_result,
+            "tool_test_done": self._handle_tool_test_done,
             "proxy_test_done": self._handle_proxy_test_done,
             "csv_columns_fetched": self._handle_csv_columns_fetched,
             "show_progress_dialog": self.ui_manager._show_progress_dialog,
@@ -454,12 +458,11 @@ class EventHandler:
             target_var.set(assembly_id)
 
         if warning_message:
+            # 防止在用户输入过程中，同一个警告信息反复弹出
             if current_text != self.last_ambiguity_text:
-                MessageDialog(
-                    parent=self.app,
+                self.app.ui_manager.show_warning_message(
                     title=_("注意：检测到歧义"),
-                    message=_(warning_message),
-                    icon_type="warning"
+                    message=_(warning_message)
                 )
                 self.last_ambiguity_text = current_text
 
@@ -836,6 +839,123 @@ class EventHandler:
                                      "on_cancel": None}))
         threading.Thread(target=self._test_proxy_thread, args=(proxies,), daemon=True).start()
 
+    def _handle_tool_test_done(self, data: tuple):
+        """
+        一个通用的处理器，用于显示任何外部工具的测试结果。
+        """
+        _ = self.app._
+        # data 的格式为: (工具名称, 是否成功, 结果消息)
+        tool_name, success, message = data
+        title = _("{} 测试结果").format(tool_name)
+        if success:
+            self.app.ui_manager.show_info_message(title, message)
+        else:
+            self.app.ui_manager.show_error_message(title, message)
+
+    def test_muscle_connection(self):
+        """
+        专门用于启动 MUSCLE 工具测试的公共方法。
+        """
+        _ = self.app._
+        try:
+            muscle_path = self.app.editor_widgets['advanced_tools.muscle_path']['widget'].get().strip()
+        except KeyError:
+            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到MUSCLE路径输入框。"))
+            return
+
+        self.app.message_queue.put(("show_progress_dialog", {
+            "title": _("正在测试 MUSCLE..."),
+            "message": _("正在执行命令..."),
+            "on_cancel": None
+        }))
+        threading.Thread(target=self._test_muscle_thread, args=(muscle_path,), daemon=True).start()
+
+    def _test_muscle_thread(self, muscle_path: str):
+        """
+        在后台线程中调用后端函数来测试 MUSCLE。
+        """
+        _ = self.app._
+
+        # 1. 调用后端测试函数
+        success, message = check_muscle_executable(muscle_path)
+
+        # 2. 如果成功，翻译成功的提示语
+        if success:
+            message = message.replace("Success!", _("检测成功！"))
+
+        # 3. 将包含工具名、成功状态和最终消息的结果发送到UI线程
+        self.app.message_queue.put(("tool_test_done", ("MUSCLE", success, message)))
+        self.app.message_queue.put(("hide_progress_dialog", None))
+
+    def test_iqtree_connection(self):
+        """
+        专门用于启动 IQ-TREE 工具测试的公共方法。
+        """
+        _ = self.app._
+        try:
+            iqtree_path = self.app.editor_widgets['advanced_tools.iqtree_path']['widget'].get().strip()
+        except KeyError:
+            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到IQ-TREE路径输入框。"))
+            return
+
+        self.app.message_queue.put(("show_progress_dialog", {
+            "title": _("正在测试 IQ-TREE..."),
+            "message": _("正在执行命令..."),
+            "on_cancel": None
+        }))
+        threading.Thread(target=self._test_iqtree_thread, args=(iqtree_path,), daemon=True).start()
+
+    def _test_iqtree_thread(self, iqtree_path: str):
+        """
+        在后台线程中调用后端函数来测试 IQ-TREE。
+        """
+        _ = self.app._
+
+        # 调用独立的后端测试函数
+        success, message = check_iqtree_executable(iqtree_path)
+
+        # 如果成功，翻译成功的提示语
+        if success:
+            message = message.replace("Success!", _("检测成功！"))
+
+        # 使用通用的处理器来显示最终结果
+        self.app.message_queue.put(("tool_test_done", ("IQ-TREE", success, message)))
+        self.app.message_queue.put(("hide_progress_dialog", None))
+
+    def test_trimal_connection(self):
+        """
+        专门用于启动 trimAl 工具测试的公共方法。
+        """
+        _ = self.app._
+        try:
+            trimal_path = self.app.editor_widgets['advanced_tools.trimal_path']['widget'].get().strip()
+        except KeyError:
+            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到trimAl路径输入框。"))
+            return
+
+        self.app.message_queue.put(("show_progress_dialog", {
+            "title": _("正在测试 trimAl..."),
+            "message": _("正在执行命令..."),
+            "on_cancel": None
+        }))
+        threading.Thread(target=self._test_trimal_thread, args=(trimal_path,), daemon=True).start()
+
+    def _test_trimal_thread(self, trimal_path: str):
+        """
+        在后台线程中调用后端函数来测试 trimAl。
+        """
+        _ = self.app._
+
+        # 调用独立的后端测试函数
+        success, message = check_trimal_executable(trimal_path)
+
+        # 如果成功，翻译成功的提示语
+        if success:
+            message = message.replace("Success!", _("检测成功！"))
+
+        # 使用通用的处理器来显示最终结果
+        self.app.message_queue.put(("tool_test_done", ("trimAl", success, message)))
+        self.app.message_queue.put(("hide_progress_dialog", None))
 
     def _test_proxy_thread(self, proxies: dict):
         _ = self.app._

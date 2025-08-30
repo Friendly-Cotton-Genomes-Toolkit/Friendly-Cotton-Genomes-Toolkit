@@ -96,6 +96,21 @@ class HomologySelectionCriteria(BaseModel):
     def _default_ascending() -> List[bool]:
         return [False, True]
 
+class AdvancedToolsConfig(BaseModel):
+    muscle_path: Optional[str] = Field(
+        default=None,
+        description="Path to the MUSCLE executable for sequence alignment."
+    )
+
+    iqtree_path: Optional[str] = Field(
+        default=None,
+        description="Path to the IQ-TREE executable for phylogenetic tree construction."
+    )
+
+    trimal_path: Optional[str] = Field(
+        default=None,
+        description="Path to the trimAl executable for sequence alignment trimming."
+    )
 
 class MainConfig(BaseModel):
     log_level: str = "INFO"
@@ -105,6 +120,7 @@ class MainConfig(BaseModel):
     ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig)
     ai_prompts: AIPromptsConfig = Field(default_factory=AIPromptsConfig)
     batch_ai_processor: BatchAIProcessorConfig = Field(default_factory=BatchAIProcessorConfig)
+    advanced_tools: AdvancedToolsConfig = Field(default_factory=AdvancedToolsConfig)
     config_file_abs_path_: Optional[str] = Field(default=None, exclude=True)
 
     # 忽略未知的配置项

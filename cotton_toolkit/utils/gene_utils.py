@@ -21,11 +21,11 @@ except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
-logger = logging.getLogger("cotton_toolkit.gene_utils")
+logger = logging.getLogger("cotton_toolkit.utils.gene_utils")
 
 def parse_gene_id(gene_id: str) -> Optional[Tuple[str, str]]:
     """
-    【全新升级】从一个棉花基因ID中解析出亚组和染色体编号。
+    从一个棉花基因ID中解析出亚组和染色体编号。
     """
     if not isinstance(gene_id, str):
         return None
@@ -48,7 +48,7 @@ def parse_gene_id(gene_id: str) -> Optional[Tuple[str, str]]:
 
 def normalize_gene_ids(gene_ids: pd.Series, pattern: str) -> pd.Series:
     """
-    【修正版】使用正则表达式从基因ID中提取标准部分。
+    使用正则表达式从基因ID中提取标准部分。
     """
     try:
         return gene_ids.str.extract(f"({pattern})", expand=True).iloc[:, 0]

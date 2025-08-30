@@ -83,6 +83,29 @@ class CottonToolkitApp(ttkb.Window):
             {'type': 'section', 'label_key': "AI 提示词模板"},
             {'type': 'text', 'label_key': "翻译提示词", 'config_path': 'ai_prompts.translation_prompt', 'height': 7},
             {'type': 'text', 'label_key': "分析提示词", 'config_path': 'ai_prompts.analysis_prompt', 'height': 7},
+
+            {'type': 'section', 'label_key': "高级功能"},
+            {'type': 'tool_entry',
+             'label_key': "MUSCLE可执行文件",
+             'config_path': 'advanced_tools.muscle_path',
+             'tip_key': "用于多序列比对的MUSCLE程序路径。",
+             'test_label_key': "测试",
+             'command': self.event_handler.test_muscle_connection
+             },
+            {'type': 'tool_entry',
+             'label_key': "IQ-TREE可执行文件",
+             'config_path': 'advanced_tools.iqtree_path',
+             'tip_key': "用于构建系统发育树的IQ-TREE程序路径。",
+             'test_label_key': "测试",
+             'command': self.event_handler.test_iqtree_connection
+             },
+            {'type': 'tool_entry',
+             'label_key': "trimAl可执行文件",
+             'config_path': 'advanced_tools.trimal_path',
+             'tip_key': "用于修建多序列比对结果的trimAl程序路径。",
+             'test_label_key': "测试",
+             'command': self.event_handler.test_trimal_connection
+             },
         ]
 
     @property
@@ -396,6 +419,10 @@ class CottonToolkitApp(ttkb.Window):
                 self._build_section(frame, item)
             elif item_type == 'entry':
                 self._build_entry(frame, item, comment_fg)
+            elif item_type == 'file_entry':
+                self._build_file_entry(frame, item, comment_fg)
+            elif item_type == 'tool_entry':
+                self._build_tool_entry(frame, item, comment_fg)
             elif item_type == 'optionmenu':
                 self._build_optionmenu(frame, item, comment_fg)
             elif item_type == 'checkbutton':
@@ -539,6 +566,78 @@ class CottonToolkitApp(ttkb.Window):
                                                                                                              use_proxy=True),
                                             bootstyle='info-outline')
             btn_proxy_refresh.pack(side="left", padx=(5, 0))
+
+    def _build_file_entry(self, frame, item, comment_fg):
+        """为文件路径创建一个带有'浏览'按钮的输入行。"""
+        lbl = ttkb.Label(frame, text=self._(item['label_key']))
+        lbl.grid(row=0, column=0, sticky="w", padx=(5, 10))
+        self.translatable_widgets[lbl] = item['label_key']
+
+        # 创建一个子框架来容纳输入框和按钮
+        widget_frame = ttkb.Frame(frame)
+        widget_frame.grid(row=0, column=1, sticky="ew")
+        widget_frame.grid_columnconfigure(0, weight=1)
+
+        entry = ttkb.Entry(widget_frame)
+        entry.grid(row=0, column=0, sticky="ew")
+        # 保存逻辑会把这个当作普通'entry'处理
+        self.editor_widgets[item['config_path']] = {'widget': entry, 'type': 'entry'}
+
+        # 定义可执行文件的类型，以适应不同操作系统
+        exe_filter = [("Executable", "*.exe"), ("All files", "*.*")] if sys.platform == "win32" else [
+            ("All files", "*")]
+
+        browse_button = ttkb.Button(
+            widget_frame,
+            text=self._("浏览..."),
+            command=lambda e=entry, f=exe_filter: self.event_handler._browse_file(e, f),
+            bootstyle="outline"
+        )
+        browse_button.grid(row=0, column=1, sticky="e", padx=(5, 0))
+        self.translatable_widgets[browse_button] = "浏览..."
+
+        if tip_key := item.get('tip_key'):
+            tip = ttkb.Label(frame, text=self._(tip_key), font=self.app_comment_font, foreground=comment_fg)
+            tip.grid(row=1, column=1, sticky="w", padx=5)
+            self.translatable_widgets[tip] = tip_key
+
+    def _build_tool_entry(self, frame, item, comment_fg):
+        """创建一个带有'浏览'和'测试'按钮的工具路径输入行。"""
+        lbl = ttkb.Label(frame, text=self._(item['label_key']))
+        lbl.grid(row=0, column=0, sticky="w", padx=(5, 10))
+        self.translatable_widgets[lbl] = item['label_key']
+
+        widget_frame = ttkb.Frame(frame)
+        widget_frame.grid(row=0, column=1, sticky="ew")
+        widget_frame.grid_columnconfigure(0, weight=1)
+
+        entry = ttkb.Entry(widget_frame)
+        entry.grid(row=0, column=0, sticky="ew")
+        self.editor_widgets[item['config_path']] = {'widget': entry, 'type': 'entry'}
+
+        exe_filter = [("Executable", "*.exe"), ("All files", "*.*")] if sys.platform == "win32" else [
+            ("All files", "*")]
+        browse_button = ttkb.Button(
+            widget_frame, text=self._("浏览..."), width=8,
+            command=lambda e=entry, f=exe_filter: self.event_handler._browse_file(e, f),
+            bootstyle="outline"
+        )
+        browse_button.grid(row=0, column=1, sticky="e", padx=(5, 5))
+        self.translatable_widgets[browse_button] = "浏览..."
+
+        test_label = item.get('test_label_key', "测试")
+        test_button = ttkb.Button(
+            widget_frame, text=self._(test_label), width=8,
+            command=item.get('command'),  # 从蓝图获取专属的测试命令
+            bootstyle="info-outline"
+        )
+        test_button.grid(row=0, column=2, sticky="e")
+        self.translatable_widgets[test_button] = test_label
+
+        if tip_key := item.get('tip_key'):
+            tip = ttkb.Label(frame, text=self._(tip_key), font=self.app_comment_font, foreground=comment_fg)
+            tip.grid(row=1, column=1, sticky="w", padx=5)
+            self.translatable_widgets[tip] = tip_key
 
 
     def _create_editor_widgets(self, parent):

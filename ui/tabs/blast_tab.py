@@ -1,6 +1,4 @@
-﻿# 文件路径: ui/tabs/blast_tab.py
-# 【已优化和注释版】
-import os
+﻿import os
 import tkinter as tk
 from tkinter import filedialog
 from typing import TYPE_CHECKING, List, Callable, Any

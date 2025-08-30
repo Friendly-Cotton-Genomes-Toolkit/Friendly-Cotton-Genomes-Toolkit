@@ -12,7 +12,6 @@ try:
 except ImportError:
     _ = lambda s: str(s)
 
-# 修改: 创建logger实例
 logger = logging.getLogger("cotton_toolkit.utils.localization")
 
 APP_NAME_FOR_I18N = "cotton_toolkit"
