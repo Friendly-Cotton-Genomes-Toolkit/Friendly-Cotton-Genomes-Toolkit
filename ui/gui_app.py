@@ -142,6 +142,7 @@ class CottonToolkitApp(ttkb.Window):
         self.editor_ui_built = False
         self.log_viewer_visible = False
         self.config_path_display_var = tk.StringVar()
+        self.sources_path_display_var = tk.StringVar()
         self.selected_language_var = tk.StringVar()
         self.selected_appearance_var = tk.StringVar()
 
@@ -670,7 +671,17 @@ class CottonToolkitApp(ttkb.Window):
         title_label = ttkb.Label(page, text=self._(self.title_text_key), font=self.app_title_font)
         title_label.pack(pady=(40, 10))
         self.translatable_widgets[title_label] = self.title_text_key
-        ttkb.Label(page, textvariable=self.config_path_display_var, font=self.app_font).pack(pady=(10, 20))
+
+        path_frame = ttkb.Frame(page)
+        path_frame.pack(pady=(10, 20), padx=20, fill="x")
+        path_frame.grid_columnconfigure(0, weight=1)
+
+        # 主配置文件路径
+        ttkb.Label(path_frame, textvariable=self.config_path_display_var, font=self.app_font).grid(row=0, column=0)
+
+        # 基因组源文件路径
+        ttkb.Label(path_frame, textvariable=self.sources_path_display_var, font=self.app_font).grid(row=1, column=0)
+
         cards_frame = ttkb.Frame(page)
         cards_frame.pack(pady=20, padx=20, fill="x", expand=False)
         cards_frame.grid_columnconfigure((0, 1), weight=1)

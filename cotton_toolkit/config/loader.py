@@ -5,7 +5,7 @@ import re
 
 import yaml
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 from urllib.parse import urlparse
 
 from pydantic import ValidationError
@@ -166,16 +166,27 @@ def get_genome_data_sources(config: MainConfig) -> Dict[str, GenomeSourceItem]:
 
 def generate_default_config_files(output_dir: str, overwrite: bool = False, main_config_filename="config.yml",
                                   sources_filename="genome_sources_list.yml") -> Tuple[
-    bool, Optional[str], Optional[str]]:
-    """生成默认的配置文件和基因组源列表文件。"""
+    bool, Optional[str], Optional[str], List[str]]:
+    """
+    生成默认的配置文件和基因组源列表文件。
+    返回: (成功状态, 主配置文件路径, 源文件路径, 已存在且未被覆盖的文件列表)
+    """
+    existing_files = [] # 3. 用于存储已存在的文件名
     try:
         os.makedirs(output_dir, exist_ok=True)
         main_config_path = os.path.join(output_dir, main_config_filename)
         sources_path = os.path.join(output_dir, sources_filename)
 
-        if not overwrite and (os.path.exists(main_config_path) or os.path.exists(sources_path)):
-            logger.warning(_("一个或多个默认配置文件已存在且不允许覆盖。操作已取消。"))
-            return False, None, None
+        # 分别检查每个文件是否存在
+        if os.path.exists(main_config_path):
+            existing_files.append(main_config_filename)
+        if os.path.exists(sources_path):
+            existing_files.append(sources_filename)
+
+        # 如果文件存在且不允许覆盖，则记录日志并返回
+        if not overwrite and existing_files:
+            logger.warning(_("一个或多个默认配置文件已存在且不允许覆盖: {}").format(", ".join(existing_files)))
+            return False, None, None, existing_files
 
         default_config = MainConfig()
         default_config.downloader.genome_sources_file = sources_filename
@@ -186,12 +197,11 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
         with open(sources_path, 'w', encoding='utf-8') as f:
             yaml.dump(default_sources_data.model_dump(exclude_none=True), f, allow_unicode=True, sort_keys=False,
                       indent=2)
-
-        return True, main_config_path, sources_path
+        return True, main_config_path, sources_path, []
 
     except Exception as e:
         logger.error(_("生成默认配置文件时发生错误: {}").format(e), exc_info=True)
-        return False, None, None
+        return False, None, None, []
 
 
 def check_annotation_file_status(config: MainConfig, genome_info: GenomeSourceItem, file_type: str) -> str:

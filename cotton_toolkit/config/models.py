@@ -1,7 +1,7 @@
 ﻿# cotton_toolkit/config/models.py
 
 from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from gettext import gettext as _
 
 # --- 配置子模型 (所有都继承 BaseModel) ---
@@ -120,7 +120,6 @@ class HomologySelectionCriteria(BaseModel):
 
 
 class MainConfig(BaseModel):
-    config_version: int = 2
     log_level: str = "INFO"
     i18n_language: str = "en"
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
@@ -132,6 +131,8 @@ class MainConfig(BaseModel):
     batch_ai_processor: BatchAIProcessorConfig = Field(default_factory=BatchAIProcessorConfig)
     config_file_abs_path_: Optional[str] = Field(default=None, exclude=True)
 
+    # 忽略未知的配置项
+    model_config = ConfigDict(extra='ignore')
 
     def to_dict(self):
         return self.model_dump(exclude_none=True, exclude_defaults=False)

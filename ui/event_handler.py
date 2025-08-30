@@ -12,7 +12,6 @@ import requests
 import ttkbootstrap as ttkb
 
 from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
-from cotton_toolkit.config.compatibility_check import check_config_compatibility
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
@@ -345,22 +344,6 @@ class EventHandler:
             app.ui_manager.show_error_message(_("加载失败"), str(loaded_config))
             return
 
-        # --- 新增兼容性检查 ---
-        # 获取当前语言用于显示本地化的提示信息
-        lang = app.current_config.i18n_language if app.current_config else 'zh-hans'
-        level, text = check_config_compatibility(loaded_config, language=lang)
-
-        if level == 'error':
-            app.ui_manager.show_error_message(_("配置文件不兼容"), text)
-            logger.error(
-                f"加载配置文件 '{os.path.basename(original_filepath)}' 失败，因为它不兼容: {text.replace(r'\n', ' ')}")
-            # 终止执行，从而保留了旧的配置内容
-            return
-
-        if level == 'warning':
-            app.ui_manager.show_warning_message(_("兼容性警告"), text)
-            logger.warning(f"加载 '{os.path.basename(original_filepath)}' 时发现兼容性警告: {text.replace(r'\n', ' ')}")
-        # --- 兼容性检查结束 ---
 
         # 成功路径 (level 为 'info' 或 'warning' 时会执行这里)
         root_config_path = os.path.abspath("config.yml")
@@ -558,12 +541,12 @@ class EventHandler:
         _ = self.app._
         root_dir = os.path.abspath(".")
         main_config_path = os.path.join(root_dir, "config.yml")
-        sources_config_path = os.path.join(root_dir, "genome_sources.yml")
+        sources_config_path = os.path.join(root_dir, "genome_sources_list.yml")
         existing_files = []
         if os.path.exists(main_config_path):
             existing_files.append("'config.yml'")
         if os.path.exists(sources_config_path):
-            existing_files.append("'genome_sources.yml'")
+            existing_files.append("'genome_sources_list.yml'")
         if existing_files:
             files_str = _(" 和 ").join(existing_files)
             dialog = ConfirmationDialog(self.app, _("文件已存在"),
@@ -571,13 +554,13 @@ class EventHandler:
                                             files_str),
                                         button1_text=_("是，覆盖"), button2_text=_("否，取消"))
             if dialog.result is not True:
-                # 修改: 使用标准 logger
                 logger.info(_("用户取消了生成默认配置文件的操作。"))
                 return
         self.app.message_queue.put(("show_progress_dialog", {"title": _("生成配置文件中..."),
                                                              "message": _("正在根目录生成默认配置文件，请稍候..."),
                                                              "on_cancel": None}))
         threading.Thread(target=self._generate_default_configs_thread, args=(root_dir,), daemon=True).start()
+
 
     def _generate_default_configs_thread(self, output_dir: str):
         _ = self.app._

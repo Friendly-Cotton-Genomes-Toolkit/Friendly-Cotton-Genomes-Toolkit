@@ -12,7 +12,6 @@ import webbrowser
 
 import yaml
 
-from cotton_toolkit.config.compatibility_check import check_config_compatibility, MainConfig
 
 
 
@@ -112,17 +111,6 @@ def main():
             lang_code = getattr(config, 'i18n_language', DEFAULT_LANGUAGE)
             logging.info(f"Config file loaded. Startup language set to '{lang_code}'.")
 
-            level, message = check_config_compatibility(config, lang_code)
-            if level != 'info':
-                temp_root = tk.Tk()
-                temp_root.withdraw()
-
-                if level == 'warning':
-                    messagebox.showwarning(message=message, parent=temp_root)
-                else:
-                    messagebox.showerror(message=message, parent=temp_root)
-                    temp_root.destroy()
-                    sys.exit(1)
 
         else:
             try:

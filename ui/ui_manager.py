@@ -502,12 +502,25 @@ class UIManager:
         app = self.app
         _ = self.translator_func
         if hasattr(app, 'config_path_display_var') and app.config_path_display_var is not None:
-            app.config_path_display_var.set(
-                _("当前配置: {}").format(os.path.basename(app.config_path)) if app.config_path else _(
-                    "未加载配置"))
+            if app.config_path and app.current_config:
+                # 更新主配置文件路径显示
+                app.config_path_display_var.set(
+                    _("主配置文件: {}").format(os.path.basename(app.config_path)))
+
+                # 基于主配置构建并更新基因组源文件路径显示
+                sources_filename = app.current_config.downloader.genome_sources_file
+                config_dir = os.path.dirname(app.config_path)
+                sources_path = os.path.join(config_dir, sources_filename)
+                app.sources_path_display_var.set(
+                    _("基因组源文件: {}").format(os.path.basename(sources_path)))
+            else:
+                # 如果未加载配置，则清空路径
+                app.config_path_display_var.set(_("未加载配置"))
+                app.sources_path_display_var.set("")
         else:
             logger.warning(
                 _("无法设置 config_path_display_var：变量未就绪或为None。这通常发生在应用程序启动的早期阶段。"))
+
 
         app._handle_editor_ui_update()
         self._update_assembly_id_dropdowns(list(app.genome_sources_data.keys()) if app.genome_sources_data else [])
