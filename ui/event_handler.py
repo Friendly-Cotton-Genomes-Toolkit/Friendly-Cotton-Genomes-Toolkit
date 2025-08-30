@@ -486,21 +486,7 @@ class EventHandler:
         app.ui_manager.save_ui_settings()
         app.ui_manager._update_log_tag_colors()
 
-    def check_annotation_file_status(self, config, genome_info, file_type_key) -> str:
-        from cotton_toolkit.config.loader import get_local_downloaded_file_path
-        try:
-            file_path = get_local_downloaded_file_path(config, genome_info.assembly_id, file_type_key)
-            if file_path and os.path.exists(file_path):
-                if os.path.getsize(file_path) > 0:
-                    return 'complete'
-                else:
-                    return 'incomplete'
-            else:
-                return 'missing'
-        except Exception as e:
-            # 修改: 使用标准 logger
-            logger.error(f"检查文件状态时出错 ('{file_type_key}'): {e}")
-            return 'missing'
+
 
     def toggle_log_viewer(self):
         app = self.app
@@ -566,7 +552,7 @@ class EventHandler:
         _ = self.app._
         try:
             self.app.message_queue.put(("progress", (20, _("正在生成主配置文件..."))))
-            success, new_cfg_path, _d = generate_default_config_files(output_dir, overwrite=True)
+            success, new_cfg_path, _4, _g = generate_default_config_files(output_dir, overwrite=True)
             self.app.message_queue.put(("progress", (80, _("生成其他配置文件..."))))
             if success:
                 self.app.message_queue.put(("progress", (100, _("配置文件生成完成。"))))
@@ -833,8 +819,14 @@ class EventHandler:
     def test_proxy_connection(self):
         app = self.app
         _ = self.app._
-        http_proxy = app.proxy_http_entry.get().strip()
-        https_proxy = app.proxy_https_entry.get().strip()
+
+        try:
+            http_proxy = app.editor_widgets['proxies.http']['widget'].get().strip()
+            https_proxy = app.editor_widgets['proxies.https']['widget'].get().strip()
+        except KeyError:
+            app.ui_manager.show_error_message(_("UI错误"), _("无法找到代理设置输入框，请确保编辑器已加载。"))
+            return
+
         if not http_proxy and not https_proxy:
             app.ui_manager.show_info_message(_("信息"), _("请先填写HTTP或HTTPS代理地址。"))
             return
@@ -843,6 +835,7 @@ class EventHandler:
                                     {"title": _("正在测试代理..."), "message": _("尝试通过代理连接到测试站点..."),
                                      "on_cancel": None}))
         threading.Thread(target=self._test_proxy_thread, args=(proxies,), daemon=True).start()
+
 
     def _test_proxy_thread(self, proxies: dict):
         _ = self.app._
@@ -864,28 +857,48 @@ class EventHandler:
     def _gui_fetch_ai_models(self, provider_key: str, use_proxy: bool):
         app = self.app
         _ = self.app._
-        # 修改: 使用标准 logger
         logger.info(f"正在获取 '{provider_key}' 的模型列表... (使用代理: {use_proxy})")
         if app.active_task_name:
             app.ui_manager.show_warning_message(_("任务进行中"),
                                                 _("任务 '{}' 正在运行中，请等待其完成后再开始新任务。").format(
                                                     app.active_task_name))
             return
-        try:
-            safe_key = provider_key.replace('-', '_')
-            api_key = getattr(app, f"ai_{safe_key}_apikey_entry").get().strip()
-            base_url = getattr(app, f"ai_{safe_key}_baseurl_entry").get().strip() or None
-        except AttributeError:
-            app.ui_manager.show_error_message(_("UI错误"), _("配置编辑器UI尚未完全加载。"))
+
+        api_key = ""
+        base_url = None
+
+        path_api_key = f'ai_services.providers.{provider_key}.api_key'
+        path_base_url = f'ai_services.providers.{provider_key}.base_url'
+
+        if path_api_key not in app.editor_widgets or path_base_url not in app.editor_widgets:
+            logger.warning(f"尝试获取 '{provider_key}' 模型时，其UI控件尚未在 editor_widgets 中注册。")
+            app.ui_manager.show_warning_message(
+                _("UI仍在加载"),
+                _("编辑器界面仍在初始化，请稍候一秒再点击刷新。")
+            )
             return
+
+        api_key_widget = app.editor_widgets[path_api_key]['widget']
+        base_url_widget = app.editor_widgets[path_base_url]['widget']
+        api_key = api_key_widget.get().strip()
+        base_url = base_url_widget.get().strip() or None
+
         if not api_key or "YOUR_" in api_key:
             app.ui_manager.show_warning_message(_("缺少API Key"),
                                                 _("请先在编辑器中为 '{}' 填写有效的API Key。").format(provider_key))
             return
+
         proxies = None
         if use_proxy:
-            http_p, https_p = app.proxy_http_entry.get().strip(), app.proxy_https_entry.get().strip()
-            if http_p or https_p: proxies = {'http': http_p, 'https': https_p}
+            try:
+                http_p = app.editor_widgets['proxies.http']['widget'].get().strip()
+                https_p = app.editor_widgets['proxies.https']['widget'].get().strip()
+                if http_p or https_p:
+                    proxies = {'http': http_p, 'https': https_p}
+            except KeyError:
+                app.ui_manager.show_error_message(_("UI错误"), _("无法找到代理设置输入框，请确保编辑器已加载。"))
+                return
+
         app.active_task_name = f"{_('刷新模型列表')}: {provider_key}"
         app.cancel_current_task_event.clear()
         self.app.message_queue.put(("show_progress_dialog",
@@ -894,6 +907,7 @@ class EventHandler:
         thread_kwargs = {'provider': provider_key, 'api_key': api_key, 'base_url': base_url, 'proxies': proxies,
                          'cancel_event': app.cancel_current_task_event, 'progress_callback': self.gui_progress_callback}
         threading.Thread(target=self._fetch_models_thread, kwargs=thread_kwargs, daemon=True).start()
+
 
     def _fetch_models_thread(self, **kwargs):
         provider = kwargs.get('provider')
@@ -921,9 +935,6 @@ class EventHandler:
             self.app.message_queue.put(("hide_progress_dialog", None))
             self.app.active_task_name = None
 
-    def gui_status_callback(self, message: str, level: str = "INFO"):
-        # 修改: 删除此方法，因为日志已由统一handler处理
-        pass
 
     def gui_progress_callback(self, percentage: float, message: str):
         self.app.message_queue.put(("progress", (percentage, message)))

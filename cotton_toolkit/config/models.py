@@ -68,29 +68,7 @@ class AIPromptsConfig(BaseModel):
         """
     custom_prompt: str = ""
 
-class AnnotationToolConfig(BaseModel):
-    max_workers: int = 8
-    output_dir_name: str = "annotation_results"
-    go_db_path: str = "go.obo"
-    go_slim_db_path: str = "goslim_generic.obo"
-    database_root_dir: str = "annotation_databases"
-    database_files: Dict[str, str] = Field(default_factory=lambda: AnnotationToolConfig._default_database_files())
-    database_columns: Dict[str, str] = Field(default_factory=lambda: AnnotationToolConfig._default_database_columns())
 
-    @staticmethod
-    def _default_database_files() -> Dict[str, str]:
-        return {"go": "AD1_HAU_v1.0_genes2Go.xlsx.gz", "ipr": "AD1_HAU_v1.0_genes2IPR.xlsx.gz",
-                "kegg_orthologs": "AD1_HAU_v1.0_KEGG-orthologs.xlsx.gz",
-                "kegg_pathways": "AD1_HAU_v1.0_KEGG-pathways.xlsx.gz"}
-
-    @staticmethod
-    def _default_database_columns() -> Dict[str, str]:
-        return {"query": "Query", "match": "Match", "description": "Description"}
-
-
-class ArabidopsisAnalyzerConfig(BaseModel):
-    output_dir_name: str = "arabidopsis_homology_results"
-    id_column_name: str = "Gene ID"
 
 class BatchAIProcessorConfig(BaseModel):
     temperature: float = 0.7
@@ -126,8 +104,6 @@ class MainConfig(BaseModel):
     downloader: DownloaderConfig = Field(default_factory=DownloaderConfig)
     ai_services: AIServicesConfig = Field(default_factory=AIServicesConfig)
     ai_prompts: AIPromptsConfig = Field(default_factory=AIPromptsConfig)
-    annotation_tool: AnnotationToolConfig = Field(default_factory=AnnotationToolConfig)
-    arabidopsis_analyzer: ArabidopsisAnalyzerConfig = Field(default_factory=ArabidopsisAnalyzerConfig)
     batch_ai_processor: BatchAIProcessorConfig = Field(default_factory=BatchAIProcessorConfig)
     config_file_abs_path_: Optional[str] = Field(default=None, exclude=True)
 

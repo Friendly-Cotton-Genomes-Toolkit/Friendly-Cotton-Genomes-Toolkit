@@ -41,17 +41,57 @@ class CottonToolkitApp(ttkb.Window):
     DARK_THEMES = ["darkly", "cyborg", "solar", "superhero", "vapor"]
 
     @property
+    def EDITOR_LAYOUT(self):
+        """
+        定义配置编辑器UI的布局蓝图。
+        - type: 控件类型
+        - label_key: 显示的标签文本（用于翻译）
+        - config_path: 对应在MainConfig模型中的路径
+        - tip_key: 提示文本（用于翻译）
+        - options: 适用于下拉菜单的选项
+        """
+        return [
+            {'type': 'section', 'label_key': "通用设置"},
+            {'type': 'optionmenu', 'label_key': "日志级别", 'config_path': 'log_level',
+             'options': ["DEBUG", "INFO", "WARNING", "ERROR"], 'tip_key': "设置应用程序的日志详细程度。"},
+            {'type': 'entry', 'label_key': "HTTP代理", 'config_path': 'proxies.http',
+             'tip_key': "例如: http://127.0.0.1:7890"},
+            {'type': 'entry', 'label_key': "HTTPS代理", 'config_path': 'proxies.https',
+             'tip_key': "例如: https://127.0.0.1:7890"},
+            {'type': 'button', 'label_key': "测试代理连接", 'command': self.event_handler.test_proxy_connection,
+             'style': 'primary-outline', 'align': 'e'},
+
+            {'type': 'section', 'label_key': "数据下载器配置"},
+            {'type': 'entry', 'label_key': "基因组源文件", 'config_path': 'downloader.genome_sources_file',
+             'tip_key': "定义基因组下载链接的YAML文件。"},
+            {'type': 'entry', 'label_key': "下载输出根目录", 'config_path': 'downloader.download_output_base_dir',
+             'tip_key': "所有下载文件存放的基准目录。"},
+            {'type': 'checkbutton', 'label_key': "强制重新下载", 'config_path': 'downloader.force_download',
+             'tip_key': "如果文件已存在，是否覆盖。"},
+            {'type': 'entry', 'label_key': "最大下载线程数", 'config_path': 'downloader.max_workers',
+             'tip_key': "多线程下载时使用的最大线程数。"},
+            {'type': 'checkbutton', 'label_key': "为下载使用代理", 'config_path': 'downloader.use_proxy_for_download',
+             'tip_key': "是否为数据下载启用代理。"},
+
+            {'type': 'section', 'label_key': "AI 服务配置"},
+            {'type': 'optionmenu', 'label_key': "默认AI服务商", 'config_path': 'ai_services.default_provider',
+             'options_map': self.AI_PROVIDERS, 'tip_key': "选择默认使用的AI模型提供商。"},
+            {'type': 'entry', 'label_key': "最大并行AI任务数", 'config_path': 'batch_ai_processor.max_workers',
+             'tip_key': "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"},
+            {'type': 'checkbutton', 'label_key': "为AI服务使用代理", 'config_path': 'ai_services.use_proxy_for_ai',
+             'tip_key': "是否为连接AI模型API启用代理。"},
+            {'type': 'section', 'label_key': "AI 提示词模板"},
+            {'type': 'text', 'label_key': "翻译提示词", 'config_path': 'ai_prompts.translation_prompt', 'height': 7},
+            {'type': 'text', 'label_key': "分析提示词", 'config_path': 'ai_prompts.analysis_prompt', 'height': 7},
+        ]
+
+    @property
     def AI_PROVIDERS(self):
         return {"google": {"name": "Google Gemini"}, "openai": {"name": "OpenAI"},
                 "deepseek": {"name": "DeepSeek (深度求索)"}, "qwen": {"name": "Qwen (通义千问)"},
                 "siliconflow": {"name": "SiliconFlow (硅基流动)"}, "grok": {"name": "Grok (xAI)"},
                 "openai_compatible": {"name": self._("通用OpenAI兼容接口")}}
 
-    TOOL_TAB_ORDER = [
-        "download", "annotation", "enrichment", "sequence_extraction", "seq_analysis",
-        "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion",
-        "gff_query","quantification","blast", "ai_assistant",
-    ]
 
 
     @property
@@ -65,6 +105,13 @@ class CottonToolkitApp(ttkb.Window):
             "quantification":_("表达量标准化"),"blast": _("本地BLAST"),
             "ai_assistant": _("AI助手"),
         }
+
+    TOOL_TAB_ORDER = [
+        "download", "annotation", "enrichment", "sequence_extraction", "seq_analysis",
+        "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion",
+        "gff_query","quantification","blast", "ai_assistant",
+    ]
+
 
     def __init__(self, translator: Callable[[str], str]):
 
@@ -327,336 +374,288 @@ class CottonToolkitApp(ttkb.Window):
         self.after(50, lambda: self.configure_title_bar_color(self))
         self.logger.debug(self._("刷新完成。"))
 
-    def _create_editor_widgets(self, parent):
+    def _build_editor_ui(self, parent):
+        """根据 EDITOR_LAYOUT 蓝图构建编辑器UI。"""
         parent.grid_columnconfigure(0, weight=1)
         row_counter = 0
 
-        is_dark_theme = self.style.theme.type == 'dark'
-        comment_fg_color = "#a0a0a0" if is_dark_theme else "#6c757d"
+        is_dark = self.style.theme.type == 'dark'
+        comment_fg = "#a0a0a0" if is_dark else "#6c757d"
 
-        def get_row():
-            nonlocal row_counter
-            r = row_counter
+        # 遍历蓝图，为每个条目创建控件
+        for item in self.EDITOR_LAYOUT:
+            item_type = item.get('type')
+
+            frame = ttkb.Frame(parent)
+            frame.grid(row=row_counter, column=0, sticky="ew", padx=5, pady=item.get('pady', 2))
+            if item_type != 'section':
+                frame.grid_columnconfigure(1, weight=1)
+
+            # 根据类型调用相应的构建辅助函数
+            if item_type == 'section':
+                self._build_section(frame, item)
+            elif item_type == 'entry':
+                self._build_entry(frame, item, comment_fg)
+            elif item_type == 'optionmenu':
+                self._build_optionmenu(frame, item, comment_fg)
+            elif item_type == 'checkbutton':
+                self._build_checkbutton(frame, item, comment_fg)
+            elif item_type == 'button':
+                self._build_button(frame, item)
+            elif item_type == 'text':
+                self._build_text(frame, item)
+
             row_counter += 1
-            return r
 
-        section_1_title = ttkb.Label(parent, text=f"◇ {self._('通用设置')} ◇", font=self.app_subtitle_font,
-                                     bootstyle="primary")
-        section_1_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
-        self.translatable_widgets[section_1_title] = "通用设置"
+        # 单独处理动态的AI Provider卡片
+        self._build_ai_provider_cards(parent, row_counter)
 
-        c1 = ttkb.Frame(parent)
-        c1.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
-        c1.grid_columnconfigure(1, weight=1)
-        lbl1 = ttkb.Label(c1, text=self._("日志级别"))
-        lbl1.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl1] = "日志级别"
-        self.general_log_level_var = tk.StringVar()
-        self.general_log_level_menu = ttkb.OptionMenu(c1, self.general_log_level_var, "INFO",
-                                                      *["DEBUG", "INFO", "WARNING", "ERROR"], bootstyle='info-outline')
-        self.general_log_level_menu.grid(row=0, column=1, sticky="ew", padx=5)
-        tip1 = ttkb.Label(c1, text=self._("设置应用程序的日志详细程度。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip1.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip1] = "设置应用程序的日志详细程度。"
+    # --- UI 构建辅助函数 ---
 
-        c2 = ttkb.Frame(parent)
-        c2.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
-        c2.grid_columnconfigure(1, weight=1)
-        lbl2 = ttkb.Label(c2, text=self._("HTTP代理"))
-        lbl2.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl2] = "HTTP代理"
-        self.proxy_http_entry = ttkb.Entry(c2)
-        self.proxy_http_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip2 = ttkb.Label(c2, text=self._("例如: http://127.0.0.1:7890"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip2.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip2] = "例如: http://127.0.0.1:7890"
+    def _build_section(self, frame, item):
+        label = ttkb.Label(frame, text=f"◇ {self._(item['label_key'])} ◇", font=self.app_subtitle_font,
+                           bootstyle="primary")
+        label.grid(row=0, column=0, pady=(25, 10), sticky="w")
+        self.translatable_widgets[label] = item['label_key']
 
-        c3 = ttkb.Frame(parent)
-        c3.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
-        c3.grid_columnconfigure(1, weight=1)
-        lbl3 = ttkb.Label(c3, text=self._("HTTPS代理"))
-        lbl3.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl3] = "HTTPS代理"
-        self.proxy_https_entry = ttkb.Entry(c3)
-        self.proxy_https_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip3 = ttkb.Label(c3, text=self._("例如: https://127.0.0.1:7890"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip3.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip3] = "例如: https://127.0.0.1:7890"
+    def _build_entry(self, frame, item, comment_fg):
+        lbl = ttkb.Label(frame, text=self._(item['label_key']))
+        lbl.grid(row=0, column=0, sticky="w", padx=(5, 10))
+        self.translatable_widgets[lbl] = item['label_key']
 
-        proxy_button_frame = ttkb.Frame(parent)
-        proxy_button_frame.grid(row=get_row(), column=0, sticky="e", padx=5, pady=5)
-        self.test_proxy_button = ttkb.Button(proxy_button_frame, text=self._("测试代理连接"),
-                                             command=self.event_handler.test_proxy_connection,
-                                             bootstyle="primary-outline")
-        self.test_proxy_button.pack()
-        self.translatable_widgets[self.test_proxy_button] = "测试代理连接"
+        entry = ttkb.Entry(frame)
+        entry.grid(row=0, column=1, sticky="ew")
+        self.editor_widgets[item['config_path']] = {'widget': entry, 'type': 'entry'}
 
-        section_2_title = ttkb.Label(parent, text=f"◇ {self._('数据下载器配置')} ◇", font=self.app_subtitle_font,
-                                     bootstyle="primary")
-        section_2_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
-        self.translatable_widgets[section_2_title] = "数据下载器配置"
+        if tip_key := item.get('tip_key'):
+            tip = ttkb.Label(frame, text=self._(tip_key), font=self.app_comment_font, foreground=comment_fg)
+            tip.grid(row=1, column=1, sticky="w", padx=5)
+            self.translatable_widgets[tip] = tip_key
 
-        c4 = ttkb.Frame(parent)
-        c4.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
-        c4.grid_columnconfigure(1, weight=1)
-        lbl4 = ttkb.Label(c4, text=self._("基因组源文件"))
-        lbl4.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl4] = "基因组源文件"
-        self.downloader_sources_file_entry = ttkb.Entry(c4)
-        self.downloader_sources_file_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip4 = ttkb.Label(c4, text=self._("定义基因组下载链接的YAML文件。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip4.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip4] = "定义基因组下载链接的YAML文件。"
+    def _build_optionmenu(self, frame, item, comment_fg):
+        lbl = ttkb.Label(frame, text=self._(item['label_key']))
+        lbl.grid(row=0, column=0, sticky="w", padx=(5, 10))
+        self.translatable_widgets[lbl] = item['label_key']
 
-        c5 = ttkb.Frame(parent)
-        c5.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
-        c5.grid_columnconfigure(1, weight=1)
-        lbl5 = ttkb.Label(c5, text=self._("下载输出根目录"))
-        lbl5.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl5] = "下载输出根目录"
-        self.downloader_output_dir_entry = ttkb.Entry(c5)
-        self.downloader_output_dir_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip5 = ttkb.Label(c5, text=self._("所有下载文件存放的基准目录。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip5.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip5] = "所有下载文件存放的基准目录。"
+        var = tk.StringVar()
+        options = item.get('options', [])
+        # 特殊处理AI服务商，它的选项来自一个字典
+        if options_map := item.get('options_map'):
+            options = [p['name'] for p in options_map.values()]
 
-        c6 = ttkb.Frame(parent)
-        c6.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
-        c6.grid_columnconfigure(1, weight=1)
-        lbl6 = ttkb.Label(c6, text=self._("强制重新下载"))
-        lbl6.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl6] = "强制重新下载"
-        self.downloader_force_download_var = tk.BooleanVar()
-        self.downloader_force_download_switch = ttkb.Checkbutton(c6, variable=self.downloader_force_download_var,
-                                                                 bootstyle="round-toggle")
-        self.downloader_force_download_switch.grid(row=0, column=1, sticky="w", padx=5)
-        tip6 = ttkb.Label(c6, text=self._("如果文件已存在，是否覆盖。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip6.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip6] = "如果文件已存在，是否覆盖。"
+        menu = ttkb.OptionMenu(frame, var, options[0] if options else "", *options, bootstyle='info-outline')
+        menu.grid(row=0, column=1, sticky="ew")
+        self.editor_widgets[item['config_path']] = {'widget': var, 'type': 'optionmenu',
+                                                    'options_map': item.get('options_map')}
 
-        c7 = ttkb.Frame(parent)
-        c7.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
-        c7.grid_columnconfigure(1, weight=1)
-        lbl7 = ttkb.Label(c7, text=self._("最大下载线程数"))
-        lbl7.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl7] = "最大下载线程数"
-        self.downloader_max_workers_entry = ttkb.Entry(c7)
-        self.downloader_max_workers_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip7 = ttkb.Label(c7, text=self._("多线程下载时使用的最大线程数。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip7.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip7] = "多线程下载时使用的最大线程数。"
+        if tip_key := item.get('tip_key'):
+            tip = ttkb.Label(frame, text=self._(tip_key), font=self.app_comment_font, foreground=comment_fg)
+            tip.grid(row=1, column=1, sticky="w", padx=5)
+            self.translatable_widgets[tip] = tip_key
 
-        c8 = ttkb.Frame(parent)
-        c8.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
-        c8.grid_columnconfigure(1, weight=1)
-        lbl8 = ttkb.Label(c8, text=self._("为下载使用代理"))
-        lbl8.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl8] = "为下载使用代理"
-        self.downloader_use_proxy_var = tk.BooleanVar()
-        self.downloader_use_proxy_switch = ttkb.Checkbutton(c8, variable=self.downloader_use_proxy_var,
-                                                            bootstyle="round-toggle")
-        self.downloader_use_proxy_switch.grid(row=0, column=1, sticky="w", padx=5)
-        tip8 = ttkb.Label(c8, text=self._("是否为数据下载启用代理。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip8.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip8] = "是否为数据下载启用代理。"
+    def _build_checkbutton(self, frame, item, comment_fg):
+        lbl = ttkb.Label(frame, text=self._(item['label_key']))
+        lbl.grid(row=0, column=0, sticky="w", padx=(5, 10))
+        self.translatable_widgets[lbl] = item['label_key']
 
-        section_3_title = ttkb.Label(parent, text=f"◇ {self._('AI 服务配置')} ◇", font=self.app_subtitle_font,
-                                     bootstyle="primary")
-        section_3_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
-        self.translatable_widgets[section_3_title] = "AI 服务配置"
+        var = tk.BooleanVar()
+        chk = ttkb.Checkbutton(frame, variable=var, bootstyle="round-toggle")
+        chk.grid(row=0, column=1, sticky="w")
+        self.editor_widgets[item['config_path']] = {'widget': var, 'type': 'checkbutton'}
 
-        c9 = ttkb.Frame(parent)
-        c9.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
-        c9.grid_columnconfigure(1, weight=1)
-        lbl9 = ttkb.Label(c9, text=self._("默认AI服务商"))
-        lbl9.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl9] = "默认AI服务商"
-        self.ai_default_provider_var = tk.StringVar()
-        provider_names = [p['name'] for p in self.AI_PROVIDERS.values()]
-        self.ai_default_provider_menu = ttkb.OptionMenu(c9, self.ai_default_provider_var, provider_names[0],
-                                                        *provider_names, bootstyle='info-outline')
-        self.ai_default_provider_menu.grid(row=0, column=1, sticky="ew", padx=5)
-        tip9 = ttkb.Label(c9, text=self._("选择默认使用的AI模型提供商。"), font=self.app_comment_font,
-                          foreground=comment_fg_color)
-        tip9.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip9] = "选择默认使用的AI模型提供商。"
+        if tip_key := item.get('tip_key'):
+            tip = ttkb.Label(frame, text=self._(tip_key), font=self.app_comment_font, foreground=comment_fg)
+            tip.grid(row=1, column=1, sticky="w", padx=5)
+            self.translatable_widgets[tip] = tip_key
 
-        c10 = ttkb.Frame(parent)
-        c10.grid(row=get_row(), column=0, sticky="ew", pady=2, padx=5)
-        c10.grid_columnconfigure(1, weight=1)
-        lbl10 = ttkb.Label(c10, text=self._("最大并行AI任务数"))
-        lbl10.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl10] = "最大并行AI任务数"
-        self.batch_ai_max_workers_entry = ttkb.Entry(c10)
-        self.batch_ai_max_workers_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        tip10 = ttkb.Label(c10, text=self._("执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"),
-                           font=self.app_comment_font, foreground=comment_fg_color)
-        tip10.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip10] = "执行AI任务时并行处理的最大数量，建议根据CPU核心数和网络情况设置。"
+    def _build_button(self, frame, item):
+        btn = ttkb.Button(frame, text=self._(item['label_key']), command=item.get('command'),
+                          bootstyle=item.get('style', 'primary'))
+        # 1. 从“蓝图”中获取对齐字符 ('e' 代表右对齐, 'w' 代表左对齐)
+        align_char = item.get('align', 'w')
 
-        c11 = ttkb.Frame(parent)
-        c11.grid(row=get_row(), column=0, sticky="ew", pady=4, padx=5)
-        c11.grid_columnconfigure(1, weight=1)
-        lbl11 = ttkb.Label(c11, text=self._("为AI服务使用代理"))
-        lbl11.grid(row=0, column=0, sticky="w", padx=(5, 10), pady=2)
-        self.translatable_widgets[lbl11] = "为AI服务使用代理"
-        self.ai_use_proxy_var = tk.BooleanVar()
-        self.ai_use_proxy_switch = ttkb.Checkbutton(c11, variable=self.ai_use_proxy_var, bootstyle="round-toggle")
-        self.ai_use_proxy_switch.grid(row=0, column=1, sticky="w", padx=5)
-        tip11 = ttkb.Label(c11, text=self._("是否为连接AI模型API启用代理。"), font=self.app_comment_font,
-                           foreground=comment_fg_color)
-        tip11.grid(row=1, column=1, sticky="w", padx=5)
-        self.translatable_widgets[tip11] = "是否为连接AI模型API启用代理。"
+        side_value = 'right' if align_char == 'e' else 'left'
+        btn.pack(side=side_value, padx=5, pady=5)
+        self.translatable_widgets[btn] = item['label_key']
 
+    def _build_text(self, frame, item):
+        lbl = ttkb.Label(frame, text=self._(item['label_key']))
+        lbl.grid(row=0, column=0, sticky="nw", padx=(5, 10))
+        self.translatable_widgets[lbl] = item['label_key']
+
+        bg, fg = self.style.lookup('TFrame', 'background'), self.style.lookup('TLabel', 'foreground')
+        text_widget = tk.Text(frame, height=item.get('height', 5), font=self.app_font_mono, wrap="word",
+                              relief="flat", background=bg, foreground=fg, insertbackground=fg)
+        text_widget.grid(row=0, column=1, sticky="ew")
+        self.editor_widgets[item['config_path']] = {'widget': text_widget, 'type': 'text'}
+
+    def _build_ai_provider_cards(self, parent, start_row):
+        """动态创建所有AI Provider的配置卡片。"""
+        row_counter = start_row
         for p_key, p_info in self.AI_PROVIDERS.items():
             card = ttkb.LabelFrame(parent, text=p_info['name'], bootstyle="secondary")
-            card.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
+            card.grid(row=row_counter, column=0, sticky="ew", pady=8, padx=5)
             card.grid_columnconfigure(1, weight=1)
-            safe_key = p_key.replace('-', '_')
+            row_counter += 1
+
+            # API Key
             lbl_apikey = ttkb.Label(card, text="API Key")
             lbl_apikey.grid(row=0, column=0, sticky="w", padx=10, pady=5)
-            self.translatable_widgets[lbl_apikey] = "API Key"
             apikey_entry = ttkb.Entry(card)
             apikey_entry.grid(row=0, column=1, sticky="ew", pady=5, padx=5)
-            setattr(self, f"ai_{safe_key}_apikey_entry", apikey_entry)
+            self.editor_widgets[f'ai_services.providers.{p_key}.api_key'] = {'widget': apikey_entry, 'type': 'entry'}
+
+            # Base URL
+            lbl_baseurl = ttkb.Label(card, text="Base URL")
+            lbl_baseurl.grid(row=2, column=0, sticky="w", padx=10, pady=5)
+            baseurl_entry = ttkb.Entry(card)
+            baseurl_entry.grid(row=2, column=1, sticky="ew", pady=5, padx=5)
+            self.editor_widgets[f'ai_services.providers.{p_key}.base_url'] = {'widget': baseurl_entry, 'type': 'entry'}
+
+            # Model Dropdown (handled specially as it's dynamic)
             lbl_model = ttkb.Label(card, text="Model")
             lbl_model.grid(row=1, column=0, sticky="w", padx=10, pady=5)
-            self.translatable_widgets[lbl_model] = "Model"
             model_frame = ttkb.Frame(card)
             model_frame.grid(row=1, column=1, sticky="ew", pady=5, padx=5)
             model_frame.grid_columnconfigure(0, weight=1)
+
             model_var = tk.StringVar(value=self._("点击刷新获取列表"))
             model_dropdown = ttkb.OptionMenu(model_frame, model_var, self._("点击刷新..."), bootstyle="info")
             model_dropdown.configure(state="disabled")
             model_dropdown.grid(row=0, column=0, sticky="ew")
-            setattr(self, f"ai_{safe_key}_model_selector", (model_dropdown, model_var))
-            button_frame = ttkb.Frame(model_frame)
-            button_frame.grid(row=0, column=1, padx=(10, 0))
-            btn_refresh = ttkb.Button(button_frame, text=self._("刷新"), width=8,
+            # We store the widget and var for dynamic updates, and the var for saving.
+            self.editor_widgets[f'ai_services.providers.{p_key}.model'] = {'widget': model_var, 'type': 'optionmenu',
+                                                                           'dropdown': model_dropdown}
+
+            btn_frame = ttkb.Frame(model_frame)
+            btn_frame.grid(row=0, column=1, padx=(10, 0))
+            btn_refresh = ttkb.Button(btn_frame, text=self._("刷新"), width=8,
                                       command=lambda pk=p_key: self.event_handler._gui_fetch_ai_models(pk,
                                                                                                        use_proxy=False),
                                       bootstyle='outline')
             btn_refresh.pack(side="left")
-            self.translatable_widgets[btn_refresh] = "刷新"
-            btn_proxy_refresh = ttkb.Button(button_frame, text=self._("代理刷新"), width=10,
+            btn_proxy_refresh = ttkb.Button(btn_frame, text=self._("代理刷新"), width=10,
                                             command=lambda pk=p_key: self.event_handler._gui_fetch_ai_models(pk,
                                                                                                              use_proxy=True),
                                             bootstyle='info-outline')
             btn_proxy_refresh.pack(side="left", padx=(5, 0))
-            self.translatable_widgets[btn_proxy_refresh] = "代理刷新"
-            lbl_baseurl = ttkb.Label(card, text="Base URL")
-            lbl_baseurl.grid(row=2, column=0, sticky="w", padx=10, pady=5)
-            self.translatable_widgets[lbl_baseurl] = "Base URL"
-            baseurl_entry = ttkb.Entry(card)
-            baseurl_entry.grid(row=2, column=1, sticky="ew", pady=5, padx=5)
-            setattr(self, f"ai_{safe_key}_baseurl_entry", baseurl_entry)
 
-        section_4_title = ttkb.Label(parent, text=f"◇ {self._('AI 提示词模板')} ◇", font=self.app_subtitle_font,
-                                     bootstyle="primary")
-        section_4_title.grid(row=get_row(), column=0, pady=(25, 10), sticky="w", padx=5)
-        self.translatable_widgets[section_4_title] = "AI 提示词模板"
 
-        f_trans = ttkb.Frame(parent)
-        f_trans.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
-        f_trans.grid_columnconfigure(1, weight=1)
-        lbl_trans = ttkb.Label(f_trans, text=self._("翻译提示词"))
-        lbl_trans.grid(row=0, column=0, sticky="nw", padx=(5, 10))
-        self.translatable_widgets[lbl_trans] = "翻译提示词"
-        bg_t, fg_t = self.style.lookup('TFrame', 'background'), self.style.lookup('TLabel', 'foreground')
-        self.ai_translation_prompt_textbox = tk.Text(f_trans, height=7, font=self.app_font_mono, wrap="word",
-                                                     relief="flat", background=bg_t, foreground=fg_t,
-                                                     insertbackground=fg_t)
-        self.ai_translation_prompt_textbox.grid(row=0, column=1, sticky="ew", padx=5)
-
-        f_ana = ttkb.Frame(parent)
-        f_ana.grid(row=get_row(), column=0, sticky="ew", pady=8, padx=5)
-        f_ana.grid_columnconfigure(1, weight=1)
-        lbl_ana = ttkb.Label(f_ana, text=self._("分析提示词"))
-        lbl_ana.grid(row=0, column=0, sticky="nw", padx=(5, 10))
-        self.translatable_widgets[lbl_ana] = "分析提示词"
-        self.ai_analysis_prompt_textbox = tk.Text(f_ana, height=7, font=self.app_font_mono, wrap="word", relief="flat",
-                                                  background=bg_t, foreground=fg_t, insertbackground=fg_t)
-        self.ai_analysis_prompt_textbox.grid(row=0, column=1, sticky="ew", padx=5)
+    def _create_editor_widgets(self, parent):
+        """
+        此函数现在只调用新的UI构建器。
+        """
+        self.editor_widgets.clear()
+        self._build_editor_ui(parent)
+        self.logger.info(_("配置编辑器UI已通过数据驱动模式构建。"))
 
     def _apply_config_values_to_editor(self):
+        """
+        从配置对象(self.current_config)加载值并应用到UI控件。
+        """
         if not self.current_config or not self.editor_ui_built: return
-        cfg = self.current_config
 
-        def set_val(widget, value):
-            if not widget: return
-            if isinstance(widget, tk.Text):
-                widget.delete("1.0", tk.END)
-                widget.insert("1.0", str(value or ""))
-            elif isinstance(widget, ttkb.Entry):
+        def get_value_from_path(config_obj, path):
+            """一个健壮的函数，可以从混合了对象和字典的结构中获取值。"""
+            keys = path.split('.')
+            val = config_obj
+            for key in keys:
+                if isinstance(val, dict):
+                    val = val.get(key)
+                else:
+                    val = getattr(val, key, None)
+
+                if val is None:
+                    return None
+            return val
+
+        for path, info in self.editor_widgets.items():
+            widget = info['widget']
+            widget_type = info['type']
+            value = get_value_from_path(self.current_config, path)
+            value = '' if value is None else value
+
+            if widget_type == 'entry':
                 widget.delete(0, tk.END)
-                widget.insert(0, str(value or ""))
+                widget.insert(0, str(value))
+            elif widget_type == 'text':
+                widget.delete("1.0", tk.END)
+                widget.insert("1.0", str(value))
+            elif widget_type == 'checkbutton':
+                widget.set(bool(value))
+            elif widget_type == 'optionmenu':
+                if options_map := info.get('options_map'):
+                    display_value = next((p['name'] for code, p in options_map.items() if code == value), "")
+                    widget.set(display_value)
+                else:
+                    widget.set(str(value))
 
-        self.general_log_level_var.set(cfg.log_level)
-        set_val(self.proxy_http_entry, cfg.proxies.http)
-        set_val(self.proxy_https_entry, cfg.proxies.https)
-        set_val(self.downloader_sources_file_entry, cfg.downloader.genome_sources_file)
-        set_val(self.downloader_output_dir_entry, cfg.downloader.download_output_base_dir)
-        self.downloader_force_download_var.set(cfg.downloader.force_download)
-        set_val(self.downloader_max_workers_entry, cfg.downloader.max_workers)
-        self.downloader_use_proxy_var.set(cfg.downloader.use_proxy_for_download)
-        set_val(self.batch_ai_max_workers_entry, cfg.batch_ai_processor.max_workers)
-        self.ai_default_provider_var.set(self.AI_PROVIDERS.get(cfg.ai_services.default_provider, {}).get('name', ''))
-        self.ai_use_proxy_var.set(cfg.ai_services.use_proxy_for_ai)
-        for p_key, p_cfg in cfg.ai_services.providers.items():
-            safe_key = p_key.replace('-', '_')
-            if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry",
-                                        None): set_val(apikey_widget, p_cfg.api_key)
-            if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry",
-                                         None): set_val(baseurl_widget, p_cfg.base_url)
-            if model_selector := getattr(self, f"ai_{safe_key}_model_selector",
-                                         None): _dropdown, var = model_selector; var.set(p_cfg.model or "")
-        set_val(self.ai_translation_prompt_textbox, cfg.ai_prompts.translation_prompt)
-        set_val(self.ai_analysis_prompt_textbox, cfg.ai_prompts.analysis_prompt)
-        self.logger.info(self._("配置已应用到编辑器UI。"))
+                if 'dropdown' in info and (dropdown := info.get('dropdown')):
+                    # 确保即使没有可用模型列表，也显示当前配置的值
+                    current_model_name = str(value) if value else self._("无")
+                    menu = dropdown['menu']
+                    menu.delete(0, 'end')
+                    menu.add_command(label=current_model_name, command=tk._setit(widget, current_model_name))
+                    dropdown.config(state="normal")
+
+        self.logger.info(self._("配置已成功加载并应用到编辑器UI。"))
 
     def _save_config_from_editor(self):
+        """
+        从UI控件收集用户输入的值，并保存到配置对象(self.current_config)。
+        """
         if not self.current_config or not self.config_path:
             self.ui_manager.show_error_message(self._("错误"), self._("没有加载配置文件，无法保存。"))
             return
+
+        def set_value_by_path(config_obj, path, value):
+            """一个健壮的函数，可以将值设置到混合了对象和字典的结构中。"""
+            keys = path.split('.')
+            target = config_obj
+            for key in keys[:-1]:
+                if isinstance(target, dict):
+                    target = target.get(key)
+                else:
+                    target = getattr(target, key, None)
+                if target is None:
+                    return  # 无法找到路径，无法设置
+
+            last_key = keys[-1]
+            if isinstance(target, dict):
+                target[last_key] = value
+            else:
+                setattr(target, last_key, value)
+
         try:
-            cfg = self.current_config
-            cfg.log_level = self.general_log_level_var.get()
-            cfg.proxies.http = self.proxy_http_entry.get() or None
-            cfg.proxies.https = self.proxy_https_entry.get() or None
-            cfg.downloader.genome_sources_file = self.downloader_sources_file_entry.get()
-            cfg.downloader.download_output_base_dir = self.downloader_output_dir_entry.get()
-            cfg.downloader.force_download = self.downloader_force_download_var.get()
-            cfg.downloader.max_workers = int(self.downloader_max_workers_entry.get() or 3)
-            cfg.downloader.use_proxy_for_download = self.downloader_use_proxy_var.get()
-            try:
-                max_workers_val = int(self.batch_ai_max_workers_entry.get())
-                if max_workers_val <= 0: raise ValueError
-                cfg.batch_ai_processor.max_workers = max_workers_val
-            except (ValueError, TypeError):
-                cfg.batch_ai_processor.max_workers = 4
-                self.logger.warning(self._("无效的最大工作线程数值，已重置为默认值 4。"))
-            cfg.ai_services.default_provider = next(
-                (k for k, v in self.AI_PROVIDERS.items() if v['name'] == self.ai_default_provider_var.get()), 'google')
-            cfg.ai_services.use_proxy_for_ai = self.ai_use_proxy_var.get()
-            for p_key, p_cfg in cfg.ai_services.providers.items():
-                safe_key = p_key.replace('-', '_')
-                if apikey_widget := getattr(self, f"ai_{safe_key}_apikey_entry",
-                                            None): p_cfg.api_key = apikey_widget.get()
-                if baseurl_widget := getattr(self, f"ai_{safe_key}_baseurl_entry",
-                                             None): p_cfg.base_url = baseurl_widget.get() or None
-                if model_selector := getattr(self, f"ai_{safe_key}_model_selector",
-                                             None): dropdown, var = model_selector; p_cfg.model = var.get()
-            cfg.ai_prompts.translation_prompt = self.ai_translation_prompt_textbox.get("1.0", tk.END).strip()
-            cfg.ai_prompts.analysis_prompt = self.ai_analysis_prompt_textbox.get("1.0", tk.END).strip()
-            if save_config(cfg, self.config_path):
+            for path, info in self.editor_widgets.items():
+                widget = info['widget']
+                widget_type = info['type']
+                value = None
+
+                if widget_type in ['entry', 'optionmenu']:
+                    value = widget.get()
+                elif widget_type == 'text':
+                    value = widget.get("1.0", tk.END).strip()
+                elif widget_type == 'checkbutton':
+                    value = widget.get()
+
+                if 'max_workers' in path:
+                    try:
+                        value = int(value) if value else 4
+                    except (ValueError, TypeError):
+                        value = 4
+
+                if ('.http' in path or '.https' in path or '.base_url' in path) and not value:
+                    value = None
+
+                if 'options_map' in info and (options_map := info.get('options_map')):
+                    value = next((code for code, p in options_map.items() if p['name'] == value),
+                                 list(options_map.keys())[0])
+
+                if value is not None:
+                    set_value_by_path(self.current_config, path, value)
+
+            if save_config(self.current_config, self.config_path):
                 self.ui_manager.show_info_message(self._("保存成功"), self._("配置文件已更新。"))
                 self.ui_manager.update_ui_from_config()
             else:
@@ -664,6 +663,7 @@ class CottonToolkitApp(ttkb.Window):
         except Exception as e:
             self.ui_manager.show_error_message(self._("保存错误"),
                                                self._("保存配置时发生错误:\n{}").format(traceback.format_exc()))
+
 
     def _create_home_frame(self, parent):
         page = ttkb.Frame(parent)

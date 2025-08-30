@@ -582,24 +582,36 @@ class UIManager:
 
     def update_ai_model_dropdown(self, provider_key: str, models: List[str]):
         _ = self.translator_func
-        selector = getattr(self.app, f'ai_{provider_key.replace("-", "_")}_model_selector', None)
-        if not selector: return
-        dropdown, var = selector
+
+        widget_path = f'ai_services.providers.{provider_key}.model'
+        selector_info = self.app.editor_widgets.get(widget_path)
+
+        if not selector_info:
+            logger.error(f"无法在 editor_widgets 中找到路径为 '{widget_path}' 的模型选择器。")
+            return
+
+        dropdown = selector_info['dropdown']
+        var = selector_info['widget']  # a tk.StringVar
+
         if not models:
-            dropdown.configure(state="disabled");
+            dropdown.configure(state="disabled")
             var.set(_("刷新失败或无可用模型"))
-            menu = dropdown["menu"];
-            menu.delete(0, "end");
+            menu = dropdown["menu"]
+            menu.delete(0, "end")
             menu.add_command(label=var.get(), state="disabled")
             return
+
         dropdown.configure(state="normal")
         current_val = var.get()
-        new_val = models[0] if current_val not in models or current_val == _(
-            "点击刷新获取列表") else current_val
+        # 如果当前值无效或不存在于新列表中，则默认选择第一个
+        new_val = models[0] if current_val not in models or "刷新" in current_val else current_val
         var.set(new_val)
-        menu = dropdown["menu"];
+
+        menu = dropdown["menu"]
         menu.delete(0, "end")
-        for model in models: menu.add_command(label=model, command=lambda v=model: var.set(v))
+        for model in models:
+            menu.add_command(label=model, command=lambda v=model: var.set(v))
+
 
     def update_option_menu(self, dropdown: ttkb.OptionMenu, string_var: tk.StringVar, new_values: List[str],
                            default_text: str = "无可用选项", command: Optional[Callable[[str], Any]] = None):
