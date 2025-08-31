@@ -257,8 +257,4 @@ class PhylogeneticsTab(BaseTab):
             parent=self.app,
             title=self._("版权与软件信息"),
             software_list=["MUSCLE", "trimAl", "IQ-TREE"],
-<<<<<<< HEAD
-            translator=self._
-=======
->>>>>>> parent of a9e8dca (设定独立的外部工具软件包)
         )

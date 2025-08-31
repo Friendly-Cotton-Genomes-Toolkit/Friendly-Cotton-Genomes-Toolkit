@@ -172,14 +172,14 @@ class UIManager:
 
     def create_main_layout(self):
         app = self.app
-        app.status_bar_frame = ttkb.Frame(app, height=35);
+        app.status_bar_frame = ttkb.Frame(app, height=35)
         app.status_bar_frame.pack(side="bottom", fill="x", padx=0, pady=0)
-        app.log_viewer_frame = ttkb.Frame(app);
+        app.log_viewer_frame = ttkb.Frame(app)
         app.log_viewer_frame.pack(side="bottom", fill="x", padx=10, pady=5)
         app.log_separator = ttkb.Separator(app, orient='horizontal', bootstyle="secondary")
         app.log_separator.pack(side="bottom", fill="x", padx=10, pady=(5, 5))
         self._create_log_viewer_widgets()
-        top_frame = ttkb.Frame(app);
+        top_frame = ttkb.Frame(app)
         top_frame.pack(side="top", fill="both", expand=True)
         top_frame.grid_columnconfigure(1, weight=1)
         top_frame.grid_rowconfigure(0, weight=1)
@@ -207,20 +207,20 @@ class UIManager:
         app = self.app
         _ = self.translator_func
         app.log_viewer_frame.grid_columnconfigure(0, weight=1)
-        header_frame = ttkb.Frame(app.log_viewer_frame);
-        header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(5, 5));
+        header_frame = ttkb.Frame(app.log_viewer_frame)
+        header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(5, 5))
         header_frame.grid_columnconfigure(0, weight=1)
-        app.log_viewer_label_widget = ttkb.Label(header_frame, text=_("操作日志"), font=app.app_font_bold);
+        app.log_viewer_label_widget = ttkb.Label(header_frame, text=_("操作日志"), font=app.app_font_bold)
         app.log_viewer_label_widget.grid(row=0, column=0, sticky="w")
 
-        buttons_frame = ttkb.Frame(header_frame);
+        buttons_frame = ttkb.Frame(header_frame)
         buttons_frame.grid(row=0, column=1, sticky="e")
         app.toggle_log_button = ttkb.Button(buttons_frame, text=_("显示日志"), width=12,
-                                            command=app.event_handler.toggle_log_viewer, bootstyle='info');
+                                            command=app.event_handler.toggle_log_viewer, bootstyle='info')
         app.toggle_log_button.pack(side="left", padx=(0, 10))
 
         app.clear_log_button = ttkb.Button(buttons_frame, text=_("清空日志"), width=10,
-                                           command=app.event_handler.clear_log_viewer, bootstyle='danger');
+                                           command=app.event_handler.clear_log_viewer, bootstyle='danger')
         app.clear_log_button.pack(side="left")
 
         log_bg = self.style.lookup('TFrame', 'background')
@@ -440,12 +440,12 @@ class UIManager:
         title = data.get("title", "")
         message = data.get("message", "")
         on_cancel = data.get("on_cancel")
-        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
-        self.progress_dialog = ProgressDialog(self.app, _(title), on_cancel);
+        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog._on_close()
+        self.progress_dialog = ProgressDialog(self.app, _(title), on_cancel)
         self.progress_dialog.update_progress(0, _(message))
 
     def _hide_progress_dialog(self):
-        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
+        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog._on_close()
         self.progress_dialog = None
 
     def _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):
@@ -617,7 +617,7 @@ class UIManager:
                            default_text: str = "无可用选项", command: Optional[Callable[[str], Any]] = None):
         if not (dropdown and dropdown.winfo_exists()): return
         final_values = new_values if new_values else [self.translator_func(default_text)]
-        menu = dropdown['menu'];
+        menu = dropdown['menu']
         menu.delete(0, 'end')
         for value in final_values:
             if command:
