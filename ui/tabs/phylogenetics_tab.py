@@ -257,5 +257,4 @@ class PhylogeneticsTab(BaseTab):
             parent=self.app,
             title=self._("版权与软件信息"),
             software_list=["MUSCLE", "trimAl", "IQ-TREE"],
-            translator=self._
         )

@@ -2,26 +2,25 @@
 
 import logging
 import os
-import sys
 import threading
+import tkinter as tk
 import traceback
 import webbrowser
-import tkinter as tk
 from tkinter import filedialog
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Any
+
 import requests
 import ttkbootstrap as ttkb
 
-from cotton_toolkit import VERSION as PKG_VERSION, HELP_URL as PKG_HELP_URL, PUBLISH_URL as PKG_PUBLISH_URL
+from cotton_toolkit import HELP_URL as PKG_HELP_URL
 from cotton_toolkit.config.loader import load_config, save_config, generate_default_config_files, \
     get_genome_data_sources
 from cotton_toolkit.core.ai_wrapper import AIWrapper
-from cotton_toolkit.pipelines.phylogenetics import run_iqtree_inference, run_trimal_trimming
 from cotton_toolkit.utils.advanced_tools_test import check_muscle_executable, check_iqtree_executable, \
     check_trimal_executable
-from cotton_toolkit.utils.localization import setup_localization
-from .dialogs import MessageDialog, ConfirmationDialog, TrimmingDecisionDialog
 from cotton_toolkit.utils.gene_utils import identify_genome_from_gene_ids
+from cotton_toolkit.utils.localization import setup_localization
+from .dialogs import ConfirmationDialog, AboutDialog
 
 if TYPE_CHECKING:
     from .gui_app import CottonToolkitApp
@@ -598,189 +597,7 @@ class EventHandler:
             pass
 
     def _show_about_window(self):
-        _ = self.app._
-
-        about_win = ttkb.Toplevel(self.app)
-        about_win.title(_("关于 FCGT"))
-        about_win.bind("<Escape>", lambda e: about_win.destroy())
-        about_win.minsize(500, 400)
-        about_win.transient(self.app)
-        about_win.grab_set()
-
-        main_frame = ttkb.Frame(about_win, padding=15)
-        main_frame.pack(fill="both", expand=True)
-        main_frame.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
-
-        canvas = tk.Canvas(main_frame, highlightthickness=0, bd=0)
-        scrollbar = ttkb.Scrollbar(main_frame, orient="vertical", command=canvas.yview, bootstyle="round-primary")
-        scrollable_frame = ttkb.Frame(canvas)
-        canvas_frame_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-
-        def _on_mousewheel(event):
-            if event.num == 5 or event.delta < 0:
-                canvas.yview_scroll(1, "units")
-            elif event.num == 4 or event.delta > 0:
-                canvas.yview_scroll(-1, "units")
-
-        def _bind_scroll(widget):
-            widget.bind("<MouseWheel>", _on_mousewheel)
-            widget.bind("<Button-4>", _on_mousewheel)
-            widget.bind("<Button-5>", _on_mousewheel)
-
-        _bind_scroll(about_win)
-        _bind_scroll(main_frame)
-        _bind_scroll(canvas)
-        _bind_scroll(scrollable_frame)
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
-
-        labels_to_wrap = []
-
-        def populate_content(parent):
-            _ = self.app._
-            header_font = self.app.app_font_bold
-            content_font = self.app.app_font
-            link_font = self.app.app_font.copy()
-            link_font.configure(underline=True)
-
-            def bind_all_children_scroll(widget):
-                for child in widget.winfo_children():
-                    _bind_scroll(child)
-                    bind_all_children_scroll(child)
-
-            def add_label(text, font, justify="left", wrappable=True, **kwargs):
-                lbl = ttkb.Label(parent, text=text, font=font, justify=justify, **kwargs)
-                lbl.pack(fill="x", anchor="w", pady=(0, 2), padx=5)
-                if wrappable:
-                    labels_to_wrap.append(lbl)
-                return lbl
-
-            def add_separator():
-                ttkb.Separator(parent).pack(fill="x", anchor="w", pady=10)
-
-            add_label(_("程序名称") + ": Friendly Cotton Genomes Toolkit (FCGT)", content_font)
-            add_label(_("版本") + f": {PKG_VERSION}", content_font)
-            add_label(_("项目地址") + ":", content_font, wrappable=False)
-            gh_link = add_label(PKG_PUBLISH_URL, link_font, wrappable=False, bootstyle="info", cursor="hand2")
-            gh_link.bind("<Button-1>", lambda e: webbrowser.open(PKG_PUBLISH_URL))
-            add_separator()
-            add_label(_("致谢与引用"), header_font)
-            add_label(_("本工具依赖 CottonGen 提供的权威数据，感谢其团队持续的开放和维护。"), content_font)
-
-            add_label("CottonGen " + _("文章:"), header_font).pack(pady=(10, 5))
-            add_label(
-                "• Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. Plants 10(12), 2805.",
-                content_font)
-            add_label(
-                "• Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. Nucleic Acids Research 42(D1), D1229-D1236.",
-                content_font)
-
-            add_label("BLAST+ " + _("文章:"), header_font).pack(pady=(10, 5))
-            add_label(
-                "• Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. BLAST+: architecture and applications. BMC Bioinformatics. 2009 Dec 15;10:421. doi: 10.1186/1471-2105-10-421. PMID: 20003500; PMCID: PMC2803857.",
-                content_font)
-
-            add_label(_("基因组引用文献:"), header_font).pack(pady=(10, 5))
-            citations = [
-                "• NAU-NBI_v1.1: Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. Nature Biotechnology. 33, 531–537. 2015",
-                "• UTX-JGI-Interim-release_v1.1:",
-                "  Haas, B.J., Delcher, A.L., Mount, S.M., Wortman, J.R., Smith Jr, R.K., Jr., Hannick, L.I., Maiti, R., Ronning, C.M., Rusch, D.B., Town, C.D. et al. (2003) Improving the Arabidopsis genome annotation using maximal transcript alignment assemblies. http://nar.oupjournals.org/cgi/content/full/31/19/5654 [Nucleic Acids Res, 31, 5654-5666].",
-                "  Smit, AFA, Hubley, R & Green, P. RepeatMasker Open-3.0. 1996-2011 .",
-                "  Yeh, R.-F., Lim, L. P., and Burge, C. B. (2001) Computational inference of homologous gene structures in the human genome. Genome Res. 11: 803-816.",
-                "  Salamov, A. A. and Solovyev, V. V. (2000). Ab initio gene finding in Drosophila genomic DNA. Genome Res 10, 516-22.",
-                "• HAU_v1 / v1.1: Wang et al. Reference genome sequences of two cultivated allotetraploid cottons, Gossypium hirsutum and Gossypium barbadense. Nature genetics. 2018 Dec 03",
-                "• ZJU-improved_v2.1_a1: Hu et al. Gossypium barbadense and Gossypium hirsutum genomes provide insights into the origin and evolution of allotetraploid cotton. Nature genetics. 2019 Jan;51(1):164.",
-                "• CRI_v1: Yang Z, Ge X, Yang Z, Qin W, Sun G, Wang Z, Li Z, Liu J, Wu J, Wang Y, Lu L, Wang P, Mo H, Zhang X, Li F. Extensive intraspecific gene order and gene structural variations in upland cotton cultivars. Nature communications. 2019 Jul 05; 10(1):2989.",
-                "• WHU_v1: Huang, G. et al., Genome sequence of Gossypium herbaceum and genome updates of Gossypium arboreum and Gossypium hirsutum provide insights into cotton A-genome evolution. Nature Genetics. 2020. doi.org/10.1038/s41588-020-0607-4",
-                "• UTX_v2.1: Chen ZJ, Sreedasyam A, Ando A, Song Q, De Santiago LM, Hulse-Kemp AM, Ding M, Ye W, Kirkbride RC, Jenkins J, Plott C, Lovell J, Lin YM, Vaughn R, Liu B, Simpson S, Scheffler BE, Wen L, Saski CA, Grover CE, Hu G, Conover JL, Carlson JW, Shu S, Boston LB, Williams M, Peterson DG, Jones DC, Wendel JF, Stelly DM, Grimwood J, Schmutz J. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement. Nature genetics. 2020 Apr 20.",
-                "• UTX_v3.1: Chen et al. Genomic diversifications of five Gossypium allopolyploid species and their impact on cotton improvement Nat Genet 20 April 2020."
-            ]
-            for cit in citations: add_label(cit, content_font)
-            add_separator()
-            add_label(_("许可证"), header_font)
-            add_label(
-                _("本软件使用 Apache License 2.0。您可以自由地使用、修改和分发代码，但任何贡献者（包括原始作者及其所属单位）均不提供任何担保，且不对使用该软件产生的任何问题承担责任。"),
-                content_font)
-            add_separator()
-            add_label(_("免责声明"), header_font)
-            add_label(
-                "1.\u00A0" + _("工具角色：本软件仅提供技术框架服务，自身不托管或分发任何基因组数据。"),
-                content_font
-            )
-            add_label(
-                "2.\u00A0" + _(
-                    "用户责任：所有基因组数据的下载、处理和分析均由用户独立执行。用户有责任确保其行为遵守原始数据提供方设定的所有许可、使用条款和发表限制。"),
-                content_font
-            )
-            add_label(
-                "3.\u00A0" + _(
-                    "无担保声明：本工具及其生成的分析结果仅供科研目的“按原样”提供，我们对其准确性或特定用途的适用性不作任何保证。"),
-                content_font
-            )
-
-            bind_all_children_scroll(parent)
-
-        def resize_content(event):
-            if not canvas.winfo_exists(): return
-            canvas_width = event.width
-            canvas.itemconfig(canvas_frame_id, width=canvas_width)
-            for lbl in labels_to_wrap:
-                if lbl.winfo_exists():
-                    lbl.configure(wraplength=canvas_width - 20)
-
-        def on_frame_configure(event):
-            if not canvas.winfo_exists(): return
-            canvas.configure(scrollregion=canvas.bbox("all"))
-
-        populate_content(scrollable_frame)
-        canvas.bind("<Configure>", resize_content)
-        scrollable_frame.bind("<Configure>", on_frame_configure)
-
-        button_frame = ttkb.Frame(about_win)
-        button_frame.pack(side="bottom", fill="x", pady=(10, 15), padx=10)
-        ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
-        ok_button.pack()
-
-        about_win.update_idletasks()
-        final_w = 1000
-        about_win.geometry(f'{final_w}x1')
-        about_win.update_idletasks()
-        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45
-        max_h = int(self.app.winfo_height() * 0.85)
-        final_h = min(req_h, max_h)
-        parent_x, parent_y = self.app.winfo_x(), self.app.winfo_y()
-        parent_w, parent_h = self.app.winfo_width(), self.app.winfo_height()
-        x = parent_x + (parent_w - final_w) // 2
-        y = parent_y + (parent_h - final_h) // 2
-        about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
-
-        about_win.wait_window()
-
-        populate_content(scrollable_frame)
-        canvas.bind("<Configure>", resize_content)
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-
-        button_frame = ttkb.Frame(about_win)
-        button_frame.pack(side="bottom", fill="x", pady=(10, 15), padx=10)
-        ok_button = ttkb.Button(button_frame, text=_("确定"), command=about_win.destroy, bootstyle="primary")
-        ok_button.pack()
-
-        final_w = 1000
-        about_win.geometry(f'{final_w}x1')
-        about_win.update_idletasks()
-        req_h = scrollable_frame.winfo_reqheight() + button_frame.winfo_reqheight() + 45
-        max_h = int(self.app.winfo_height() * 0.85)
-        final_h = min(req_h, max_h)
-        parent_x, parent_y = self.app.winfo_x(), self.app.winfo_y()
-        parent_w, parent_h = self.app.winfo_width(), self.app.winfo_height()
-        x = parent_x + (parent_w - final_w) // 2
-        y = parent_y + (parent_h - final_h) // 2
-        about_win.geometry(f"{final_w}x{final_h}+{x}+{y}")
-
-        about_win.wait_window()
+        AboutDialog(parent=self.app, title=self._("关于 FCGT"))
 
     def _open_online_help(self):
         _ = self.app._

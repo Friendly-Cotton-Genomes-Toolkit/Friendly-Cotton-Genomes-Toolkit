@@ -7,6 +7,7 @@ import ttkbootstrap as ttkb
 
 from .base_tab import BaseTab
 from cotton_toolkit.pipelines import run_seq_analysis
+from ..dialogs import HelpDialogBox
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -42,75 +43,33 @@ class SeqAnalysisTab(BaseTab):
 
     def _show_parameter_help(self):
         """ 显示分析参数的帮助信息弹窗。 """
-        help_dialog = tk.Toplevel(self.app)
-        help_dialog.title(_("分析参数说明"))
-        help_dialog.transient(self.app)
-        help_dialog.grab_set()
-        help_dialog.resizable(False, False)
-
-        # --- 绑定ESC键到关闭窗口的函数 ---
-        help_dialog.bind('<Escape>', lambda e: help_dialog.destroy())
-
-        main_frame = ttkb.Frame(help_dialog, padding=20)
-        main_frame.pack(expand=True, fill="both")
-
-        # --- 创建一个容器专门放参数说明，以便按钮可以独立布局 ---
-        content_frame = ttkb.Frame(main_frame)
-        content_frame.pack(side="top", fill="both", expand=True)
-
-        # 创建左右两个容器
-        left_column = ttkb.Frame(content_frame)
-        left_column.pack(side="left", fill="y", expand=True, padx=(0, 15), anchor="n")
-        right_column = ttkb.Frame(content_frame)
-        right_column.pack(side="left", fill="y", expand=True, padx=(15, 0), anchor="n")
-
-        # 定义所有参数信息
         params = [
-            ("GC Content (%)", _('GC含量'), _('指序列中G和C碱基所占的百分比。'),
-             _('【注】仅当序列类型为 CDS 时可用。')),
-            ("Molecular Weight (Da)", _('分子量'), _('蛋白质的分子质量，单位为道尔顿(Dalton)。'),
-             _('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("Isoelectric Point (pI)", _('等电点'), _('指蛋白质在特定pH值下净电荷为零的点。'),
-             _('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("Aromaticity", _('芳香性'), _('蛋白质中芳香族氨基酸（Phe, Trp, Tyr）的相对频率。'),
-             _('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("Instability Index", _('不稳定性指数'),
-             _('预测蛋白质在体外的稳定性。值 > 40 通常被认为是不稳定的。此指标可用于比较同源基因在环境适应性上的差异。'),
-             _('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("GRAVY", _('亲疏水性总平均值'),
-             _('蛋白质中所有氨基酸残基的疏水性值的总和除以序列长度。正值表示疏水（可能为膜蛋白），负值表示亲水。'),
-             _('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("RSCU_Values", _('相对同义密码子使用度'),
-             _('指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性，这与基因在宿主中的表达效率有关。'),
-             _('【注】仅当序列类型为 CDS 时可用。'))
+            ("GC Content (%)", self._('GC含量'), self._('指序列中G和C碱基所占的百分比。'),
+             self._('【注】仅当序列类型为 CDS 时可用。')),
+            ("Molecular Weight (Da)", self._('分子量'), self._('蛋白质的分子质量，单位为道尔顿(Dalton)。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("Isoelectric Point (pI)", self._('等电点'), self._('指蛋白质在特定pH值下净电荷为零的点。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("Aromaticity", self._('芳香性'), self._('蛋白质中芳香族氨基酸（Phe, Trp, Tyr）的相对频率。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("Instability Index", self._('不稳定性指数'),
+             self._(
+                 '预测蛋白质在体外的稳定性。值 > 40 通常被认为是不稳定的。此指标可用于比较同源基因在环境适应性上的差异。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("GRAVY", self._('亲疏水性总平均值'),
+             self._('蛋白质中所有氨基酸残基的疏水性值的总和除以序列长度。正值表示疏水（可能为膜蛋白），负值表示亲水。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("RSCU_Values", self._('相对同义密码子使用度'),
+             self._(
+                 '指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性，这与基因在宿主中的表达效率有关。'),
+             self._('【注】仅当序列类型为 CDS 时可用。'))
         ]
 
-        # 动态将参数分配到左右两列
-        num_left = (len(params) + 1) // 2
-        for i, (title_en, title_local, desc, note) in enumerate(params):
-            target_column = left_column if i < num_left else right_column
-
-            lf = ttkb.LabelFrame(target_column, text=f"{title_en}: {title_local}", bootstyle="info", padding=10)
-            lf.pack(fill="x", pady=(0, 15), expand=True)
-
-            full_text = f"{desc}\n{note}"
-            lbl = ttkb.Label(lf, text=full_text, wraplength=320)
-            lbl.pack(fill="x", expand=True)
-
-        ok_button = ttkb.Button(main_frame, text="OK", command=help_dialog.destroy, bootstyle="primary")
-        ok_button.pack(side="bottom", pady=(20, 0))  # pack 在底部，它会自动水平居中
-
-        # 居中显示窗口
-        help_dialog.update_idletasks()
-        screen_width = help_dialog.winfo_screenwidth()
-        screen_height = help_dialog.winfo_screenheight()
-        w, h = help_dialog.winfo_width(), help_dialog.winfo_height()
-        x = (screen_width - w) // 2
-        y = (screen_height - h) // 2
-        help_dialog.geometry(f"+{x}+{y}")
-
-        # 让窗口成为焦点，以便接收键盘事件
-        help_dialog.focus_set()
+        HelpDialogBox(
+            parent=self.app,
+            title=self._("分析参数说明"),
+            params_data=params,
+        )
 
 
     def _create_widgets(self):
