@@ -5,12 +5,17 @@ import sqlite3
 import threading
 import logging
 from random import sample
+from threading import Event
 
 import pandas as pd
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any, Callable
+
+from Bio import SeqIO
 
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig
+from cotton_toolkit.external_functions.phylogenetics import logger, _
+from cotton_toolkit.external_functions.sequence_evolution import _, logger
 from cotton_toolkit.pipelines.blast import _, logger
 from cotton_toolkit.utils.file_utils import _sanitize_table_name
 
@@ -266,3 +271,162 @@ def resolve_gene_ids(
     return gene_ids  # 如果只有一个ID且模式未定，返回原始ID
 
 
+def validate_protein_fasta(fasta_path: str):
+    """
+    验证FASTA文件包含的是蛋白质序列而非核酸序列。
+    如果检测到核酸序列，则会引发ValueError。
+    """
+    logger.info(f"正在验证文件序列类型: {fasta_path}")
+    try:
+        # 为提高效率，仅检查前5条记录
+        records_to_check = 5
+        checked_count = 0
+
+        with open(fasta_path, "r", encoding='utf-8') as handle:
+            for record in SeqIO.parse(handle, "fasta"):
+                if checked_count >= records_to_check:
+                    break
+
+                seq = str(record.seq).upper()
+                if not seq:
+                    continue  # 跳过空序列
+
+                # 定义一个严格的核酸字母表（包含模糊碱基）
+                nucleotide_chars = "ATGCUNRYSWKMBDHV"
+                # 计算序列中非核酸字符的数量
+                non_nucleotide_count = len(re.findall(f"[^{nucleotide_chars}]", seq))
+
+                seq_len = len(seq)
+                if seq_len == 0:
+                    continue
+
+                # 启发式规则：如果超过95%的字符是核酸，则判定为核酸序列
+                if (seq_len - non_nucleotide_count) / seq_len > 0.95:
+                    error_msg = _(
+                        "输入文件被检测为核酸序列。此功能当前仅接受蛋白质序列以确保分析的准确性。 "
+                        "请提供蛋白质FASTA文件。"
+                    )
+                    logger.error(f"验证失败 {fasta_path}: 在记录 '{record.id}' 中检测到核酸序列")
+                    raise ValueError(error_msg)
+
+                checked_count += 1
+
+        if checked_count == 0:
+            raise ValueError(_("输入文件为空或不包含有效的FASTA序列。"))
+
+        logger.info(f"验证成功: {fasta_path} 文件似乎包含蛋白质序列。")
+
+    except (ValueError, FileNotFoundError) as e:
+        # 重新抛出已知错误
+        raise e
+    except Exception as e:
+        # 捕获其他解析错误
+        logger.error(f"无法解析或验证FASTA文件 {fasta_path}: {e}")
+        raise ValueError(_("无法解析或验证FASTA文件 '{}': {}").format(fasta_path, e))
+
+def validate_cds_fasta(file_path: str):
+    """
+    验证一个文件是否为适用于下游密码子分析的、有效的CDS FASTA文件。
+
+    该函数会执行以下检查:
+    1. 文件是否存在且非空。
+    2. 文件是否为有效的FASTA格式。
+    3. 文件中每条序列的长度是否为3的倍数。
+    4. 文件中每条序列是否包含内部（非末尾）的终止密码子。
+
+    如果任何检查失败，将引发一个带有详细错误信息的 `ValueError`。
+
+    Args:
+        file_path (str): 需要验证的FASTA文件的路径。
+
+    Raises:
+        ValueError: 如果文件未通过任何验证检查。
+    """
+    logger.info(_("正在验证CDS FASTA文件: {}").format(file_path))
+
+    # 检查1: 文件是否存在且非空
+    try:
+        if os.path.getsize(file_path) == 0:
+            raise ValueError(_("输入文件 '{}' 为空。").format(file_path))
+    except FileNotFoundError:
+        raise ValueError(_("输入文件 '{}' 未找到。").format(file_path))
+    except OSError as e:
+        raise ValueError(_("无法读取文件 '{}': {}").format(file_path, e))
+
+    invalid_length_seqs = []
+    internal_stop_seqs = []
+    is_fasta = False
+
+    try:
+        # 检查2: 尝试按FASTA格式解析文件
+        for record in SeqIO.parse(file_path, "fasta"):
+            is_fasta = True  # 如果能进入循环，说明至少是FASTA格式
+            seq = record.seq
+            seq_len = len(seq)
+
+            # 检查3: 序列长度是否为3的倍数
+            if seq_len % 3 != 0:
+                invalid_length_seqs.append(record.id)
+
+            # 检查4: 是否有内部终止密码子
+            # 将序列翻译成蛋白质，检查除末尾位置外，是否出现终止符 '*'
+            protein = seq.translate()
+            if "*" in protein[:-1]:
+                internal_stop_seqs.append(record.id)
+
+    except Exception as e:
+        # 如果解析失败，说明文件格式有问题
+        raise ValueError(_("无法将文件 '{}' 解析为FASTA格式。请检查文件内容。\n错误详情: {}").format(file_path, e))
+
+    if not is_fasta:
+        raise ValueError(_("文件 '{}' 不包含任何有效的FASTA序列记录。").format(file_path))
+
+    # 在所有检查完成后，统一报告所有发现的问题
+    error_messages = []
+    if invalid_length_seqs:
+        error_messages.append(
+            _("错误：以下序列的长度不是3的倍数，不适用于密码子分析:\n{}").format(
+                ", ".join(invalid_length_seqs[:5]) + ("..." if len(invalid_length_seqs) > 5 else "")
+            )
+        )
+    if internal_stop_seqs:
+        error_messages.append(
+            _("错误：以下序列包含内部终止密码子(*)，请检查其阅读框或序列质量:\n{}").format(
+                ", ".join(internal_stop_seqs[:5]) + ("..." if len(internal_stop_seqs) > 5 else "")
+            )
+        )
+
+    if error_messages:
+        # 如果有任何错误，合并所有错误信息并引发一次异常
+        raise ValueError("\n\n".join(error_messages))
+
+    logger.info(_("CDS FASTA文件 '{}' 验证通过。").format(file_path))
+    return True
+
+
+
+def translate_cds_to_protein(
+        input_cds_path: str,
+        output_protein_path: str,
+        progress_callback: Optional[Callable[[float, str], None]] = None,
+        cancel_event: Optional[Event] = None
+):
+    """将CDS FASTA文件翻译成蛋白质FASTA文件"""
+    step_name = _("翻译CDS为蛋白质")
+    if progress_callback: progress_callback(10, step_name)
+
+    proteins = []
+    for record in SeqIO.parse(input_cds_path, "fasta"):
+        if cancel_event and cancel_event.is_set(): raise InterruptedError
+
+        # 确保序列长度是3的倍数，如果不是，则进行截断
+        trimmed_len = len(record.seq) - (len(record.seq) % 3)
+        if trimmed_len < len(record.seq):
+            logger.warning(_("序列 {} 长度不是3的倍数，将截断以进行翻译。").format(record.id))
+
+        protein_seq = record.seq[:trimmed_len].translate(to_stop=True)
+        record.seq = protein_seq
+        proteins.append(record)
+
+    SeqIO.write(proteins, output_protein_path, "fasta")
+    if progress_callback: progress_callback(100, _("翻译完成。"))

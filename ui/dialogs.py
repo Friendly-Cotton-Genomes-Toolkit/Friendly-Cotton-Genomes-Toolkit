@@ -49,24 +49,47 @@ class BaseDialog(ttkb.Toplevel):
 
     def _finalize_setup(self):
         """在UI更新后执行最终设置，确保尺寸计算准确。"""
+        # 1. 确保窗口尺寸计算准确
         self.update_idletasks()
+
+        # 2. 将窗口居中
         self._center_window()
-        self.grab_set()  # 锁定父窗口，发出系统提示音（如果系统支持）
+
+        # 3. 设置窗口图标 (逻辑从 gui_app.py 移入)
+        if self.app.app_icon_path:
+            try:
+                self.iconbitmap(self.app.app_icon_path)
+            except tk.TclError:
+                # 忽略在某些情况下（如主窗口已销毁时）可能发生的错误
+                pass
+
+        # 4. 配置标题栏颜色 (逻辑从 gui_app.py 移入)
+        self.app.configure_title_bar_color(self)
+
+        # 5. 锁定父窗口并设置焦点
+        self.grab_set()
         self.focus_set()
 
     def _center_window(self):
-        """将窗口居中于父窗口。"""
-        if not self.winfo_exists() or not self.app.winfo_exists():
+        """将窗口居中于屏幕中央。"""
+        if not self.winfo_exists():
             return
+        # 确保窗口尺寸已更新，以便获取正确的w和h
         self.update_idletasks()
-        parent_x = self.app.winfo_x()
-        parent_y = self.app.winfo_y()
-        parent_w = self.app.winfo_width()
-        parent_h = self.app.winfo_height()
+
+        # 获取对话框自身的尺寸
         w = self.winfo_width()
         h = self.winfo_height()
-        x = parent_x + (parent_w - w) // 2
-        y = parent_y + (parent_h - h) // 2
+
+        # 获取屏幕的尺寸
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+
+        # 计算屏幕居中位置的坐标
+        x = (screen_w - w) // 2
+        y = (screen_h - h) // 2
+
+        # 设置窗口位置
         self.geometry(f"+{x}+{y}")
 
     def _on_close(self):
@@ -74,6 +97,12 @@ class BaseDialog(ttkb.Toplevel):
         self.result = None
         self.destroy()
 
+    def close(self):
+        """
+        一个安全的、仅用于程序化关闭窗口的方法。
+        它只销毁窗口，不会触发任何如 on_cancel_callback 之类的回调。
+        """
+        self.destroy()
 
 class BaseScrollableDialog(BaseDialog):
     """
@@ -107,7 +136,8 @@ class BaseScrollableDialog(BaseDialog):
         canvas_frame.rowconfigure(0, weight=1)
         canvas_frame.columnconfigure(0, weight=1)
 
-        self.canvas = tk.Canvas(canvas_frame, highlightthickness=0, bd=0)
+        self.canvas = tk.Canvas(canvas_frame, highlightthickness=0, bd=0,
+                                background=self.app.style.lookup('TFrame', 'background'))
         self.scrollbar = ttkb.Scrollbar(canvas_frame, orient="vertical", command=self.canvas.yview,
                                         bootstyle="round-primary")
 
@@ -171,8 +201,14 @@ class BaseScrollableDialog(BaseDialog):
         """智能计算并设置窗口尺寸和位置，并根据需要显示/隐藏滚动条。"""
         self.update_idletasks()
 
-        # 根据内容决定最终宽度，同时设定一个合理的最小宽度
-        req_w = max(self.scrollable_frame.winfo_reqwidth() + self.scrollbar.winfo_reqwidth() + 40, 500)
+        # 定义最大和最小宽度 (父窗口的80%，但不小于500px)
+        max_w = int(self.app.winfo_width() * 0.8)
+        min_w = 500
+
+        # 根据内容计算所需宽度
+        req_w = self.scrollable_frame.winfo_reqwidth() + self.scrollbar.winfo_reqwidth() + 40
+        # 最终宽度取所需宽度、最大宽度、最小宽度之间的合适值
+        final_w = max(min(req_w, max_w), min_w)
 
         # 页脚（如按钮栏）的高度
         footer_h = 0
@@ -186,7 +222,6 @@ class BaseScrollableDialog(BaseDialog):
         req_h = content_h + footer_h + 40 # Add some padding
         max_h = int(self.app.winfo_height() * 0.85)
 
-        final_w = req_w
         final_h = min(req_h, max_h)
 
         # --- 决定是否显示滚动条 ---
@@ -226,7 +261,6 @@ class ConfirmationDialog(BaseDialog):
                                        bootstyle="secondary")
             self.button2.pack(side="right", padx=5)
 
-        self.wait_window(self)
 
     def _on_button1_click(self):
         self.result = True
@@ -283,7 +317,6 @@ class MessageDialog(BaseDialog):
                               command=lambda t=text_key: self.on_button_click(_(t)))
             btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.wait_window(self)
 
     def on_button_click(self, result: str):
         self.result = result
@@ -296,7 +329,7 @@ class ProgressDialog(BaseDialog):
     def __init__(self, parent, title: str,on_cancel: Optional[Callable] = None):
         super().__init__(parent, title)
 
-        self.on_cancel_callback = on_cancel
+        # self.on_cancel_callback = on_cancel
         self.main_frame.configure(padding=(30, 25))
         self.main_frame.grid_columnconfigure(0, weight=1)
 
@@ -309,12 +342,7 @@ class ProgressDialog(BaseDialog):
         self.progress_bar = ttkb.Progressbar(self.main_frame, length=400, mode='determinate', bootstyle="info-striped")
         self.progress_bar.grid(row=1, column=0, pady=10, padx=10, sticky="ew")
 
-        if on_cancel:
-            cancel_button = ttkb.Button(self.main_frame, text=_("取消"), command=self._on_close,
-                                        bootstyle="danger-outline")
-            cancel_button.grid(row=2, column=0, pady=(10, 0))
 
-        # 注意：进度条窗口通常不使用 wait_window，因为它不阻塞主线程
 
     def update_progress(self, percentage: float, text: str):
         if self.winfo_exists():
@@ -324,9 +352,7 @@ class ProgressDialog(BaseDialog):
 
     def _on_close(self):
         """重写基类的关闭方法以处理取消回调。"""
-        if self.on_cancel_callback:
-            self.on_cancel_callback()
-        self.destroy()
+        pass
 
 
 
@@ -346,7 +372,6 @@ class FirstLaunchDialog(BaseScrollableDialog):
         self._create_widgets()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        self.wait_window(self)
 
     def _create_widgets(self):
         # 直接使用基类提供的 self.scrollable_frame 和 self.container
@@ -453,7 +478,6 @@ class HelpDialogBox(BaseScrollableDialog):
         ok_button = ttkb.Button(button_frame, text="OK", command=self.destroy, bootstyle="primary")
         ok_button.pack()
 
-        self.wait_window(self)
 
 
 class HelpDialogSheet(BaseScrollableDialog):
@@ -490,9 +514,6 @@ class HelpDialogSheet(BaseScrollableDialog):
         button_frame.pack(side="bottom", fill="x")
         ok_button = ttkb.Button(button_frame, text=_("确定"), command=self.destroy, bootstyle="primary")
         ok_button.pack()
-
-        self.wait_window(self)
-
 
 class TrimmingDecisionDialog(BaseDialog):
     """一个用于决定是否执行trimAl的交互式对话框。"""
@@ -541,8 +562,7 @@ class TrimmingDecisionDialog(BaseDialog):
                                          bootstyle="danger")
         self.cancel_button.grid(row=0, column=2, padx=5, sticky="ew")
 
-        # 居中和模态化由 BaseDialog._finalize_setup() 自动处理
-        self.wait_window(self)
+
 
     def _on_trim(self):
         self.result = "trim"
@@ -600,8 +620,6 @@ class CopyrightDialog(BaseDialog):
         ok_button = ttkb.Button(button_frame, text=_("确定"), command=self.destroy, bootstyle="primary")
         ok_button.pack()
 
-        # 窗口居中由基类自动完成
-        self.wait_window(self)
 
 
 class AboutDialog(BaseScrollableDialog):
@@ -620,7 +638,6 @@ class AboutDialog(BaseScrollableDialog):
         # 绑定内容动态换行
         self.canvas.bind("<Configure>", self._resize_wrapping_labels)
 
-        self.wait_window(self)
 
     def _resize_wrapping_labels(self, event):
         super()._resize_canvas_content(event)  # 调用父类的方法
@@ -645,6 +662,7 @@ class AboutDialog(BaseScrollableDialog):
 
         def add_separator():
             ttkb.Separator(parent).pack(fill="x", anchor="w", pady=10)
+
 
         add_label(_("程序名称") + ": Friendly Cotton Genomes Toolkit (FCGT)", content_font)
         add_label(_("版本") + f": {PKG_VERSION}", content_font)

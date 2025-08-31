@@ -32,5 +32,5 @@ __all__ = [
     "ArabidopsisHomologyConversionTab",
     "SeqAnalysisTab",
     "QuantificationTab",
-    "PhylogeneticsTab"
+    "PhylogeneticsTab",
 ]

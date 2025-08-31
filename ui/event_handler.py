@@ -20,6 +20,7 @@ from cotton_toolkit.utils.advanced_tools_test import check_muscle_executable, ch
     check_trimal_executable
 from cotton_toolkit.utils.gene_utils import identify_genome_from_gene_ids
 from cotton_toolkit.utils.localization import setup_localization
+from cotton_toolkit.utils.network_utils import test_proxy
 from .dialogs import ConfirmationDialog, AboutDialog
 
 if TYPE_CHECKING:
@@ -110,6 +111,8 @@ class EventHandler:
             button2_text=_("稍后重启")
         )
 
+        dialog.wait_window()
+
         if dialog.result is True:
             app.restart_app()
 
@@ -126,6 +129,7 @@ class EventHandler:
                 button1_text=_("强制退出"),
                 button2_text=_("取消")
             )
+            dialog.wait_window()
             if dialog.result is True:
                 self.app.cancel_current_task_event.set()
                 self.app.destroy()
@@ -137,6 +141,8 @@ class EventHandler:
                 button1_text=_("退出"),
                 button2_text=_("取消")
             )
+            dialog.wait_window()
+
             if dialog.result is True:
                 self.app.destroy()
 
@@ -678,10 +684,8 @@ class EventHandler:
 
     def _handle_tool_test_done(self, data: tuple):
         """
-        一个通用的处理器，用于显示任何外部工具的测试结果。
+        这个通用的处理器保持不变，它负责接收并显示所有工具的测试结果。
         """
-        _ = self.app._
-        # data 的格式为: (工具名称, 是否成功, 结果消息)
         tool_name, success, message = data
         title = _("{} 测试结果").format(tool_name)
         if success:
@@ -689,126 +693,26 @@ class EventHandler:
         else:
             self.app.ui_manager.show_error_message(title, message)
 
-    def test_muscle_connection(self):
-        """
-        专门用于启动 MUSCLE 工具测试的公共方法。
-        """
-        _ = self.app._
-        try:
-            muscle_path = self.app.editor_widgets['advanced_tools.muscle_path']['widget'].get().strip()
-        except KeyError:
-            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到MUSCLE路径输入框。"))
-            return
-
-        self.app.message_queue.put(("show_progress_dialog", {
-            "title": _("正在测试 MUSCLE..."),
-            "message": _("正在执行命令..."),
-            "on_cancel": None
-        }))
-        threading.Thread(target=self._test_muscle_thread, args=(muscle_path,), daemon=True).start()
-
-    def _test_muscle_thread(self, muscle_path: str):
-        """
-        在后台线程中调用后端函数来测试 MUSCLE。
-        """
-        _ = self.app._
-
-        # 1. 调用后端测试函数
-        success, message = check_muscle_executable(muscle_path)
-
-        # 2. 如果成功，翻译成功的提示语
-        if success:
-            message = message.replace("Success!", _("检测成功！"))
-
-        # 3. 将包含工具名、成功状态和最终消息的结果发送到UI线程
-        self.app.message_queue.put(("tool_test_done", ("MUSCLE", success, message)))
-        self.app.message_queue.put(("hide_progress_dialog", None))
-
-    def test_iqtree_connection(self):
-        """
-        专门用于启动 IQ-TREE 工具测试的公共方法。
-        """
-        _ = self.app._
-        try:
-            iqtree_path = self.app.editor_widgets['advanced_tools.iqtree_path']['widget'].get().strip()
-        except KeyError:
-            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到IQ-TREE路径输入框。"))
-            return
-
-        self.app.message_queue.put(("show_progress_dialog", {
-            "title": _("正在测试 IQ-TREE..."),
-            "message": _("正在执行命令..."),
-            "on_cancel": None
-        }))
-        threading.Thread(target=self._test_iqtree_thread, args=(iqtree_path,), daemon=True).start()
-
-    def _test_iqtree_thread(self, iqtree_path: str):
-        """
-        在后台线程中调用后端函数来测试 IQ-TREE。
-        """
-        _ = self.app._
-
-        # 调用独立的后端测试函数
-        success, message = check_iqtree_executable(iqtree_path)
-
-        # 如果成功，翻译成功的提示语
-        if success:
-            message = message.replace("Success!", _("检测成功！"))
-
-        # 使用通用的处理器来显示最终结果
-        self.app.message_queue.put(("tool_test_done", ("IQ-TREE", success, message)))
-        self.app.message_queue.put(("hide_progress_dialog", None))
-
-    def test_trimal_connection(self):
-        """
-        专门用于启动 trimAl 工具测试的公共方法。
-        """
-        _ = self.app._
-        try:
-            trimal_path = self.app.editor_widgets['advanced_tools.trimal_path']['widget'].get().strip()
-        except KeyError:
-            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到trimAl路径输入框。"))
-            return
-
-        self.app.message_queue.put(("show_progress_dialog", {
-            "title": _("正在测试 trimAl..."),
-            "message": _("正在执行命令..."),
-            "on_cancel": None
-        }))
-        threading.Thread(target=self._test_trimal_thread, args=(trimal_path,), daemon=True).start()
-
-    def _test_trimal_thread(self, trimal_path: str):
-        """
-        在后台线程中调用后端函数来测试 trimAl。
-        """
-        _ = self.app._
-
-        # 调用独立的后端测试函数
-        success, message = check_trimal_executable(trimal_path)
-
-        # 如果成功，翻译成功的提示语
-        if success:
-            message = message.replace("Success!", _("检测成功！"))
-
-        # 使用通用的处理器来显示最终结果
-        self.app.message_queue.put(("tool_test_done", ("trimAl", success, message)))
-        self.app.message_queue.put(("hide_progress_dialog", None))
-
     def _test_proxy_thread(self, proxies: dict):
+        """
+        在后台线程中调用后端函数来测试代理。
+        此方法不再包含任何网络请求逻辑。
+        """
         _ = self.app._
-        test_url = "https://httpbin.org/get"
         try:
-            self.app.message_queue.put(("progress", (20, _("发送请求..."))))
-            response = requests.get(test_url, proxies=proxies, timeout=15)
-            response.raise_for_status()
-            origin_ip = response.json().get('origin', 'N/A')
-            message = f"{_('连接成功！')}\n{_('测试站点报告的IP地址是:')} {origin_ip}"
-            self.app.message_queue.put(("proxy_test_done", (True, message)))
-            self.app.message_queue.put(("progress", (100, _("测试完成。"))))
-        except requests.exceptions.RequestException as e:
-            self.app.message_queue.put(("proxy_test_done", (False, f"{_('连接失败。')}\n{_('错误详情:')} {e}")))
-            self.app.message_queue.put(("progress", (100, _("测试失败。"))))
+            success, message = test_proxy(proxies)
+
+            # 2. 将后端返回的结果放入消息队列
+            self.app.message_queue.put(("proxy_test_done", (success, message)))
+
+        except Exception as e:
+            # 捕获调用过程中的意外错误
+            error_msg = f"{_('调用代理测试时发生意外错误:')} {e}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            self.app.message_queue.put(("proxy_test_done", (False, error_msg)))
+
         finally:
+            # 3. 确保关闭等待对话框
             self.app.message_queue.put(("hide_progress_dialog", None))
 
     def _gui_fetch_ai_models(self, provider_key: str, use_proxy: bool):
@@ -901,3 +805,64 @@ class EventHandler:
         else:
             # 修改: 使用标准 logger
             logger.warning("无法找到AI助手选项卡实例来更新列名。")
+
+    def start_tool_test(self, tool_name: str, backend_function: Callable, config_paths: list[str]):
+        """
+        一个通用的方法，用于启动任何外部工具的后台测试。
+
+        Args:
+            tool_name (str): 在UI上显示的工具名称。
+            backend_function (Callable): 在后端实际执行检测的函数。
+            config_paths (list[str]): 需要从UI配置中读取的路径键列表。
+        """
+        _ = self.app._
+        try:
+            # 1. 从UI控件中动态获取所有需要的路径
+            paths = []
+            for path_key in config_paths:
+                widget = self.app.editor_widgets[path_key]['widget']
+                paths.append(widget.get().strip())
+
+        except KeyError as e:
+            self.app.ui_manager.show_error_message(_("UI错误"), _("无法找到路径输入框: {}").format(e))
+            return
+
+        # 2. 显示通用的等待对话框
+        self.app.message_queue.put(("show_progress_dialog", {
+            "title": _("正在测试 {}...").format(tool_name),
+            "message": _("正在执行命令..."),
+            "on_cancel": None
+        }))
+
+        # 3. 启动一个通用的后台线程
+        threading.Thread(
+            target=self._run_generic_test_thread,
+            args=(tool_name, backend_function, paths),
+            daemon=True
+        ).start()
+
+    def _run_generic_test_thread(self, tool_name: str, backend_function: Callable, paths: list):
+        """
+        一个通用的后台线程，负责调用任何后端检测函数并报告结果。
+
+        Args:
+            tool_name (str): 工具名称。
+            backend_function (Callable): 后端检测函数。
+            paths (list): 从UI获取到的路径参数列表。
+        """
+        try:
+            # 4. 调用后端函数，使用 * 解包列表作为独立参数传入
+            success, message = backend_function(*paths)
+
+            # 5. 将结果发送回UI线程进行显示
+            self.app.message_queue.put(("tool_test_done", (tool_name, success, message)))
+        except Exception as e:
+            # 捕获调用过程中的意外错误
+            _ = self.app._
+            error_msg = _("在测试 {} 期间发生意外错误: {}").format(tool_name, e)
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            self.app.message_queue.put(("tool_test_done", (tool_name, False, error_msg)))
+        finally:
+            # 6. 确保关闭等待对话框
+            self.app.message_queue.put(("hide_progress_dialog", None))
+

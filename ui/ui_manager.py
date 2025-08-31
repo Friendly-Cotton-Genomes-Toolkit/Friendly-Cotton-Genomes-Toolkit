@@ -440,12 +440,12 @@ class UIManager:
         title = data.get("title", "")
         message = data.get("message", "")
         on_cancel = data.get("on_cancel")
-        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog._on_close()
+        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
         self.progress_dialog = ProgressDialog(self.app, _(title), on_cancel)
         self.progress_dialog.update_progress(0, _(message))
 
     def _hide_progress_dialog(self):
-        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog._on_close()
+        if self.progress_dialog and self.progress_dialog.winfo_exists(): self.progress_dialog.close()
         self.progress_dialog = None
 
     def _finalize_task_ui(self, task_display_name: str, success: bool, result_data: Any = None):

@@ -17,12 +17,22 @@ import subprocess
 from ui import get_persistent_settings_path
 from ui.dialogs import FirstLaunchDialog
 
+from cotton_toolkit.utils.tool_validator import (
+    check_muscle_executable,
+    check_iqtree_executable,
+    check_trimal_executable,
+    check_perl_command,
+    check_pal2nal_script,
+    check_paml_executable,
+    check_codonw_executable
+)
+
 try:
     from ctypes import windll, byref, sizeof, c_int
 except ImportError:
     windll = None
 
-from cotton_toolkit.config.loader import save_config, load_config
+from cotton_toolkit.config.loader import save_config
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.utils.logger import setup_global_logger
 from ui.event_handler import EventHandler
@@ -86,26 +96,35 @@ class CottonToolkitApp(ttkb.Window):
 
             {'type': 'section', 'label_key': "高级功能"},
             {'type': 'tool_entry',
-             'label_key': "MUSCLE可执行文件",
+             'label_key': "MUSCLEv5可执行文件",
              'config_path': 'advanced_tools.muscle_path',
              'tip_key': "用于多序列比对的MUSCLE程序路径。",
              'test_label_key': "测试",
-             'command': self.event_handler.test_muscle_connection
-             },
+             'command': lambda: self.event_handler.start_tool_test(
+                 tool_name="MUSCLE",
+                 backend_function=check_muscle_executable,
+                 config_paths=['advanced_tools.muscle_path']
+             )},
             {'type': 'tool_entry',
              'label_key': "IQ-TREE可执行文件",
              'config_path': 'advanced_tools.iqtree_path',
              'tip_key': "用于构建系统发育树的IQ-TREE程序路径。",
              'test_label_key': "测试",
-             'command': self.event_handler.test_iqtree_connection
-             },
+             'command': lambda: self.event_handler.start_tool_test(
+                 tool_name="IQ-TREE",
+                 backend_function=check_iqtree_executable,
+                 config_paths=['advanced_tools.iqtree_path']
+             )},
             {'type': 'tool_entry',
              'label_key': "trimAl可执行文件",
              'config_path': 'advanced_tools.trimal_path',
              'tip_key': "用于修建多序列比对结果的trimAl程序路径。",
              'test_label_key': "测试",
-             'command': self.event_handler.test_trimal_connection
-             },
+             'command': lambda: self.event_handler.start_tool_test(
+                 tool_name="trimAl",
+                 backend_function=check_trimal_executable,
+                 config_paths=['advanced_tools.trimal_path']
+             )},
         ]
 
     @property
@@ -132,7 +151,7 @@ class CottonToolkitApp(ttkb.Window):
     TOOL_TAB_ORDER = [
         "download", "annotation", "enrichment", "sequence_extraction", "seq_analysis",
         "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion",
-        "gff_query","quantification","blast","phylogenetics", "ai_assistant",
+        "gff_query","quantification","blast","phylogenetics","ai_assistant",
     ]
 
 
@@ -150,7 +169,6 @@ class CottonToolkitApp(ttkb.Window):
         self.tools_icon_path: Optional[str] = self.resource_path("tools.png")
         self.settings_icon_path: Optional[str] = self.resource_path("settings.png")
 
-        self._patch_all_toplevels()
 
         self.title_text_key = _("Friendly Cotton Genomes Toolkit - FCGT")
         self.title(self._(self.title_text_key))
@@ -284,37 +302,6 @@ class CottonToolkitApp(ttkb.Window):
 
         return os.path.join(base_path, "ui", "assets", relative_path)
 
-    def _patch_all_toplevels(self):
-        app_instance = self
-
-        def apply_customizations(toplevel_self):
-            if app_instance.app_icon_path:
-                try:
-                    toplevel_self.iconbitmap(app_instance.app_icon_path)
-                except tk.TclError:
-                    pass
-
-            def _safer_refresh_task():
-                app_instance.configure_title_bar_color(toplevel_self)
-                toplevel_self.update_idletasks()
-
-            toplevel_self.after(10, _safer_refresh_task)
-
-        original_ttkb_init = ttkb.Toplevel.__init__
-
-        def new_ttkb_init(toplevel_self, *args, **kwargs):
-            original_ttkb_init(toplevel_self, *args, **kwargs)
-            apply_customizations(toplevel_self)
-
-        ttkb.Toplevel.__init__ = new_ttkb_init
-
-        original_tk_init = tk.Toplevel.__init__
-
-        def new_tk_init(toplevel_self, *args, **kwargs):
-            original_tk_init(toplevel_self, *args, **kwargs)
-            apply_customizations(toplevel_self)
-
-        tk.Toplevel.__init__ = new_tk_init
 
     def configure_title_bar_color(self, window_obj):
         """

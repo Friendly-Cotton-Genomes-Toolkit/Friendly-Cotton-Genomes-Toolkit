@@ -112,6 +112,26 @@ class AdvancedToolsConfig(BaseModel):
         description="Path to the trimAl executable for sequence alignment trimming."
     )
 
+    perl_path: Optional[str] = Field(
+        default="perl",
+        description="Path to the Perl executable, required for PAL2NAL."
+    )
+
+    pal2nal_path: Optional[str] = Field(
+        default=None,
+        description="Path to the pal2nal.pl script."
+    )
+
+    paml_path: Optional[str] = Field(
+        default=None,
+        description="Path to the PAML codeml executable for selective pressure analysis."
+    )
+
+    codonw_path: Optional[str] = Field(
+        default=None,
+        description="Path to the CodonW executable for codon usage bias analysis."
+    )
+
 class MainConfig(BaseModel):
     log_level: str = "INFO"
     i18n_language: str = "en"
