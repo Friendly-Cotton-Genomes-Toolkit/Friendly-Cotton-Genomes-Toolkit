@@ -58,7 +58,7 @@ class PhylogeneticsWorkflow:
         self.app.active_task_name = None
 
         stats = get_alignment_statistics(self.context['aligned_path'])
-        dialog = TrimmingDecisionDialog(self.app, _("比对完成 - 修建决策"), stats)
+        dialog = TrimmingDecisionDialog(self.app, _("比对完成 - 修建决策"), stats, self.app._)
         user_choice = dialog.result
 
         if user_choice == "cancel":

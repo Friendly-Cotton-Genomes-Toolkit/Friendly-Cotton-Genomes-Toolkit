@@ -648,9 +648,6 @@ class CottonToolkitApp(ttkb.Window):
         self._build_editor_ui(parent)
         self.logger.info(_("配置编辑器UI已通过数据驱动模式构建。"))
 
-        # 在所有控件都创建完毕后，为它们递归绑定滚轮事件
-        self._bind_editor_mousewheel_recursive(parent)
-
     def _apply_config_values_to_editor(self):
         """
         从配置对象(self.current_config)加载值并应用到UI控件。
@@ -912,39 +909,6 @@ class CottonToolkitApp(ttkb.Window):
         if hasattr(self, 'config_warning_label'):
             self.config_warning_label.configure(wraplength=wraplength, justify="left")
 
-    def _on_editor_mousewheel(self, event: tk.Event):
-        """专门处理配置编辑器画布的鼠标滚轮事件。"""
-        if not (self.editor_canvas and self.editor_canvas.winfo_exists()):
-            return "break"
-
-        scroll_units = 0
-        if sys.platform.startswith('linux'):
-            if event.num == 4:
-                scroll_units = -1
-            elif event.num == 5:
-                scroll_units = 1
-        else:
-            # 标准化不同鼠标的滚动增量 (Windows/macOS)
-            delta = event.delta
-            if abs(delta) > 0:
-                scroll_units = -1 * (delta / 120) if "win" in sys.platform else -1 * delta
-
-        if scroll_units:
-            self.editor_canvas.yview_scroll(int(scroll_units), "units")
-
-        # 阻止事件继续传播
-        return "break"
-
-    def _bind_editor_mousewheel_recursive(self, widget: tk.Widget):
-        """为配置编辑器的控件及其所有子控件递归地绑定鼠标滚轮事件。"""
-        widget.bind("<MouseWheel>", self._on_editor_mousewheel)
-        widget.bind("<Button-4>", self._on_editor_mousewheel)
-        widget.bind("<Button-5>", self._on_editor_mousewheel)
-
-        for child in widget.winfo_children():
-            self._bind_editor_mousewheel_recursive(child)
-
-
     def _create_editor_frame(self, parent):
         page = ttkb.Frame(parent)
         page.grid_columnconfigure(0, weight=1)
@@ -999,6 +963,24 @@ class CottonToolkitApp(ttkb.Window):
         self.editor_scroll_frame.bind("<Configure>", on_frame_configure)
         self.editor_canvas.bind("<Configure>", on_canvas_resize)
 
+        def _on_mousewheel(event):
+            if not self.editor_canvas or not self.editor_canvas.winfo_exists():
+                return
+            scroll_units = 0
+            if event.num == 5 or event.delta < 0:
+                scroll_units = 2
+            elif event.num == 4 or event.delta > 0:
+                scroll_units = -2
+
+            if scroll_units != 0:
+                self.editor_canvas.yview_scroll(scroll_units, "units")
+
+            return "break"
+
+        for widget in [self.editor_canvas, self.editor_scroll_frame]:
+            widget.bind_all("<MouseWheel>", _on_mousewheel)
+            widget.bind_all("<Button-4>", _on_mousewheel)
+            widget.bind_all("<Button-5>", _on_mousewheel)
 
         self.editor_no_config_label = ttkb.Label(page, text=self._("请先从“主页”加载或生成一个配置文件。"),
                                                  font=self.app_subtitle_font, bootstyle="secondary")

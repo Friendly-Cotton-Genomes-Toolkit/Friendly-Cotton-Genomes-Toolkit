@@ -19,21 +19,46 @@ class BaseTab(ttk.Frame):
         super().__init__(parent)
         self.app = app
         self._ = translator
-
         self.scrollable_frame: Optional[ttk.Frame] = None
         self.action_button: Optional[ttkb.Button] = None
-        self.canvas: Optional[tk.Canvas] = None
-        self.scrollbar: Optional[ttkb.Scrollbar] = None
         self.cancel_event: Optional[threading.Event] = None
-
         self.pack(fill="both", expand=True, padx=0, pady=0)
 
-        # --- 优化后的调用流程 ---
+        # --- 核心修改1：调整调用顺序和逻辑 ---
+        # 1. 创建基础布局（画布、滚动条等）
         self._create_base_layout()
+        # 2. 创建所有子控件（由具体的 Tab 类实现）
         self._create_widgets()
-        # 在所有子控件创建完毕后，为本Tab及其所有子控件递归绑定滚轮事件
-        self._bind_recursive_mousewheel(self)
-        self.after(50, self._update_scrollbar_visibility)
+        # 3. 在所有控件都创建完毕后，为可滚动区域及其所有子控件绑定滚轮事件
+        self._bind_mousewheel(self.scrollable_frame)
+        # --- 修改结束 ---
+
+    # --- 核心修改2：将滚轮事件处理函数提升为类方法 ---
+    def _on_mousewheel(self, event: tk.Event, canvas: tk.Canvas):
+        """处理鼠标滚轮事件，滚动指定的画布。"""
+        if sys.platform.startswith('linux'):
+            if event.num == 4:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(1, "units")
+        else:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        return "break"
+
+    def _bind_mousewheel(self, widget: tk.Widget):
+        """递归地为控件及其所有子控件绑定鼠标滚轮事件。"""
+        # 我们需要滚动的目标是 self.canvas，所以在这里捕获它
+        canvas = self.nametowidget(self.canvas_name)
+
+        # 使用 lambda 将 canvas 作为参数传递给事件处理函数
+        widget.bind("<MouseWheel>", lambda e, c=canvas: self._on_mousewheel(e, c))
+        widget.bind("<Button-4>", lambda e, c=canvas: self._on_mousewheel(e, c))
+        widget.bind("<Button-5>", lambda e, c=canvas: self._on_mousewheel(e, c))
+
+        for child in widget.winfo_children():
+            self._bind_mousewheel(child)
+
+    # --- 修改结束 ---
 
     def _create_base_layout(self):
         self.grid_rowconfigure(0, weight=1)
@@ -45,97 +70,47 @@ class BaseTab(ttk.Frame):
         scroll_container.grid_rowconfigure(0, weight=1)
         scroll_container.grid_columnconfigure(0, weight=1)
 
-        self.canvas = tk.Canvas(scroll_container, highlightthickness=0, bd=0,
-                                background=self.app.style.lookup('TFrame', 'background'))
-        self.scrollbar = ttkb.Scrollbar(scroll_container, orient="vertical", command=self.canvas.yview,
-                                        bootstyle="round-secondary")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        canvas = tk.Canvas(scroll_container, highlightthickness=0, bd=0,
+                           background=self.app.style.lookup('TFrame', 'background'))
+        # --- 核心修改3：保存canvas的名称，以便后续引用 ---
+        self.canvas_name = str(canvas)
+        # --- 修改结束 ---
 
-        self.scrollable_frame = ttk.Frame(self.canvas, padding=15)
-        self.canvas_window_id = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        scrollbar = ttkb.Scrollbar(scroll_container, orient="vertical", command=canvas.yview,
+                                   bootstyle="round-secondary")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        self.scrollable_frame.bind("<Configure>", self._on_frame_or_tab_configure)
-        self.bind("<Configure>", self._on_frame_or_tab_configure)
-        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.scrollable_frame = ttk.Frame(canvas)
+        canvas_window_id = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
 
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
+        def _on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas_window_id, width=event.width)
+
+        # 初始绑定：确保画布本身的空白区域和外层框架也能响应滚动
+        self._bind_mousewheel(self)
+
+        self.scrollable_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         action_frame = ttkb.Frame(self)
         action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 5))
         action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_rowconfigure(0, weight=1)
 
         self.action_button = ttkb.Button(action_frame, text=self._("执行操作"), bootstyle="success")
         self.action_button.grid(row=0, column=0, sticky="e", padx=15, pady=10)
 
-    # --- 核心修改：稳定、独立的递归滚轮事件绑定 ---
-    def _on_mousewheel(self, event: tk.Event):
-        """统一处理鼠标滚轮事件，滚动当前Tab的画布。"""
-        if not (self.canvas and self.canvas.winfo_exists()):
-            return
-
-        scroll_units = 0
-        if sys.platform.startswith('linux'):
-            if event.num == 4:
-                scroll_units = -1
-            elif event.num == 5:
-                scroll_units = 1
-        else:
-            # 标准化不同鼠标的滚动增量 (Windows/macOS)
-            delta = event.delta
-            if abs(delta) > 0:
-                scroll_units = -1 * (delta / 120) if "win" in sys.platform else -1 * delta
-
-        if scroll_units:
-            self.canvas.yview_scroll(int(scroll_units), "units")
-
-        # 返回 "break" 阻止事件冒泡，防止父级组件或其他绑定也处理此事件
-        return "break"
-
-    def _bind_recursive_mousewheel(self, widget: tk.Widget):
-        """递归地为控件及其所有子控件绑定鼠标滚轮事件。"""
-        widget.bind("<MouseWheel>", self._on_mousewheel)
-        widget.bind("<Button-4>", self._on_mousewheel)
-        widget.bind("<Button-5>", self._on_mousewheel)
-
-        for child in widget.winfo_children():
-            self._bind_recursive_mousewheel(child)
-
-    # --- 智能显示/隐藏滚动条 ---
-    def _update_scrollbar_visibility(self, event: Optional[tk.Event] = None):
-        """检查是否需要滚动条，并相应地显示或隐藏它。"""
-        if not (self.canvas and self.scrollable_frame and self.scrollbar and self.scrollable_frame.winfo_exists()):
-            return
-
-        self.canvas.update_idletasks()
-        self.scrollable_frame.update_idletasks()
-
-        content_height = self.scrollable_frame.winfo_reqheight()
-        viewport_height = self.canvas.winfo_height()
-
-        if content_height <= viewport_height:
-            self.scrollbar.grid_remove()
-            self.scrollable_frame.configure(padding=15)
-        else:
-            self.scrollbar.grid()
-            self.scrollable_frame.configure(padding=(15, 15, 5, 15))
-
-    # --- 布局配置方法 ---
-    def _on_frame_or_tab_configure(self, event: tk.Event):
-        if self.canvas:
-            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self._update_scrollbar_visibility()
-
-    def _on_canvas_configure(self, event: tk.Event):
-        if self.canvas:
-            self.canvas.itemconfig(self.canvas_window_id, width=event.width)
-
-    # --- 保持不变的公共方法 ---
     def get_primary_action(self) -> Optional[Callable]:
+        # ... 此后所有方法保持不变 ...
         if self.action_button and self.action_button.winfo_exists():
-            command_str = self.action_button.cget('command')
-            if command_str:
-                return self.action_button.tk.globalgetvar(command_str)
+            command = self.action_button.cget('command')
+            return lambda: command() if command else None
         return None
 
     def run_task_in_thread(
@@ -164,8 +139,7 @@ class BaseTab(ttk.Frame):
                 self.app.after(0, lambda: MessageDialog(self.app, title=self._("严重错误"), message=error_msg,
                                                         icon_type="error"))
             finally:
-                if progress_dialog.winfo_exists():
-                    progress_dialog.destroy()
+                progress_dialog.close()
                 if self.cancel_event.is_set():
                     self.app.log_message(self._("任务已被用户取消。"), "INFO")
                 elif result:
@@ -174,7 +148,7 @@ class BaseTab(ttk.Frame):
                     self.app.log_message(success_msg, "INFO")
                     self.app.after(0, lambda: MessageDialog(self.app, title=self._("成功"), message=success_msg,
                                                             icon_type="info"))
-                elif result is None and not self.cancel_event.is_set():
+                else:
                     self.app.log_message(self._("任务执行完毕，但未返回成功状态或结果。"), "WARNING")
 
         task_thread = threading.Thread(target=_task_wrapper, daemon=True)

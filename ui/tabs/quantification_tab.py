@@ -6,7 +6,7 @@ import ttkbootstrap as ttkb
 
 from cotton_toolkit.pipelines.quantification import run_expression_normalization
 from .base_tab import BaseTab
-from ..dialogs import HelpDialogSheet
+from ..dialogs import HelpDialog
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -138,7 +138,7 @@ class QuantificationTab(BaseTab):
             ["Gohir.A01G000300", "1200", "1543", "1380"],
             ["...", "...", "...", "..."]
         ]
-        HelpDialogSheet(self, title, message, headers, data)
+        HelpDialog(self, title, message, headers, data)
 
     # 显示基因长度文件帮助的函数
     def _show_lengths_help(self):
@@ -155,7 +155,7 @@ class QuantificationTab(BaseTab):
             ["Gohir.A01G000300", "4210"],
             ["...", "..."]
         ]
-        HelpDialogSheet(self, title, message, headers, data)
+        HelpDialog(self, title, message, headers, data)
 
     def _browse_counts_file(self):
         self._browse_input_file(self.counts_file_path, _("选择原始计数文件"))
