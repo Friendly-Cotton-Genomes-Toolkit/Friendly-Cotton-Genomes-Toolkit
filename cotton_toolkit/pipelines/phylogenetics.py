@@ -7,6 +7,7 @@ import logging
 from typing import Callable, Optional, Tuple, Dict, Any
 from threading import Event
 from Bio import Phylo
+import matplotlib
 import matplotlib.pyplot as plt
 from cotton_toolkit.config.models import MainConfig
 
@@ -17,6 +18,8 @@ try:
 except ImportError:
     _ = lambda s: str(s)
 
+
+# 文件路径: cotton_toolkit/pipelines/phylogenetics_pipeline.py
 
 def _run_command(
         cmd: list,
@@ -74,6 +77,7 @@ def _run_command(
         progress_callback(100, _("{} 已完成。").format(step_name))
 
 
+
 def run_muscle_alignment(
         config: MainConfig,
         input_path: str,
@@ -123,9 +127,10 @@ def run_iqtree_inference(
 
     iqtree_cmd = [
         iqtree_path, "-s", input_path, "-m", model, "-B", str(bootstrap),
-        "--prefix", output_prefix, "-nt", "AUTO"
+        "--prefix", output_prefix, "-nt","AUTO"
     ]
     _run_command(iqtree_cmd, "IQ-TREE 构建发育树", progress_callback, cancel_event)
+
 
 
 def get_alignment_statistics(aligned_fasta_path: str) -> Dict[str, Any]:
@@ -230,6 +235,7 @@ def visualize_tree(
 
     ax.tick_params(axis='both', which='major', labelsize=label_font_size)
 
+    # --- 核心修改 ---
     # Bio.Phylo.draw 使用 'branch_labels' 参数（而非 'show_branch_labels'）
     # 并且需要一个函数来指定显示什么内容。
     draw_kwargs = {
@@ -239,10 +245,10 @@ def visualize_tree(
     if show_branch_labels:
         # 这个lambda函数会检查每个进化枝(clade)的置信度(confidence)属性
         # IQ-TREE 将自举值存储在这里。我们只显示大于0的值。
-        draw_kwargs['branch_labels'] = lambda \
-            c: f"{int(c.confidence)}" if c.confidence is not None and c.confidence > 0 else None
+        draw_kwargs['branch_labels'] = lambda c: f"{int(c.confidence)}" if c.confidence is not None and c.confidence > 0 else None
 
     Phylo.draw(tree, **draw_kwargs)
+    # --- 修改结束 ---
 
     ax.set_title("Phylogenetic Tree", fontsize=label_font_size + 2)
     ax.set_ylabel("")
@@ -258,5 +264,3 @@ def visualize_tree(
     plt.savefig(final_output_path, format=output_format, bbox_inches='tight')
     plt.close(fig)
     logger.info(f"Tree visualization saved to {final_output_path}")
-
-

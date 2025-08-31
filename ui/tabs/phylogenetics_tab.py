@@ -7,7 +7,7 @@ import ttkbootstrap as ttkb
 from ttkbootstrap.tooltip import ToolTip
 
 from .base_tab import BaseTab
-from ..dialogs import CopyrightDialog, HelpDialogBox
+from ..dialogs import CopyrightDialog
 from ..workflows.phylogenetics_workflow import PhylogeneticsWorkflow
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ class PhylogeneticsTab(BaseTab):
         super().__init__(parent, app, translator=translator)
 
         if self.action_button:
+            # 为了清晰，重命名 action_button
             self.start_button = self.action_button
             self.start_button.configure(text=self._("开始构建"), command=self._start_phylo_task)
 
@@ -47,24 +48,10 @@ class PhylogeneticsTab(BaseTab):
         parent = self.scrollable_frame
         parent.grid_columnconfigure(0, weight=1)
 
-        # --- 标题与帮助按钮 ---
-        title_frame = ttkb.Frame(parent)
-        title_frame.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
-
-        self.title_label = ttkb.Label(title_frame, text=self._("系统发育分析"), font=self.app.app_title_font,
+        # --- 标题 ---
+        self.title_label = ttkb.Label(parent, text=self._("系统发育分析"), font=self.app.app_title_font,
                                       bootstyle="primary")
-        self.title_label.pack(side="left", anchor="center")
-
-        self.help_button = ttkb.Button(
-            title_frame,
-            text="?",
-            command=self._show_help_dialog,
-            bootstyle="primary-outline",
-            width=2
-        )
-        self.help_button.pack(side="left", anchor="center", padx=(10, 0))
-        ToolTip(self.help_button, text=self._("显示帮助信息"))
-
+        self.title_label.grid(row=0, column=0, padx=10, pady=(10, 15), sticky="n")
 
         # --- 输入/输出卡片 ---
         io_card = ttkb.LabelFrame(parent, text=self._("文件路径"), bootstyle="secondary")
@@ -130,6 +117,7 @@ class PhylogeneticsTab(BaseTab):
 
         # --- 可视化参数卡片 ---
         vis_card = ttkb.LabelFrame(parent, text=self._("可视化参数"), bootstyle="secondary")
+        # --- 核心修改：将 row=3 改为 row=4，使其显示在IQ-TREE卡片下方 ---
         vis_card.grid(row=4, column=0, sticky="new", padx=10, pady=5)
         vis_card.grid_columnconfigure((1, 3), weight=1)
 
@@ -206,36 +194,6 @@ class PhylogeneticsTab(BaseTab):
             self.output_file_entry.insert(0, path)
 
 
-    def _show_help_dialog(self):
-        """显示功能帮助对话框。"""
-        params_data = [
-            (
-                "Function Overview", self._("功能概述"),
-                self._("本功能整合了多个生物信息学工具，提供一个从多序列比对到系统发育树构建和可视化的完整流程。"),
-                self._("流程步骤: 1. MUSCLE多序列比对 -> 2. (可选) trimAl序列修剪 -> 3. IQ-TREE最大似然法建树 -> 4. 结果可视化与打包。")
-            ),
-            (
-                "Input Data Requirements", self._("输入数据要求"),
-                self._("1. 序列类型: 为了保证远源物种间比对的准确性，本功能目前仅接受蛋白质（氨基酸）序列的FASTA文件。\n"
-                     "2. 同源性: 输入文件中的所有序列必须是同源的（即来自同一祖先基因），如同一个基因家族的成员。非同源序列将导致无意义的进化树。"),
-                self._("注意: 请在开始分析前，通过BLAST等方法确认序列间的同源性。")
-            ),
-            (
-                "Protein vs. Nucleotide", self._("蛋白质 vs. 核酸序列"),
-                self._("本工作流被配置为使用蛋白质序列，因为：\n"
-                     "• 蛋白质有20种氨基酸，而核酸只有4种碱基，前者在进化关系较远时能提供更多信息，减少随机相似性。\n"
-                     "• 密码子具有简并性，核酸序列的某些位点突变可能不改变氨基酸，蛋白质序列更能反映功能上的选择压力。"),
-                self._("然而，在分析亲缘关系非常近的物种或研究同义/非同义替换率(dN/dS)时，基于密码子的核酸序列比对（本自动化流程不支持）是更合适的选择。")
-            ),
-            (
-                "Key Parameters", self._("核心参数解释"),
-                self._("• Gap Threshold (trimAl): 用于移除比对后充满缺口（gap）的列。值越低（如0.7），修剪越严格，保留的列中允许的缺口比例越低。\n"
-                     "• Bootstrap (IQ-TREE): 一种评估进化树分支可靠性的统计学方法。1000次重复是常用标准，结果（支持率）会标注在进化树的分支上。"),
-                self._("建议: 如果比对结果的Gap比例很高（>20%），强烈建议执行trimAl修剪。程序会在比对后弹出窗口给出建议。")
-            )
-        ]
-        HelpDialogBox(self.app, self._("系统发育分析帮助"), params_data)
-
     def _start_phylo_task(self):
         # --- 1. 验证输入 ---
         if not self.app.current_config:
@@ -283,6 +241,7 @@ class PhylogeneticsTab(BaseTab):
             'vis_label_font_size': font_size,
             'vis_branch_line_width': line_width,
             'vis_output_format': self.output_format_var.get(),
+            # -----------------------------
         }
 
         # 创建一个工作流实例并启动它
