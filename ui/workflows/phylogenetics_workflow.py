@@ -7,10 +7,11 @@ import shutil
 from typing import TYPE_CHECKING, Dict, Any
 
 from ui.dialogs import TrimmingDecisionDialog
-from cotton_toolkit.pipelines import (
+from cotton_toolkit.external_functions import (
     get_alignment_statistics, run_muscle_alignment, run_trimal_trimming,
     run_iqtree_inference, visualize_tree
 )
+from cotton_toolkit.utils.gene_utils import validate_protein_fasta
 
 if TYPE_CHECKING:
     from ..gui_app import CottonToolkitApp
@@ -31,6 +32,16 @@ class PhylogeneticsWorkflow:
         self.context: Dict[str, Any] = {}
 
     def start(self, task_kwargs: dict):
+
+        try:
+            validate_protein_fasta(task_kwargs['input_fasta_path'])
+        except ValueError as e:
+            # 如果验证失败，直接显示错误并终止流程
+            self.app.ui_manager.show_error_message(_("输入文件错误"), str(e))
+            self.app.ui_manager._hide_progress_dialog()
+            self.app.active_task_name = None
+            return  # 停止执行
+
         temp_dir = tempfile.TemporaryDirectory()
         self.context = {
             "temp_dir": temp_dir,

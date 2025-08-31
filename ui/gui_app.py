@@ -86,7 +86,7 @@ class CottonToolkitApp(ttkb.Window):
 
             {'type': 'section', 'label_key': "高级功能"},
             {'type': 'tool_entry',
-             'label_key': "MUSCLE可执行文件",
+             'label_key': "MUSCLEv5可执行文件",
              'config_path': 'advanced_tools.muscle_path',
              'tip_key': "用于多序列比对的MUSCLE程序路径。",
              'test_label_key': "测试",
@@ -126,13 +126,13 @@ class CottonToolkitApp(ttkb.Window):
             "arabidopsis_conversion": _("棉花-拟南芥互转"),
             "locus_conversion": _("位点转换"), "gff_query": _("GFF查询"),
             "quantification":_("表达量标准化"),"blast": _("本地BLAST"),
-            "ai_assistant": _("AI助手"),"phylogenetics": _("系统发育"),
+            "ai_assistant": _("AI助手"),"phylogenetics": _("系统发育"),"online_tools":_("在线工具"),
         }
 
     TOOL_TAB_ORDER = [
         "download", "annotation", "enrichment", "sequence_extraction", "seq_analysis",
         "genome_identifier", "homology", "arabidopsis_conversion", "locus_conversion",
-        "gff_query","quantification","blast","phylogenetics", "ai_assistant",
+        "gff_query","quantification","blast","phylogenetics", "ai_assistant","online_tools"
     ]
 
 
@@ -850,6 +850,7 @@ class CottonToolkitApp(ttkb.Window):
             "blast": BlastTab,
             "phylogenetics": PhylogeneticsTab,
             "ai_assistant": AIAssistantTab,
+            "online_tools": OnlineToolsTab,
         }
 
         for key in self.TOOL_TAB_ORDER:
