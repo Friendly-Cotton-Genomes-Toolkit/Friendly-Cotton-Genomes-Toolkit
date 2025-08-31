@@ -166,26 +166,11 @@ pixi run build
 
 本工具依赖 [CottonGen](https://www.cottongen.org/) 提供的权威数据，感谢其团队持续的开放和维护。
 
-下方的工具、软件和数据，均需用户需自行下载、安装，本软件不涉及分发、修改等操作，用户使用时需要遵守相关的协议。
-
-- **[CottonGen](https://www.cottongen.org/) 文章**:
+- **CottonGen 文章**:
   - Yu, J, Jung S, et al. (2021) CottonGen: The Community Database for Cotton Genomics, Genetics, and Breeding Research. *Plants* 10(12), 2805.
   - Yu J, Jung S, et al. (2014) CottonGen: a genomics, genetics and breeding database for cotton research. *Nucleic Acids Research* 42(D1), D1229-D1236.
-- **[BLAST+](https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html) 文章:**
+- **BLAST+ 文章:**
   - Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. BLAST+: architecture and applications. BMC Bioinformatics. 2009 Dec 15;10:421. doi: 10.1186/1471-2105-10-421. PMID: 20003500; PMCID: PMC2803857.
-
-- **[Muscle](https://github.com/rcedgar/muscle) 文章：**
-  - Edgar RC., Muscle5: High-accuracy alignment ensembles enable unbiased assessments of sequence homology and phylogeny. *Nature Communications* 13.1 (2022): 6968.
-    https://www.nature.com/articles/s41467-022-34630-w.pdf
-  - Edgar RC. and Tolstoy I., Muscle-3D: scalable multiple protein structure alignment (2024) *BioRxiv*.
-
-- **[IQ-TREE](https://github.com/iqtree/iqtree3) 文章：**
-  - T.K.F. Wong, N. Ly-Trong, H. Ren, H. Banos, A.J. Roger, E. Susko, C. Bielow, N. De Maio, N. Goldman, M.W. Hahn, G. Huttley, R. Lanfear, B.Q. Minh (2025) IQ-TREE 3: Phylogenomic Inference Software using Complex Evolutionary Models. Submitted, https://doi.org/10.32942/X2P62N.
-  - S. Kalyaanamoorthy, B.Q. Minh, T.K.F. Wong, A. von Haeseler, L.S. Jermiin (2017) ModelFinder: Fast model selection for accurate phylogenetic estimates. *Nat. Methods*, 14:587-589. https://doi.org/10.1038/nmeth.4285
-  - D.T. Hoang, O. Chernomor, A. von Haeseler, B.Q. Minh, and L.S. Vinh (2018) UFBoot2: Improving the ultrafast bootstrap approximation. *Mol. Biol. Evol.*, 35:518–522. https://doi.org/10.1093/molbev/msx281
-
-- **[trimAl](https://github.com/inab/trimal) 文章**：
-  - Capella-Gutiérrez, S., Silla-Martínez, J. M., & Gabaldón, T. (2009). trimAl: a tool for automated alignment trimming in large-scale phylogenetic analyses. Bioinformatics (Oxford, England), 25(15), 1972–1973. https://doi.org/10.1093/bioinformatics/btp348
 
 - **基因组引用文献**:
   - **NAU-NBI_v1.1**: Zhang et. al., Sequencing of allotetraploid cotton (Gossypium hirsutum L. acc. TM-1) provides a resource for fiber improvement. *Nature Biotechnology*. 33, 531–537. 2015
