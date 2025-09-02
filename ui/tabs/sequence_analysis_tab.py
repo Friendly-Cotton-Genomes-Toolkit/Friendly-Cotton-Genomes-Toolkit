@@ -18,8 +18,6 @@ except ImportError:
     _ = lambda s: str(s)
 
 
-
-
 class SeqAnalysisTab(BaseTab):
     """
     A tab for directly analyzing FASTA sequences provided via text or file.
@@ -29,8 +27,7 @@ class SeqAnalysisTab(BaseTab):
     def __init__(self, parent, app: "CottonToolkitApp", translator: Callable[[str], str]):
         self.input_mode_var = tk.StringVar(value="text")
         self.sequence_type_var = tk.StringVar(value='cds')
-        self.perform_analysis_var = tk.BooleanVar(value=True)  # Default to ON
-        self.organelle_type_var = tk.StringVar(value='nucleus')
+        self.perform_analysis_var = tk.BooleanVar(value=True)
 
         super().__init__(parent, app, translator)
 
@@ -39,18 +36,35 @@ class SeqAnalysisTab(BaseTab):
 
         # Initial UI state setup
         self._toggle_input_mode()
-        self._toggle_analysis_options_state()
 
     def _show_parameter_help(self):
         """ 显示分析参数的帮助信息弹窗。 """
         params = [
+            # --- CDS
             ("GC Content (%)", self._('GC含量'), self._('指序列中G和C碱基所占的百分比。'),
              self._('【注】仅当序列类型为 CDS 时可用。')),
+            ("GC3 Content (%)", self._('GC3含量'), self._('指CDS序列中，每个密码子第三位上的G和C碱基所占的百分比。'),
+             self._('【注】仅当序列类型为 CDS 时可用。')),
+            ("ENC (Effective Number of Codons)", self._('有效密码子数'),
+             self._('衡量密码子使用偏好性的强度。范围从20 (极强偏好) 到61 (无偏好)。'),
+             self._('【注】仅当序列类型为 CDS 时可用。')),
+            ("CAI (Codon Adaptation Index)", self._('密码子适应指数'),
+             self._('衡量基因在密码子用法上与高表达基因的相似度，用于预测表达水平。值越高，表达水平可能越高。'),
+             self._('【注】仅当序列类型为 CDS 时可用。')),
+            ("RSCU_Values", self._('相对同义密码子使用度'),
+             self._(
+                 '指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性，这与基因在宿主中的表达效率有关。'),
+             self._('【注】仅当序列类型为 CDS 时可用。')),
+
+            # --- Protein
             ("Molecular Weight (Da)", self._('分子量'), self._('蛋白质的分子质量，单位为道尔顿(Dalton)。'),
              self._('【注】CDS序列会先翻译成蛋白质再计算。')),
             ("Isoelectric Point (pI)", self._('等电点'), self._('指蛋白质在特定pH值下净电荷为零的点。'),
              self._('【注】CDS序列会先翻译成蛋白质再计算。')),
             ("Aromaticity", self._('芳香性'), self._('蛋白质中芳香族氨基酸（Phe, Trp, Tyr）的相对频率。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("Aliphatic Index", self._('脂肪族指数'),
+             self._('蛋白质中脂肪族氨基酸（A, V, I, L）的相对体积。指数越高，通常热稳定性越好。'),
              self._('【注】CDS序列会先翻译成蛋白质再计算。')),
             ("Instability Index", self._('不稳定性指数'),
              self._(
@@ -59,17 +73,14 @@ class SeqAnalysisTab(BaseTab):
             ("GRAVY", self._('亲疏水性总平均值'),
              self._('蛋白质中所有氨基酸残基的疏水性值的总和除以序列长度。正值表示疏水（可能为膜蛋白），负值表示亲水。'),
              self._('【注】CDS序列会先翻译成蛋白质再计算。')),
-            ("RSCU_Values", self._('相对同义密码子使用度'),
-             self._(
-                 '指一个密码子的实际使用频率与其期望频率的比值，用于衡量密码子使用的偏好性，这与基因在宿主中的表达效率有关。'),
-             self._('【注】仅当序列类型为 CDS 时可用。'))
+            ("Secondary Structure", self._('二级结构组分'),
+             self._('预测蛋白质中α-螺旋(Helix), β-转角(Turn), β-折叠(Sheet)各自所占的百分比。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
+            ("Amino Acid Composition", self._('氨基酸组成'),
+             self._('计算蛋白质中20种标准氨基酸各自所占的百分比，并作为独立列输出。'),
+             self._('【注】CDS序列会先翻译成蛋白质再计算。')),
         ]
-
-        HelpDialogBox(
-            parent=self.app,
-            title=self._("分析参数说明"),
-            params_data=params,
-        )
+        HelpDialogBox(parent=self.app, title=self._("分析参数说明"), params_data=params)
 
 
     def _create_widgets(self):
@@ -79,6 +90,10 @@ class SeqAnalysisTab(BaseTab):
         # --- Title ---
         ttkb.Label(parent, text=_("序列分析"), font=self.app.app_title_font, bootstyle="primary").grid(
             row=0, column=0, padx=10, pady=(10, 15), sticky="n")
+
+        info_text = _("本功能仅适用于TM1的序列分析及使用标准密码子的情况")
+        ttkb.Label(parent, text=info_text, bootstyle="info").grid(
+            row=1, column=0, padx=10, pady=(0, 15), sticky="n")
 
         # --- Input Card (like BlastTab) ---
         input_card = ttkb.LabelFrame(parent, text=_("输入数据"), bootstyle="secondary")
@@ -128,24 +143,9 @@ class SeqAnalysisTab(BaseTab):
         seq_type_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
         ttkb.Label(seq_type_frame, text=_("序列类型:"), font=self.app.app_font_bold).pack(side="left", padx=(0, 10))
         ttkb.Radiobutton(seq_type_frame, text="CDS", variable=self.sequence_type_var, value='cds',
-                         bootstyle="primary", command=self._toggle_analysis_options_state).pack(side="left", padx=5)
+                         bootstyle="primary").pack(side="left", padx=5)
         ttkb.Radiobutton(seq_type_frame, text=_("蛋白质"), variable=self.sequence_type_var, value='protein',
-                         bootstyle="primary", command=self._toggle_analysis_options_state).pack(side="left", padx=5)
-
-        # Codon Table Selection
-        self.organelle_frame = ttkb.Frame(self.analysis_card)
-        self.organelle_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="w")
-        ttkb.Label(self.organelle_frame, text=_("密码子表:"), font=self.app.app_font_bold).pack(side="left",
-                                                                                                padx=(0, 10))
-        self.radio_nucleus = ttkb.Radiobutton(self.organelle_frame, text=_("细胞核 (标准)"),
-                                              variable=self.organelle_type_var, value='nucleus', bootstyle="info")
-        self.radio_nucleus.pack(side="left", padx=5)
-        self.radio_chloro = ttkb.Radiobutton(self.organelle_frame, text=_("叶绿体 (质体)"),
-                                             variable=self.organelle_type_var, value='chloroplast', bootstyle="info")
-        self.radio_chloro.pack(side="left", padx=5)
-        self.radio_mito = ttkb.Radiobutton(self.organelle_frame, text=_("线粒体 (标准)"),
-                                           variable=self.organelle_type_var, value='mitochondria', bootstyle="info")
-        self.radio_mito.pack(side="left", padx=5)
+                         bootstyle="primary").pack(side="left", padx=5)
 
         # --- Output Card ---
         output_card = ttkb.LabelFrame(parent, text=_("输出文件"), bootstyle="secondary")
@@ -164,7 +164,6 @@ class SeqAnalysisTab(BaseTab):
                     bootstyle="info-outline").grid(row=0, column=2, padx=(5, 0))
 
 
-
     def _toggle_input_mode(self):
         if self.input_mode_var.get() == "text":
             self.file_input_frame.grid_remove()
@@ -173,6 +172,7 @@ class SeqAnalysisTab(BaseTab):
             self.text_input_frame.grid_remove()
             self.file_input_frame.grid()
 
+
     def _browse_query_file(self):
         path = filedialog.askopenfilename(title=_("选择FASTA文件"),
                                           filetypes=[("FASTA", "*.fasta *.fa *.txt"), ("All files", "*.*")])
@@ -180,13 +180,6 @@ class SeqAnalysisTab(BaseTab):
             self.query_file_entry.delete(0, tk.END)
             self.query_file_entry.insert(0, path)
 
-    def _toggle_analysis_options_state(self):
-        if self.sequence_type_var.get() == 'cds':
-            for child in self.organelle_frame.winfo_children():
-                child.configure(state="normal")
-        else:  # protein
-            for child in self.organelle_frame.winfo_children():
-                child.configure(state="disabled")
 
     def start_analysis_task(self):
         if not self.app.current_config:
@@ -209,7 +202,6 @@ class SeqAnalysisTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出文件的路径。"))
             return
 
-
         cancel_event = threading.Event()
         progress_dialog = self.app.ui_manager.show_progress_dialog(
             title=_("序列分析中"),
@@ -225,7 +217,7 @@ class SeqAnalysisTab(BaseTab):
             'fasta_text': fasta_text,
             'fasta_file_path': fasta_file,
             'sequence_type': self.sequence_type_var.get(),
-            'organelle_type': self.organelle_type_var.get(),
+            'organelle_type': 'nucleus',  # 只用细胞核的标准密码子
             'perform_analysis': self.perform_analysis_var.get(),
             'output_path': output_path,
             'cancel_event': cancel_event,
@@ -235,7 +227,6 @@ class SeqAnalysisTab(BaseTab):
         def task_wrapper(**kwargs):
             return run_seq_analysis(**kwargs)
 
-
         self.app.event_handler.start_task(
             task_name=_("FASTA序列分析"),
             target_func=task_wrapper,
@@ -244,9 +235,10 @@ class SeqAnalysisTab(BaseTab):
 
 
 
-    # This can be inherited, but defining it explicitly is fine too.
+        # This can be inherited, but defining it explicitly is fine too.
+
+
     def update_from_config(self):
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
         self.app.ui_manager.refresh_all_placeholder_styles()
         self.app.ui_manager.refresh_single_placeholder(self.query_textbox, "seq_analysis_placeholder")
-
