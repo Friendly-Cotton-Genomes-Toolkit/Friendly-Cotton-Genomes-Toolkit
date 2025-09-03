@@ -394,22 +394,29 @@ class HomologyTab(BaseTab):
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        # 新逻辑：不再特殊处理拟南芥，直接显示所有可用的基因组
-        valid_ids = assembly_ids or [_("无可用基因组")]
+        # 定义此功能必需的字段（BLASTN基于CDS）
+        required_fields = ['predicted_cds_url', 'predicted_protein_url']
 
-        def update_menu(dropdown, string_var):
-            if not (dropdown and dropdown.winfo_exists()): return
-            menu = dropdown['menu']
-            menu.delete(0, 'end')
+        all_genomes_data = self.app.genome_sources_data
+        filtered_ids = []
 
-            for value in valid_ids:
-                menu.add_command(label=value, command=lambda v=value, sv=string_var: sv.set(v))
+        if all_genomes_data:
+            for assembly_id in assembly_ids:
+                genome_item = all_genomes_data.get(assembly_id)
+                if not genome_item:
+                    continue
 
-            if string_var.get() not in valid_ids and valid_ids:
-                string_var.set(valid_ids[0])
+                # 检查是否包含所有必需的序列文件
+                if all(getattr(genome_item, field, None) for field in required_fields):
+                    filtered_ids.append(assembly_id)
 
-        update_menu(self.source_assembly_dropdown, self.selected_homology_source_assembly)
-        update_menu(self.target_assembly_dropdown, self.selected_homology_target_assembly)
+        valid_ids = filtered_ids or [_("无可用基因组")]
+
+        # 使用过滤后的列表更新源和目标两个下拉框
+        self.app.ui_manager.update_option_menu(self.source_assembly_dropdown, self.selected_homology_source_assembly,
+                                               valid_ids)
+        self.app.ui_manager.update_option_menu(self.target_assembly_dropdown, self.selected_homology_target_assembly,
+                                               valid_ids)
 
 
     def _on_homology_gene_input_change(self, event=None):

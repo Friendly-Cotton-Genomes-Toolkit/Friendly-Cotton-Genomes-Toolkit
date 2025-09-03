@@ -217,6 +217,22 @@ class GenomeSourcesConfig(BaseModel):
                 gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{6}(?:\.\d+)?).*",
                 bridge_version="TAIR10"
             ),
+
+            "HAU_v2.0": GenomeSourceItem(
+                species_name="Gossypium hirsutum (AD1) 'TM-1' genome HAU_v2.0",
+                genome_type="cotton",
+                gff3_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/genes/TM-1_HAU_v2_gene.gff3.gz",
+                predicted_cds_url=None,
+                predicted_protein_url=None,
+                GO_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_genes2Go.xlsx.gz",
+                IPR_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_genes2IPR.xlsx.gz",
+                KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-pathways.xlsx.gz",
+                KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-orthologs.xlsx.gz",
+                homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz",
+                gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{4}(?:\.\d+)?).*",
+                bridge_version="Araport11"
+            ),
+
             "ZJU_v2.1": GenomeSourceItem(
                 species_name="Gossypium hirsutum (AD1) 'TM-1' genome ZJU-improved_v2.1_a1",
                 genome_type="cotton",

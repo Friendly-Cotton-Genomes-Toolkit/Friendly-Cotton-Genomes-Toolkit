@@ -95,9 +95,32 @@ class AnnotationTab(BaseTab):
                                              [("CSV files", "*.csv"), ("All files", "*.*")]), bootstyle="info-outline")
         self.browse_button.grid(row=1, column=2, padx=(0, 10), pady=5)
 
-
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.selected_annotation_assembly, assembly_ids)
+        # 定义此选项卡进行注释所必需的全部URL字段
+        required_fields = ['GO_url', 'IPR_url', 'KEGG_pathways_url', 'KEGG_orthologs_url']
+
+        all_genomes_data = self.app.genome_sources_data
+        filtered_ids = []
+
+        if all_genomes_data:
+            for assembly_id in assembly_ids:
+                genome_item = all_genomes_data.get(assembly_id)
+                if not genome_item:
+                    continue
+
+                # 检查所有必需字段是否都存在且有值
+                is_valid = all(getattr(genome_item, field, None) for field in required_fields)
+
+                if is_valid:
+                    filtered_ids.append(assembly_id)
+
+        # 使用UI管理器的通用方法，传入过滤后的ID列表
+        self.app.ui_manager.update_option_menu(
+            self.assembly_dropdown,
+            self.selected_annotation_assembly,
+            filtered_ids,
+            default_text=_("无可用注释基因组")
+        )
 
     def update_from_config(self):
         self.update_assembly_dropdowns(

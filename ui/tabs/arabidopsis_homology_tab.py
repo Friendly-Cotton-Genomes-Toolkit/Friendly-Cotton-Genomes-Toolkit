@@ -333,11 +333,26 @@ class ArabidopsisHomologyConversionTab(BaseTab):
             on_success=success_callback
         )
 
-
     def update_from_config(self):
+        # 定义此选项卡必需的字段
+        required_field = 'homology_ath_url'
+
+        filtered_cotton_genomes = []
         if self.app.genome_sources_data:
-            cotton_genomes = [asm_id for asm_id, info in self.app.genome_sources_data.items() if info.is_cotton()]
-            self.app.ui_manager.update_option_menu(self.cotton_assembly_dropdown, self.selected_cotton_assembly,
-                                                   cotton_genomes, _("无可用棉花基因组"))
-        if not self.output_file_entry.get(): self.output_file_entry.insert(0, "homology_conversion_results.csv")
+            # 筛选出是棉花基因组且包含必需的同源文件的条目
+            for asm_id, info in self.app.genome_sources_data.items():
+                if info.is_cotton() and getattr(info, required_field, None):
+                    filtered_cotton_genomes.append(asm_id)
+
+        # 使用过滤后的列表更新下拉框
+        self.app.ui_manager.update_option_menu(
+            self.cotton_assembly_dropdown,
+            self.selected_cotton_assembly,
+            filtered_cotton_genomes,
+            _("无可用同源数据基因组")
+        )
+
+        if not self.output_file_entry.get():
+            self.output_file_entry.insert(0, "homology_conversion_results.csv")
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
+

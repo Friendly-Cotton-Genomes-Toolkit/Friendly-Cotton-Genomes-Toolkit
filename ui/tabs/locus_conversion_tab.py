@@ -102,20 +102,31 @@ class LocusConversionTab(BaseTab):
             list(self.app.genome_sources_data.keys()) if self.app.genome_sources_data else [])
         self.update_button_state(self.app.active_task_name is not None, self.app.current_config is not None)
 
+
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        valid_ids = assembly_ids or [_("无可用基因组")]
+        # 定义此功能必需的字段
+        required_fields = ['gff3_url', 'predicted_cds_url']
 
-        def update_menu(dropdown, string_var):
-            if not (dropdown and dropdown.winfo_exists()): return
-            menu = dropdown['menu']
-            menu.delete(0, 'end')
-            for value in valid_ids:
-                menu.add_command(label=value, command=lambda v=value, sv=string_var: sv.set(v))
-            if string_var.get() not in valid_ids:
-                string_var.set(valid_ids[0])
+        all_genomes_data = self.app.genome_sources_data
+        filtered_ids = []
 
-        update_menu(self.source_assembly_dropdown, self.selected_source_assembly)
-        update_menu(self.target_assembly_dropdown, self.selected_target_assembly)
+        if all_genomes_data:
+            for assembly_id in assembly_ids:
+                genome_item = all_genomes_data.get(assembly_id)
+                if not genome_item:
+                    continue
+
+                # 检查gff3和cds的URL是否存在
+                if all(getattr(genome_item, field, None) for field in required_fields):
+                    filtered_ids.append(assembly_id)
+
+        valid_ids = filtered_ids or [_("无可用基因组")]
+
+        # 更新源和目标两个下拉框
+        self.app.ui_manager.update_option_menu(self.source_assembly_dropdown, self.selected_source_assembly, valid_ids)
+        self.app.ui_manager.update_option_menu(self.target_assembly_dropdown, self.selected_target_assembly, valid_ids)
+
+
 
     def start_locus_conversion_task(self):
         # --- 参数验证  ---

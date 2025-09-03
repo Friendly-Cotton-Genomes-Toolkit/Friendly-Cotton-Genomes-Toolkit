@@ -218,9 +218,31 @@ class SequenceExtractionTab(BaseTab):
                 self.gene_input_text, self.assembly_id_var)
 
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        """由主程序调用，用于更新基因组版本下拉菜单。"""
-        self.app.ui_manager.update_option_menu(self.assembly_dropdown, self.assembly_id_var, assembly_ids,
-                                               _("无可用基因组"))
+        """由主程序调用，使用过滤后的基因组版本列表更新下拉菜单。"""
+        # 定义此选项卡进行序列提取所必需的URL字段
+        required_fields = ['predicted_cds_url', 'predicted_protein_url']
+
+        all_genomes_data = self.app.genome_sources_data
+        filtered_ids = []
+
+        if all_genomes_data:
+            for assembly_id in assembly_ids:
+                genome_item = all_genomes_data.get(assembly_id)
+                if not genome_item:
+                    continue
+
+                # 检查CDS和蛋白质URL是否都存在且有值
+                if all(getattr(genome_item, field, None) for field in required_fields):
+                    filtered_ids.append(assembly_id)
+
+        # 使用UI管理器的通用方法，传入过滤后的ID列表
+        self.app.ui_manager.update_option_menu(
+            self.assembly_dropdown,
+            self.assembly_id_var,
+            filtered_ids,
+            default_text=_("无可用序列基因组")
+        )
+
 
     def _browse_save_file(self):
         """打开文件对话框以选择FASTA保存位置。"""

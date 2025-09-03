@@ -563,6 +563,7 @@ class EventHandler:
                                         _("文件 {} 已存在于程序根目录。是否要覆盖它们并生成新的默认配置?").format(
                                             files_str),
                                         button1_text=_("是，覆盖"), button2_text=_("否，取消"))
+            dialog.wait_window()
             if dialog.result is not True:
                 logger.info(_("用户取消了生成默认配置文件的操作。"))
                 return
@@ -597,6 +598,7 @@ class EventHandler:
             dialog = ConfirmationDialog(self.app, _("生成成功"),
                                         f"{_('默认配置文件已成功生成。')}\n\n{_('是否立即加载?')}",
                                         button1_text=_("是"), button2_text=_("否"))
+            dialog.wait_window()
             if dialog.result is True:
                 self.load_config_file(filepath=new_cfg_path)
         elif not success:

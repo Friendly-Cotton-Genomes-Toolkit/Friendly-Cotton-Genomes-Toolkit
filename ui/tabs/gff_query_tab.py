@@ -113,7 +113,6 @@ class GFFQueryTab(BaseTab):
 
         self.output_path_label = ttkb.Label(self.config_frame, text=_("结果输出CSV文件:"), font=self.app.app_font_bold)
         self.output_path_label.grid(row=2, column=0, sticky="w", padx=10, pady=(10, 0))
-        # 【修复】移除了 foreground=text_fg
         self.gff_query_output_csv_entry = ttkb.Entry(self.config_frame, textvariable=self.output_path_var,
                                                      font=self.app.app_font_mono)
         self.gff_query_output_csv_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
@@ -123,19 +122,46 @@ class GFFQueryTab(BaseTab):
                                              self.gff_query_output_csv_entry, [(_("CSV 文件"), "*.csv")]))
         self.browse_button.grid(row=4, column=0, sticky='e', padx=10, pady=5)
 
-
-
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
-        valid_ids = assembly_ids or [_("无可用基因组")]
+        # 定义此选项卡必需的字段列表
+        # 如果未来还需要检查其他字段，只需加到这个列表里
+        required_fields = ['gff3_url']
+
+        all_genomes_data = self.app.genome_sources_data
+        filtered_ids = []
+
+        if all_genomes_data:
+            for assembly_id in assembly_ids:
+                genome_item = all_genomes_data.get(assembly_id)
+
+                # 如果找不到该基因组信息，则跳过
+                if not genome_item:
+                    continue
+
+                # 检查所有必需字段是否存在且有值
+                is_valid = True
+                for field in required_fields:
+                    # getattr安全地获取字段值，如果字段不存在则返回None
+                    # 然后检查该值是否为None或空字符串
+                    if not getattr(genome_item, field, None):
+                        is_valid = False
+                        break  # 只要有一个必需字段缺失，就判定为无效
+
+                if is_valid:
+                    filtered_ids.append(assembly_id)
+
+        final_ids = filtered_ids or [_("无可用GFF3基因组")]
         dropdown = self.gff_query_assembly_dropdown
         string_var = self.selected_gff_query_assembly
+
         if not (dropdown and dropdown.winfo_exists()): return
         menu = dropdown['menu']
         menu.delete(0, 'end')
-        for value in valid_ids:
+        for value in final_ids:
             menu.add_command(label=value, command=lambda v=value, sv=string_var: sv.set(v))
-        if string_var.get() not in valid_ids:
-            string_var.set(valid_ids[0])
+        # 确保当前选中的值在新的有效列表中，如果不在，则自动选择第一个
+        if string_var.get() not in final_ids:
+            string_var.set(final_ids[0])
 
     def _on_gff_query_gene_input_change(self, event=None):
         self.app.event_handler._auto_identify_genome_version(self.gff_query_genes_textbox,

@@ -322,29 +322,35 @@ class BlastTab(BaseTab):
         if self.app.current_config and not self.output_entry.get():
             self.output_entry.insert(0, "blast_results.xlsx")
 
-
-    # 【核心修改】 重写此方法以实现棉花基因组的筛选
     def update_assembly_dropdowns(self, assembly_ids: List[str]):
         """
-        从主程序获取所有基因组源，筛选出棉花基因组，并更新目标数据库下拉菜单。
-        注意：此方法会忽略传入的 assembly_ids 参数，执行自己独立的筛选逻辑。
+        从主程序获取所有基因组源，筛选出是棉花基因组，
+        并且同时拥有CDS和蛋白质序列文件的条目，然后更新下拉菜单。
         """
+        # 定义此选项卡必需的字段
+        required_fields = ['predicted_cds_url', 'predicted_protein_url']
         genome_data = self.app.genome_sources_data
+        valid_ids = []
 
         if not genome_data:
             valid_ids = [self._("无可用基因组")]
         else:
-            # 筛选出 genome_type 为 'cotton' 的条目（此逻辑不变）
-            cotton_genome_ids = [
-                assembly_id
-                for assembly_id, source_item in genome_data.items()
-                if source_item.is_cotton()
-            ]
-            valid_ids = cotton_genome_ids or [self._("无可用棉花基因组")]
+            for assembly_id, source_item in genome_data.items():
+                # 检查1：是否为棉花
+                if not source_item.is_cotton():
+                    continue
 
-        # 使用UI管理器的通用函数来更新OptionMenu（此逻辑不变）
+                # 检查2：是否包含所有必需的序列文件URL
+                if all(getattr(source_item, field, None) for field in required_fields):
+                    valid_ids.append(assembly_id)
+
+            if not valid_ids:
+                valid_ids = [self._("无可用BLAST库基因组")]
+
+        # 使用UI管理器的通用函数来更新OptionMenu
         self.app.ui_manager.update_option_menu(
             dropdown=self.target_assembly_dropdown,
             string_var=self.selected_target_assembly,
             new_values=valid_ids
         )
+

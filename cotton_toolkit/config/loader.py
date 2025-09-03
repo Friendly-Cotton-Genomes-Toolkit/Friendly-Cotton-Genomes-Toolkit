@@ -99,7 +99,6 @@ def load_config(path: str) -> MainConfig:
 
 def get_genome_data_sources(config: MainConfig) -> Dict[str, GenomeSourceItem]:
     """
-    【已修正】
     从主配置中获取基因组来源列表文件的路径，加载并解析该文件。
     增加了缓存机制以提高性能。
     """
