@@ -235,27 +235,6 @@ class BlastTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的值必须是有效的数字。"))
             return
 
-
-        # 1. 创建取消事件
-        cancel_event = threading.Event()
-
-        # 2. 定义取消操作
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，BLAST任务将在当前步骤完成后停止。"))
-            cancel_event.set()
-
-        # 3. 创建并显示进度对话框
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("本地 BLAST 运行中"),
-            on_cancel=on_cancel_action
-        )
-
-        # 4. 定义线程安全的UI更新函数
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数，并加入通信工具 ---
         task_kwargs = {
             'config': self.app.current_config,
             'blast_type': self.selected_blast_type.get(),
@@ -264,11 +243,10 @@ class BlastTab(BaseTab):
             'query_text': query_text if self.input_mode_var.get() == 'text' else None,
             'output_path': output_path,
             **params,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
             task_name=_("本地 BLAST"),
             target_func=run_blast_pipeline,
             kwargs=task_kwargs

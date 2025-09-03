@@ -155,36 +155,20 @@ class LocusConversionTab(BaseTab):
             return
 
         # --- 创建通信工具和对话框 ---
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("位点转换中"),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
-            'source_assembly_id': source_assembly,
-            'target_assembly_id': target_assembly,
+            'source_assembly_id':source_assembly,
+            'target_assembly_id':target_assembly,
             'region': region_tuple,
             'output_path': output_path,
             'criteria_overrides': {},
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
             task_name=_("位点转换"),
             target_func=run_locus_conversion,
             kwargs=task_kwargs
         )
+
 

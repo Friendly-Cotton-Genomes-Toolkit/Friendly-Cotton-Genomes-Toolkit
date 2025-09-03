@@ -209,34 +209,16 @@ class GFFQueryTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请选择一个基因组版本。"))
             return
 
-        # --- 创建通信工具和对话框 ---
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("GFF 基因查询中"),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids_list,
             'region': region_tuple,
             'output_csv_path': output_path,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
             task_name=_("GFF基因查询"),
             target_func=run_gff_lookup,
             kwargs=task_kwargs

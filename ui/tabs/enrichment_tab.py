@@ -278,23 +278,6 @@ class EnrichmentTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("解析后未发现有效基因ID。"));
             return
 
-        # --- 创建通信工具和对话框 ---
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("富集分析运行中"),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数  ---
         task_kwargs = {
             'config': self.app.current_config, 'assembly_id': assembly_id,
             'study_gene_ids': study_gene_ids, 'analysis_type': self.analysis_type_var.get(),
@@ -304,12 +287,12 @@ class EnrichmentTab(BaseTab):
             'show_title': self.show_title_var.get(),
             'width': self.width_var.get(), 'height': self.height_var.get(),
             'file_format': self.file_format_var.get(),
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater,
         }
 
-        self.app.event_handler.start_task(
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
             task_name=_("{} 富集分析").format(self.analysis_type_var.get().upper()),
-            target_func=run_enrichment_pipeline, kwargs=task_kwargs
+            target_func=run_enrichment_pipeline,
+            kwargs=task_kwargs
         )
 

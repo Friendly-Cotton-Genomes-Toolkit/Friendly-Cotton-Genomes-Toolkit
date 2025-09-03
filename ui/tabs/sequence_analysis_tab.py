@@ -180,7 +180,6 @@ class SeqAnalysisTab(BaseTab):
             self.query_file_entry.delete(0, tk.END)
             self.query_file_entry.insert(0, path)
 
-
     def start_analysis_task(self):
         if not self.app.current_config:
             self.app.ui_manager.show_error_message(_("错误"), _("配置文件未加载。"))
@@ -190,7 +189,7 @@ class SeqAnalysisTab(BaseTab):
         if self.input_mode_var.get() == 'text':
             if not getattr(self.query_textbox, 'is_placeholder', False):
                 fasta_text = self.query_textbox.get("1.0", tk.END).strip()
-        else:  # file
+        else:
             fasta_file = self.query_file_entry.get().strip()
 
         if not fasta_text and not fasta_file:
@@ -202,40 +201,22 @@ class SeqAnalysisTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请指定输出文件的路径。"))
             return
 
-        cancel_event = threading.Event()
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("序列分析中"),
-            on_cancel=lambda: cancel_event.set()
-        )
-
-        def ui_progress_updater(p, m):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(p, m))
-
         task_kwargs = {
             'config': self.app.current_config,
             'fasta_text': fasta_text,
             'fasta_file_path': fasta_file,
             'sequence_type': self.sequence_type_var.get(),
-            'organelle_type': 'nucleus',  # 只用细胞核的标准密码子
+            'organelle_type': 'nucleus',
             'perform_analysis': self.perform_analysis_var.get(),
             'output_path': output_path,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        def task_wrapper(**kwargs):
-            return run_seq_analysis(**kwargs)
-
-        self.app.event_handler.start_task(
+        self._start_task(
             task_name=_("FASTA序列分析"),
-            target_func=task_wrapper,
+            target_func=run_seq_analysis,
             kwargs=task_kwargs
         )
 
-
-
-        # This can be inherited, but defining it explicitly is fine too.
 
 
     def update_from_config(self):

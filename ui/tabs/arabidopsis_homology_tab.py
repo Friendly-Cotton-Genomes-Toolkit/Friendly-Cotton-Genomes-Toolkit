@@ -301,33 +301,17 @@ class ArabidopsisHomologyConversionTab(BaseTab):
             self.app.ui_manager.show_error_message(_("错误"), _("无效的转换方向。"))
             return
 
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=dialog_title,
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': cotton_assembly_id,
             'gene_ids': gene_ids,
             'conversion_direction': direction_key,
             'output_path': output_path,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
-            task_name=_("同源基因转换"),
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
+            task_name= _("正在查找同源基因..."),
             target_func=run_arabidopsis_homology_conversion,
             kwargs=task_kwargs,
             on_success=success_callback

@@ -335,12 +335,6 @@ class HomologyTab(BaseTab):
             self.app.ui_manager.show_error_message(_("输入错误"), _("参数设置中的阈值必须是有效的数字。"))
             return
 
-        # --- 创建通信工具和对话框 ---
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
 
         # 根据模式决定成功回调和对话框标题
         if is_single_mode:
@@ -358,16 +352,7 @@ class HomologyTab(BaseTab):
             dialog_title = _("同源基因批量转换中")
             output_path = self.homology_output_file_entry.get().strip() or None
 
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=dialog_title,
-            on_cancel=on_cancel_action
-        )
 
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数  ---
         task_kwargs = {
             'config': self.app.current_config,
             'source_assembly_id': source_assembly,
@@ -376,12 +361,11 @@ class HomologyTab(BaseTab):
             'region': None,
             'output_csv_path': output_path,
             'criteria_overrides': criteria,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
-            task_name=_("快速基因同源转换"),
+
+        self._start_task(
+            task_name=dialog_title,
             target_func=run_homology_mapping,
             kwargs=task_kwargs,
             on_success=success_callback

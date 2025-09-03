@@ -364,15 +364,12 @@ class SequenceExtractionTab(BaseTab):
             if progress_dialog and progress_dialog.winfo_exists():
                 self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
 
-        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
             'assembly_id': assembly_id,
             'gene_ids': gene_ids,
             'sequence_type': sequence_type_selected,
             'output_path': output_path,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
         # --- 任务封装与启动 ---
@@ -382,21 +379,17 @@ class SequenceExtractionTab(BaseTab):
 
             # 仅在单基因模式下需要更新UI文本框
             if is_single_mode:
-                # 使用 self.app.after 确保UI更新在主线程中执行
                 self.app.after(0, self._display_single_gene_result, result)
-
-                # 根据结果类型判断并返回最终消息给任务处理器
                 if isinstance(result, dict) and result:
                     return _("序列已成功提取并显示在输出框中。")
-                elif isinstance(result, str):  # 可能是错误消息
+                elif isinstance(result, str):
                     return result
-
-            # 对于多基因模式，直接返回后端的消息字符串
             return result
 
         task_name_str = _("{}序列提取").format(sequence_type_selected.upper())
 
-        self.app.event_handler.start_task(
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
             task_name=task_name_str,
             target_func=task_wrapper,
             kwargs=task_kwargs

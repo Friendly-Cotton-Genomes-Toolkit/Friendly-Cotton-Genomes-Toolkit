@@ -299,41 +299,23 @@ class DataDownloadTab(BaseTab):
                                                   self._("所有适用的BLAST数据库均已预处理完成，无需再次运行。"))
             return
 
-        # --- 创建通信工具和对话框 ---
-        self._clear_task_status_display()
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=self._("预处理BLAST数据库"),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数 ---
         task_kwargs = {
             'config': self.app.current_config,
             'selected_assembly_id': selected_genome_id,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
+        # --- 使用基类方法启动任务 ---
+        self._start_task(
             task_name=self._("预处理BLAST数据库"),
             target_func=run_build_blast_db_pipeline,
-            on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
-            kwargs=task_kwargs
+            kwargs=task_kwargs,
+            on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get())
         )
+
 
     def start_download_task(self):
         try:
-            # --- 参数验证  ---
+            # --- 参数验证 ---
             if not self.app.current_config:
                 self.app.ui_manager.show_error_message(self._("错误"), self._("请先加载配置文件。"))
                 return
@@ -348,22 +330,6 @@ class DataDownloadTab(BaseTab):
                 self.app.ui_manager.show_error_message(self._("选择错误"), self._("请至少选择一种要下载的文件类型。"))
                 return
 
-            # --- 创建通信工具和对话框  ---
-            cancel_event = threading.Event()
-
-            def on_cancel_action():
-                self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，下载任务将尽快停止。"))
-                cancel_event.set()
-
-            progress_dialog = self.app.ui_manager.show_progress_dialog(
-                title=self._("数据下载中"),
-                on_cancel=on_cancel_action
-            )
-
-            def ui_progress_updater(percentage, message):
-                if progress_dialog and progress_dialog.winfo_exists():
-                    self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
             # --- 准备任务参数 ---
             cli_overrides = {
                 'versions': [selected_genome_id],
@@ -375,15 +341,13 @@ class DataDownloadTab(BaseTab):
             task_kwargs = {
                 'config': self.app.current_config,
                 'cli_overrides': cli_overrides,
-                'cancel_event': cancel_event,
-                'progress_callback': ui_progress_updater
             }
 
-            self.app.event_handler.start_task(
+            self._start_task(
                 task_name=self._("数据下载"),
                 target_func=run_download_pipeline,
-                on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
-                kwargs=task_kwargs
+                kwargs=task_kwargs,
+                on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get())
             )
 
         except Exception as e:
@@ -392,6 +356,7 @@ class DataDownloadTab(BaseTab):
             error_message = f"{self._('启动下载任务时发生未知错误:')}\n\n{type(e).__name__}: {e}\n\n{error_details}"
             self.app.ui_manager.show_error_message(self._("任务启动失败"), error_message)
             raise RuntimeError(error_message)
+
 
     def start_preprocess_task(self):
         # --- 参数验证 ---
@@ -429,34 +394,16 @@ class DataDownloadTab(BaseTab):
             self.app.ui_manager.show_info_message(self._("已就绪"), self._("注释文件已全部预处理完成，无需再次运行。"))
             return
 
-        # --- 创建通信工具和对话框 ---
         self._clear_task_status_display()
-        cancel_event = threading.Event()
 
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=self._("预处理注释文件"),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 准备任务参数 (加入通信工具) ---
         task_kwargs = {
             'config': self.app.current_config,
             'selected_assembly_id': selected_genome_id,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        self.app.event_handler.start_task(
-            task_name=self._("预处理文件"),
+        self._start_task(
+            task_name=self._("预处理注释文件"),
             target_func=run_preprocess_annotation_files,
-            on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get()),
-            kwargs=task_kwargs
+            kwargs=task_kwargs,
+            on_success=lambda result: self._update_dynamic_widgets(self.selected_genome_var.get())
         )

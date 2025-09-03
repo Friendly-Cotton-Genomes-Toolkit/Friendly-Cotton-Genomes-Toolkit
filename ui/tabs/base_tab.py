@@ -68,7 +68,6 @@ class BaseTab(ttk.Frame):
         self.action_button = ttkb.Button(action_frame, text=self._("执行操作"), bootstyle="success")
         self.action_button.grid(row=0, column=0, sticky="e", padx=15, pady=10)
 
-    # --- 核心修改：稳定、独立的递归滚轮事件绑定 ---
     def _on_mousewheel(self, event: tk.Event):
         """统一处理鼠标滚轮事件，滚动当前Tab的画布。"""
         if not (self.canvas and self.canvas.winfo_exists()):
@@ -179,6 +178,43 @@ class BaseTab(ttk.Frame):
 
         task_thread = threading.Thread(target=_task_wrapper, daemon=True)
         task_thread.start()
+
+    def _start_task(self, task_name: str, target_func: Callable, kwargs: Dict[str, Any],
+                    on_success: Optional[Callable] = None):
+        """
+        一个通用的任务启动器，封装了进度对话框、取消逻辑和回调。
+        """
+        # 1. 创建取消事件
+        cancel_event = threading.Event()
+
+        # 2. 定义取消操作
+        def on_cancel_action():
+            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
+            cancel_event.set()
+
+        # 3. 创建并显示进度对话框
+        progress_dialog = self.app.ui_manager.show_progress_dialog(
+            title=task_name,
+            on_cancel=on_cancel_action
+        )
+
+        # 4. 定义线程安全的UI更新函数
+        def ui_progress_updater(percentage, message):
+            if progress_dialog and progress_dialog.winfo_exists():
+                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
+
+        # 5. 将通信工具添加到传递给后台的参数中
+        kwargs['cancel_event'] = cancel_event
+        kwargs['progress_callback'] = ui_progress_updater
+
+        # 6. 使用全局的事件处理器来启动任务
+        self.app.event_handler.start_task(
+            task_name=task_name,
+            target_func=target_func,
+            kwargs=kwargs,
+            on_success=on_success
+        )
+
 
     def _create_widgets(self):
         raise NotImplementedError("Each tab must implement _create_widgets")

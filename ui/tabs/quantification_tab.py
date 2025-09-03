@@ -191,43 +191,23 @@ class QuantificationTab(BaseTab):
         counts_path = self.counts_file_path.get().strip()
         lengths_path = self.lengths_file_path.get().strip()
         output_path = self.output_file_path.get().strip()
-
-        # 从UI的StringVar变量中获取用户当前选择的方法
         method = self.selected_normalization_method.get()
 
         if not all([counts_path, lengths_path, output_path]):
             self.app.ui_manager.show_error_message(_("输入缺失"), _("请提供所有必需的文件路径。"))
             return
 
-        # 2. 创建通信工具和对话框
-        cancel_event = threading.Event()
-
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(_("操作取消"), _("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=_("正在进行表达量标准化..."),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # 3. 准备传递给后台任务的参数
+        # 2. 准备任务参数
         task_kwargs = {
             'counts_file_path': counts_path,
             'gene_lengths_file_path': lengths_path,
             'output_path': output_path,
             'normalization_method': method,
             'max_workers': self.app.current_config.downloader.max_workers,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
         }
 
-        # 4. 使用 event_handler 启动后台任务
-        self.app.event_handler.start_task(
+        # 3. 使用基类方法启动任务
+        self._start_task(
             task_name=_("表达量标准化"),
             target_func=run_expression_normalization,
             kwargs=task_kwargs

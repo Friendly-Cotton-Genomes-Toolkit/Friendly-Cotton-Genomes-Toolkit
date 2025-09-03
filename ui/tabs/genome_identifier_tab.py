@@ -121,36 +121,15 @@ class GenomeIdentifierTab(BaseTab):
 
         gene_ids = [line.strip() for line in gene_ids_text.splitlines() if line.strip()]
 
-        # --- 创建通信工具和对话框 ---
-        cancel_event = threading.Event()
+        # --- 准备任务参数并启动 ---
+        task_kwargs = {'gene_ids': gene_ids}
 
-        def on_cancel_action():
-            self.app.ui_manager.show_info_message(self._("操作取消"), self._("已发送取消请求，任务将尽快停止。"))
-            cancel_event.set()
-
-        progress_dialog = self.app.ui_manager.show_progress_dialog(
-            title=self._("基因组鉴定中"),
-            on_cancel=on_cancel_action
-        )
-
-        def ui_progress_updater(percentage, message):
-            if progress_dialog and progress_dialog.winfo_exists():
-                self.app.after(0, lambda: progress_dialog.update_progress(percentage, message))
-
-        # --- 启动任务，并传入通信工具 ---
-        task_kwargs = {
-            'gene_ids': gene_ids,
-            'cancel_event': cancel_event,
-            'progress_callback': ui_progress_updater
-        }
-
-        self.app.event_handler.start_task(
+        self._start_task(
             task_name=self._("基因组批量鉴定"),
             target_func=self._batch_identify_worker,
             kwargs=task_kwargs,
             on_success=self.handle_batch_result
         )
-
 
     def _batch_identify_worker(self, gene_ids: List[str], **kwargs) -> Tuple[List[str], Set[str]]:
         progress_callback = kwargs.get('progress_callback', lambda p, m: None)
