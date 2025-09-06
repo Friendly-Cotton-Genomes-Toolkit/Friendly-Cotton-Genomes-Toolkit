@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import requests
 from tqdm import tqdm
 
-
+from .. import DOWNLOAD_OUTPUT_BASE_DIR
 from ..config.models import DownloaderConfig, GenomeSourceItem
 
 # --- 国际化和日志设置 ---
@@ -43,7 +43,7 @@ def download_genome_data(
         return False
 
     # 1. 确定输出目录和文件路径
-    base_dir = downloader_config.download_output_base_dir
+    base_dir = DOWNLOAD_OUTPUT_BASE_DIR
     version_identifier = getattr(genome_info, 'version_id', version_id)
     version_output_dir = os.path.join(base_dir, version_identifier)
 

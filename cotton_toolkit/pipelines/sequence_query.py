@@ -40,7 +40,7 @@ def run_sequence_extraction(
 
     progress(5, _("正在解析基因/转录本ID..."))
     try:
-        resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids)
+        resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids,'Gene','predicted_cds')
         if not resolved_gene_ids:
             raise ValueError(_("输入错误: 解析后未发现任何有效的基因ID。请检查您的输入。"))
 

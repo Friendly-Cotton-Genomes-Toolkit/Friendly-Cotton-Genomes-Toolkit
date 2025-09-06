@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Optional, Callable, Any, List, Dict
 import ttkbootstrap as ttkb
 from PIL import Image, ImageTk
 
+from cotton_toolkit import GENOME_SOURCE_FILE
 from . import get_persistent_settings_path
 from .dialogs import MessageDialog, ProgressDialog
 
@@ -508,7 +509,7 @@ class UIManager:
                     _("主配置文件: {}").format(os.path.basename(app.config_path)))
 
                 # 基于主配置构建并更新基因组源文件路径显示
-                sources_filename = app.current_config.downloader.genome_sources_file
+                sources_filename = GENOME_SOURCE_FILE
                 config_dir = os.path.dirname(app.config_path)
                 sources_path = os.path.join(config_dir, sources_filename)
                 app.sources_path_display_var.set(

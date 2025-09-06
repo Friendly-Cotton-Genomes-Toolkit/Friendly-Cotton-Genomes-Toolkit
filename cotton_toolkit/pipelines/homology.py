@@ -94,7 +94,7 @@ def run_arabidopsis_homology_conversion(
         try:
             progress(5, _("正在智能解析棉花基因ID..."))
             unique_gene_ids = sorted(list(set(gene_ids)))
-            query_ids = resolve_gene_ids(config, assembly_id, unique_gene_ids)
+            query_ids = resolve_gene_ids(config, assembly_id, unique_gene_ids,'Query','homology_ath')
         except (ValueError, FileNotFoundError) as e:
             raise e
 
@@ -192,7 +192,7 @@ def run_homology_mapping(
         if gene_ids:
             try:
                 progress(5, _("正在智能解析输入基因ID..."))
-                source_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids)
+                source_gene_ids = resolve_gene_ids(config, source_assembly_id, gene_ids,'Gene','predicted_cds')
                 progress(10, _("ID解析完成，准备执行BLAST。"))
             except (ValueError, FileNotFoundError) as e:
                 raise e

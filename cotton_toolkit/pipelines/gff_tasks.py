@@ -82,7 +82,7 @@ def run_gff_lookup(
     if gene_ids:
         try:
             logger.info(_("正在对输入的基因ID进行智能解析..."))
-            resolved_ids = resolve_gene_ids(config, assembly_id, gene_ids)
+            resolved_ids = resolve_gene_ids(config, assembly_id, gene_ids,'id','gff')
             # GFF查询通常使用基础基因ID，所以我们在这里统一为基础ID
             final_ids_to_query = list(set(_to_gene_id(gid) for gid in resolved_ids))
             logger.info(_("按基因ID查询 {} 个基因... (已完成智能解析)").format(len(final_ids_to_query)))

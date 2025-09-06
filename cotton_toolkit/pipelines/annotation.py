@@ -48,7 +48,7 @@ def run_functional_annotation(
     if gene_ids:
         try:
             progress(5, _("正在智能解析输入基因ID..."))
-            resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids)
+            resolved_gene_ids = resolve_gene_ids(config, assembly_id, gene_ids,'Query','GO')
             logger.info(_("从参数智能解析了 {} 个唯一基因ID。").format(len(resolved_gene_ids)))
         except (ValueError, FileNotFoundError) as e:
             raise e
@@ -58,7 +58,7 @@ def run_functional_annotation(
             progress(5, _("正在从文件读取基因列表..."))
             study_genes_df = pd.read_csv(gene_list_path)
             raw_gene_ids = study_genes_df.iloc[:, 0].dropna().unique().tolist()
-            resolved_gene_ids = resolve_gene_ids(config, assembly_id, raw_gene_ids)
+            resolved_gene_ids = resolve_gene_ids(config, assembly_id, raw_gene_ids,'Query','GO')
             logger.info(_("从文件中读取并解析了 {} 个唯一基因ID。").format(len(resolved_gene_ids)))
         except Exception as e:
             raise IOError(_("读取或解析基因列表文件时出错: {}").format(e))
@@ -146,7 +146,7 @@ def run_enrichment_pipeline(
     logger.info(_("{} 富集与可视化流程启动。").format(analysis_type.upper()))
 
     progress(2, _("正在智能解析研究基因ID..."))
-    resolved_study_ids = resolve_gene_ids(config, assembly_id, study_gene_ids)
+    resolved_study_ids = resolve_gene_ids(config, assembly_id, study_gene_ids,'Query','GO')
     logger.info(_("ID智能解析完成，得到 {} 个标准化的ID。").format(len(resolved_study_ids)))
 
     if collapse_transcripts:

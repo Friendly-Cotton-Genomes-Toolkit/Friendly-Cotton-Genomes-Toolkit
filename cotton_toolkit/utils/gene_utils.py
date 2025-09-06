@@ -8,10 +8,11 @@ from random import sample
 from threading import Event
 
 import pandas as pd
-from typing import List, Optional, Tuple, Any, Callable
+from typing import List, Optional, Tuple, Any, Callable, Literal
 
 from Bio import SeqIO
 
+from cotton_toolkit import PREPROCESSED_DB_NAME
 from cotton_toolkit.config.loader import get_genome_data_sources, get_local_downloaded_file_path
 from cotton_toolkit.config.models import MainConfig
 from cotton_toolkit.external_functions.phylogenetics import logger, _
@@ -21,12 +22,14 @@ from cotton_toolkit.utils.file_utils import _sanitize_table_name
 
 try:
     import builtins
+
     _ = builtins._
 except (AttributeError, ImportError):
     def _(text: str) -> str:
         return text
 
 logger = logging.getLogger("cotton_toolkit.utils.gene_utils")
+
 
 def parse_gene_id(gene_id: str) -> Optional[Tuple[str, str]]:
     """
@@ -60,6 +63,7 @@ def normalize_gene_ids(gene_ids: pd.Series, pattern: str) -> pd.Series:
     except Exception as e:
         logger.warning(_("Warning: Failed to apply regex for gene ID normalization. Reason: {}").format(e))
         return gene_ids
+
 
 def map_transcripts_to_genes(gene_ids: List[str]) -> List[str]:
     """
@@ -189,17 +193,22 @@ def _to_transcript_id(an_id: str, suffix: str = ".1") -> str:
     return f"{an_id}{suffix}"
 
 
-def _check_id_exists(cursor: sqlite3.Cursor, table_name: str, gene_id: str) -> bool:
+def _check_id_exists(cursor: sqlite3.Cursor, table_name: str, gene_id: str, query_col: str = "Gene") -> bool:
     """在数据库表中快速检查单个ID是否存在"""
-    query = f'SELECT 1 FROM "{table_name}" WHERE Gene = ? LIMIT 1'
+    query = f'SELECT 1 FROM "{table_name}" WHERE {query_col} = ? LIMIT 1'
     cursor.execute(query, (gene_id,))
-    return cursor.fetchone() is not None
+    d = cursor.fetchone()
+    logger.info(f'{query_col}: {d}   gene_id： {gene_id}  cursor:{cursor}  table_name: {table_name}')
+    return d is not None
 
 
 def resolve_gene_ids(
         config: MainConfig,
         assembly_id: str,
-        gene_ids: List[str]
+        gene_ids: List[str],
+        query_col: str = "Gene",
+        target: Literal[
+            'gff', 'predicted_cds', 'predicted_protein', 'IPR', 'GO', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath'] = 'predicted_cds',
 ) -> List[str]:
     """
     智能解析基因ID列表。
@@ -208,9 +217,8 @@ def resolve_gene_ids(
     if not gene_ids:
         return []
 
-    # --- 数据库和表名准备 (与 get_sequences_for_gene_ids 类似) ---
-    project_root = os.path.dirname(config.config_file_abs_path_)
-    db_path = os.path.join(project_root, "genomes", "genomes.db")
+    # --- 数据库和表名准备 ---
+    db_path = PREPROCESSED_DB_NAME
     if not os.path.exists(db_path):
         raise FileNotFoundError(_("错误: 预处理数据库 'genomes.db' 未找到。"))
 
@@ -219,16 +227,15 @@ def resolve_gene_ids(
     if not genome_info:
         raise ValueError(_("错误: 找不到基因组 '{}' 的配置。").format(assembly_id))
 
-    cds_file_path = get_local_downloaded_file_path(config, genome_info, 'predicted_cds')
-    table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=genome_info.version_id)
-
     processing_mode = None  # 'gene' 或 'transcript'
+    cds_file_path = get_local_downloaded_file_path(config, genome_info, target)
+    table_name = _sanitize_table_name(os.path.basename(cds_file_path), version_id=genome_info.version_id)
 
     with sqlite3.connect(f'file:{db_path}?mode=ro', uri=True) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
         if cursor.fetchone() is None:
-            raise ValueError(_("错误: 在数据库中找不到表 '{}'。请先对CDS文件进行预处理。").format(table_name))
+            raise ValueError(_("错误: 在数据库中找不到表 '{}'。请先对相应文件进行预处理。").format(table_name))
 
         # --- 根据ID数量选择不同逻辑 ---
         if len(gene_ids) >= 2:
@@ -237,25 +244,23 @@ def resolve_gene_ids(
             logger.debug(_("智能解析：抽取了两个样本进行探测: {}").format(samples))
             for sample_id in samples:
                 # 优先尝试转录本格式
-                if _check_id_exists(cursor, table_name, _to_transcript_id(sample_id)):
+                if _check_id_exists(cursor, table_name, _to_transcript_id(sample_id),query_col):
                     processing_mode = 'transcript'
                     logger.info(_("智能解析：探测到数据库匹配转录本ID (例如: {})。").format(_to_transcript_id(sample_id)))
                     break
                 # 如果转录本失败，尝试基础基因格式
-                elif _check_id_exists(cursor, table_name, _to_gene_id(sample_id)):
+                elif _check_id_exists(cursor, table_name, _to_gene_id(sample_id),query_col):
                     processing_mode = 'gene'
                     logger.info(_("智能解析：探测到数据库匹配基础基因ID (例如: {})。").format(_to_gene_id(sample_id)))
                     break
 
-            if processing_mode is None:
-                raise ValueError(_("错误：无法在数据库中匹配提供的基因ID样本。请检查基因组版本和ID格式是否正确。"))
 
         elif len(gene_ids) == 1:
             sample_id = gene_ids[0]
             logger.debug(_("智能解析：正在探测单个ID: {}").format(sample_id))
-            if _check_id_exists(cursor, table_name, _to_transcript_id(sample_id)):
+            if _check_id_exists(cursor, table_name, _to_transcript_id(sample_id),query_col):
                 processing_mode = 'transcript'
-            elif _check_id_exists(cursor, table_name, _to_gene_id(sample_id)):
+            elif _check_id_exists(cursor, table_name, _to_gene_id(sample_id),query_col):
                 processing_mode = 'gene'
             else:
                 raise ValueError(_("错误：无法在数据库中匹配提供的基因ID '{}'。").format(sample_id))
@@ -267,6 +272,8 @@ def resolve_gene_ids(
     elif processing_mode == 'gene':
         logger.debug(_("应用 '基因' 模式处理整个列表。"))
         return list(dict.fromkeys([_to_gene_id(gid) for gid in gene_ids]))
+    elif processing_mode is None:
+        raise ValueError(_("错误：无法在数据库中匹配提供的基因ID样本。请检查基因组版本和ID格式是否正确。"))
 
     return gene_ids  # 如果只有一个ID且模式未定，返回原始ID
 
@@ -323,6 +330,7 @@ def validate_protein_fasta(fasta_path: str):
         # 捕获其他解析错误
         logger.error(f"无法解析或验证FASTA文件 {fasta_path}: {e}")
         raise ValueError(_("无法解析或验证FASTA文件 '{}': {}").format(fasta_path, e))
+
 
 def validate_cds_fasta(file_path: str):
     """
@@ -402,7 +410,6 @@ def validate_cds_fasta(file_path: str):
 
     logger.info(_("CDS FASTA文件 '{}' 验证通过。").format(file_path))
     return True
-
 
 
 def translate_cds_to_protein(

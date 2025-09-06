@@ -178,7 +178,7 @@ def run_go_enrichment(
 
     try:
         progress(5, _("正在智能解析输入基因ID..."))
-        resolved_gene_ids = resolve_gene_ids(main_config, genome_info.version_id, study_gene_ids)
+        resolved_gene_ids = resolve_gene_ids(main_config, genome_info.version_id, study_gene_ids,'Query','GO')
         logger.info(_("ID智能解析完成，得到 {} 个标准化的ID用于富集分析。").format(len(resolved_gene_ids)))
     except (ValueError, FileNotFoundError) as e:
         logger.error(e)
@@ -249,7 +249,7 @@ def run_kegg_enrichment(
 
     try:
         progress(5, _("正在智能解析输入基因ID..."))
-        resolved_gene_ids = resolve_gene_ids(main_config, genome_info.version_id, study_gene_ids)
+        resolved_gene_ids = resolve_gene_ids(main_config, genome_info.version_id, study_gene_ids,'Query','KEGG_pathways')
         logger.info(_("ID智能解析完成，得到 {} 个标准化的ID用于富集分析。").format(len(resolved_gene_ids)))
     except (ValueError, FileNotFoundError) as e:
         logger.error(e)

@@ -19,8 +19,6 @@ class ProviderConfig(BaseModel):
 
 class DownloaderConfig(BaseModel):
     max_workers: int = 8
-    genome_sources_file: str = "genome_sources_list.yml"
-    download_output_base_dir: str = "genomes"
     force_download :bool = False
     use_proxy_for_download :bool = False
 
@@ -229,7 +227,7 @@ class GenomeSourcesConfig(BaseModel):
                 KEGG_pathways_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-pathways.xlsx.gz",
                 KEGG_orthologs_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/functional/AD1_HAU_v2_KEGG-orthologs.xlsx.gz",
                 homology_ath_url="https://www.cottongen.org/cottongen_downloads/Gossypium_hirsutum/HAU-TM1_AD1genome_v2.0/homology/blastp_AD1_HAU_v2.0_vs_arabidopsis.xlsx.gz",
-                gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{4}(?:\.\d+)?).*",
+                gene_id_regex=r".*?(Ghir_[AD]\d{2}G\d{4,5}(?:\.\d+)?).*",
                 bridge_version="Araport11"
             ),
 

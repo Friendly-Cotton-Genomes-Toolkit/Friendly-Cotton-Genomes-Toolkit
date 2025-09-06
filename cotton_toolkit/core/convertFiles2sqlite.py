@@ -348,6 +348,51 @@ def process_single_file_to_sqlite(
             dataframe = _read_fasta_to_dataframe(source_path, id_regex=id_regex)
         elif filename_lower.endswith(('.xlsx', '.xlsx.gz')):
             dataframe = _read_excel_to_dataframe(source_path)
+
+            # =========== 决定性调试代码块 开始 ===========
+            if "HAU_v2" in source_path:  # 只对出问题的文件进行深入调试
+                try:
+                    print(f"\n[DEBUG] 正在对文件 '{os.path.basename(source_path)}' 进行深入调试...")
+                    print(f"[DEBUG] 使用的正则表达式: {id_regex}")
+
+                    # 复制原始ID列，并执行清洗操作
+                    dataframe['debug_original_id'] = dataframe['Query']
+                    extracted_series = dataframe['Query'].astype(str).str.extract(id_regex)
+
+                    # 检查提取结果是否为空
+                    if not extracted_series.empty and not extracted_series.iloc[:, 0].isnull().all():
+                        dataframe['debug_cleaned_id'] = extracted_series.iloc[:, 0]
+
+                        # 找出那些被错误处理的行 (原始ID包含'.', 清洗后不包含'.', 且清洗结果不为空)
+                        problematic_rows = dataframe[
+                            dataframe['debug_original_id'].str.contains(r'\.', na=False) &
+                            ~dataframe['debug_cleaned_id'].str.contains(r'\.', na=False) &
+                            dataframe['debug_cleaned_id'].notna()
+                            ]
+
+                        if not problematic_rows.empty:
+                            print("\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                            print("!!!!!!!!!! 发现被错误处理的行 !!!!!!!!!!")
+                            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
+                            # 打印出问题的行的前10条
+                            print(problematic_rows[['debug_original_id', 'debug_cleaned_id']].head(10))
+                        else:
+                            print("[DEBUG] 在本次检查中，未发现ID被错误缩短的情况。")
+
+                    else:
+                        print("[DEBUG] 正则表达式未能从任何行中提取出有效数据。")
+
+                    # 将中间状态的整个DataFrame保存到CSV文件，以便我们手动检查
+                    # 这个路径会保存在你项目的主目录下的 'genomes' 文件夹里
+                    debug_csv_path = os.path.join(os.path.dirname(db_path), 'debug_hau_v2_data.csv')
+                    print(f"[DEBUG] 将完整的中间数据保存到: {debug_csv_path}")
+                    dataframe.to_csv(debug_csv_path, index=False, encoding='utf-8-sig')
+                    print("[DEBUG] 调试代码块执行完毕。\n")
+
+                except Exception as e:
+                    print(f"[DEBUG] 调试代码块发生错误: {e}")
+            # =========== 决定性调试代码块 结束 ===========
+
         elif file_key in ['GO', 'IPR', 'KEGG_pathways', 'KEGG_orthologs', 'homology_ath']:
             dataframe = _read_annotation_text_file(source_path)
         else:
@@ -366,6 +411,31 @@ def process_single_file_to_sqlite(
             if target_column in dataframe.columns:
                 logger.debug(
                     _("正在对 {} 的 '{}' 列应用正则表达式...").format(os.path.basename(source_path), target_column))
+
+                # 1. 打印正在使用的正则表达式
+                print(f"DEBUG: Processing {os.path.basename(source_path)} with regex: {id_regex}")
+
+                # 2. 找到包含分界点ID的行，并打印处理前后的变化
+                test_ids = ['Ghir_A01G6023.2', 'Ghir_A02G1000.1']  # 用你实际数据中的ID
+                for test_id in test_ids:
+                    # 查找包含这个ID的行 (忽略源数据中可能存在的前后缀)
+                    original_row = dataframe[dataframe[target_column].str.contains(test_id, na=False)]
+                    if not original_row.empty:
+                        original_id = original_row.iloc[0][target_column]
+
+                        # 应用正则表达式进行提取
+                        cleaned_id_series = original_row[target_column].astype(str).str.extract(id_regex)
+                        cleaned_id = cleaned_id_series.iloc[
+                            0, 0] if not cleaned_id_series.empty else "REGEX FAILED TO EXTRACT"
+
+                        print(f"--- DEBUG ID: {test_id} ---")
+                        print(f"    Original: {original_id}")
+                        print(f"    Cleaned : {cleaned_id}")
+                        print(f"--------------------------")
+
+                # --- 调试代码结束 ---
+
+
                 cleaned_ids = dataframe[target_column].astype(str).str.extract(id_regex).iloc[:, 0]
                 dataframe[target_column] = cleaned_ids.fillna(dataframe[target_column])
                 logger.info(_("成功清洗了 '{}' 列。").format(target_column))
@@ -407,101 +477,5 @@ def process_single_file_to_sqlite(
         progress(100, _("处理失败"))
         return _("处理文件 '{}' 到表 '{}' 时发生错误。原因: {}").format(os.path.basename(source_path), table_name, e)
 
-
-def convert_files_to_sqlite(
-        config: MainConfig,
-        input_folder_path: str,
-        output_db_path: str,
-        cancel_event: Optional[threading.Event] = None
-) -> bool:
-    """
-    递归地将一个目录及其所有子目录下的支持文件，转换为一个单一的SQLite数据库。
-
-    功能特性:
-    - 遍历子目录: 自动扫描所有子文件夹。
-    - 版本化表名: 每个子目录名被视为一个 'version_id'，并作为其下所有文件
-                  在数据库中对应表名的前缀 (例如 'HAU_v1_annotations')。
-    - 多格式支持: 支持 .xlsx, .txt, .csv, .fasta, .fa, .fna, .cds 等以及它们的 .gz 压缩版本。
-    - 幂等性: 使用 'replace' 模式，重复运行会覆盖旧表，确保数据最新。
-
-    Args:
-        input_folder_path (str): 包含数据文件的根目录路径。
-        output_db_path (str): 输出的SQLite数据库文件路径 (例如 'genomes/genomes.db')。
-        cancel_event (Optional[threading.Event]): 用于中途取消操作的线程事件。
-
-    Returns:
-        bool: 如果所有操作成功完成，返回 True，否则返回 False。
-    """
-    logger.info(f"开始从 '{input_folder_path}' 到 SQLite数据库 '{output_db_path}' 的递归转换")
-    if cancel_event and cancel_event.is_set(): return False
-    if not os.path.isdir(input_folder_path): return False
-
-    # 新增：提前获取基因组源信息
-    genome_sources = get_genome_data_sources(config)
-
-    conn = None
-    try:
-        output_dir = os.path.dirname(output_db_path)
-        if output_dir: os.makedirs(output_dir, exist_ok=True)
-        conn = sqlite3.connect(output_db_path)
-
-        supported_extensions = ('.xlsx', '.xlsx.gz', '.txt', '.txt.gz', '.csv', '.csv.gz',
-                                '.fasta', '.fasta.gz', '.fa', '.fa.gz', '.fna', '.fna.gz', '.cds', '.cds.gz')
-        fasta_extensions = ('.fasta', '.fa', '.fna', '.cds')
-        files_processed_count = 0
-
-        for root, dirs, files in os.walk(input_folder_path):
-            if cancel_event and cancel_event.is_set(): break
-            for filename in files:
-                file_lower = filename.lower()
-                if not any(file_lower.endswith(ext) for ext in supported_extensions): continue
-
-                relative_path = os.path.relpath(root, input_folder_path)
-                version_id = relative_path if relative_path != '.' else None
-                table_name = _sanitize_table_name(filename, version_id=version_id)
-                full_path = os.path.join(root, filename)
-                dataframe = None
-
-                is_fasta = any(file_lower.endswith(ext) or file_lower.endswith(ext + '.gz') for ext in fasta_extensions)
-
-                # 新增：为FASTA文件查找并应用特定的正则表达式
-                id_regex_to_use = None
-                if is_fasta and version_id:
-                    current_genome_info = genome_sources.get(version_id)
-                    if current_genome_info and current_genome_info.gene_id_regex:
-                        id_regex_to_use = current_genome_info.gene_id_regex
-                        logger.debug(f"为版本 '{version_id}' 找到基因ID正则表达式: {id_regex_to_use}")
-                    else:
-                        logger.warning(f"在配置中未找到版本 '{version_id}' 的基因ID正则表达式。")
-
-                if is_fasta:
-                    dataframe = _read_fasta_to_dataframe(full_path, id_regex=id_regex_to_use, cancel_event=cancel_event)
-                elif file_lower.endswith(('.xlsx', '.xlsx.gz')):
-                    dataframe = _read_excel_to_dataframe(full_path, cancel_event=cancel_event)
-                else:
-                    if cancel_event and cancel_event.is_set(): continue
-                    dataframe = _read_text_to_dataframe(full_path)
-
-                # 在写入数据库这个阻塞操作前，再次检查
-                if cancel_event and cancel_event.is_set(): continue
-
-                if dataframe is not None and not dataframe.empty:
-                    try:
-                        dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
-                        logger.info(
-                            f"成功将 '{filename}' (版本: {version_id or 'root'}) 转换到表 '{table_name}'。")
-                        files_processed_count += 1
-                    except Exception as e:
-                        logger.error(f"从 '{filename}' 写入SQLite表 '{table_name}' 时出错。原因: {e}")
-                else:
-                    logger.warning(f"跳过文件 '{filename}'，因为未能读取到有效数据。")
-
-        logger.info(f"成功处理了 {files_processed_count} 个文件。")
-        return True
-    except Exception as e:
-        logger.exception(f"在转换过程中发生严重错误。原因: {e}")
-        return False
-    finally:
-        if conn: conn.close()
 
 

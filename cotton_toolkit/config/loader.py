@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from pydantic import ValidationError
 
-# 确保从 models.py 正确导入 MainConfig 和 GenomeSourcesConfig, GenomeSourceItem
+from cotton_toolkit import DOWNLOAD_OUTPUT_BASE_DIR, GENOME_SOURCE_FILE
 from cotton_toolkit.config.models import MainConfig, GenomeSourcesConfig, GenomeSourceItem
 
 # --- 模块级缓存变量 ---
@@ -43,7 +43,7 @@ def get_local_downloaded_file_path(config: MainConfig, genome_info: GenomeSource
         return None
 
     filename = os.path.basename(url)
-    base_dir = config.downloader.download_output_base_dir
+    base_dir = DOWNLOAD_OUTPUT_BASE_DIR
 
     version_identifier = getattr(genome_info, 'version_id', None)
     if not version_identifier:
@@ -109,8 +109,7 @@ def get_genome_data_sources(config: MainConfig) -> Dict[str, GenomeSourceItem]:
         logger.error(_("主配置对象无效或缺少必需的路径信息 'config_file_abs_path_'。"))
         return {}
 
-    # 2. 从 downloader 配置中获取文件名，并构建其绝对路径
-    sources_filename = config.downloader.genome_sources_file
+    sources_filename = GENOME_SOURCE_FILE
     config_dir = os.path.dirname(config.config_file_abs_path_)
     sources_filepath = os.path.join(config_dir, sources_filename)
 
@@ -188,7 +187,6 @@ def generate_default_config_files(output_dir: str, overwrite: bool = False, main
             return False, None, None, existing_files
 
         default_config = MainConfig()
-        default_config.downloader.genome_sources_file = sources_filename
         save_config(default_config, main_config_path)
 
         default_sources_data = GenomeSourcesConfig()
